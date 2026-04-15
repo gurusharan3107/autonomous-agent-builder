@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Council v3 Report — Autonomous Agent Builder</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a2e; --muted: #6b7280; --border: #e5e7eb;
+    --accent: #2563eb; --green: #059669; --red: #dc2626; --amber: #d97706;
+    --surface: #f9fafb;
+    --contrarian: #ef4444; --first-principles: #8b5cf6;
+    --expansionist: #10b981; --outsider: #f59e0b; --executor: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--fg); background: var(--bg); line-height: 1.6; max-width: 920px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--border); }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .verdict-box { background: var(--surface); border: 2px solid var(--accent); border-radius: 8px; padding: 1.25rem 1.5rem; margin: 1.25rem 0; }
+  .verdict-box h3 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1rem; }
+  .first-action { background: #eff6ff; border-left: 4px solid var(--accent); padding: 0.9rem 1.1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  .grid { display: grid; gap: 0.65rem; margin: 0.75rem 0; }
+  .item { display: flex; gap: 0.6rem; padding: 0.7rem 0.9rem; background: var(--surface); border-radius: 6px; font-size: 0.9rem; }
+  .item.green { border-left: 3px solid var(--green); }
+  .item.amber { border-left: 3px solid var(--amber); }
+  .item.red { border-left: 3px solid var(--red); }
+  .item.blue { border-left: 3px solid var(--accent); }
+  .item strong { display: block; margin-bottom: 0.2rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 0.75rem 0; }
+  th, td { padding: 0.55rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: var(--surface); font-weight: 600; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
+  .badge-ship { background: #d1fae5; color: #065f46; }
+  .badge-fix { background: #fef3c7; color: #92400e; }
+  .badge-block { background: #fee2e2; color: #991b1b; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  details { margin: 0.6rem 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  details summary { padding: 0.7rem 1rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; background: var(--surface); }
+  details summary:hover { background: #f3f4f6; }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  .detail-content { padding: 1rem; font-size: 0.88rem; }
+  .detail-content p { margin-bottom: 0.6rem; }
+  .detail-content ol, .detail-content ul { margin-left: 1.25rem; margin-bottom: 0.6rem; }
+  .detail-content li { margin-bottom: 0.3rem; }
+  .footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.82rem; }
+  .blocker-num { display: inline-block; background: var(--accent); color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 0.78rem; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+  ol, ul { margin-left: 1.25rem; }
+  li { margin-bottom: 0.4rem; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>LLM Council Report — v3</h1>
+<p class="subtitle">Autonomous Agent Builder Architecture · 2026-04-07 · Round 2 (post-research)</p>
+
+<div style="background:#f0f9ff;padding:0.9rem 1.1rem;border-radius:6px;margin-bottom:1.5rem;font-size:0.88rem;">
+  <strong>Question:</strong> Is the v3 architecture (concurrent gates, Langfuse, group chat approval, CAPABILITY_LIMIT, harnessability scorer, deterministic dispatch) ready to implement?
+  <br><strong>Context:</strong> v2 council fixed SQLite, polling, gate spec, observability, agent safety, CLI resilience. v3 adds research-based improvements.
+</div>
+
+<div class="verdict-box">
+  <h3>Verdict: Ship v3 — with 5 blockers resolved before first line of code</h3>
+  <p>The architecture is sound and significantly improved from v2. The concurrent gate design, Langfuse integration, and deterministic dispatch are all correct choices. However, 5 under-specifications will cause production failures if not resolved now: gate-level observability, harnessability rubric, CAPABILITY_LIMIT flow, approval audit trail, and group chat authority model.</p>
+</div>
+
+<div class="first-action">
+  <strong>The One Thing to Do First:</strong> Write HARNESSABILITY.md with a concrete rubric — 3–4 scoring rows with examples of what score 5, 6, 7, 8 mean. Score 3 real projects manually. If it takes &gt;30 min/project, simplify. Everything else (routing rules, architect review gate, enforcement) depends on this.
+</div>
+
+<h2>Advisor Alignment</h2>
+<table>
+  <thead><tr><th>Advisor</th><th>Verdict</th><th>Key Position</th><th>Peer Rank</th></tr></thead>
+  <tbody>
+    <tr><td><span class="dot" style="background:var(--contrarian)"></span>Contrarian</td><td><span class="badge badge-block">4 Fatal Gaps</span></td><td>No per-gate timeouts; group chat not RBAC; escalation path undefined; harnessability no teeth</td><td>Cited by 3/5</td></tr>
+    <tr><td><span class="dot" style="background:var(--first-principles)"></span>First Principles</td><td><span class="badge badge-fix">Not Ready</span></td><td>Concurrency is load-shifting; harnessability needs routing rules; 24h arch gate lag</td><td>Cited by 2/5</td></tr>
+    <tr><td><span class="dot" style="background:var(--expansionist)"></span>Expansionist</td><td><span class="badge badge-ship">Solid + Expand</span></td><td>Semgrep diff = training data; group chat = critic model data; polyglot now not Phase 2</td><td>Biggest blind spot</td></tr>
+    <tr><td><span class="dot" style="background:var(--outsider)"></span>Outsider</td><td><span class="badge badge-fix">Underspecified</span></td><td>AND aggregation state machine unclear; approval must be committed not just logged; token ceiling missing</td><td>Cited by 2/5</td></tr>
+    <tr><td><span class="dot" style="background:var(--executor)"></span>Executor</td><td><span class="badge badge-ship">Ship It</span></td><td>Clear path; 5 pre-code blockers; prototype group chat UI first; write CAPABILITY_LIMIT flow doc</td><td><strong>Strongest (all reviews)</strong></td></tr>
+  </tbody>
+</table>
+
+<h2>Where the Council Agrees</h2>
+<div class="grid">
+  <div class="item green"><div><strong>Concurrent gates need per-gate timeouts + circuit breakers</strong>If Semgrep hangs &gt;30s, kill it and emit TIMEOUT (not FAIL). Prevents cascading hangs that choke the entire pipeline.</div></div>
+  <div class="item green"><div><strong>Group chat approval is not RBAC — needs authority model</strong>Who approves? Can a developer approve their own PR? What's the escalation if the approver is absent? Needs explicit authority rules before UI is built.</div></div>
+  <div class="item green"><div><strong>Harnessability scorer needs enforcement rules, not just a score</strong>Score &lt;5 → architect review required. Score &lt;3 → reject task. Without routing logic, the score is decoration.</div></div>
+  <div class="item green"><div><strong>Langfuse is under-leveraged for gate-level observability</strong>Token costs are tracked, but which gate failed, which timed out, and why is not specified. Gate-level traces are required for debugging concurrent AND aggregation.</div></div>
+</div>
+
+<h2>Where the Council Clashes</h2>
+<div class="grid">
+  <div class="item amber"><div><strong>Nightly arch gate vs. PR heuristic</strong><em>First Principles:</em> 24h lag kills feedback loops — run fast heuristic on PR.<br><em>Executor:</em> Nightly is right for Phase 1 scope — add heuristic in Phase 2.<br><em>Resolution:</em> Nightly ships Phase 1 (pragmatic). Design it for 5-min runtime and document the Phase 2 PR heuristic migration path now.</div></div>
+  <div class="item amber"><div><strong>Scope of Phase 1 (Expansionist vs. Executor)</strong><em>Expansionist:</em> Polyglot dispatch and Semgrep-as-training-data are Phase 1 architectural decisions.<br><em>Executor:</em> Phase 1 = one task, one language, ship fast.<br><em>Resolution:</em> Executor wins. Document Expansionist's observations as design artifacts for Phase 2, not v3 code.</div></div>
+</div>
+
+<h2>The 5 Blockers (Resolve Before Coding)</h2>
+<div class="grid">
+  <div class="item red"><div style="display:flex;align-items:flex-start;gap:8px"><span class="blocker-num">1</span><div><strong>Group chat approval UI wireframe</strong>Define: who has approval authority? Can a developer approve their own feature? What happens if approver is unavailable for 4h? Draw the actual screen — one HTMX mockup. Drives the RBAC scope and approval_log table schema.</div></div></div>
+  <div class="item red"><div style="display:flex;align-items:flex-start;gap:8px"><span class="blocker-num">2</span><div><strong>HARNESSABILITY.md — rubric with examples</strong>3–4 concrete scoring rows. Example: "Score 8 = all deps have type annotations, isolated test env, API contracts present." Score 3 real projects manually. If &gt;30 min each, simplify rubric. Unblocks routing rules (score&lt;5 → architect review, &lt;3 → reject).</div></div></div>
+  <div class="item red"><div style="display:flex;align-items:flex-start;gap:8px"><span class="blocker-num">3</span><div><strong>CAPABILITY_LIMIT flow diagram</strong>One page: MAX_RETRIES=2 → CAPABILITY_LIMIT → dead-letter queue → analyst review SLA (e.g., 4h). What does the developer see? What notifications fire? What's the resolution path?</div></div></div>
+  <div class="item red"><div style="display:flex;align-items:flex-start;gap:8px"><span class="blocker-num">4</span><div><strong>Gate-level Langfuse trace spec</strong>Define the structured event emitted per gate: <code>{gate: "semgrep", status: "timeout|fail|pass|error", elapsed_ms, error_code, findings_count}</code>. Required for debugging AND aggregation failures in production.</div></div></div>
+  <div class="item red"><div style="display:flex;align-items:flex-start;gap:8px"><span class="blocker-num">5</span><div><strong>Approval audit table schema</strong>Minimal: <code>approval_log(task_id, approver, decision, timestamp, reason)</code> — immutable, append-only. Langfuse is observability; DB is the audit trail. Accenture compliance requires this.</div></div></div>
+</div>
+
+<h2>Blind Spots the Council Caught</h2>
+<div class="grid">
+  <div class="item blue"><div><strong>AND aggregation observability is dark</strong>When gate B times out and gate C errors, the aggregate shows "FAIL" but not which gate failed or why. Every gate needs a structured Langfuse event with gate name, status type (timeout vs. fail vs. error), elapsed_ms, and error_code.</div></div>
+  <div class="item blue"><div><strong>CAPABILITY_LIMIT has no queue strategy</strong>Task enters CAPABILITY_LIMIT — then what? Sits indefinitely? Gets rejected? Goes to a dead-letter queue? Define: rejected tasks enter a dead-letter queue, analyst has 4h SLA to review before feature is rejected.</div></div>
+  <div class="item blue"><div><strong>Per-gate timeout is missing from concurrent design</strong>asyncio.gather does not time out individual gates. Wrap each gate call in asyncio.wait_for(gate.run(), timeout=GATE_TIMEOUTS[gate_name]) with specific timeouts: Ruff=30s, pytest=120s, Semgrep=60s, Trivy=45s.</div></div>
+  <div class="item blue"><div><strong>Token-per-task ceiling missing</strong>CAPABILITY_LIMIT prevents infinite retries, but a single run can still burn unbounded tokens. Add MAX_TOKENS_PER_TASK to config. When exceeded, mark task BLOCKED and notify developer before the next agent call.</div></div>
+</div>
+
+<h2>Advisor Responses</h2>
+
+<details>
+  <summary><span class="dot" style="background:var(--contrarian)"></span>The Contrarian</summary>
+  <div class="detail-content">
+    <p><strong>4 Fatal Gaps:</strong></p>
+    <ol>
+      <li><strong>Concurrent gates + AND logic = catastrophic brittleness.</strong> No per-gate timeouts, no circuit breaker when Langfuse is unreachable. A flaky external service kills the enterprise demo.</li>
+      <li><strong>Group chat approval is underspecified theater.</strong> No RBAC, no audit trail, social consensus ≠ enterprise-grade. Accenture clients need role-based access and immutable approval records.</li>
+      <li><strong>CAPABILITY_LIMIT escalation path is broken.</strong> Escalate to what queue? What SLA? Adds a new failure mode (escalation backlog) without defining resolution.</li>
+      <li><strong>Harnessability scorer has no teeth.</strong> Score 3/8 → what happens? No enforcement rules means it's a report nobody acts on.</li>
+    </ol>
+  </div>
+</details>
+
+<details>
+  <summary><span class="dot" style="background:var(--first-principles)"></span>The First Principles Thinker</summary>
+  <div class="detail-content">
+    <p><strong>Not ready. Three issues:</strong></p>
+    <ol>
+      <li>Concurrent gates is load-shifting, not risk-reduction. You're still as strong as your weakest gate (likely Semgrep). AND aggregation is correct, but don't let concurrency create false confidence.</li>
+      <li>Harnessability scorer needs routing rules: score&lt;5 → architect reviews; &lt;3 → reject. Without rules, it's documentation theater.</li>
+      <li>Nightly architecture gate creates a 24h feedback lag. Run fast heuristic on PR, defer deep analysis to nightly.</li>
+    </ol>
+  </div>
+</details>
+
+<details>
+  <summary><span class="dot" style="background:var(--expansionist)"></span>The Expansionist</summary>
+  <div class="detail-content">
+    <p><strong>Enterprise-solid but too narrow. Three plays:</strong></p>
+    <ol>
+      <li>Semgrep captures a diff on every autofix run. That diff is training data for AGENTS.md tuning — what patterns keep failing?</li>
+      <li>Group chat approval transcripts = preference data for a critic model. One schema change away from fine-tuning your own reviewer.</li>
+      <li>Polyglot gate dispatch should be a Phase 1 architecture decision (abstract over linter/fixer). Multi-language is not a Phase 2 feature — it's a Phase 1 unlock.</li>
+    </ol>
+  </div>
+</details>
+
+<details>
+  <summary><span class="dot" style="background:var(--outsider)"></span>The Outsider</summary>
+  <div class="detail-content">
+    <p><strong>Four underspecifications:</strong></p>
+    <ol>
+      <li>AND aggregation precedence unclear when one gate times out vs. fails — state machine needed.</li>
+      <li>Approval decision must be committed to DB — not just logged to Langfuse. Langfuse is observability; DB is audit trail.</li>
+      <li>Nightly gate failure post-merge = rollback trigger or next-day fix? Policy must be defined.</li>
+      <li>Token-per-task ceiling is missing. CAPABILITY_LIMIT prevents retries but not unbounded single-run burn.</li>
+    </ol>
+  </div>
+</details>
+
+<details>
+  <summary><span class="dot" style="background:var(--executor)"></span>The Executor</summary>
+  <div class="detail-content">
+    <p><strong>Ship it. The path is clear and manageable.</strong></p>
+    <p>Concurrent gates = testable, observable. Semgrep two-step mirrors human review. Langfuse + LiteLLM = cost predictable. CAPABILITY_LIMIT = clear circuit breaker. Deterministic dispatch = kills distributed systems headache.</p>
+    <p><strong>5 things before coding:</strong></p>
+    <ol>
+      <li>Prototype group chat UI — it's the UX binding. Decide authority model first.</li>
+      <li>Nail harnessability rubric — write it, score 3 projects, simplify if &gt;30 min each.</li>
+      <li>Define nightly gate SLA — what triggers it, what happens on 2am failure, does it block next-day deploys?</li>
+      <li>Write CAPABILITY_LIMIT flow doc — one page diagram.</li>
+      <li>Draw approval UI wireframe — what does the developer actually click?</li>
+    </ol>
+  </div>
+</details>
+
+<div class="footer">
+  LLM Council v3 Report · 2026-04-07 · Autonomous Agent Builder Architecture Review (Round 2)<br>
+  5 advisors + peer review + Chairman synthesis · Previous round: 2026-04-06 (v2)
+</div>
+
+</body>
+</html>

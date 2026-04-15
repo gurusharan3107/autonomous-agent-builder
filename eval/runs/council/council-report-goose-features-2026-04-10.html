@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Council Report — Goose Feature Incorporation Plan</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent-red: #dc2626;
+    --accent-green: #16a34a;
+    --accent-blue: #2563eb;
+    --accent-amber: #d97706;
+    --accent-purple: #7c3aed;
+    --surface: #f9fafb;
+    --surface-alt: #f3f4f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+  p, li { font-size: 0.95rem; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .question-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .question-box p { font-size: 0.9rem; color: var(--fg); }
+  .verdict-box {
+    background: #fef3c7;
+    border: 2px solid var(--accent-amber);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .verdict-box h3 { color: var(--accent-amber); margin-top: 0; }
+  .first-step-box {
+    background: #dbeafe;
+    border: 2px solid var(--accent-blue);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .first-step-box h3 { color: var(--accent-blue); margin-top: 0; }
+
+  /* Agreement grid */
+  .agreement-grid {
+    display: grid;
+    grid-template-columns: 180px repeat(6, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.8rem;
+  }
+  .agreement-grid > div {
+    background: var(--bg);
+    padding: 0.5rem 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .agreement-grid .header {
+    background: var(--surface-alt);
+    font-weight: 600;
+    font-size: 0.75rem;
+  }
+  .agreement-grid .advisor-name {
+    justify-content: flex-start;
+    font-weight: 600;
+    background: var(--surface);
+  }
+  .agree { background: #dcfce7 !important; color: var(--accent-green); font-weight: 600; }
+  .disagree { background: #fee2e2 !important; color: var(--accent-red); font-weight: 600; }
+  .mixed { background: #fef9c3 !important; color: var(--accent-amber); font-weight: 600; }
+  .neutral { background: var(--surface) !important; color: var(--muted); }
+
+  /* Sections */
+  .section { margin-bottom: 1.5rem; }
+  .section ul { padding-left: 1.25rem; margin: 0.5rem 0; }
+  .section li { margin-bottom: 0.5rem; }
+  strong { font-weight: 600; }
+
+  /* Collapsible */
+  details {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    overflow: hidden;
+  }
+  details summary {
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    user-select: none;
+  }
+  details summary:hover { background: var(--surface-alt); }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  .detail-content {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+  .detail-content p { margin-bottom: 0.75rem; }
+
+  /* Advisor tags */
+  .tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 0.25rem;
+  }
+  .tag-contrarian { background: #fee2e2; color: var(--accent-red); }
+  .tag-firstprinciples { background: #ede9fe; color: var(--accent-purple); }
+  .tag-expansionist { background: #dbeafe; color: var(--accent-blue); }
+  .tag-outsider { background: #fef9c3; color: var(--accent-amber); }
+  .tag-executor { background: #dcfce7; color: var(--accent-green); }
+
+  .footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<h1>LLM Council Report</h1>
+<p class="subtitle">Goose Feature Incorporation Plan &mdash; autonomous-agent-builder v4.1 &mdash; 2026-04-10</p>
+
+<div class="question-box">
+  <strong>Question:</strong>
+  <p>Should we incorporate 6 Goose-inspired features (Subagent Parallel Dispatch, Context Compaction, Recipe System, Prompt Injection Detection, Egress Monitor, Permission Store) into our deterministic, safety-first SDLC orchestrator built on Claude Agent SDK? Is the prioritization correct? Are there architectural risks?</p>
+</div>
+
+<!-- CHAIRMAN VERDICT -->
+<h2>Chairman's Verdict</h2>
+
+<div class="verdict-box">
+  <h3>The Recommendation</h3>
+  <p><strong>Do not adopt the 6 Goose features as a package.</strong> Instead:</p>
+  <ul>
+    <li><strong>Immediately adopt (P0):</strong> Prompt Injection Detection, Egress Monitor, Permission Store &mdash; security/audit, directly sells to enterprise, doesn't touch orchestration.</li>
+    <li><strong>Measure then decide (conditional P0):</strong> Instrument phase telemetry for 2 weeks. If context exceeds 70% causing failures &rarr; Context Compaction (as explicit phase budgets + token caching, not lossy compression). If sequential phases bottleneck &rarr; Parallel Dispatch (at orchestrator level, not agent level).</li>
+    <li><strong>Decouple Recipe System:</strong> Define what "recipe" means for your model first. Likely P0.5 (operational tax).</li>
+    <li><strong>Reject as-is, redesign if needed:</strong> Subagent Dispatch only as orchestrator-level DAG parallelism. Context Compaction only as phase budgets + token caching.</li>
+  </ul>
+  <p style="margin-top: 0.75rem;"><strong>Determinism is non-negotiable for enterprise.</strong> Any feature that makes replay or auditability harder doesn't go in.</p>
+</div>
+
+<div class="first-step-box">
+  <h3>The One Thing to Do First</h3>
+  <p><strong>Instrument your current system with phase-level telemetry</strong> (duration, token usage, tool_registry call count, context % at phase start/end, recovery latency on failure). Run it against production workloads for 2 weeks. Share the data. <em>Then</em> prioritize based on actual constraints, not feature envy.</p>
+</div>
+
+<!-- AGREEMENT GRID -->
+<h2>Advisor Alignment Matrix</h2>
+<p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem;">How each advisor positioned on the 6 proposed features:</p>
+
+<div class="agreement-grid">
+  <div class="header"></div>
+  <div class="header">Parallel Dispatch</div>
+  <div class="header">Context Compact</div>
+  <div class="header">Recipe System</div>
+  <div class="header">Injection Detect</div>
+  <div class="header">Egress Monitor</div>
+  <div class="header">Permission Store</div>
+
+  <div class="advisor-name"><span class="tag tag-contrarian">Contrarian</span></div>
+  <div class="disagree">Reject</div>
+  <div class="disagree">Reject</div>
+  <div class="mixed">Caution</div>
+  <div class="neutral">Skeptical</div>
+  <div class="neutral">--</div>
+  <div class="mixed">Caution</div>
+
+  <div class="advisor-name"><span class="tag tag-firstprinciples">First Principles</span></div>
+  <div class="disagree">Redesign</div>
+  <div class="disagree">Redesign</div>
+  <div class="disagree">Doctrine drift</div>
+  <div class="mixed">Weak</div>
+  <div class="mixed">Symptom</div>
+  <div class="disagree">Liability</div>
+
+  <div class="advisor-name"><span class="tag tag-expansionist">Expansionist</span></div>
+  <div class="agree">Table stakes</div>
+  <div class="agree">Table stakes</div>
+  <div class="agree">Table stakes</div>
+  <div class="agree">Table stakes</div>
+  <div class="agree">Table stakes</div>
+  <div class="agree">Table stakes</div>
+
+  <div class="advisor-name"><span class="tag tag-outsider">Outsider</span></div>
+  <div class="mixed">Measure first</div>
+  <div class="mixed">Measure first</div>
+  <div class="agree">Makes sense</div>
+  <div class="agree">P0</div>
+  <div class="agree">P0</div>
+  <div class="agree">P0</div>
+
+  <div class="advisor-name"><span class="tag tag-executor">Executor</span></div>
+  <div class="mixed">Defer</div>
+  <div class="agree">Blocker (P0)</div>
+  <div class="agree">P0.5</div>
+  <div class="neutral">If required</div>
+  <div class="neutral">If required</div>
+  <div class="neutral">If required</div>
+</div>
+
+<!-- WHERE AGREES -->
+<h2>Where the Council Agrees</h2>
+<div class="section">
+  <ul>
+    <li><strong>Context Compaction via lossy summarization is structurally risky.</strong> Every advisor who engaged with it flagged that lossy compression in a deterministic, safety-critical pipeline violates the enterprise contract. (Contrarian, First Principles, Executor all converged.)</li>
+    <li><strong>Subagent Parallel Dispatch contradicts deterministic orchestration as currently designed.</strong> Partial-state recovery, ordering nondeterminism, and tool_registry mutation all remain unaddressed.</li>
+    <li><strong>Goose features were adopted as a feature list, not derived from constraints.</strong> No evidence that Parallel Dispatch or Context Compaction are blocking production workloads. "What's broken now?" was never answered.</li>
+    <li><strong>Security/audit features are defensible regardless.</strong> Injection Detection, Egress Monitor, Permission Store address enterprise compliance directly and don't interfere with determinism.</li>
+  </ul>
+</div>
+
+<!-- WHERE CLASHES -->
+<h2>Where the Council Clashes</h2>
+<div class="section">
+  <h3>Is parallelism a natural evolution or a philosophical break?</h3>
+  <ul>
+    <li><strong>First Principles + Contrarian:</strong> Parallelism is a fundamental break. Once agents run in parallel, recovery, auditability, and replay all become harder. The tool_registry contract assumes sequential discovery.</li>
+    <li><strong>Executor + Outsider:</strong> Parallelism <em>within</em> a phase, under orchestrator control, is fine. The question is whether you're parallelizing agent dispatch (breaks determinism) or task execution (doesn't, if tasks are independent).</li>
+  </ul>
+  <h3>Is Context Compaction a blocker or premature?</h3>
+  <ul>
+    <li><strong>Executor:</strong> If you hit 80% context mid-phase, you fail. This needs to land before production.</li>
+    <li><strong>Contrarian + First Principles:</strong> If phases are designed correctly with explicit budgets, you never hit 80%. Compaction is a symptom of bad phase design.</li>
+  </ul>
+</div>
+
+<!-- BLIND SPOTS -->
+<h2>Blind Spots the Council Caught</h2>
+<div class="section">
+  <ul>
+    <li><strong>Tool_registry mutation:</strong> If Parallel Dispatch, Recipe System, or Permission Store cause tools to appear/disappear mid-phase, session resumption via <code>resume=session_id</code> breaks irreparably. This wasn't in the original plan. (Caught by Review 2)</li>
+    <li><strong>Determinism was never defined:</strong> Does it mean reproducible routing? Reproducible agent outputs? Reproducible tool availability? The answer changes the verdict on Parallel Dispatch. (Caught by Review 5)</li>
+    <li><strong>No measurement baseline exists:</strong> Can't prioritize P0 vs P1 without phase latency, context usage per phase, and failure frequency data. (Caught by Reviews 4 &amp; 5)</li>
+    <li><strong>Recipe System purpose is ambiguous:</strong> Is it versioned prompt templates? Customer workflow scaffolding? Agent specialization? The answer determines if it's table stakes or gold-plating. (Caught by Review 3)</li>
+  </ul>
+</div>
+
+<!-- ADVISOR RESPONSES (collapsed) -->
+<h2>Advisor Responses</h2>
+
+<details>
+  <summary><span class="tag tag-contrarian">Contrarian</span> &mdash; "Start over with: what's broken now?"</summary>
+  <div class="detail-content">
+    <p>Subagent parallel dispatch is fundamentally at odds with your deterministic orchestration claim. You've traded determinism for parallelism without explaining how you handle partial state. If agent-2 hits a token limit mid-implementation while agent-1 succeeds, what's your recovery model?</p>
+    <p>Context compaction at 80% is a hidden landmine &mdash; lossy compression in a safety-critical pipeline is unacceptable for enterprise.</p>
+    <p>Recipe system + permission store assume tool decisions are reusable, but they're not in adversarial contexts. Enterprise security teams will rightfully ask: if a permission is cached, how do you detect when threat models shift?</p>
+    <p><strong>The real gap:</strong> You haven't addressed WHY Goose features fit your constraints. Start over with: "What's broken now that these features fix?" Not "Goose has this, so we should too."</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag tag-firstprinciples">First Principles</span> &mdash; "You're asking the wrong question"</summary>
+  <div class="detail-content">
+    <p>The Goose features are agent-centric; your system is deterministic. Three features will compromise determinism; two exploit non-existent infrastructure; one is security theater.</p>
+    <p>Subagent dispatch breaks determinism (moves control flow into agents). Context compaction breaks session resumption via lossy summarization. Recipe system parameterizes your agent-as-artifact model (doctrine drift). Prompt injection regex won't catch sophisticated attacks.</p>
+    <p><strong>Alternatives:</strong> Parallelize at the orchestrator level, not the agent level. Use token caching + explicit phase budgets instead of lossy compaction. Double down on workspace isolation for security.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag tag-expansionist">Expansionist</span> &mdash; "This is undershooting the opportunity"</summary>
+  <div class="detail-content">
+    <p>The 6 Goose features are table stakes &mdash; solid engineering tax &mdash; but they don't unlock the real value hiding in your architecture.</p>
+    <p><strong>What you should be chasing:</strong> (1) Multi-agent task decomposition at the DAG level. (2) Agent specialization marketplace &mdash; swap agents at runtime based on task complexity/domain. (3) Cost-aware task routing with learned agent-to-task mapping. (4) Audit trail as a compliance product.</p>
+    <p>Turn this from an SDLC builder into an enterprise AI task platform that learns.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag tag-outsider">Outsider</span> &mdash; "Flip your prioritization entirely"</summary>
+  <div class="detail-content">
+    <p>No evidence Subagent Parallel Dispatch is blocking anything today &mdash; measure first. Context Compaction same issue &mdash; might not exist at production scale.</p>
+    <p>Recipe System I get for enterprise, but should emerge from actual customer workflows, not Goose.</p>
+    <p><strong>Flip priorities:</strong> Do Injection Detection, Egress Monitor, Permission Store first (P0). They're security/audit and directly sell to enterprises. Then measure whether Parallel Dispatch and Compaction actually matter.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag tag-executor">Executor</span> &mdash; "Prioritization is wrong"</summary>
+  <div class="detail-content">
+    <p>Subagent Parallel Dispatch (current P0) is a scaling optimization that matters only after you've proven the sequential baseline works at enterprise scale.</p>
+    <p>Context Compaction (current P0) is a blocker disguised as optimization &mdash; if you hit 80% context mid-phase, you either fail the task or compact. There's no option C.</p>
+    <p>Recipe System (current P1) is actually P0.5 &mdash; it's operational scaffolding. Without it, every new customer variant becomes a code branch.</p>
+    <p><strong>First step Monday:</strong> Measure baseline phase latency. Then implement Context Compaction + Recipe System.</p>
+  </div>
+</details>
+
+<!-- PEER REVIEW HIGHLIGHTS (collapsed) -->
+<details>
+  <summary><strong>Peer Review Highlights</strong></summary>
+  <div class="detail-content">
+    <p><strong>Strongest advisor (by peer vote):</strong> First Principles (D) &mdash; selected by 3 of 5 reviewers. Correctly diagnosed the fundamental agent-centric vs orchestrator-centric tension.</p>
+    <p><strong>Biggest blind spot (by peer vote):</strong> Outsider (E) and Executor (B) both flagged. E conflated "sells to enterprises" with "unblocks production." B assumed 80% context is a blocker without evidence.</p>
+    <p><strong>Critical miss (all 5):</strong> None addressed how features interact with <code>tool_registry.py</code>. None defined what "deterministic" means precisely. None proposed a measurement-first approach with specifics.</p>
+  </div>
+</details>
+
+<div class="footer">
+  <p>LLM Council Report &mdash; Generated 2026-04-10 &mdash; 5 advisors, 5 peer reviews, 1 chairman synthesis</p>
+  <p>Subject: Goose Feature Incorporation Plan for autonomous-agent-builder v4.1</p>
+  <p>Transcript: <code>eval/runs/council/council-transcript-goose-features-2026-04-10.md</code></p>
+</div>
+
+</body>
+</html>

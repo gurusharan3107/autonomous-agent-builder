@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Council Report — Autonomous Agent Builder Architecture</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --green: #059669;
+    --red: #dc2626;
+    --amber: #d97706;
+    --surface: #f9fafb;
+    --contrarian: #ef4444;
+    --first-principles: #8b5cf6;
+    --expansionist: #10b981;
+    --outsider: #f59e0b;
+    --executor: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.25rem; margin: 2rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+  p, li { font-size: 0.95rem; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+  .verdict-box {
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .verdict-box h3 { color: var(--accent); margin-top: 0; }
+  .first-action {
+    background: #eff6ff;
+    border-left: 4px solid var(--accent);
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .agreement-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin: 1rem 0;
+  }
+  .agreement-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-radius: 6px;
+    border-left: 3px solid var(--green);
+  }
+  .clash-item {
+    border-left-color: var(--amber);
+  }
+  .blind-item {
+    border-left-color: var(--red);
+  }
+  .agreement-item .icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+  .agreement-item .text { flex: 1; }
+  .agreement-item strong { display: block; margin-bottom: 0.25rem; }
+
+  /* Advisor alignment visual */
+  .alignment-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .alignment-table th, .alignment-table td {
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .alignment-table th { background: var(--surface); font-weight: 600; }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .badge-proceed { background: #d1fae5; color: #065f46; }
+  .badge-caution { background: #fef3c7; color: #92400e; }
+  .badge-block { background: #fee2e2; color: #991b1b; }
+  .advisor-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  /* Collapsible sections */
+  details {
+    margin: 0.75rem 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  details summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  details summary:hover { background: #f3f4f6; }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  .detail-content { padding: 1rem; font-size: 0.9rem; }
+  .detail-content p { margin-bottom: 0.75rem; }
+  .detail-content ul { margin-left: 1.25rem; margin-bottom: 0.75rem; }
+  .detail-content li { margin-bottom: 0.35rem; }
+
+  .footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  ol, ul { margin-left: 1.25rem; }
+  li { margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+
+<h1>LLM Council Report</h1>
+<p class="subtitle">Autonomous Agent Builder Architecture Review &mdash; 2026-04-06</p>
+
+<div style="background: #f0f9ff; padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 2rem; font-size: 0.9rem;">
+  <strong>Question:</strong> Should we proceed with this architecture for a production-grade autonomous software builder at Accenture? (Python + FastAPI + SQLAlchemy + HTMX, polling orchestrator, 3 developer gates, Claude Code CLI, git worktrees, Semgrep/Trivy/Ruff quality gates, SQLite/PostgreSQL)
+</div>
+
+<!-- CHAIRMAN VERDICT -->
+<div class="verdict-box">
+  <h3>Council Verdict: Proceed &mdash; Conservative Path Only</h3>
+  <p>Build the single-task execution loop end-to-end with full observability, hard failure modes, and working gates. Do not attempt the extensible platform or multi-agent scaling simultaneously. The three critical failures (polling, gates, SQLite) must be fixed before any release. Prove the core loop works first. You'll have better data for the ecosystem design after one successful deployment.</p>
+</div>
+
+<div class="first-action">
+  <strong>The One Thing to Do First:</strong> Build and validate a single end-to-end feature execution loop (user story &rarr; implementation &rarr; PR waiting for approval) with explicit gate rejection logic, full structured logging, and PostgreSQL. One sprint. Ship a demo showing a real feature reaching approval-waiting with Semgrep passing and a real PR created.
+</div>
+
+<!-- ADVISOR ALIGNMENT -->
+<h2>Advisor Alignment</h2>
+
+<table class="alignment-table">
+  <thead>
+    <tr>
+      <th>Advisor</th>
+      <th>Verdict</th>
+      <th>Key Position</th>
+      <th>Peer Review Rank</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="advisor-dot" style="background:var(--contrarian)"></span>Contrarian</td>
+      <td><span class="badge badge-block">Fix First</span></td>
+      <td>3 critical failures: polling, gates, SQLite</td>
+      <td>Cited by 3/5 reviews</td>
+    </tr>
+    <tr>
+      <td><span class="advisor-dot" style="background:var(--first-principles)"></span>First Principles</td>
+      <td><span class="badge badge-caution">Rethink</span></td>
+      <td>Wrong problem &mdash; prove single-task loop first</td>
+      <td><strong>Strongest (4/5 reviews)</strong></td>
+    </tr>
+    <tr>
+      <td><span class="advisor-dot" style="background:var(--expansionist)"></span>Expansionist</td>
+      <td><span class="badge badge-proceed">Expand</span></td>
+      <td>Platform play &mdash; pluggable agents, ecosystem</td>
+      <td>Biggest blind spot (5/5 reviews)</td>
+    </tr>
+    <tr>
+      <td><span class="advisor-dot" style="background:var(--outsider)"></span>Outsider</td>
+      <td><span class="badge badge-caution">Fix First</span></td>
+      <td>Complexity tax clients won't understand</td>
+      <td>Cited by 2/5 reviews</td>
+    </tr>
+    <tr>
+      <td><span class="advisor-dot" style="background:var(--executor)"></span>Executor</td>
+      <td><span class="badge badge-proceed">Proceed</span></td>
+      <td>Practical &mdash; validate with 1-day spikes, pick 1 language</td>
+      <td>Strongest (1/5 reviews)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- WHERE THEY AGREE -->
+<h2>Where the Council Agrees</h2>
+
+<div class="agreement-grid">
+  <div class="agreement-item">
+    <div class="text">
+      <strong>SQLite is a hard blocker for production</strong>
+      Write-lock contention the moment you run parallel tasks. PostgreSQL from day one, not a future migration.
+    </div>
+  </div>
+  <div class="agreement-item">
+    <div class="text">
+      <strong>Polling orchestrator is a liability</strong>
+      Latency jitter, operational opacity, masks timeout/recovery failures. Surface failure modes, don't hide them.
+    </div>
+  </div>
+  <div class="agreement-item">
+    <div class="text">
+      <strong>Developer gates are under-specified</strong>
+      The rejection/remediation loop is undefined. What happens when a gate blocks work? Retry? Page a human? Fail the workflow? This is accountability theater without the spec.
+    </div>
+  </div>
+  <div class="agreement-item">
+    <div class="text">
+      <strong>Observability is non-negotiable for Accenture</strong>
+      Agent broken code, gate blocking, orchestrator crashes &mdash; all invisible without structured logging and tracing. Day-one requirement.
+    </div>
+  </div>
+</div>
+
+<!-- WHERE THEY CLASH -->
+<h2>Where the Council Clashes</h2>
+
+<div class="agreement-grid">
+  <div class="agreement-item clash-item">
+    <div class="text">
+      <strong>Conservative path vs. Platform play</strong>
+      <em>First Principles + Executor:</em> Ship one task end-to-end, prove gates work, then scale. Risk-reduction first.<br>
+      <em>Expansionist:</em> Build pluggable agent protocol now for ecosystem moat. Multi-agent + webhooks create the real value.<br>
+      <em>Why they disagree:</em> Conservative side says you can't validate ecosystem play without single-task data. Expansionist says waiting means missing the architectural window for extensibility.
+    </div>
+  </div>
+</div>
+
+<!-- BLIND SPOTS -->
+<h2>Blind Spots the Council Caught</h2>
+
+<div class="agreement-grid">
+  <div class="agreement-item blind-item">
+    <div class="text">
+      <strong>Agent code safety &amp; blast radius</strong>
+      No rollback, containment, or compute/network/storage limits per task. What stops a rogue agent from exfiltrating data or corrupting the repo?
+    </div>
+  </div>
+  <div class="agreement-item blind-item">
+    <div class="text">
+      <strong>Gate feedback loop is untested</strong>
+      Gates block work but there's no spec for what happens next. Retry? Escalate? Fail? This loop must be falsifiable and testable.
+    </div>
+  </div>
+  <div class="agreement-item blind-item">
+    <div class="text">
+      <strong>Cost-per-decision transparency</strong>
+      No token burn analysis or LLM overhead economics. Does a planning task cost $0.50 or $5.00? Accenture is cost-conscious.
+    </div>
+  </div>
+  <div class="agreement-item blind-item">
+    <div class="text">
+      <strong>Claude Code CLI is a single point of failure</strong>
+      Network timeouts, recovery, deadlocks &mdash; all unspecified. The entire orchestrator depends on CLI calls succeeding.
+    </div>
+  </div>
+  <div class="agreement-item blind-item">
+    <div class="text">
+      <strong>Multi-agent merge conflicts</strong>
+      No conflict resolution strategy when parallel agents modify the same file. Git worktrees don't solve this alone.
+    </div>
+  </div>
+</div>
+
+<!-- ADVISOR RESPONSES (Collapsible) -->
+<h2>Advisor Responses</h2>
+
+<details>
+  <summary><span class="advisor-dot" style="background:var(--contrarian)"></span>The Contrarian</summary>
+  <div class="detail-content">
+    <p>Three critical failure points:</p>
+    <ol>
+      <li><strong>Polling orchestrator is wrong.</strong> Polling with exponential backoff means latency jitter. Enterprise clients demand predictable SLAs. You're copying Symphony's design without its justification. Need event-driven dispatch with a task queue (Celery, RQ, or Redis pubsub). Polling also constantly hits the database; at scale this becomes a bottleneck.</li>
+      <li><strong>The 3 developer gates punt on the hardest problem.</strong> Automating 95% of SDLC but keeping humans for the most subjective parts. The gap between "looks good to me" and "works in production" is where enterprise failures happen. Need objective gates. Push humans to override gates, not approve designs.</li>
+      <li><strong>SQLite for multi-agent concurrency is a disaster.</strong> Two parallel agents = write-lock contention. PostgreSQL is non-negotiable from day one.</li>
+    </ol>
+    <p><strong>Bottom line:</strong> Cut the polling. Harden the gate framework. Drop SQLite. Then you have something real.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="advisor-dot" style="background:var(--first-principles)"></span>The First Principles Thinker</summary>
+  <div class="detail-content">
+    <p>You're solving the wrong problem. Building an orchestration framework when you need a task execution model. The architecture conflates two distinct concerns: how to coordinate delivery (business) with how to safely run untrusted code (technical).</p>
+    <p>The 3 developer gates don't distribute evenly. 80% autonomous work between gates means gates become accountability theater unless you've deeply thought through what information humans need to make those decisions.</p>
+    <p><strong>What's actually hard:</strong> Defining what "planning gate approved" means. What does quality gate remediation do when Semgrep finds 47 violations in autogenerated code?</p>
+    <p><strong>What's not hard:</strong> Running agents in git worktrees and collecting results. That's mechanics.</p>
+    <p><strong>Recommendation:</strong> Before building orchestration, ship a single-task execution loop end-to-end with full observability. Prove the gates work. Then generalize. Right now you're scaling uncertainty.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="advisor-dot" style="background:var(--expansionist)"></span>The Expansionist</summary>
+  <div class="detail-content">
+    <p>Proceed and expand the scope. This architecture is undershooting the opportunity.</p>
+    <ul>
+      <li><strong>Multi-agent collaboration:</strong> Git worktrees + isolated agents = foundation for parallel agents with dependency resolution and merge conflict resolution.</li>
+      <li><strong>Continuous learning:</strong> Quality gates + remediation success/failure = training data. After 6 months, gates become predictive, not reactive. Defensible moat.</li>
+      <li><strong>Agent infrastructure play:</strong> Make the protocol so clean customers can plug in their own agents. Suddenly this isn't a builder tool; it's enterprise DevOps infrastructure.</li>
+      <li><strong>Platform extensibility:</strong> Add webhooks + event streaming so clients build their own dashboards on top.</li>
+    </ul>
+    <p><strong>Demo implication:</strong> Don't demo "we built a feature." Demo "we built something your teams can extend."</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="advisor-dot" style="background:var(--outsider)"></span>The Outsider</summary>
+  <div class="detail-content">
+    <p>The architecture is sound, but you're shipping a complexity tax that Accenture clients won't understand.</p>
+    <ol>
+      <li><strong>Polling will mystify stakeholders.</strong> "Why isn't the task starting?" The answer (poll queue with exponential backoff) sounds like a workaround.</li>
+      <li><strong>Developer gates = babysitting.</strong> The moment a planning review gets stuck for 2 hours, clients blame the tool. Make criteria explicit and testable before hitting human gates. Auto-reject tasks that don't meet the bar.</li>
+      <li><strong>SQLite for enterprise is a landmine.</strong> PostgreSQL is table stakes for "production-grade."</li>
+    </ol>
+    <p><strong>The rest is solid.</strong> HTMX over React is refreshingly sane. Semgrep + Trivy + Ruff is industry standard. Claude Code as agent runner is defensible.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="advisor-dot" style="background:var(--executor)"></span>The Executor</summary>
+  <div class="detail-content">
+    <p>Yes proceed. This is doable and the path is clear. FastAPI + SQLAlchemy is a solved problem. HTMX cuts complexity. Git worktrees exactly right.</p>
+    <p><strong>Prove these in 1-day spikes:</strong></p>
+    <ol>
+      <li>Orchestrator polling loop works without deadlock</li>
+      <li>Claude Code CLI integration captures structured results and handles failures</li>
+      <li>Quality gates are &lt;100 lines each with working Semgrep auto-remediation</li>
+      <li>Approval gates have a working walkthrough (approve/reject flow)</li>
+    </ol>
+    <p><strong>What will kill you:</strong></p>
+    <ul>
+      <li>Trying Java/Node/Python in MVP &mdash; pick ONE, prove it, add others later</li>
+      <li>Over-speccing the dashboard &mdash; kanban + task detail + approval screen, that's it</li>
+      <li>Agent callback complexity &mdash; task starts, completes, gate passes/fails. No event streaming yet.</li>
+    </ul>
+    <p><strong>Green light:</strong> 2-minute video of feature going from description to approval-waiting with real Semgrep results and a real PR.</p>
+  </div>
+</details>
+
+<!-- PEER REVIEW HIGHLIGHTS -->
+<h2>Peer Review Highlights</h2>
+
+<details>
+  <summary>Peer Review Summary (5 reviewers)</summary>
+  <div class="detail-content">
+    <p><strong>Consensus strongest advisor:</strong> First Principles Thinker (voted strongest by 4 of 5 reviewers). Reason: identifies the fundamental boundary error between orchestration and execution, proposes falsifiable staged approach.</p>
+    <p><strong>Consensus biggest blind spot:</strong> Expansionist (flagged by all 5 reviewers). Reason: assumes gates work, ignores containment/safety, optimizes for extensibility before validating core loop.</p>
+    <p><strong>Gaps all advisors missed:</strong></p>
+    <ul>
+      <li>Agent code safety: rollback, containment, compute/network limits per task</li>
+      <li>Claude Code CLI failure modes: network timeouts, recovery, deadlock handling</li>
+      <li>Error handling &amp; observability: broken agent code, gate blocking, orchestrator crash recovery</li>
+      <li>Cost-per-decision: token burn per task, LLM overhead economics for cost-conscious enterprise</li>
+      <li>Gate feedback loop: what does rejection actually trigger? Retry, escalate, or fail?</li>
+    </ul>
+  </div>
+</details>
+
+<div class="footer">
+  <p>LLM Council Report &mdash; Generated 2026-04-06 &mdash; Autonomous Agent Builder Architecture Review</p>
+  <p>5 advisors (Contrarian, First Principles, Expansionist, Outsider, Executor) + 5 peer reviews + Chairman synthesis</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Council Report — Per-Project Structured Memory System</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --accent: #6ea4f7;
+    --green: #4ade80;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --purple: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.4rem; color: var(--accent); margin-bottom: 0.25rem; }
+  h2 { font-size: 1.1rem; color: var(--text); margin: 2rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { font-size: 0.95rem; color: var(--text-muted); margin: 1rem 0 0.5rem; }
+  .meta { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 2rem; }
+  .verdict {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .verdict h2 { border: none; margin-top: 0; color: var(--accent); }
+  .verdict p { margin: 0.5rem 0; }
+  .first-step {
+    background: var(--surface2);
+    border-left: 3px solid var(--green);
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .agree-list, .clash-list, .blind-list { list-style: none; padding: 0; }
+  .agree-list li { padding: 0.4rem 0; padding-left: 1.5rem; position: relative; }
+  .agree-list li::before { content: "~"; position: absolute; left: 0; color: var(--green); font-weight: bold; }
+  .clash-list li { padding: 0.4rem 0; padding-left: 1.5rem; position: relative; }
+  .clash-list li::before { content: "!"; position: absolute; left: 0; color: var(--amber); font-weight: bold; }
+  .blind-list li { padding: 0.4rem 0; padding-left: 1.5rem; position: relative; }
+  .blind-list li::before { content: "?"; position: absolute; left: 0; color: var(--purple); font-weight: bold; }
+  .advisor-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin: 1rem 0;
+  }
+  details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    user-select: none;
+  }
+  summary:hover { background: var(--surface2); }
+  .detail-body { padding: 0.75rem 1rem; font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border); }
+  .detail-body p { margin: 0.5rem 0; }
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    margin-left: 0.5rem;
+  }
+  .tag-agree { background: rgba(74,222,128,0.15); color: var(--green); }
+  .tag-disagree { background: rgba(248,113,113,0.15); color: var(--red); }
+  .tag-neutral { background: rgba(136,136,136,0.15); color: var(--text-muted); }
+  .score-bar {
+    display: flex;
+    gap: 4px;
+    margin: 0.75rem 0;
+  }
+  .score-segment {
+    height: 6px;
+    border-radius: 3px;
+    flex: 1;
+  }
+  .seg-agree { background: var(--green); }
+  .seg-disagree { background: var(--red); }
+  .seg-mixed { background: var(--amber); }
+  footer { margin-top: 3rem; color: var(--text-muted); font-size: 0.75rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<h1>LLM Council Report</h1>
+<div class="meta">Per-Project Structured Memory System &mdash; 2026-04-14 &mdash; 5 advisors, 5 peer reviews</div>
+
+<div class="score-bar" title="Agreement spectrum: 4 critical issues, 1 ship-it">
+  <div class="score-segment seg-agree"></div>
+  <div class="score-segment seg-agree"></div>
+  <div class="score-segment seg-agree"></div>
+  <div class="score-segment seg-agree"></div>
+  <div class="score-segment seg-disagree"></div>
+</div>
+
+<div class="verdict">
+  <h2>Chairman's Verdict</h2>
+  <p><strong>Do not ship as-is.</strong> The fundamentals are sound &mdash; pull-based retrieval, frontmatter discipline, and separating concerns are all correct. But three architectural gaps need design fixes before implementation:</p>
+  <p><strong>1.</strong> Replace 1h TTL cache with <strong>write-through invalidation</strong> on routing.json</p>
+  <p><strong>2.</strong> Scrap keyword-overlap contradiction detection &mdash; use <strong>dead-letter queue</strong> for human review</p>
+  <p><strong>3.</strong> Remove graduation rule or make it <strong>explicit</strong> (user/agent decides, not grep)</p>
+  <p style="margin-top: 1rem;">Then specify: consumption patterns, concurrency model, cold-start strategy, and correction SLA.</p>
+
+  <div class="first-step">
+    <strong>The One Thing to Do First:</strong> Build a test harness with 10 realistic memory files and 12 queries. Wire retrieval end-to-end with logging. This surfaces consumption pattern gaps and scoring assumptions before touching GC or caching.
+  </div>
+</div>
+
+<h2>Where the Council Agrees</h2>
+<ul class="agree-list">
+  <li><strong>Pull-based retrieval is architecturally sound.</strong> All advisors converged. Always-loaded memory is a token sink; progressive disclosure is correct.</li>
+  <li><strong>Routing cache 1h TTL is broken.</strong> Contrarian + First Principles both identified the write-read consistency bug independently.</li>
+  <li><strong>Contradiction detection via keyword overlap is unreliable.</strong> False positives guaranteed at scale. Not a tuning problem &mdash; fundamentally weak signal.</li>
+  <li><strong>Graduation at 60% grep is pattern-matching theatre.</strong> Three advisors rejected this independently.</li>
+  <li><strong>System lacks operational grounding.</strong> No consumption patterns, usage budgets, concurrent write handling, or adoption strategy specified.</li>
+</ul>
+
+<h2>Where the Council Clashes</h2>
+<ul class="clash-list">
+  <li><strong>Ship now vs. fix first:</strong> Expansionist says frontmatter + retrieval is strong enough to ship and iterate. All others say the cache, contradiction, and graduation bugs need design fixes, not operational workarounds.</li>
+  <li><strong>Mechanical GC vs. configurable policy:</strong> Executor wants GC rules configurable per-project. Contrarian + Expansionist say the 4 rules are defensible defaults.</li>
+  <li><strong>Who bears contradiction risk:</strong> Expansionist accepts human review as control. Outsider + Executor want the system designed to not require that oversight level.</li>
+</ul>
+
+<h2>Blind Spots Caught in Peer Review</h2>
+<ul class="blind-list">
+  <li><strong>No consumption pattern spec.</strong> What does the agent do with search results? When is memory lookup cheaper than rediscovery?</li>
+  <li><strong>Agent behavior during live contradictions.</strong> No spec for what happens when agent encounters conflicting memories mid-task.</li>
+  <li><strong>Cold-start and adoption friction.</strong> Who writes the first memories? How does an empty .memory/ become useful?</li>
+  <li><strong>Eviction policy under quota.</strong> No memory ceiling defined. When it fills up, what gets deleted?</li>
+  <li><strong>Why three memory types?</strong> decisions/corrections/patterns split is intuitive but never justified from user needs.</li>
+  <li><strong>Correction scoring bias.</strong> +1.0 bonus is arbitrary. No measurement backing. Biases toward negative patterns.</li>
+</ul>
+
+<h2>Advisor Responses</h2>
+<div class="advisor-grid">
+  <details>
+    <summary>The Contrarian <span class="tag tag-disagree">3 blockers found</span></summary>
+    <div class="detail-body">
+      <p>Three critical failure modes: (1) Cache TTL creates write-read consistency bug at minute 50. (2) Contradiction keyword overlap >0.5 creates false positives constantly. (3) Graduation grepping at 60% is pattern-matching theatre.</p>
+      <p>Strong: frontmatter schema clean, pull-based retrieval right, separating structured memory from auto-memory architecturally sound.</p>
+      <p><strong>Fix cache invalidation and graduation paths before shipping.</strong></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The First Principles Thinker <span class="tag tag-disagree">trust problem</span></summary>
+    <div class="detail-body">
+      <p>GC is a trust problem, not a mechanical problem. Contradiction detection produces false positives. Cache invalidation masks consistency bug. Race conditions for concurrent writes unaddressed.</p>
+      <p><strong>Real risk:</strong> two separate systems (auto-memory + .memory/) without explaining why they can't be unified. Bifurcation doubles maintenance.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Expansionist <span class="tag tag-agree">ship it</span></summary>
+    <div class="detail-body">
+      <p>Pull-based progressive disclosure is exactly right. Frontmatter enforcement means every memory is queryable from day one. Composite routing keys scale from 10 to 10,000 memories. This unlocks agent learning loops &mdash; a 10x surface.</p>
+      <p><strong>Push:</strong> if corrections timestamp why they superseded a decision, could weight that in future searches.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Outsider <span class="tag tag-neutral">operational gaps</span></summary>
+    <div class="detail-body">
+      <p>Curse of knowledge. When agent gets search results, what does it actually do? Three gaps: no usage budget, correction handling broken during live execution, scoring function arbitrary (why 3.0 vs 2.0?).</p>
+      <p><strong>Missing:</strong> test validation with 10 realistic memory files and a dozen queries.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Executor <span class="tag tag-neutral">reorder + gaps</span></summary>
+    <div class="detail-body">
+      <p>Implementation order backwards &mdash; build GC first. Correction bonus biases negative patterns. No versioning or conflict resolution.</p>
+      <p><strong>Missing:</strong> quota ceiling, audit trail, first-run bootstrap story.</p>
+      <p><strong>Monday:</strong> build GC as pure functions with tests, then wire.</p>
+    </div>
+  </details>
+</div>
+
+<h2>Peer Review Consensus</h2>
+<div class="advisor-grid">
+  <details>
+    <summary>Peer Review Summary <span class="tag tag-neutral">5 reviews</span></summary>
+    <div class="detail-body">
+      <p><strong>Strongest advisor:</strong> The Outsider (unanimous across all 5 reviews). Identified the root operational gaps that determine whether the system gets used at all.</p>
+      <p><strong>Weakest advisor:</strong> The Expansionist. "Ship it" confidence dismissed all hard problems without mechanisms for resolving them.</p>
+      <p><strong>Cross-cutting blind spots:</strong> Adoption friction / cold-start (3 reviews), eviction policy (1 review), memory conflict ownership (1 review).</p>
+    </div>
+  </details>
+</div>
+
+<footer>
+  LLM Council &mdash; 5 advisors (Sonnet) + 5 peer reviews (Sonnet) + chairman synthesis (Sonnet)<br>
+  Plan: ~/.claude/plans/steady-drifting-garden.md<br>
+  Transcript: eval/runs/council/council-transcript-20260414-memory-system.md<br>
+  Generated: 2026-04-14
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Board — Agent Builder{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Pipeline</h1>
+        <p class="page-subtitle">{{ (tasks.active|length) + (tasks.review|length) + (tasks.pending|length) + (tasks.done|length) + (tasks.blocked|length) }} tasks across {{ [tasks.active|length > 0, tasks.review|length > 0, tasks.pending|length > 0, tasks.done|length > 0, tasks.blocked|length > 0] | select | list | length }} stages</p>
+    </div>
+    <div class="board-status-bar">
+        <span class="status-dot status-dot--active"></span>
+        <span class="muted" style="font-size: var(--text-xs);" id="sync-time">Live</span>
+    </div>
+</div>
+
+<div class="board" id="board-container"
+     hx-get="/api/board" hx-trigger="every 3s" hx-swap="innerHTML">
+
+    {# ── Execution: tasks being processed by agents ── #}
+    {% if tasks.active %}
+    <section class="pipeline-section pipeline-section--active">
+        <div class="pipeline-header">
+            <div class="pipeline-header__left">
+                <span class="pipeline-icon pipeline-icon--active">
+                    <span class="pipeline-icon__pulse"></span>
+                </span>
+                <h2 class="pipeline-label">In Progress</h2>
+                <span class="count-pill count-pill--active">{{ tasks.active | length }}</span>
+            </div>
+            <div class="pipeline-header__right">
+                <div class="stepper">
+                    {% for step in ["Plan", "Design", "Implement", "Gates", "PR", "Build"] %}
+                    <div class="stepper__node">
+                        <div class="stepper__dot"></div>
+                        {% if not loop.last %}<div class="stepper__line"></div>{% endif %}
+                    </div>
+                    <span class="stepper__label">{{ step }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="tasks-grid">
+            {% for task in tasks.active %}
+                {% set variant = "active" %}
+                {% include "partials/task-card.html" %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {# ── Review: awaiting human approval ── #}
+    {% if tasks.review %}
+    <section class="pipeline-section pipeline-section--review">
+        <div class="pipeline-header">
+            <div class="pipeline-header__left">
+                <span class="pipeline-icon pipeline-icon--review">!</span>
+                <h2 class="pipeline-label">Awaiting Review</h2>
+                <span class="count-pill count-pill--review">{{ tasks.review | length }}</span>
+            </div>
+        </div>
+        <div class="tasks-grid">
+            {% for task in tasks.review %}
+                {% set variant = "review" %}
+                {% include "partials/task-card.html" %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {# ── Pending: backlog ── #}
+    <section class="pipeline-section pipeline-section--pending">
+        <div class="pipeline-header">
+            <div class="pipeline-header__left">
+                <span class="pipeline-icon pipeline-icon--pending">&#9679;</span>
+                <h2 class="pipeline-label">Pending</h2>
+                <span class="count-pill">{{ tasks.pending | length }}</span>
+            </div>
+        </div>
+        {% if tasks.pending %}
+        <div class="tasks-grid">
+            {% for task in tasks.pending %}
+                {% set variant = "" %}
+                {% include "partials/task-card.html" %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state__icon">&#9671;</div>
+            <div class="empty-state__text">No tasks queued</div>
+            <div class="empty-state__hint">Create a task via the API to start the pipeline</div>
+        </div>
+        {% endif %}
+    </section>
+
+    {# ── Done ── #}
+    {% if tasks.done %}
+    <section class="pipeline-section pipeline-section--done">
+        <div class="pipeline-header">
+            <div class="pipeline-header__left">
+                <span class="pipeline-icon pipeline-icon--done">&#10003;</span>
+                <h2 class="pipeline-label">Complete</h2>
+                <span class="count-pill count-pill--done">{{ tasks.done | length }}</span>
+            </div>
+        </div>
+        <div class="tasks-grid">
+            {% for task in tasks.done %}
+                {% set variant = "done" %}
+                {% include "partials/task-card.html" %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {# ── Blocked / Failed ── #}
+    {% if tasks.blocked %}
+    <section class="pipeline-section pipeline-section--blocked">
+        <div class="pipeline-header">
+            <div class="pipeline-header__left">
+                <span class="pipeline-icon pipeline-icon--blocked">&#10005;</span>
+                <h2 class="pipeline-label">Blocked</h2>
+                <span class="count-pill count-pill--blocked">{{ tasks.blocked | length }}</span>
+            </div>
+        </div>
+        <div class="tasks-grid">
+            {% for task in tasks.blocked %}
+                {% set variant = "blocked" %}
+                {% include "partials/task-card.html" %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,155 @@
+{
+  "generated_at": "2026-04-15T11:30:00Z",
+  "memories": [
+    {
+      "slug": "claude-agent-sdk-as-foundation",
+      "file": "decisions/claude-agent-sdk-as-foundation.md",
+      "title": "Claude Agent SDK as foundation",
+      "type": "decision",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": ["sdk", "architecture", "foundation"],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "concurrent-quality-gates-with-asyncio-gather",
+      "file": "decisions/concurrent-quality-gates-with-asyncio-gather.md",
+      "title": "Concurrent quality gates with asyncio.gather",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": ["asyncio", "concurrency", "gates"],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "max-retries-2-for-quality-gates",
+      "file": "decisions/max-retries-2-for-quality-gates.md",
+      "title": "MAX_RETRIES=2 for quality gates",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": ["retries", "gates", "threshold"],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "deterministic-dispatch-over-agent-self-routing",
+      "file": "patterns/deterministic-dispatch-over-agent-self-routing.md",
+      "title": "Deterministic dispatch over agent self-routing",
+      "type": "pattern",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": ["dispatch", "architecture", "routing"],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "react-shadcn-luma-gsap-migration",
+      "file": "patterns/react-shadcn-luma-gsap-migration.md",
+      "title": "React + shadcn Luma + GSAP migration patterns",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "frontend",
+      "tags": ["react", "shadcn", "gsap", "spa", "vite"],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-13",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    }
+  ],
+  "routing": {
+    "phase:design": [
+      "claude-agent-sdk-as-foundation",
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "entity:orchestrator": [
+      "claude-agent-sdk-as-foundation",
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "type:decision": [
+      "claude-agent-sdk-as-foundation",
+      "concurrent-quality-gates-with-asyncio-gather",
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:sdk": [
+      "claude-agent-sdk-as-foundation"
+    ],
+    "tag:architecture": [
+      "claude-agent-sdk-as-foundation",
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "tag:foundation": [
+      "claude-agent-sdk-as-foundation"
+    ],
+    "phase:testing": [
+      "concurrent-quality-gates-with-asyncio-gather",
+      "max-retries-2-for-quality-gates"
+    ],
+    "entity:quality-gates": [
+      "concurrent-quality-gates-with-asyncio-gather",
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:asyncio": [
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:concurrency": [
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:gates": [
+      "concurrent-quality-gates-with-asyncio-gather",
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:retries": [
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:threshold": [
+      "max-retries-2-for-quality-gates"
+    ],
+    "type:pattern": [
+      "deterministic-dispatch-over-agent-self-routing",
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:dispatch": [
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "tag:routing": [
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "phase:implementation": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "entity:frontend": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:react": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:shadcn": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:gsap": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:spa": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:vite": [
+      "react-shadcn-luma-gsap-migration"
+    ]
+  }
+}

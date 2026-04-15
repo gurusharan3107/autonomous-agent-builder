@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>{% block title %}Autonomous Agent Builder{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/ScrollTrigger.min.js" defer></script>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand">Agent Builder</div>
+        <div class="nav-links">
+            <a href="/" class="nav-link {% if active_page == 'board' %}active{% endif %}">Board</a>
+            <a href="/metrics" class="nav-link {% if active_page == 'metrics' %}active{% endif %}">Metrics</a>
+        </div>
+        <div class="nav-right">
+            <span id="sync-status" class="muted" style="font-size: var(--text-xs);"></span>
+            <button id="theme-toggle" class="btn-icon" aria-label="Toggle dark mode" title="Toggle theme">
+                <span id="theme-icon">&#9789;</span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container {% block container_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        Agent Builder v0.1.0 &middot; Claude Agent SDK
+    </footer>
+
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/animations.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/polling.js"></script>
+</body>
+</html>
