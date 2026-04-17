@@ -169,6 +169,8 @@ export interface KBDocument {
   created_at: string;
   wikilinks?: string[];
   tags?: string[];
+  date_published?: string;
+  source_author?: string;
 }
 
 export interface RelatedDocs {

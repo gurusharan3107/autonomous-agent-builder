@@ -45,6 +45,59 @@ def extract_tags(content: str) -> list[str]:
     return tags
 
 
+def extract_frontmatter_field(content: str, field: str) -> str | None:
+    """Extract a specific field from YAML frontmatter."""
+    lines = content.split("\n")
+    
+    if lines and lines[0].strip() == "---":
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            if line.startswith(f"{field}:"):
+                value = line.split(f"{field}:", 1)[1].strip().strip('"\'')
+                return value
+    
+    return None
+
+
+def get_body_content(content: str) -> str:
+    """Extract body content after frontmatter, skipping headers."""
+    lines = content.split("\n")
+    body_start_idx = 0
+    
+    # Find where frontmatter ends
+    if lines and lines[0].strip() == "---":
+        for i, line in enumerate(lines[1:], 1):
+            if line.strip() == "---":
+                body_start_idx = i + 1
+                break
+    
+    # Get body lines after frontmatter
+    body_lines = lines[body_start_idx:]
+    
+    # Extract first meaningful paragraph (skip headers and empty lines)
+    content_lines = []
+    
+    for line in body_lines:
+        stripped = line.strip()
+        
+        # Skip empty lines and markdown headers
+        if not stripped or stripped.startswith("#"):
+            # If we already have content and hit a break, stop
+            if content_lines and len("\n".join(content_lines)) > 100:
+                break
+            continue
+        
+        # This is actual content
+        content_lines.append(line)
+        
+        # Stop if we have enough
+        if len("\n".join(content_lines)) > 500:
+            break
+    
+    return "\n".join(content_lines).strip()
+
+
 def find_backlinks(doc_id: str, doc_title: str, kb_path: Path) -> list[dict]:
     """Find all docs that link to this doc via wikilinks."""
     backlinks = []
@@ -180,18 +233,21 @@ def _list_kb_files(kb_path: Path, doc_type: str | None = None) -> list[dict]:
             # Extract title from first line or YAML frontmatter
             lines = content.split("\n")
             title = file_path.stem  # Default to filename
+            has_frontmatter = False
+            frontmatter_end_idx = 0
             
             if lines:
                 # Check for YAML frontmatter
                 if lines[0].strip() == "---":
-                    # Look for title in frontmatter
+                    has_frontmatter = True
+                    # Look for title in frontmatter and find end of frontmatter
                     for i, line in enumerate(lines[1:], 1):
                         if line.strip() == "---":
+                            frontmatter_end_idx = i + 1
                             break
                         if line.startswith("title:"):
                             title = line.split("title:", 1)[1].strip().strip('"\'')
-                            break
-                # Check for markdown header
+                # Check for markdown header if no frontmatter
                 elif lines[0].startswith("#"):
                     title = lines[0].strip("# ").strip()
             
@@ -203,20 +259,27 @@ def _list_kb_files(kb_path: Path, doc_type: str | None = None) -> list[dict]:
             if doc_type and inferred_type != doc_type:
                 continue
             
-            # Extract wikilinks and tags
+            # Extract wikilinks, tags, and metadata
             wikilinks = extract_wikilinks(content)
             tags = extract_tags(content)
+            date_published = extract_frontmatter_field(content, "date_published")
+            source_author = extract_frontmatter_field(content, "source_author")
+            
+            # Get clean body content
+            preview = get_body_content(content)
             
             docs.append({
                 "id": str(file_path.relative_to(kb_path)),
                 "task_id": "",
                 "doc_type": inferred_type,
                 "title": title,
-                "content": content[:200] + "..." if len(content) > 200 else content,
+                "content": preview,
                 "version": 1,
                 "created_at": stat.st_ctime,
                 "wikilinks": wikilinks,
                 "tags": tags,
+                "date_published": date_published,
+                "source_author": source_author,
             })
         except Exception:
             continue

@@ -87,20 +87,14 @@ export function KnowledgeCard({ doc, onSelect, isSelected }: KnowledgeCardProps)
     };
   }, []);
 
-  // Extract excerpt from content
-  const excerpt = doc.content
-    .replace(/^---[\s\S]*?---/, "") // Remove frontmatter
+  // Extract clean content (backend already removed frontmatter)
+  const cleanContent = doc.content
     .replace(/^#+\s+.*$/gm, "") // Remove headers
     .replace(/\[\[([^\]]+)\]\]/g, "$1") // Remove wikilink brackets
-    .trim()
-    .substring(0, 120);
+    .trim();
 
-  const extendedPreview = doc.content
-    .replace(/^---[\s\S]*?---/, "")
-    .replace(/^#+\s+.*$/gm, "")
-    .replace(/\[\[([^\]]+)\]\]/g, "$1")
-    .trim()
-    .substring(120, 320);
+  const excerpt = cleanContent.substring(0, 120);
+  const extendedPreview = cleanContent.substring(120, 320);
 
   return (
     <Card
@@ -118,8 +112,20 @@ export function KnowledgeCard({ doc, onSelect, isSelected }: KnowledgeCardProps)
           </Badge>
         </div>
 
+        {(doc.date_published || doc.source_author) && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {doc.date_published && new Date(doc.date_published).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })}
+            {doc.date_published && doc.source_author && ' • '}
+            {doc.source_author}
+          </p>
+        )}
+
         <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-          {excerpt}...
+          {excerpt || "No preview available"}
         </p>
 
         {doc.tags && doc.tags.length > 0 && (
@@ -145,7 +151,7 @@ export function KnowledgeCard({ doc, onSelect, isSelected }: KnowledgeCardProps)
         >
           <div className="mt-3 pt-3 border-t">
             <p className="text-xs text-muted-foreground line-clamp-4">
-              {extendedPreview}...
+              {extendedPreview || ""}
             </p>
           </div>
         </div>
