@@ -366,3 +366,40 @@ class SecurityFinding(Base):
     pattern: Mapped[str] = mapped_column(String(100), nullable=False)  # pattern name/kind
     context_preview: Mapped[str] = mapped_column(Text, default="")  # truncated matched text
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ChatSession(Base):
+    """Chat sessions for the agent chat interface.
+    
+    Stores conversation history for persistence across page reloads.
+    """
+
+    __tablename__ = "chat_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    sdk_session_id: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Claude SDK session ID
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    messages: Mapped[list[ChatMessage]] = relationship(
+        back_populates="session", cascade="all, delete-orphan", order_by="ChatMessage.created_at"
+    )
+
+
+class ChatMessage(Base):
+    """Individual messages in a chat session."""
+
+    __tablename__ = "chat_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    session_id: Mapped[str] = mapped_column(ForeignKey("chat_sessions.id"), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # user, assistant
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    tokens_used: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    session: Mapped[ChatSession] = relationship(back_populates="messages")
+

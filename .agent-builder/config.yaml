@@ -1,0 +1,46 @@
+# Agent Builder Configuration
+
+# Project metadata
+project:
+  name: "autonomous-agent-builder"
+  language: "python"
+  framework: ""
+
+# Agent budgets
+agent:
+  max_cost_per_task: 5.0  # USD
+  max_turns_per_run: 50
+  timeout_seconds: 300
+
+# Quality gates
+gates:
+  timeout_seconds: 60
+  max_retries: 2
+  concurrent_execution: true
+  
+  # Gate-specific config
+  ruff:
+    enabled: true
+    fix: true
+  
+  pytest:
+    enabled: true
+    coverage_threshold: 80
+  
+  semgrep:
+    enabled: true
+    rules: ["python.lang.security"]
+  
+  trivy:
+    enabled: false  # Disabled by default (slow)
+
+# Server
+server:
+  host: "127.0.0.1"
+  port_range: [8000, 8010]
+  debug: false
+
+# Knowledge base
+knowledge:
+  auto_index: true
+  search_tool: "grep"  # or "ripgrep" if available

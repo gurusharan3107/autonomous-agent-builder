@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--autoConnect"
+      ],
+      "autoApprove": [
+        "list_pages",
+        "new_page",
+        "take_snapshot",
+        "click",
+        "navigate_page",
+        "take_screenshot",
+        "evaluate_script",
+        "fill",
+        "list_console_messages",
+        "list_network_requests",
+        "get_network_request",
+        "select_page",
+        "wait_for",
+        "press_key",
+        "get_console_message"
+      ]
+    }
+  }
+}

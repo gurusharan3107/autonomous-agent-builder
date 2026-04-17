@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listMemories, getMemory } from "@/lib/api";
 import type { MemoryEntry, MemoryType } from "@/lib/types";
 
@@ -15,6 +16,7 @@ export default function MemoryPage() {
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
   const [expandedContent, setExpandedContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [selectedType, setSelectedType] = useState<MemoryType>("decision");
 
   useEffect(() => {
     listMemories()
@@ -51,6 +53,10 @@ export default function MemoryPage() {
     );
   }
 
+  const availableTypes = (["decision", "pattern", "correction"] as MemoryType[]).filter(
+    (type) => grouped[type] && grouped[type].length > 0
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -67,52 +73,62 @@ export default function MemoryPage() {
           </CardContent>
         </Card>
       ) : (
-        (["decision", "pattern", "correction"] as MemoryType[]).map((type) => {
-          const items = grouped[type];
-          if (!items || items.length === 0) return null;
-          const style = TYPE_STYLES[type];
+        <div className="space-y-4">
+          <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as MemoryType)}>
+            <TabsList>
+              {availableTypes.map((type) => {
+                const style = TYPE_STYLES[type];
+                const count = grouped[type]?.length || 0;
+                return (
+                  <TabsTrigger key={type} value={type}>
+                    {style.label}s ({count})
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
 
-          return (
-            <Card key={type}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Badge variant={style.variant}>{style.label}s</Badge>
-                  <span className="text-muted-foreground">({items.length})</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {items.map((entry) => (
-                  <div key={entry.slug}>
-                    <div
-                      className="flex cursor-pointer items-center justify-between rounded-lg p-3 transition-colors hover:bg-accent/50"
-                      onClick={() => handleExpand(entry.slug)}
-                    >
-                      <div className="space-y-1">
+          <div className="grid gap-3">
+            {grouped[selectedType]?.map((entry) => (
+              <Card key={entry.slug}>
+                <CardContent className="p-4">
+                  <div
+                    className="cursor-pointer space-y-2"
+                    onClick={() => handleExpand(entry.slug)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 flex-1">
                         <p className="text-sm font-medium">{entry.title}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{entry.phase}</span>
-                          <span>&middot;</span>
-                          <span>{entry.entity}</span>
-                          {entry.tags?.map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
+                          {entry.phase && <span>{entry.phase}</span>}
+                          {entry.phase && entry.entity && <span>·</span>}
+                          {entry.entity && <span>{entry.entity}</span>}
                         </div>
+                        {entry.tags && entry.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {entry.tags.map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <span className="text-xs text-muted-foreground">{entry.date}</span>
+                      {entry.date && (
+                        <span className="text-xs text-muted-foreground">{entry.date}</span>
+                      )}
                     </div>
                     {expandedSlug === entry.slug && (
-                      <pre className="mx-3 mb-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
+                      <pre className="mt-3 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-4 text-xs">
                         {expandedContent}
                       </pre>
                     )}
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          );
-        })
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

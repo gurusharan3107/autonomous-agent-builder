@@ -2,6 +2,7 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import AgentPage from "@/pages/AgentPage";
 import BoardPage from "@/pages/BoardPage";
 import MetricsPage from "@/pages/MetricsPage";
 import ApprovalPage from "@/pages/ApprovalPage";
@@ -58,6 +59,18 @@ function Layout({ children }: { children: React.ReactNode }) {
                 }`
               }
             >
+              Agent
+            </NavLink>
+            <NavLink
+              to="/board"
+              className={({ isActive }) =>
+                `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`
+              }
+            >
               Board
             </NavLink>
             <NavLink
@@ -97,7 +110,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               Memory
             </NavLink>
             <NavLink
-              to="/setup"
+              to="/backlog"
               className={({ isActive }) =>
                 `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   isActive
@@ -106,7 +119,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 }`
               }
             >
-              Setup
+              Backlog
             </NavLink>
           </nav>
           <ThemeToggle />
@@ -129,12 +142,13 @@ export default function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<BoardPage />} />
+        <Route path="/" element={<AgentPage />} />
+        <Route path="/board" element={<BoardPage />} />
         <Route path="/metrics" element={<MetricsPage />} />
         <Route path="/approvals/:gateId" element={<ApprovalPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/memory" element={<MemoryPage />} />
-        <Route path="/setup" element={<SetupPage />} />
+        <Route path="/backlog" element={<SetupPage />} />
       </Routes>
     </Layout>
   );

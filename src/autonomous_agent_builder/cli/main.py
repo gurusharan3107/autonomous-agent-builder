@@ -18,9 +18,12 @@ from autonomous_agent_builder.cli.commands import (
     metrics,
     project,
     run,
+    script,
     server,
     task,
 )
+from autonomous_agent_builder.cli.commands.init import init_command
+from autonomous_agent_builder.cli.commands.start import start_command
 
 # ── Root app ──
 app = typer.Typer(
@@ -30,6 +33,7 @@ app = typer.Typer(
         "Operates the full software development lifecycle: projects, features, "
         "tasks, quality gates, approvals, knowledge base, and agent memory.\n\n"
         "Start here:\n"
+        "  builder init              Initialize agent builder in current repo\n"
         "  builder server health     Check server connectivity\n"
         "  builder board show        View the task pipeline\n"
         "  builder project list      List all projects\n"
@@ -37,6 +41,10 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
+
+# ── Project Initialization ──
+app.command(name="init", help="Initialize agent builder (start here).")(init_command)
+app.command(name="start", help="Start embedded server and dashboard.")(start_command)
 
 # ── SDLC Operations ──
 app.add_typer(project.app, name="project", help="Project CRUD.")
@@ -58,6 +66,9 @@ app.add_typer(kb.app, name="kb", help="Knowledge base — agent-written docs.")
 
 # ── Memory ──
 app.add_typer(memory.app, name="memory", help="Project memory — decisions and patterns.")
+
+# ── Script Library ──
+app.add_typer(script.app, name="script", help="Script library — pre-built agent scripts.")
 
 
 def main() -> None:

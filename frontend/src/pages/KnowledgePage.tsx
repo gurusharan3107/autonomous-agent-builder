@@ -1,63 +1,98 @@
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { listKBDocs, searchKBDocs, getKBDoc } from "@/lib/api";
-import type { KBDocument, KBDocType } from "@/lib/types";
-
-const TYPE_LABELS: Record<KBDocType, string> = {
-  adr: "ADR",
-  api_contract: "API Contract",
-  schema: "Schema",
-  runbook: "Runbook",
-  context: "Context",
-};
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { KnowledgeCard } from "@/components/KnowledgeCard";
+import { RelatedSidebar } from "@/components/RelatedSidebar";
+import { TagCloud } from "@/components/TagCloud";
+import { listKBDocs, searchKBDocs, getKBDoc, getRelatedDocs, getKBTags } from "@/lib/api";
+import type { KBDocument, RelatedDocs, TagInfo } from "@/lib/types";
 
 export default function KnowledgePage() {
+  const [scope, setScope] = useState<"local" | "global">("local");
   const [docs, setDocs] = useState<KBDocument[]>([]);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedDoc, setExpandedDoc] = useState<KBDocument | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedDoc, setSelectedDoc] = useState<KBDocument | null>(null);
+  const [relatedDocs, setRelatedDocs] = useState<RelatedDocs | null>(null);
+  const [tags, setTags] = useState<TagInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Load tags
+  useEffect(() => {
+    getKBTags(scope)
+      .then(setTags)
+      .catch(() => setTags([]));
+  }, [scope]);
+
+  // Load documents
   useEffect(() => {
     setLoading(true);
-    const params: { doc_type?: string } = {};
-    if (typeFilter) params.doc_type = typeFilter;
+    const params: { scope?: "local" | "global" } = { scope };
 
     if (search.length >= 2) {
-      searchKBDocs(search)
+      searchKBDocs(search, scope)
+        .then((results) => {
+          // Filter by selected tags if any
+          if (selectedTags.length > 0) {
+            return results.filter((doc) =>
+              selectedTags.some((tag) => doc.tags?.includes(tag))
+            );
+          }
+          return results;
+        })
         .then(setDocs)
         .finally(() => setLoading(false));
     } else {
       listKBDocs(params)
+        .then((results) => {
+          // Filter by selected tags if any
+          if (selectedTags.length > 0) {
+            return results.filter((doc) =>
+              selectedTags.some((tag) => doc.tags?.includes(tag))
+            );
+          }
+          return results;
+        })
         .then(setDocs)
         .finally(() => setLoading(false));
     }
-  }, [search, typeFilter]);
+  }, [search, selectedTags, scope]);
 
-  const handleExpand = async (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-      setExpandedDoc(null);
-      return;
+  const handleSelectDoc = async (id: string) => {
+    const doc = await getKBDoc(id, scope);
+    setSelectedDoc(doc);
+    setSidebarOpen(true);
+
+    // Load related documents
+    try {
+      const related = await getRelatedDocs(id, scope);
+      setRelatedDocs(related);
+    } catch {
+      setRelatedDocs(null);
     }
-    setExpandedId(id);
-    const doc = await getKBDoc(id);
-    setExpandedDoc(doc);
+  };
+
+  const handleCloseSidebar = () => {
+    setSidebarOpen(false);
+    setSelectedDoc(null);
+    setRelatedDocs(null);
+  };
+
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
   };
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Knowledge Base</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -65,92 +100,63 @@ export default function KnowledgePage() {
         </p>
       </div>
 
+      {/* Search and Scope Selector */}
       <div className="flex items-center gap-3">
+        <Select value={scope} onValueChange={(v) => setScope(v as "local" | "global")}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="local">Local</SelectItem>
+            <SelectItem value="global">Global</SelectItem>
+          </SelectContent>
+        </Select>
+        
         <Input
           placeholder="Search documents..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <div className="flex gap-1">
-          <Badge
-            variant={typeFilter === "" ? "default" : "outline"}
-            className="cursor-pointer"
-            onClick={() => setTypeFilter("")}
-          >
-            All
-          </Badge>
-          {(Object.keys(TYPE_LABELS) as KBDocType[]).map((t) => (
-            <Badge
-              key={t}
-              variant={typeFilter === t ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => setTypeFilter(t)}
-            >
-              {TYPE_LABELS[t]}
-            </Badge>
-          ))}
-        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Documents ({docs.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : docs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No documents found.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {docs.map((doc) => (
-                  <>
-                    <TableRow
-                      key={doc.id}
-                      className="cursor-pointer hover:bg-accent/50"
-                      onClick={() => handleExpand(doc.id)}
-                    >
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {TYPE_LABELS[doc.doc_type] || doc.doc_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">{doc.title}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        v{doc.version}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(doc.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                    {expandedId === doc.id && expandedDoc && (
-                      <TableRow key={`${doc.id}-content`}>
-                        <TableCell colSpan={4}>
-                          <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
-                            {expandedDoc.content}
-                          </pre>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Tag Cloud */}
+      {tags.length > 0 && (
+        <TagCloud
+          tags={tags}
+          selectedTags={selectedTags}
+          onTagToggle={handleTagToggle}
+        />
+      )}
+
+      {/* Document Grid */}
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : docs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No documents found. {selectedTags.length > 0 && "Try removing some tag filters."}
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {docs.map((doc) => (
+            <KnowledgeCard
+              key={doc.id}
+              doc={doc}
+              onSelect={handleSelectDoc}
+              isSelected={selectedDoc?.id === doc.id}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Related Sidebar */}
+      <RelatedSidebar
+        doc={selectedDoc}
+        relatedDocs={relatedDocs}
+        onSelectDoc={handleSelectDoc}
+        onClose={handleCloseSidebar}
+        isOpen={sidebarOpen}
+      />
     </div>
   );
 }

@@ -66,18 +66,32 @@ export const createFeature = (projectId: string, data: FeatureCreate) =>
   postJSON<FeatureResponse>(`/projects/${projectId}/features`, data);
 
 // Knowledge Base
-export const listKBDocs = (params?: { task_id?: string; doc_type?: string; limit?: number }) => {
+export const listKBDocs = (params?: { task_id?: string; doc_type?: string; tags?: string; limit?: number; scope?: "local" | "global" }) => {
   const qs = params ? "?" + new URLSearchParams(
     Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
   ).toString() : "";
   return fetchJSON<KBDocument[]>(`/kb/${qs}`);
 };
 
-export const getKBDoc = (id: string) =>
-  fetchJSON<KBDocument>(`/kb/${id}`);
+export const getKBDoc = (id: string, scope: "local" | "global" = "local") =>
+  fetchJSON<KBDocument>(`/kb/${id}?scope=${scope}`);
 
-export const searchKBDocs = (query: string) =>
-  fetchJSON<KBDocument[]>(`/kb/search?q=${encodeURIComponent(query)}`);
+export const searchKBDocs = (query: string, scope: "local" | "global" = "local") =>
+  fetchJSON<KBDocument[]>(`/kb/search?q=${encodeURIComponent(query)}&scope=${scope}`);
+
+export const getKBTags = (scope: "local" | "global" = "local") =>
+  fetchJSON<import("./types").TagInfo[]>(`/kb/tags?scope=${scope}`);
+
+export const getRelatedDocs = (docId: string, scope: "local" | "global" = "local") =>
+  fetchJSON<import("./types").RelatedDocs>(`/kb/${encodeURIComponent(docId)}/related?scope=${scope}`);
+
+export const getAllTags = (scope: "local" | "global" = "local", selectedTags?: string[]) => {
+  const params = new URLSearchParams({ scope });
+  if (selectedTags && selectedTags.length > 0) {
+    params.set("tags", selectedTags.join(","));
+  }
+  return fetchJSON<import("./types").TagInfo[]>(`/kb/tags?${params.toString()}`);
+};
 
 // Memory
 export const listMemories = () =>

@@ -11,6 +11,14 @@ echo "=== Format Check ==="
 ruff format --check .
 
 echo ""
+echo "=== CLI Tools Validation ==="
+python scripts/test_cli_tools.py
+
+echo ""
+echo "=== CLI Wrappers Validation ==="
+python scripts/validate_cli_wrappers.py || echo "⚠️  Some CLI wrappers missing (non-critical)"
+
+echo ""
 echo "=== Tests ==="
 pytest
 

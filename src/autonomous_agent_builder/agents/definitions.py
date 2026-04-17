@@ -33,6 +33,35 @@ class AgentDefinition:
 # These are the core agents. Each maps to a phase in the pipeline.
 
 AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
+    "chat": AgentDefinition(
+        name="chat",
+        description="General-purpose conversational agent for project assistance",
+        prompt_template=(
+            "You are a helpful AI assistant for the {project_name} project.\n\n"
+            "You have access to the project files and can help users:\n"
+            "- Understand the codebase structure and architecture\n"
+            "- Answer questions about specific files or components\n"
+            "- Provide guidance on development tasks\n"
+            "- Search through project knowledge and memory\n\n"
+            "Use Read/Glob/Grep to explore the codebase when needed.\n"
+            "Use builder_kb_search to find relevant documentation.\n"
+            "Use builder_memory_search to recall past decisions.\n\n"
+            "Project root: {workspace_path}\n\n"
+            "User: {user_message}\n"
+        ),
+        tools=(
+            "Read",
+            "Glob",
+            "Grep",
+            "mcp__builder__kb_search",
+            "mcp__builder__memory_search",
+            "mcp__builder__task_list",
+            "mcp__builder__task_show",
+        ),
+        model="sonnet",
+        max_turns=15,
+        max_budget_usd=2.00,
+    ),
     "planner": AgentDefinition(
         name="planner",
         description="Break features into implementation tasks with dependencies",

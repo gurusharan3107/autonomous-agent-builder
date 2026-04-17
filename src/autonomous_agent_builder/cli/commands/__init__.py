@@ -10,6 +10,7 @@ from autonomous_agent_builder.cli.commands import (  # noqa: F401
     metrics,
     project,
     run,
+    script,
     server,
     task,
 )

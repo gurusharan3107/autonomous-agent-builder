@@ -17,9 +17,14 @@ class DatabaseSettings(BaseSettings):
     user: str = "agent_builder"
     password: str = "agent_builder"
     driver: str = "sqlite"  # "postgresql" for prod, "sqlite" for local dev
+    url_override: str | None = None  # Direct URL override (set via AAB_DB_URL)
 
     @property
     def url(self) -> str:
+        # Check for direct URL override first (used by embedded server)
+        if self.url_override:
+            return self.url_override
+        
         if self.driver == "sqlite":
             return f"sqlite+aiosqlite:///./{self.name}.db"
         return (
@@ -28,6 +33,11 @@ class DatabaseSettings(BaseSettings):
 
     @property
     def sync_url(self) -> str:
+        # Check for direct URL override first
+        if self.url_override:
+            # Convert async URL to sync URL
+            return self.url_override.replace("+aiosqlite", "").replace("+asyncpg", "")
+        
         if self.driver == "sqlite":
             return f"sqlite:///./{self.name}.db"
         return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"

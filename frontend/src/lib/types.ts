@@ -167,6 +167,21 @@ export interface KBDocument {
   content: string;
   version: number;
   created_at: string;
+  wikilinks?: string[];
+  tags?: string[];
+}
+
+export interface RelatedDocs {
+  wikilinks: KBDocument[];
+  backlinks: KBDocument[];
+  similar: Array<KBDocument & { similarity_score?: number; shared_tags?: string[] }>;
+}
+
+export interface TagInfo {
+  name: string;
+  count: number;
+  related: Record<string, number>;
+  available: boolean;
 }
 
 // Memory
