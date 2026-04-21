@@ -15,7 +15,7 @@ from pathlib import Path
 
 import typer
 
-from autonomous_agent_builder.cli.client import EXIT_SUCCESS
+from autonomous_agent_builder.cli.client import EXIT_INVALID_USAGE, EXIT_NOT_FOUND, EXIT_SUCCESS
 from autonomous_agent_builder.cli.output import render, table, truncate
 
 app = typer.Typer(help="Project memory — decisions, patterns, and corrections.")
@@ -110,7 +110,7 @@ def show(
     if not entry:
         from autonomous_agent_builder.cli.output import error
         error(f"Error: memory '{slug}' not found")
-        sys.exit(1)
+        sys.exit(EXIT_NOT_FOUND)
 
     content = _read_memory_file(entry)
     data = {**entry, "content": content}
@@ -213,12 +213,12 @@ def add(
             if not p.exists():
                 from autonomous_agent_builder.cli.output import error
                 error(f"Error: file not found — {content_file}")
-                sys.exit(2)
+                sys.exit(EXIT_INVALID_USAGE)
             body = p.read_text(encoding="utf-8")
     else:
         from autonomous_agent_builder.cli.output import error
         error("Error: provide --content or --content-file")
-        sys.exit(2)
+        sys.exit(EXIT_INVALID_USAGE)
 
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60]

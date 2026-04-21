@@ -6,6 +6,8 @@ Help is grouped by job for structured discoverability.
 
 from __future__ import annotations
 
+import sys
+
 import typer
 
 from autonomous_agent_builder.cli.commands import (
@@ -73,6 +75,12 @@ app.add_typer(script.app, name="script", help="Script library — pre-built agen
 
 def main() -> None:
     """CLI entry point."""
+    # Force UTF-8 I/O on all platforms. On Windows the default codec (charmap/cp1252)
+    # rejects the Unicode symbols used throughout the CLI (✓, ✅, ❌, ⚠). On macOS/Linux
+    # this is a no-op since stdout is already UTF-8. errors="replace" prevents a hard
+    # crash if a symbol is somehow unencodable rather than silently dropping output.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
     app()
 
 

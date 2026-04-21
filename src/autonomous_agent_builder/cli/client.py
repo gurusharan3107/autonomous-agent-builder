@@ -15,11 +15,12 @@ from typing import Any
 
 import httpx
 
-# Exit codes per CLI contract
-EXIT_SUCCESS = 0
-EXIT_FAILURE = 1
-EXIT_INVALID_USAGE = 2
-EXIT_CONNECTIVITY = 3
+# Exit codes per CLI contract (clig.dev / POSIX convention)
+EXIT_SUCCESS = 0       # success
+EXIT_FAILURE = 1       # general / unclassified error
+EXIT_INVALID_USAGE = 2  # bad flags, missing args, validation error
+EXIT_CONNECTIVITY = 3  # server not reachable, auth failure
+EXIT_NOT_FOUND = 4     # resource does not exist
 
 
 class AabApiError(Exception):

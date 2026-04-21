@@ -1,21 +1,36 @@
 """Dual-audience output rendering — JSON for agents, text for humans.
 
-TTY detection: JSON when stdout is piped or --json flag is set.
+TTY detection: JSON when stdout is piped, NO_COLOR is set, or --json flag is set.
 Readable text tables when running in a terminal.
 Context window protection via truncation defaults.
+
+Environment variables honoured:
+- NO_COLOR (any non-empty value) — disables color and forces plain-text mode
+- TERM=dumb — disables color (ancient terminals, CI pipes that set this)
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
 from collections.abc import Callable
 from typing import Any
 
 
 def is_tty() -> bool:
-    """Check if stdout is a terminal (not piped)."""
-    return sys.stdout.isatty()
+    """Return True only when running in an interactive terminal with color support.
+
+    Returns False when:
+    - stdout is piped (not a TTY)
+    - NO_COLOR env var is set (https://no-color.org/)
+    - TERM=dumb (old terminals, some CI environments)
+    """
+    return (
+        sys.stdout.isatty()
+        and not os.environ.get("NO_COLOR", "")
+        and os.environ.get("TERM", "").lower() != "dumb"
+    )
 
 
 def render(
