@@ -7,6 +7,7 @@ import sys
 import typer
 
 from autonomous_agent_builder.cli.client import (
+    EXIT_INVALID_USAGE,
     EXIT_SUCCESS,
     AabApiError,
     get_client,
@@ -109,7 +110,7 @@ def submit(
     if decision not in valid:
         from autonomous_agent_builder.cli.output import error
         error(f"Error: decision must be one of {valid}")
-        sys.exit(2)
+        sys.exit(EXIT_INVALID_USAGE)
 
     if not yes:
         render(
