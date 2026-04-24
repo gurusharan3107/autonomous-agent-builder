@@ -202,9 +202,10 @@ function CommandPaletteDialog({
 }) {
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setQuery("");
+    onOpenChange(next);
+  };
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -215,7 +216,7 @@ function CommandPaletteDialog({
   }, [items, query]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl rounded-[1.5rem] p-0" showCloseButton={false}>
         <div className="border-b border-border/70 px-5 py-4">
           <DialogHeader>
@@ -433,6 +434,18 @@ function SystemInspectorDialog({
                 updatePreferences({ compareDisplayMode: value as RuntimePreferenceState["compareDisplayMode"] })
               }
             />
+            <PreferenceSelect
+              label="Transcript layout"
+              description="Cards is the default chat view. Timeline renders user/thinking/tool/gate entries in a vertical thread."
+              value={preferences.transcriptLayout}
+              options={[
+                { label: "Cards", value: "cards" },
+                { label: "Timeline", value: "timeline" },
+              ]}
+              onChange={(value) =>
+                updatePreferences({ transcriptLayout: value as RuntimePreferenceState["transcriptLayout"] })
+              }
+            />
           </div>
         </div>
       </DialogContent>
@@ -478,7 +491,7 @@ function AppShell({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [location.pathname, ready]);
+  }, [ready]);
 
   useEffect(() => {
     if (!commandOpen || commandItems.length > 0) return;

@@ -64,6 +64,60 @@ class TaskStatus(enum.StrEnum):
     FAILED = "failed"
 
 
+class TaskPhase(enum.StrEnum):
+    """Canonical phase enum per docs/references/phase-model.md.
+
+    Phase is orchestrator-owned and orthogonal to status: multiple statuses
+    can coexist within a single phase (e.g., design_review → still in `design`).
+    """
+
+    REQUIREMENTS = "requirements"
+    PLANNING = "planning"
+    DESIGN = "design"
+    IMPLEMENTATION = "implementation"
+    VERIFICATION = "verification"
+    INTEGRATION = "integration"
+    COMPLETE = "complete"
+
+
+PHASE_FOR_STATUS: dict[TaskStatus, TaskPhase] = {
+    TaskStatus.PENDING: TaskPhase.PLANNING,
+    TaskStatus.PLANNING: TaskPhase.PLANNING,
+    TaskStatus.DESIGN: TaskPhase.DESIGN,
+    TaskStatus.DESIGN_REVIEW: TaskPhase.DESIGN,
+    TaskStatus.IMPLEMENTATION: TaskPhase.IMPLEMENTATION,
+    TaskStatus.QUALITY_GATES: TaskPhase.VERIFICATION,
+    TaskStatus.PR_CREATION: TaskPhase.INTEGRATION,
+    TaskStatus.REVIEW_PENDING: TaskPhase.INTEGRATION,
+    TaskStatus.BUILD_VERIFY: TaskPhase.INTEGRATION,
+    TaskStatus.DONE: TaskPhase.COMPLETE,
+    # Terminal / off-path statuses keep the last-known phase conceptually;
+    # the orchestrator helper preserves the current phase rather than remapping.
+    TaskStatus.BLOCKED: TaskPhase.PLANNING,
+    TaskStatus.CAPABILITY_LIMIT: TaskPhase.PLANNING,
+    TaskStatus.FAILED: TaskPhase.PLANNING,
+}
+
+
+def phase_for_status(status: TaskStatus) -> TaskPhase:
+    """Map a TaskStatus to its canonical TaskPhase."""
+    return PHASE_FOR_STATUS.get(status, TaskPhase.PLANNING)
+
+
+def set_task_status(task: Task, status: TaskStatus) -> None:
+    """Write both status and phase atomically.
+
+    Terminal / off-path statuses (blocked/failed/capability_limit) preserve
+    the task's current phase rather than collapsing it back to planning.
+    """
+    task.status = status
+    if status in (TaskStatus.BLOCKED, TaskStatus.CAPABILITY_LIMIT, TaskStatus.FAILED):
+        # Preserve current phase on off-path transitions so the UI can still
+        # show where the work was when it stopped.
+        return
+    task.phase = phase_for_status(status)
+
+
 class GateStatus(enum.StrEnum):
     PASS = "pass"
     FAIL = "fail"
@@ -148,6 +202,9 @@ class Task(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus, values_callable=_enum_values), default=TaskStatus.PENDING
+    )
+    phase: Mapped[TaskPhase] = mapped_column(
+        Enum(TaskPhase, values_callable=_enum_values), default=TaskPhase.PLANNING
     )
     depends_on: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     complexity: Mapped[int] = mapped_column(Integer, default=1)
@@ -266,6 +323,8 @@ class AgentRun(Base):
     )  # end_turn, max_turns, budget_exceeded
     status: Mapped[str] = mapped_column(String(20), default="running")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    diff_summary: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

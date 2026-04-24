@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autonomous_agent_builder.api.routes.dashboard_api import publish_board_snapshot
-from autonomous_agent_builder.db.models import Task, TaskStatus
+from autonomous_agent_builder.db.models import Task, TaskStatus, set_task_status
 
 
 async def recover_failed_task(task: Task, db: AsyncSession) -> dict[str, str]:
@@ -24,7 +24,7 @@ async def recover_failed_task(task: Task, db: AsyncSession) -> dict[str, str]:
             },
         )
 
-    task.status = TaskStatus.PENDING
+    set_task_status(task, TaskStatus.PENDING)
     task.blocked_reason = None
     task.blocked_at = None
     task.capability_limit_at = None

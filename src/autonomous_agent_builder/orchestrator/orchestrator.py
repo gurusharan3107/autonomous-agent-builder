@@ -31,6 +31,7 @@ from autonomous_agent_builder.db.models import (
     Task,
     TaskStatus,
     Workspace,
+    set_task_status,
 )
 from autonomous_agent_builder.db.models import (
     GateResult as GateResultModel,
@@ -101,13 +102,13 @@ class Orchestrator:
             await handler(task)
         except Exception as e:
             log.error("phase_error", task_id=task.id, phase=handler_name, error=str(e))
-            task.status = TaskStatus.FAILED
+            set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = str(e)
             await self.db.flush()
 
     async def _phase_planning(self, task: Task) -> None:
         """Run planning agent, then set DESIGN_REVIEW for approval."""
-        task.status = TaskStatus.PLANNING
+        set_task_status(task, TaskStatus.PLANNING)
         await self.db.flush()
 
         doc_requirements = validate_task_system_docs(
@@ -128,12 +129,12 @@ class Orchestrator:
         )
 
         if result.error:
-            task.status = TaskStatus.FAILED
+            set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = result.error
         elif self._apply_operator_decision_handoff(task, result.output_text):
             pass
         else:
-            task.status = TaskStatus.DESIGN_REVIEW
+            set_task_status(task, TaskStatus.DESIGN_REVIEW)
             # Create approval gate
             approval = ApprovalGate(task_id=task.id, gate_type="planning")
             self.db.add(approval)
@@ -142,7 +143,7 @@ class Orchestrator:
 
     async def _phase_design(self, task: Task) -> None:
         """Run design agent with context chained from planning session."""
-        task.status = TaskStatus.DESIGN
+        set_task_status(task, TaskStatus.DESIGN)
         await self.db.flush()
 
         # Get planning session_id for context chaining
@@ -167,20 +168,20 @@ class Orchestrator:
         )
 
         if result.error:
-            task.status = TaskStatus.FAILED
+            set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = result.error
         elif self._apply_operator_decision_handoff(task, result.output_text):
             pass
         else:
             await self._ensure_workspace(task)
             self._store_phase_context(task, "design_context", self._compact_phase_output(result.output_text))
-            task.status = TaskStatus.IMPLEMENTATION
+            set_task_status(task, TaskStatus.IMPLEMENTATION)
 
         await self.db.flush()
 
     async def _phase_implementation(self, task: Task) -> None:
         """Run code-gen agent in workspace, then trigger quality gates."""
-        task.status = TaskStatus.IMPLEMENTATION
+        set_task_status(task, TaskStatus.IMPLEMENTATION)
         await self.db.flush()
 
         # Get design session_id for context chaining
@@ -207,14 +208,14 @@ class Orchestrator:
         )
 
         if result.error:
-            task.status = TaskStatus.FAILED
+            set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = result.error
         elif self._apply_operator_decision_handoff(task, result.output_text):
             pass
         elif result.hit_capability_limit:
             await self._mark_capability_limit(task, f"SDK limit: {result.stop_reason}")
         else:
-            task.status = TaskStatus.QUALITY_GATES
+            set_task_status(task, TaskStatus.QUALITY_GATES)
 
         await self.db.flush()
 
@@ -302,22 +303,22 @@ class Orchestrator:
             self.db.add(db_result)
 
         if gate_result.status in {GateStatus.PASS, GateStatus.WARN} and not doc_requirements.passed:
-            task.status = TaskStatus.BLOCKED
+            set_task_status(task, TaskStatus.BLOCKED)
             task.blocked_reason = "; ".join(doc_requirements.issues)
         elif gate_result.status == GateStatus.PASS:
             documentation_gap = await self._run_documentation_refresh_gate(task, workspace_path)
             if documentation_gap:
-                task.status = TaskStatus.BLOCKED
+                set_task_status(task, TaskStatus.BLOCKED)
                 task.blocked_reason = documentation_gap
             else:
-                task.status = TaskStatus.PR_CREATION
+                set_task_status(task, TaskStatus.PR_CREATION)
         elif gate_result.status == GateStatus.WARN:
             documentation_gap = await self._run_documentation_refresh_gate(task, workspace_path)
             if documentation_gap:
-                task.status = TaskStatus.BLOCKED
+                set_task_status(task, TaskStatus.BLOCKED)
                 task.blocked_reason = documentation_gap
             else:
-                task.status = TaskStatus.PR_CREATION  # advisory, continue
+                set_task_status(task, TaskStatus.PR_CREATION)  # advisory, continue
         else:
             # FAIL — enter gate feedback loop
             await self.gate_handler.handle_gate_failure(task, gate_result)
@@ -339,10 +340,10 @@ class Orchestrator:
         )
 
         if result.error:
-            task.status = TaskStatus.FAILED
+            set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = result.error
         else:
-            task.status = TaskStatus.REVIEW_PENDING
+            set_task_status(task, TaskStatus.REVIEW_PENDING)
             approval = ApprovalGate(task_id=task.id, gate_type="pr")
             self.db.add(approval)
 
@@ -362,10 +363,10 @@ class Orchestrator:
         )
 
         if result.error:
-            task.status = TaskStatus.FAILED
+            set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = result.error
         else:
-            task.status = TaskStatus.DONE
+            set_task_status(task, TaskStatus.DONE)
 
         await self.db.flush()
 
@@ -415,6 +416,8 @@ class Orchestrator:
             stop_reason=result.stop_reason,
             status="completed" if not result.error else "failed",
             error=result.error,
+            confidence=result.confidence,
+            diff_summary=result.diff_summary,
             completed_at=datetime.now(UTC),
         )
         self.db.add(run)
@@ -540,7 +543,7 @@ class Orchestrator:
         depends_on = dict(task.depends_on or {})
         depends_on["operator_decision"] = payload
         task.depends_on = depends_on
-        task.status = TaskStatus.BLOCKED
+        set_task_status(task, TaskStatus.BLOCKED)
         phase = str(payload.get("phase", "") or "phase").strip() or "phase"
         question = str(payload.get("question", "") or "").strip()
         summary = str(payload.get("summary", "") or "").strip()
@@ -584,7 +587,7 @@ class Orchestrator:
 
     async def _mark_capability_limit(self, task: Task, reason: str) -> None:
         """Mark task as CAPABILITY_LIMIT — agent hit its ceiling."""
-        task.status = TaskStatus.CAPABILITY_LIMIT
+        set_task_status(task, TaskStatus.CAPABILITY_LIMIT)
         task.capability_limit_at = datetime.now(UTC)
         task.capability_limit_reason = reason
         log.warning("capability_limit", task_id=task.id, reason=reason)

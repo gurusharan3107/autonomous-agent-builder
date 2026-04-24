@@ -28,7 +28,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autonomous_agent_builder.config import Settings
-from autonomous_agent_builder.db.models import Task, TaskStatus
+from autonomous_agent_builder.db.models import Task, TaskStatus, set_task_status
 from autonomous_agent_builder.quality_gates.base import AggregateGateResult
 
 log = structlog.get_logger()
@@ -59,7 +59,7 @@ class GateFeedbackHandler:
             remediated = await self._attempt_remediation(task, remediable)
             if remediated:
                 # Re-run gates after remediation
-                task.status = TaskStatus.QUALITY_GATES
+                set_task_status(task, TaskStatus.QUALITY_GATES)
                 return
 
         # Step 2: Check retry budget
@@ -69,7 +69,7 @@ class GateFeedbackHandler:
 
         # Step 3: Agent-assisted fix
         task.retry_count += 1
-        task.status = TaskStatus.IMPLEMENTATION  # Re-dispatch to code-gen with feedback
+        set_task_status(task, TaskStatus.IMPLEMENTATION)  # Re-dispatch to code-gen with feedback
         task.blocked_reason = self._format_gate_feedback(gate_result)
 
         log.info(
@@ -114,7 +114,7 @@ class GateFeedbackHandler:
         self, task: Task, gate_result: AggregateGateResult
     ) -> None:
         """Escalate to CAPABILITY_LIMIT — agent can't fix this."""
-        task.status = TaskStatus.CAPABILITY_LIMIT
+        set_task_status(task, TaskStatus.CAPABILITY_LIMIT)
         task.capability_limit_at = datetime.now(UTC)
         task.capability_limit_reason = self._format_gate_feedback(gate_result)
         task.dead_letter_queued_at = datetime.now(UTC)

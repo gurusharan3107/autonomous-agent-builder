@@ -80,6 +80,8 @@ export default function MemoryPage() {
       return;
     }
 
+    // Deliberate: reset selection when the filtered result set is empty.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedEntry(null);
     setSelectedContent("");
   }, [filteredEntries, selectedEntry]);

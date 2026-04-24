@@ -12,8 +12,22 @@ import {
   SectionLabel,
   StatPill,
   SurfacePanel,
+  Tabs,
   WorkspaceLane,
 } from "@/components/workspace";
+import {
+  AgentTimeline,
+  CostMeter,
+  LivePulse,
+  LogBlock,
+  MCPChips,
+  ProgressMeter,
+  TodoStrip,
+  type TimelineEntry,
+  type TimelineLogItem,
+} from "@/components/agent-native";
+import { fetchShellSummary } from "@/lib/api";
+import type { ShellSummary, TodoSnapshot } from "@/lib/types";
 import { useAgentPageAnimations } from "@/hooks/use-agent-page-animations";
 import { useRuntimePreferences } from "@/hooks/use-runtime-preferences";
 
@@ -218,6 +232,7 @@ export default function AgentPage() {
   const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
   const [transcriptFilter, setTranscriptFilter] = useState<TranscriptFilter>(preferences.transcriptFilterDefault);
   const [activeInspector, setActiveInspector] = useState<AgentInspector>(preferences.agentInspectorDefault);
+  const [shellSummary, setShellSummary] = useState<ShellSummary | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
   const pageRef = useAgentPageAnimations(activeInspector);
@@ -256,6 +271,24 @@ export default function AgentPage() {
   useEffect(() => {
     setActiveInspector(preferences.agentInspectorDefault);
   }, [preferences.agentInspectorDefault]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const summary = await fetchShellSummary();
+        if (!cancelled) setShellSummary(summary);
+      } catch (error) {
+        console.error("Failed to load shell summary:", error);
+      }
+    };
+    void load();
+    const interval = window.setInterval(() => void load(), 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -366,6 +399,10 @@ export default function AgentPage() {
     };
 
     void bootstrap();
+    // Bootstrap intentionally re-runs only when the repo key or search params change.
+    // loadHistory/loadSessionList/readStoredSessionId are inline closures that read
+    // current state; including them would cascade re-fetches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, sessionStorageKey]);
 
   useEffect(() => {
@@ -421,6 +458,9 @@ export default function AgentPage() {
     return () => {
       stream.close();
     };
+    // Stream is keyed to sessionId only; loadSessionList is an inline closure
+    // that reads current state, by design.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   const pendingBlockingItem = useMemo(
@@ -430,7 +470,7 @@ export default function AgentPage() {
         .find(
           (item) =>
             (item.type === "ask_user_question" || item.type === "tool_approval_request") &&
-            !Boolean(item.payload.answered),
+            !item.payload.answered,
         ) ?? null,
     [items],
   );
@@ -604,6 +644,120 @@ export default function AgentPage() {
   );
   const specialistEvents = items.filter((item) => item.type === "specialist_status");
   const latestSpecialistEvent = specialistEvents.at(-1) ?? null;
+
+  const sessionTodoSnapshot: TodoSnapshot | null = useMemo(() => {
+    if (!shellSummary || !sessionId) return null;
+    return shellSummary.todo_snapshots.find((snap) => snap.session_id === sessionId) ?? null;
+  }, [shellSummary, sessionId]);
+
+  const logBlockItems: TimelineLogItem[] = useMemo(() => {
+    return [...specialistEvents, ...builderLogItems]
+      .sort(
+        (left, right) =>
+          new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime(),
+      )
+      .map((item) => {
+        const diagnostic = diagnosticForItem(item);
+        const toolName = item.type === "specialist_status"
+          ? `documentation-agent/${String(item.payload.phase ?? "running")}`
+          : String(diagnostic.tool_name ?? item.payload.tool_name ?? item.type);
+        return {
+          id: item.id,
+          type: item.type,
+          timestamp: item.timestamp,
+          tool_name: toolName,
+          summary: diagnostic.summary ?? "",
+          preview: diagnostic.detail ?? "",
+        };
+      });
+  }, [specialistEvents, builderLogItems]);
+
+  const timelineEntries: TimelineEntry[] = useMemo(() => {
+    return items.map((item): TimelineEntry => {
+      const ts = formatTime(item.timestamp);
+      if (item.type === "user_message") {
+        return {
+          id: item.id,
+          kind: "user",
+          timestamp: ts,
+          body: <span className="whitespace-pre-wrap">{String(item.payload.content ?? "")}</span>,
+        };
+      }
+      if (item.type === "assistant_message") {
+        return {
+          id: item.id,
+          kind: "thinking",
+          timestamp: ts,
+          label: "assistant",
+          body: String(item.payload.content ?? ""),
+        };
+      }
+      if (item.type === "run_error") {
+        return {
+          id: item.id,
+          kind: "gate",
+          timestamp: ts,
+          label: "run error",
+          status: "failed",
+          body: <span className="text-status-blocked">{String(item.payload.content ?? "")}</span>,
+        };
+      }
+      if (item.type === "tool_result" || item.type === "tool_error") {
+        const diagnostic = diagnosticForItem(item);
+        return {
+          id: item.id,
+          kind: "tool",
+          timestamp: ts,
+          label: String(diagnostic.tool_name ?? item.payload.tool_name ?? "tool"),
+          status: item.type === "tool_error" ? "failed" : undefined,
+          args: diagnostic.input_focus ?? "",
+          result: (diagnostic.summary ?? diagnostic.detail ?? "").slice(0, 180),
+        };
+      }
+      if (item.type === "specialist_status") {
+        return {
+          id: item.id,
+          kind: "gate",
+          timestamp: ts,
+          label: String(item.payload.phase ?? "running"),
+          status: "review_pending",
+          body: String(item.payload.content ?? ""),
+        };
+      }
+      if (item.type === "ask_user_question" || item.type === "tool_approval_request") {
+        return {
+          id: item.id,
+          kind: "gate",
+          timestamp: ts,
+          label: item.type === "ask_user_question" ? "question" : "approval",
+          status: "review_pending",
+          body: String(item.payload.summary ?? item.payload.question ?? item.payload.tool_name ?? ""),
+        };
+      }
+      if (item.type === "todo_snapshot") {
+        const inProgress = Number(item.payload.in_progress_count ?? 0);
+        const pending = Number(item.payload.pending_count ?? 0);
+        const completed = Number(item.payload.completed_count ?? 0);
+        return {
+          id: item.id,
+          kind: "tool",
+          timestamp: ts,
+          label: "todo snapshot",
+          result: `${inProgress} active · ${pending} pending · ${completed} done`,
+        };
+      }
+      return {
+        id: item.id,
+        kind: "tool",
+        timestamp: ts,
+        label: item.type,
+        body: String(item.payload.content ?? ""),
+      };
+    });
+  }, [items]);
+
+  const useTimelineLayout =
+    transcriptFilter === "thread" && preferences.transcriptLayout === "timeline";
   const filteredItems = useMemo(() => {
     if (transcriptFilter === "thread") {
       return items.filter((item) =>
@@ -1031,27 +1185,18 @@ export default function AgentPage() {
             Live transcript and inline decisions stay in the main lane.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {[
-            { id: "thread", label: "Thread" },
-            { id: "logs", label: "Raw log" },
-            { id: "full", label: "Full trace" },
-          ].map((option) => (
-            <Button
-              key={option.id}
-              variant={transcriptFilter === option.id ? "default" : "outline"}
-              size="sm"
-              className="h-8 rounded-full px-3 text-[12px]"
-              onClick={() => {
-                const next = option.id as TranscriptFilter;
-                setTranscriptFilter(next);
-                updatePreferences({ transcriptFilterDefault: next });
-              }}
-            >
-              {option.label}
-            </Button>
-          ))}
-        </div>
+        <Tabs<TranscriptFilter>
+          value={transcriptFilter}
+          onChange={(next) => {
+            setTranscriptFilter(next);
+            updatePreferences({ transcriptFilterDefault: next });
+          }}
+          items={[
+            { value: "thread", label: "Thread" },
+            { value: "logs", label: "Raw log" },
+            { value: "full", label: "Full trace" },
+          ]}
+        />
       </div>
 
       {!historyLoaded ? (
@@ -1065,6 +1210,14 @@ export default function AgentPage() {
               : "Start a conversation. Interactive questions and approvals will appear inline in the thread."
           }
         />
+      ) : transcriptFilter === "logs" ? (
+        <div ref={transcriptScrollRef} className="scroll-panel max-h-[calc(100vh-20rem)] overflow-y-auto pr-1">
+          <LogBlock items={logBlockItems} emptyLabel="No log events for this session yet." maxHeight={560} />
+        </div>
+      ) : useTimelineLayout ? (
+        <div ref={transcriptScrollRef} className="scroll-panel max-h-[calc(100vh-20rem)] overflow-y-auto pr-1">
+          <AgentTimeline entries={timelineEntries} />
+        </div>
       ) : (
         <div
           ref={transcriptScrollRef}
@@ -1327,26 +1480,56 @@ export default function AgentPage() {
 
           <aside className="hidden min-w-0 lg:block">
             <div className="sticky top-20 space-y-3">
-              <SurfacePanel data-agent-stage="card" className="space-y-3 rounded-[1.25rem] px-3.5 py-3.5">
-                <SectionLabel>Run frame</SectionLabel>
-                <div className="space-y-2">
-                  <MetricRow label="State" value={status?.running ? "Running" : "Ready"} />
-                  <MetricRow label="Model" value={modelName ?? "loading"} mono />
-                  <MetricRow label="Turns" value={`${status?.current_turn ?? 0}/${status?.max_turns ?? 0}`} />
-                  <MetricRow
-                    label="Cost"
-                    value={status?.cost_usd != null ? `$${status.cost_usd.toFixed(4)}` : "$0.0000"}
-                  />
-                  <MetricRow
-                    label="Tokens"
-                    value={status?.tokens_used != null ? status.tokens_used.toLocaleString() : "0"}
+              <SurfacePanel
+                data-agent-stage="card"
+                className={[
+                  "space-y-3 rounded-[1.25rem] px-3.5 py-3.5",
+                  status?.running ? "ambient-scan" : "",
+                ].join(" ")}
+              >
+                <div className="relative flex items-center justify-between gap-3">
+                  <SectionLabel>Run frame</SectionLabel>
+                  <LivePulse
+                    running={Boolean(status?.running)}
+                    label={shellSummary?.running_label ?? (status?.running ? "agent · live" : "agent · idle")}
                   />
                 </div>
-                <div className="rounded-[1rem] border border-border/70 bg-background/55 px-3 py-3 text-sm leading-6 text-muted-foreground">
+                <div className="relative space-y-2">
+                  <MetricRow label="Model" value={modelName ?? "loading"} mono />
+                  <ProgressMeter
+                    current={status?.current_turn ?? 0}
+                    max={status?.max_turns ?? 0}
+                  />
+                </div>
+                <CostMeter
+                  value={status?.cost_usd ?? 0}
+                  label="Session cost"
+                />
+                <div className="relative flex items-center justify-between gap-3 text-[12.5px]">
+                  <span className="text-muted-foreground">Tokens</span>
+                  <span className="font-mono tabular-nums">
+                    {status?.tokens_used != null ? status.tokens_used.toLocaleString() : "0"}
+                  </span>
+                </div>
+                <div className="relative rounded-[1rem] border border-border/70 bg-background/55 px-3 py-3 text-sm leading-6 text-muted-foreground">
                   {pendingBlockingItem
                     ? "A pending card is blocking the next send. Respond inline in the thread."
                     : "No blocking approval is holding the thread right now."}
                 </div>
+                {sessionTodoSnapshot ? (
+                  <div className="relative">
+                    <TodoStrip snapshot={sessionTodoSnapshot} />
+                  </div>
+                ) : null}
+                {shellSummary ? (
+                  <div className="relative">
+                    <MCPChips
+                      servers={shellSummary.mcp_servers}
+                      tools={shellSummary.mcp_tools}
+                      permissionMode={shellSummary.permission_mode}
+                    />
+                  </div>
+                ) : null}
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { id: "evidence", label: "Evidence" },

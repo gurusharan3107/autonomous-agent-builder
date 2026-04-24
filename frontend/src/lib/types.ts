@@ -15,6 +15,15 @@ export type TaskStatus =
   | "capability_limit"
   | "failed";
 
+export type TaskPhase =
+  | "requirements"
+  | "planning"
+  | "design"
+  | "implementation"
+  | "verification"
+  | "integration"
+  | "complete";
+
 export type GateStatus = "pass" | "fail" | "warn" | "timeout" | "error" | "pending";
 
 export type ApprovalDecision = "approve" | "reject" | "override" | "request_changes";
@@ -25,6 +34,7 @@ export interface TaskBoardItem {
   id: string;
   title: string;
   status: TaskStatus;
+  phase: TaskPhase;
   feature_title: string;
   agent_name: string;
   cost_usd: number;
@@ -49,6 +59,20 @@ export interface BoardData {
 
 // Metrics
 
+export interface DiffHunkPreview {
+  file: string;
+  added_lines: number;
+  removed_lines: number;
+  preview: string;
+}
+
+export interface DiffSummary {
+  files_changed: number;
+  insertions: number;
+  deletions: number;
+  hunks: DiffHunkPreview[];
+}
+
 export interface AgentRunItem {
   id: string;
   task_id: string;
@@ -62,6 +86,8 @@ export interface AgentRunItem {
   stop_reason: string | null;
   status: string;
   error: string | null;
+  confidence?: number | null;
+  diff_summary?: DiffSummary | null;
   started_at: string;
   completed_at: string | null;
 }
@@ -165,6 +191,7 @@ export interface RuntimePreferenceState {
   boardDensity: "comfortable" | "compact";
   agentInspectorDefault: "evidence" | "sessions";
   transcriptFilterDefault: "thread" | "full" | "logs";
+  transcriptLayout: "cards" | "timeline";
   compareDisplayMode: "split" | "stacked";
 }
 
@@ -185,6 +212,11 @@ export interface GateResultItem {
   findings_count: number;
   elapsed_ms: number;
   timeout: boolean;
+  evidence?: Record<string, unknown> | null;
+  error_code?: string | null;
+  remediation_attempted?: boolean;
+  remediation_succeeded?: boolean;
+  analysis_depth?: string | null;
 }
 
 export interface ApprovalDetails {

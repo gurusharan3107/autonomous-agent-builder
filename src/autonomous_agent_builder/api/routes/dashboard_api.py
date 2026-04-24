@@ -67,6 +67,7 @@ class TaskBoardItem(BaseModel):
     id: str
     title: str
     status: str
+    phase: str
     feature_title: str
     agent_name: str
     cost_usd: float
@@ -102,6 +103,8 @@ class MetricsRunItem(BaseModel):
     stop_reason: str | None
     status: str
     error: str | None
+    confidence: float | None = None
+    diff_summary: dict | None = None
     started_at: datetime
     completed_at: datetime | None
 
@@ -128,6 +131,8 @@ def _serialize_run(run: AgentRun) -> MetricsRunItem:
         stop_reason=run.stop_reason,
         status=run.status,
         error=run.error,
+        confidence=run.confidence,
+        diff_summary=run.diff_summary,
         started_at=run.started_at,
         completed_at=run.completed_at,
     )
@@ -305,6 +310,8 @@ class CompareRunSide(BaseModel):
     status: str
     stop_reason: str | None
     error: str | None
+    confidence: float | None = None
+    diff_summary: dict | None = None
     cost_usd: float
     tokens_input: int
     tokens_output: int
@@ -351,6 +358,11 @@ def _serialize_gate_result(gate_result: GateResult) -> dict[str, object]:
         "findings_count": gate_result.findings_count,
         "elapsed_ms": gate_result.elapsed_ms,
         "timeout": gate_result.timeout,
+        "evidence": gate_result.evidence or {},
+        "error_code": gate_result.error_code,
+        "remediation_attempted": gate_result.remediation_attempted,
+        "remediation_succeeded": gate_result.remediation_succeeded,
+        "analysis_depth": gate_result.analysis_depth,
     }
 
 
@@ -468,6 +480,7 @@ def _build_task_item(t: Task) -> TaskBoardItem:
         id=t.id,
         title=t.title,
         status=_status_str(t),
+        phase=t.phase.value if hasattr(t.phase, "value") else str(t.phase),
         feature_title=t.feature.title if t.feature else "",
         agent_name=latest_run.agent_name if latest_run else "",
         cost_usd=latest_run.cost_usd if latest_run else 0,
@@ -713,6 +726,8 @@ async def _load_compare_response(
             status=run.status,
             stop_reason=run.stop_reason,
             error=run.error,
+            confidence=run.confidence,
+            diff_summary=run.diff_summary,
             cost_usd=run.cost_usd,
             tokens_input=run.tokens_input,
             tokens_output=run.tokens_output,

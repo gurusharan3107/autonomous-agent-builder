@@ -96,6 +96,8 @@ export default function KnowledgePage() {
 
   useEffect(() => {
     let active = true;
+    // Deliberate: show the loading indicator while the fetch is in flight.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     const request =

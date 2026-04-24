@@ -21,6 +21,7 @@ from autonomous_agent_builder.db.models import (
     GateResult,
     Task,
     TaskStatus,
+    set_task_status,
 )
 from autonomous_agent_builder.db.session import get_db
 
@@ -181,13 +182,13 @@ async def submit_approval(
     if task:
         if decision == ApprovalDecision.APPROVE:
             if gate.gate_type == "planning":
-                task.status = TaskStatus.DESIGN
+                set_task_status(task, TaskStatus.DESIGN)
             elif gate.gate_type == "design":
-                task.status = TaskStatus.IMPLEMENTATION
+                set_task_status(task, TaskStatus.IMPLEMENTATION)
             elif gate.gate_type == "pr":
-                task.status = TaskStatus.BUILD_VERIFY
+                set_task_status(task, TaskStatus.BUILD_VERIFY)
         elif decision in (ApprovalDecision.REJECT, ApprovalDecision.REQUEST_CHANGES):
-            task.status = TaskStatus.BLOCKED
+            set_task_status(task, TaskStatus.BLOCKED)
             task.blocked_reason = data.get("comment") or "Approval rejected"
 
     await db.flush()

@@ -7,6 +7,7 @@ const DEFAULTS: RuntimePreferenceState = {
   boardDensity: "comfortable",
   agentInspectorDefault: "evidence",
   transcriptFilterDefault: "thread",
+  transcriptLayout: "cards",
   compareDisplayMode: "split",
 };
 

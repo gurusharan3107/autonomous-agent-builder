@@ -11,6 +11,9 @@ This is the core execution engine. It:
 from __future__ import annotations
 
 import os
+import re
+import subprocess
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -42,6 +45,8 @@ class RunResult:
         stop_reason: str | None = None,
         output_text: str = "",
         error: str | None = None,
+        confidence: float | None = None,
+        diff_summary: dict[str, Any] | None = None,
     ):
         self.session_id = session_id
         self.cost_usd = cost_usd
@@ -53,10 +58,154 @@ class RunResult:
         self.stop_reason = stop_reason
         self.output_text = output_text
         self.error = error
+        self.confidence = confidence
+        self.diff_summary = diff_summary
 
     @property
     def hit_capability_limit(self) -> bool:
         return self.stop_reason in ("max_turns", "budget_exceeded")
+
+
+# Matches either `confidence: 0.82`, `confidence = 0.82`, or `**confidence**: 0.82`
+# on any line of the final assistant message. Percent form `confidence: 82%` is
+# normalized to the [0, 1] range.
+_CONFIDENCE_RE = re.compile(
+    r"(?im)^\s*[*_`]*\s*confidence\s*[*_`]*\s*[:=]\s*(?P<value>[0-9]+(?:\.[0-9]+)?)\s*(?P<pct>%)?"
+)
+
+
+def parse_confidence_from_text(text: str) -> float | None:
+    """Extract a confidence score from the final assistant message.
+
+    Per SDK-verifier guidance: agent-emitted confidence is soft signal — always
+    null-safe. Returns None when no marker is found, value is out of range,
+    or parsing fails. Percent form (e.g., `confidence: 82%`) is normalized.
+    """
+    if not text:
+        return None
+    match = _CONFIDENCE_RE.search(text)
+    if not match:
+        return None
+    try:
+        raw = float(match.group("value"))
+    except (TypeError, ValueError):
+        return None
+    if match.group("pct"):
+        raw = raw / 100.0
+    if raw < 0.0 or raw > 1.0:
+        return None
+    return raw
+
+
+_DIFF_HUNK_PREVIEW_CHARS = 400
+_DIFF_MAX_HUNKS = 20
+
+
+def _run_git(workspace_path: str, *args: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=workspace_path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as exc:
+        log.debug("git_command_failed", args=args, error=str(exc))
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def capture_workspace_diff(workspace_path: str | None) -> dict[str, Any] | None:
+    """Capture a structured diff summary of the last commit in the worktree.
+
+    Per SDK-verifier guidance: shells `git diff HEAD~1..HEAD` post-run in the
+    worktree. Empty diff (no commits, or worktree not a git repo) returns
+    None — a valid signal, not an error. Never blocks the run.
+    """
+    if not workspace_path:
+        return None
+    path = Path(workspace_path)
+    if not path.exists() or not (path / ".git").exists() and not _run_git(workspace_path, "rev-parse", "--is-inside-work-tree"):
+        # Not a git worktree — nothing to diff.
+        return None
+
+    # Confirm HEAD~1 exists (a single-commit repo has no previous commit).
+    parent = _run_git(workspace_path, "rev-parse", "--verify", "HEAD~1")
+    if parent is None:
+        return None
+
+    stat_out = _run_git(workspace_path, "diff", "--numstat", "HEAD~1..HEAD")
+    if stat_out is None:
+        return None
+
+    files_changed = 0
+    insertions = 0
+    deletions = 0
+    per_file: dict[str, dict[str, int]] = {}
+    for line in stat_out.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 3:
+            continue
+        added_s, removed_s, fname = parts
+        try:
+            added = int(added_s) if added_s != "-" else 0
+            removed = int(removed_s) if removed_s != "-" else 0
+        except ValueError:
+            continue
+        per_file[fname] = {"added_lines": added, "removed_lines": removed}
+        insertions += added
+        deletions += removed
+        files_changed += 1
+
+    if files_changed == 0:
+        return None
+
+    # Collect bounded hunk previews.
+    hunks: list[dict[str, Any]] = []
+    diff_out = _run_git(workspace_path, "diff", "--unified=3", "HEAD~1..HEAD") or ""
+    current_file: str | None = None
+    current_preview: list[str] = []
+
+    def flush_current() -> None:
+        nonlocal current_file, current_preview
+        if current_file is None:
+            return
+        stats = per_file.get(current_file, {"added_lines": 0, "removed_lines": 0})
+        preview = "\n".join(current_preview)[:_DIFF_HUNK_PREVIEW_CHARS]
+        hunks.append(
+            {
+                "file": current_file,
+                "added_lines": stats["added_lines"],
+                "removed_lines": stats["removed_lines"],
+                "preview": preview,
+            }
+        )
+        current_file = None
+        current_preview = []
+
+    for line in diff_out.splitlines():
+        if len(hunks) >= _DIFF_MAX_HUNKS:
+            break
+        if line.startswith("diff --git"):
+            flush_current()
+            # `diff --git a/path b/path` — pick the b/ side as canonical.
+            parts = line.split(" b/", 1)
+            current_file = parts[1] if len(parts) == 2 else None
+            current_preview = []
+        elif current_file is not None:
+            current_preview.append(line)
+    flush_current()
+
+    return {
+        "files_changed": files_changed,
+        "insertions": insertions,
+        "deletions": deletions,
+        "hunks": hunks,
+    }
 
 
 class AgentRunner:
@@ -291,6 +440,15 @@ class AgentRunner:
 
                     elif isinstance(message, ResultMessage):
                         usage = message.usage or {}
+                        output_text = "\n".join(output_parts)
+                        stop_reason = getattr(message, "stop_reason", None)
+                        # Per SDK-verifier: only trust confidence on clean runs.
+                        # Capability-limited runs get null confidence regardless
+                        # of what the final message claims.
+                        confidence: float | None = None
+                        if stop_reason not in ("max_turns", "budget_exceeded"):
+                            confidence = parse_confidence_from_text(output_text)
+                        diff_summary = capture_workspace_diff(workspace_path)
                         return RunResult(
                             session_id=getattr(message, "session_id", None) or session_id,
                             cost_usd=getattr(message, "total_cost_usd", 0.0),
@@ -299,8 +457,10 @@ class AgentRunner:
                             tokens_cached=usage.get("cache_read_input_tokens", 0),
                             num_turns=getattr(message, "num_turns", 0),
                             duration_ms=getattr(message, "duration_ms", 0),
-                            stop_reason=getattr(message, "stop_reason", None),
-                            output_text="\n".join(output_parts),
+                            stop_reason=stop_reason,
+                            output_text=output_text,
+                            confidence=confidence,
+                            diff_summary=diff_summary,
                         )
 
         except Exception as e:

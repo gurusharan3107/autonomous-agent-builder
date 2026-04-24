@@ -17,56 +17,77 @@ import {
   LoadingState,
   PageFrame,
   PageHeader,
+  PhaseStepper,
   SectionLabel,
   StatPill,
   StatusDot,
+  StatusPill,
   SurfacePanel,
 } from "@/components/workspace";
+import { ConfidenceBar, DiffBlock } from "@/components/agent-native";
 import { fetchApprovalDetails, openApprovalStream, submitApproval } from "@/lib/api";
-import type { ApprovalDecision, ApprovalDetails } from "@/lib/types";
+import type { ApprovalDecision, ApprovalDetails, GateResultItem } from "@/lib/types";
 
-const PHASES = ["Plan", "Design", "Implement", "Gates", "PR", "Build", "Done"];
-
-const STATUS_TO_STEP: Record<string, number> = {
-  planning: 0,
-  design_review: 0,
-  design: 1,
-  implementation: 2,
-  quality_gates: 3,
-  pr_creation: 4,
-  review_pending: 4,
-  build_verify: 5,
-  done: 6,
-};
-
-const GATE_STATUS_TONE: Record<string, "done" | "blocked" | "review" | "pending"> = {
-  pass: "done",
-  fail: "blocked",
-  warn: "review",
-  timeout: "review",
-  error: "blocked",
-  pending: "pending",
-};
-
-function PhaseStepper({ status }: { status: string }) {
-  const current = STATUS_TO_STEP[status] ?? 0;
+function GateEvidenceView({ gate }: { gate: GateResultItem }) {
+  const failed = gate.status === "fail" || gate.status === "error" || gate.status === "timeout";
+  const unremediated = failed && !gate.remediation_attempted;
+  const hasEvidence = gate.evidence && Object.keys(gate.evidence as object).length > 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {PHASES.map((step, index) => (
-        <div key={step} className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/65 px-2.5 py-1">
+    <div
+      className={[
+        "space-y-3 rounded-[1.1rem] border border-border/70 bg-background/55 px-4 py-3",
+        unremediated ? "hatch" : "",
+      ].join(" ")}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[11px] text-foreground/80">{gate.gate_name}</span>
+        <StatusPill status={gate.status} />
+        <span className="font-mono text-[10.5px] text-muted-foreground">
+          {gate.elapsed_ms}ms · {gate.findings_count} findings
+        </span>
+        {gate.analysis_depth ? (
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            depth · {gate.analysis_depth}
+          </span>
+        ) : null}
+        {gate.error_code ? (
+          <span className="rounded-full border border-status-blocked/30 bg-status-blocked-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-status-blocked">
+            {gate.error_code}
+          </span>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2 text-[10.5px] font-mono uppercase tracking-[0.16em]">
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <StatusDot tone={gate.remediation_attempted ? "review" : "muted"} className="h-1.5 w-1.5" />
+          remediation {gate.remediation_attempted ? "attempted" : "none"}
+        </span>
+        {gate.remediation_attempted ? (
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
             <StatusDot
-              tone={index < current ? "done" : index === current ? "active" : "muted"}
-              pulse={index === current}
+              tone={gate.remediation_succeeded ? "done" : "blocked"}
+              className="h-1.5 w-1.5"
             />
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              {step}
-            </span>
-          </div>
-          {index < PHASES.length - 1 ? <span className="h-px w-4 bg-border" /> : null}
-        </div>
-      ))}
+            {gate.remediation_succeeded ? "succeeded" : "failed"}
+          </span>
+        ) : null}
+        {gate.timeout ? (
+          <span className="inline-flex items-center gap-1.5 text-status-review">
+            <StatusDot tone="review" className="h-1.5 w-1.5" />
+            timed out
+          </span>
+        ) : null}
+      </div>
+      {hasEvidence ? (
+        <details className="rounded-[0.7rem] border border-dashed border-border/60 bg-background/60 px-3 py-2">
+          <summary className="cursor-pointer font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground">
+            Evidence payload
+          </summary>
+          <pre className="mt-2 max-h-[280px] overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-foreground/80">
+            {JSON.stringify(gate.evidence, null, 2)}
+          </pre>
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -247,33 +268,32 @@ export default function ApprovalPage() {
         </SurfacePanel>
 
         {data.gate_results.length > 0 ? (
-          <SurfacePanel className="space-y-4">
-            <SectionLabel>Quality gates</SectionLabel>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[10px] uppercase tracking-[0.18em]">Gate</TableHead>
-                  <TableHead className="text-[10px] uppercase tracking-[0.18em]">Status</TableHead>
-                  <TableHead className="text-[10px] uppercase tracking-[0.18em]">Findings</TableHead>
-                  <TableHead className="text-[10px] uppercase tracking-[0.18em]">Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.gate_results.map((gate) => (
-                  <TableRow key={gate.id}>
-                    <TableCell className="text-[11px] font-medium">{gate.gate_name}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
-                        <StatusDot tone={GATE_STATUS_TONE[gate.status] ?? "muted"} />
-                        {gate.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono text-[11px] tabular-nums">{gate.findings_count}</TableCell>
-                    <TableCell className="font-mono text-[11px] tabular-nums">{gate.elapsed_ms}ms</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <SurfacePanel className="space-y-3">
+            <SectionLabel
+              trailing={
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {data.gate_results.length} gate{data.gate_results.length === 1 ? "" : "s"}
+                </span>
+              }
+            >
+              Quality gates · evidence
+            </SectionLabel>
+            <div className="space-y-2">
+              {data.gate_results.map((gate) => (
+                <GateEvidenceView key={gate.id} gate={gate} />
+              ))}
+            </div>
+          </SurfacePanel>
+        ) : null}
+
+        {data.runs.length > 0 && data.runs[0].diff_summary ? (
+          <SurfacePanel className="space-y-3">
+            <SectionLabel
+              trailing={<ConfidenceBar value={data.runs[0].confidence ?? null} />}
+            >
+              Latest-run changes
+            </SectionLabel>
+            <DiffBlock diff={data.runs[0].diff_summary} />
           </SurfacePanel>
         ) : null}
 

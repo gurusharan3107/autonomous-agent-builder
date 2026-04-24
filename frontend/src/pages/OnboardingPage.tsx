@@ -1,35 +1,38 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import gsap from "gsap";
-import { Sparkles, Play, RotateCcw, GitBranch, FolderTree, Database } from "lucide-react";
+import {
+  Sparkles,
+  Play,
+  RotateCcw,
+  GitBranch,
+  FolderTree,
+  Database,
+  Archive,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { OnboardingStatus } from "@/lib/types";
 import {
+  Meter,
   PageFrame,
   PageHeader,
   SectionLabel,
   StatPill,
+  StatusPill,
   SurfacePanel,
 } from "@/components/workspace";
 
-const PHASE_TONE: Record<string, string> = {
-  pending: "border-border/70 bg-background/65 text-muted-foreground",
-  running: "border-status-active/30 bg-status-active/8 text-foreground",
-  passed: "border-status-done/25 bg-status-done/8 text-foreground",
-  failed: "border-status-blocked/30 bg-status-blocked/10 text-foreground",
-  blocked: "border-status-blocked/30 bg-status-blocked/10 text-foreground",
-};
+function formatScanKey(key: string): string {
+  return key.replace(/_/g, " ");
+}
 
-function PhaseBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={[
-        "inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
-        PHASE_TONE[status] ?? PHASE_TONE.pending,
-      ].join(" ")}
-    >
-      {status}
-    </span>
-  );
+function formatScanValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return value.toLocaleString();
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`;
+  return JSON.stringify(value);
 }
 
 export default function OnboardingPage({
@@ -145,6 +148,41 @@ export default function OnboardingPage({
                 <p className="mt-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
                   {status.kb_status.document_count} knowledge docs prepared so far
                 </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <StatusPill
+                    status={status.kb_status.lint_passed ? "passed" : "warn"}
+                    pulse={false}
+                  />
+                  <StatusPill status={status.kb_status.quality_gate || "pending"} pulse={false} />
+                </div>
+                {(status.kb_status.rule_based_score != null || status.kb_status.agent_score != null) ? (
+                  <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+                    {status.kb_status.rule_based_score != null ? (
+                      <Meter
+                        value={Math.max(0, Math.min(1, status.kb_status.rule_based_score))}
+                        tone="active"
+                        label="Rule-based"
+                      />
+                    ) : null}
+                    {status.kb_status.agent_score != null ? (
+                      <Meter
+                        value={Math.max(0, Math.min(1, status.kb_status.agent_score))}
+                        tone="done"
+                        label="Agent score"
+                      />
+                    ) : null}
+                    {status.kb_status.rule_based_summary ? (
+                      <p className="text-[11px] leading-[1.5] text-muted-foreground [overflow-wrap:anywhere]">
+                        {status.kb_status.rule_based_summary}
+                      </p>
+                    ) : null}
+                    {status.kb_status.agent_summary ? (
+                      <p className="text-[11px] leading-[1.5] text-muted-foreground [overflow-wrap:anywhere]">
+                        {status.kb_status.agent_summary}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -182,29 +220,104 @@ export default function OnboardingPage({
           <div ref={phasesRef}>
             <SurfacePanel className="space-y-3 border-border/70 bg-background/60">
               <SectionLabel>Pipeline phases</SectionLabel>
-              {status.phases.map((phase) => (
-                <div
-                  key={phase.id}
-                  data-phase-id={phase.id}
-                  className="rounded-[1.35rem] border border-border/70 bg-background/65 p-4 transition-shadow"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{phase.title}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{phase.message || "Pending execution."}</p>
+              {status.phases.map((phase) => {
+                const isRunning = phase.status === "running";
+                const isFailed = phase.status === "failed" || phase.status === "blocked";
+                return (
+                  <div
+                    key={phase.id}
+                    data-phase-id={phase.id}
+                    className={[
+                      "rounded-[1.35rem] border border-border/70 p-4 transition-shadow",
+                      isRunning ? "breathe bg-[color:var(--status-active-soft)]" : "bg-background/65",
+                      isFailed ? "hatch" : "",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{phase.title}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{phase.message || "Pending execution."}</p>
+                      </div>
+                      <StatusPill status={phase.status} />
                     </div>
-                    <PhaseBadge status={phase.status} />
+                    {phase.error ? (
+                      <p className="mt-3 rounded-2xl border border-status-blocked/25 bg-status-blocked/8 px-3 py-2 text-sm text-foreground">
+                        {phase.error}
+                      </p>
+                    ) : null}
                   </div>
-                  {phase.error ? (
-                    <p className="mt-3 rounded-2xl border border-status-blocked/25 bg-status-blocked/8 px-3 py-2 text-sm text-foreground">
-                      {phase.error}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
+                );
+              })}
             </SurfacePanel>
           </div>
         </div>
+
+        {(Object.keys(status.scan_summary || {}).length > 0 || status.archives.length > 0) ? (
+          <div
+            data-onboarding-animate
+            className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.6fr)]"
+          >
+            {Object.keys(status.scan_summary || {}).length > 0 ? (
+              <SurfacePanel className="space-y-3 border-border/70 bg-background/60">
+                <SectionLabel
+                  trailing={
+                    <span className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                      <ShieldCheck className="h-3 w-3" />
+                      deterministic scan
+                    </span>
+                  }
+                >
+                  Scan summary
+                </SectionLabel>
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  {Object.entries(status.scan_summary).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between gap-3 rounded-[0.9rem] border border-border/70 bg-background/70 px-3 py-2"
+                    >
+                      <dt className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground">
+                        {formatScanKey(key)}
+                      </dt>
+                      <dd className="font-mono text-[12px] tabular-nums text-foreground [overflow-wrap:anywhere]">
+                        {formatScanValue(value)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </SurfacePanel>
+            ) : null}
+
+            {status.archives.length > 0 ? (
+              <SurfacePanel className="space-y-3 border-border/70 bg-background/60">
+                <SectionLabel
+                  trailing={
+                    <span className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                      <Archive className="h-3 w-3" />
+                      {status.archives.length} artifact{status.archives.length === 1 ? "" : "s"}
+                    </span>
+                  }
+                >
+                  Legacy archives
+                </SectionLabel>
+                <ul className="space-y-1.5">
+                  {status.archives.map((archive) => (
+                    <li
+                      key={archive.path}
+                      className="flex items-center justify-between gap-3 rounded-[0.9rem] border border-border/70 bg-background/70 px-3 py-2"
+                    >
+                      <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-muted-foreground">
+                        {archive.type}
+                      </span>
+                      <span className="truncate font-mono text-[11px] text-foreground/80">
+                        {archive.path}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </SurfacePanel>
+            ) : null}
+          </div>
+        ) : null}
 
         {latestError ? (
           <div data-onboarding-animate className="mt-5 rounded-[1.4rem] border border-status-blocked/25 bg-status-blocked/8 px-4 py-4 text-sm text-foreground">

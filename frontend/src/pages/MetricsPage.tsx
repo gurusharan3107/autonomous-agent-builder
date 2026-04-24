@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import {
   ErrorState,
   LoadingState,
+  Meter,
   PageFrame,
   PageHeader,
   SectionLabel,
@@ -19,6 +20,7 @@ import {
   StatusDot,
   SurfacePanel,
 } from "@/components/workspace";
+import { Sparkline } from "@/components/agent-native";
 import { useMetricsAnimations } from "@/hooks/use-metrics-animations";
 import { fetchMetrics } from "@/lib/api";
 import type { MetricsData } from "@/lib/types";
@@ -36,10 +38,12 @@ function KPICard({
   label,
   value,
   detail,
+  sparkline,
 }: {
   label: string;
   value: string;
   detail: string;
+  sparkline?: number[];
 }) {
   return (
     <SurfacePanel data-kpi className="space-y-2 px-4 py-3 sm:px-4 sm:py-3">
@@ -50,6 +54,9 @@ function KPICard({
         <p className="font-mono text-[1.55rem] tracking-tight text-foreground">{value}</p>
         <p className="mt-1 text-[10.5px] font-mono text-muted-foreground">{detail}</p>
       </div>
+      {sparkline && sparkline.length > 1 ? (
+        <Sparkline data={sparkline} height={24} className="opacity-75" />
+      ) : null}
     </SurfacePanel>
   );
 }
@@ -77,13 +84,17 @@ function CostChart({ runs }: { runs: MetricsData["runs"] }) {
           ))}
         </div>
         <div className="relative flex h-28 items-end gap-[4px]">
-          {runs.map((run) => {
+          {runs.map((run, idx) => {
             const pct = (run.cost_usd / maxCost) * 100;
+            const isLast = idx === runs.length - 1;
             return (
               <div
                 key={run.id}
                 data-cost-bar
-                className="group relative flex-1 cursor-default rounded-t-[0.8rem] bg-foreground/12 transition-colors hover:bg-foreground/22"
+                className={[
+                  "group relative flex-1 cursor-default rounded-t-[0.8rem] bg-foreground/12 transition-colors hover:bg-foreground/22",
+                  isLast ? "breathe bg-primary/60 hover:bg-primary/70" : "",
+                ].join(" ")}
                 style={{ height: `${pct}%` }}
                 title={`${run.agent_name}: $${run.cost_usd.toFixed(4)}`}
               >
@@ -128,12 +139,7 @@ function AgentBreakdown({ runs }: { runs: MetricsData["runs"] }) {
                 ${item.cost.toFixed(4)}
               </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
-              <div
-                className="h-full rounded-full bg-status-active"
-                style={{ width: `${(item.cost / maxCost) * 100}%` }}
-              />
-            </div>
+            <Meter value={item.cost / maxCost} tone="active" showValue={false} />
             <p className="font-mono text-[10px] text-muted-foreground">{item.runs} runs</p>
           </div>
         ))}
@@ -177,6 +183,9 @@ export default function MetricsPage() {
     return [run.agent_name, run.task_id, run.status].join(" ").toLowerCase().includes(query);
   });
 
+  const costTrend = data.runs.map((r) => r.cost_usd);
+  const tokenTrend = data.runs.map((r) => r.tokens_input + r.tokens_output);
+
   return (
     <PageFrame variant="overview">
       <PageHeader
@@ -199,11 +208,13 @@ export default function MetricsPage() {
             label="Total cost"
             value={`$${data.total_cost.toFixed(4)}`}
             detail="aggregate run spend"
+            sparkline={costTrend}
           />
           <KPICard
             label="Total tokens"
             value={data.total_tokens.toLocaleString()}
             detail="input + output"
+            sparkline={tokenTrend}
           />
           <KPICard
             label="Agent runs"

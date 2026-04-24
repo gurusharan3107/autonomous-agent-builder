@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight, Play } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   EmptyState,
@@ -9,9 +7,11 @@ import {
   LoadingState,
   PageFrame,
   PageHeader,
+  PhaseStepper,
   StatusDot,
   SurfacePanel,
 } from "@/components/workspace";
+import { TaskCard } from "@/components/agent-native";
 import { dispatchTask, fetchBoard, openBoardStream } from "@/lib/api";
 import type { BoardData, TaskBoardItem } from "@/lib/types";
 
@@ -25,64 +25,6 @@ const LANE_ORDER: Array<{ key: LaneKey; title: string; tone: "active" | "review"
   { key: "blocked", title: "Blocked", tone: "blocked" },
 ];
 
-function formatDuration(durationMs: number) {
-  const seconds = Math.round(durationMs / 1000);
-  if (!seconds) return "0s";
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-}
-
-function BoardCard({
-  task,
-  density,
-}: {
-  task: TaskBoardItem;
-  density: "comfortable" | "compact";
-}) {
-  return (
-    <div
-      className={[
-        "rounded-[1rem] border border-border/75 bg-background/70 transition hover:border-border hover:bg-background/90",
-        density === "compact" ? "space-y-2 px-3 py-3" : "space-y-3 px-4 py-4",
-      ].join(" ")}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
-          <p className="truncate text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-            {task.feature_title || "Feature"}
-          </p>
-        </div>
-        {task.approval_gate_id ? <Badge variant="outline">{task.approval_gate_type || "approval"}</Badge> : null}
-      </div>
-
-      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-        <span>{task.agent_name || "No run yet"}</span>
-        <span>{task.latest_run_status || task.status}</span>
-        <span>${task.cost_usd.toFixed(4)}</span>
-        <span>{task.num_turns} turns</span>
-        <span>{formatDuration(task.duration_ms)}</span>
-      </div>
-
-      {task.blocked_reason ? (
-        <p className="text-xs text-status-blocked">{task.blocked_reason}</p>
-      ) : null}
-
-      <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-        <span>{task.pending_approval_count ? `${task.pending_approval_count} pending approval` : "No pending approval"}</span>
-        {task.approval_gate_id ? (
-          <Button asChild variant="ghost" className="h-8 rounded-full px-3">
-            <Link to={`/approvals/${task.approval_gate_id}`}>
-              Review
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 function Lane({
   title,
   tasks,
@@ -94,22 +36,30 @@ function Lane({
   density: "comfortable" | "compact";
   tone: "active" | "review" | "pending" | "done" | "blocked";
 }) {
+  const leadActiveTask = tone === "active" && tasks.length > 0 ? tasks[0] : null;
   return (
     <SurfacePanel
-      className="flex min-h-[400px] flex-col space-y-4"
+      className={[
+        "flex min-h-[400px] flex-col space-y-4",
+        tone === "blocked" ? "hatch" : "",
+      ].join(" ")}
       style={{
         background: `oklch(from var(--status-${tone}) l c h / 0.04)`,
-        backgroundImage: tone === "blocked"
-          ? `repeating-linear-gradient(135deg, oklch(from var(--status-${tone}) l c h / 0.07) 0 1px, transparent 1px 10px)`
-          : undefined,
       }}
     >
-      <div className="flex h-10 items-center justify-between gap-2 border-b border-border/60 pb-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <StatusDot tone={tone} pulse={tone === "active"} className="h-2 w-2" />
-          <span className="truncate text-[12px] font-medium text-foreground">{title}</span>
+      <div className="space-y-3 border-b border-border/60 pb-3">
+        <div className="flex h-8 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <StatusDot tone={tone} pulse={tone === "active"} className="h-2 w-2" />
+            <span className="truncate text-[12px] font-medium text-foreground">{title}</span>
+          </div>
+          <span className="font-mono text-[11px] text-muted-foreground">{tasks.length}</span>
         </div>
-        <span className="font-mono text-[11px] text-muted-foreground">{tasks.length}</span>
+        {leadActiveTask ? (
+          <div className="overflow-hidden">
+            <PhaseStepper phase={leadActiveTask.phase} status={leadActiveTask.status} />
+          </div>
+        ) : null}
       </div>
       {tasks.length === 0 ? (
         <EmptyState
@@ -120,7 +70,7 @@ function Lane({
       ) : (
         <div className={density === "compact" ? "space-y-2" : "space-y-3"}>
           {tasks.map((task) => (
-            <BoardCard key={task.id} task={task} density={density} />
+            <TaskCard key={task.id} task={task} density={density} />
           ))}
         </div>
       )}
