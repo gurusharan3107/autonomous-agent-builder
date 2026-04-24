@@ -1,0 +1,1656 @@
+{
+  "generated_at": "2026-04-24T11:31:30Z",
+  "entries": [
+    {
+      "slug": "claude-agent-sdk-as-foundation",
+      "file": "decisions/claude-agent-sdk-as-foundation.md",
+      "title": "Claude Agent SDK as foundation",
+      "type": "decision",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "sdk",
+        "architecture",
+        "foundation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "concurrent-quality-gates-with-asyncio-gather",
+      "file": "decisions/concurrent-quality-gates-with-asyncio-gather.md",
+      "title": "Concurrent quality gates with asyncio.gather",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "asyncio",
+        "concurrency",
+        "gates"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "fastapi-route-ordering-specific-routes-before-path",
+      "file": "decisions/fastapi-route-ordering-specific-routes-before-path.md",
+      "title": "FastAPI route ordering: specific routes before path parameters",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "fastapi-routes",
+      "tags": [
+        "fastapi",
+        "routing",
+        "api-design"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "max-retries-2-for-quality-gates",
+      "file": "decisions/max-retries-2-for-quality-gates.md",
+      "title": "MAX_RETRIES=2 for quality gates",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "retries",
+        "gates",
+        "threshold"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "project-memory-captures-real-time-friction-precedent",
+      "file": "decisions/project-memory-captures-real-time-friction-precedent.md",
+      "title": "Project memory captures real-time friction precedent",
+      "type": "decision",
+      "phase": "design",
+      "entity": "memory-cli",
+      "tags": [
+        "memory",
+        "friction",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "file": "decisions/use-mcp-chrome-devtools-for-dashboard-testing-instead-of.md",
+      "title": "Use MCP Chrome DevTools for dashboard testing instead of curl",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "dashboard",
+      "tags": [
+        "mcp",
+        "testing",
+        "browser",
+        "api"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "knowledge-tag-filtering-must-align-frontend-and-api",
+      "file": "corrections/knowledge-tag-filtering-must-align-frontend-and-api.md",
+      "title": "Knowledge tag filtering must align frontend and API intersection semantics",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-api",
+      "tags": [
+        "knowledge",
+        "api",
+        "tags",
+        "filtering",
+        "frontend"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "memory-routing-json-can-use-memories-key",
+      "file": "corrections/memory-routing-json-can-use-memories-key.md",
+      "title": "Memory routing.json can use memories key",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "memory-api",
+      "tags": [
+        "memory",
+        "routing",
+        "json",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "command-execution-friction-prevention-via-steering-files",
+      "file": "patterns/command-execution-friction-prevention-via-steering-files.md",
+      "title": "Command execution friction prevention via steering files",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "steering",
+      "tags": [
+        "friction",
+        "commands",
+        "windows",
+        "automation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "deterministic-dispatch-over-agent-self-routing",
+      "file": "patterns/deterministic-dispatch-over-agent-self-routing.md",
+      "title": "Deterministic dispatch over agent self-routing",
+      "type": "pattern",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "dispatch",
+        "architecture",
+        "routing"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "react-shadcn-luma-gsap-migration",
+      "file": "patterns/react-shadcn-luma-gsap-migration.md",
+      "title": "React + shadcn Luma + GSAP migration patterns",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "frontend",
+      "tags": [
+        "react",
+        "shadcn",
+        "gsap",
+        "spa",
+        "vite"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-13",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "file": "patterns/surface-ownership-what-goes-where-agents-md-vs-steering-vs.md",
+      "title": "Surface ownership - what goes where (AGENTS.md vs steering vs workflow vs scripts)",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "agents",
+      "tags": [
+        "ownership",
+        "placement",
+        "surfaces",
+        "organization"
+      ],
+      "status": "active",
+      "related": [
+        "command-execution-friction-prevention-via-steering-files"
+      ],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "file": "patterns/tag-based-similarity-for-knowledge-graphs-without-wikilinks.md",
+      "title": "Tag-based similarity for knowledge graphs without wikilinks",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "knowledge-base",
+      "tags": [
+        "knowledge-graph",
+        "similarity",
+        "tags",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "file": "corrections/knowledge-quality-gate-must-parse-canonical-yaml-frontmatter.md",
+      "title": "Knowledge quality gate must parse canonical YAML frontmatter tags",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-quality-gate",
+      "tags": [
+        "knowledge",
+        "quality-gate",
+        "yaml",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "agent-extractor-must-use-shared-claude-runtime",
+      "file": "corrections/agent-extractor-must-use-shared-claude-runtime.md",
+      "title": "Agent extractor must use shared Claude runtime",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-agent-extractor",
+      "tags": [
+        "kb",
+        "claude-runtime",
+        "timeout",
+        "extraction"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "file": "corrections/embedded-agent-chat-should-continue-conversation-instead-of-.md",
+      "title": "Embedded agent chat should continue conversation instead of CLI resume",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agent chat runner",
+      "tags": [
+        "agent-chat",
+        "resume",
+        "claude-sdk",
+        "embedded-server"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "worktree-first-development-is-the-core-rule",
+      "file": "decisions/worktree-first-development-is-the-core-rule.md",
+      "title": "Worktree-first development is the core rule",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "worktree-workflow",
+      "tags": [
+        "worktree",
+        "development",
+        "isolation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "workflow-and-memory-creation-only-via-clis",
+      "file": "decisions/workflow-and-memory-creation-only-via-clis.md",
+      "title": "Workflow and memory creation ONLY via CLIs",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-creation",
+      "tags": [
+        "workflow",
+        "builder",
+        "cli-only"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-code-settings-use-bash-cmd-format",
+      "file": "patterns/claude-code-settings-use-bash-cmd-format.md",
+      "title": "Claude Code settings use Bash(cmd:*) format",
+      "type": "pattern",
+      "phase": "setup",
+      "entity": "claude-code-settings",
+      "tags": [
+        "settings",
+        "permissions",
+        "configuration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "file": "corrections/delete-settings-local-json-if-it-conflicts-with-claude-setti.md",
+      "title": "Delete settings.local.json if it conflicts with .claude/settings.json",
+      "type": "correction",
+      "phase": "setup",
+      "entity": "settings-management",
+      "tags": [
+        "settings",
+        "local",
+        "override",
+        "conflict"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "file": "decisions/official-builder-write-back-uses-mcp-tools-not-raw-file-muta.md",
+      "title": "Official builder write-back uses MCP tools, not raw file mutation",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "agent-runtime",
+      "tags": [
+        "sdk-mcp",
+        "memory",
+        "kb",
+        "learning",
+        "self-improvement"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-agent-maintains-shared-user-and-agent-kb",
+      "file": "decisions/documentation-agent-maintains-shared-user-and-agent-kb.md",
+      "title": "Documentation agent maintains shared user and agent KB",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "kb",
+        "docs",
+        "agent",
+        "system-docs"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-22",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "file": "decisions/documentation-freshness-is-commit-anchored-not-worktree-anch.md",
+      "title": "Documentation freshness is commit-anchored, not worktree-anchored",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "documentation-agent",
+        "knowledge-base",
+        "freshness",
+        "git",
+        "worktree"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "scoped-kb-extract-must-preserve-collection-metadata",
+      "file": "corrections/scoped-kb-extract-must-preserve-collection-metadata.md",
+      "title": "Scoped KB extract must preserve collection metadata",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge",
+      "tags": [
+        "kb",
+        "knowledge",
+        "extractor",
+        "metadata",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "external-reverse-engineering-validation-works-best-as-a-stag",
+      "file": "patterns/external-reverse-engineering-validation-works-best-as-a-stag.md",
+      "title": "External reverse-engineering validation works best as a staged runtime drill",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-lifecycle",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "embedded-server",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "file": "corrections/feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched.md",
+      "title": "Feature chat fixes must be SDK-grounded, not keyword patched",
+      "type": "correction",
+      "phase": "design",
+      "entity": "embedded-agent-chat",
+      "tags": [
+        "claude-agent-sdk",
+        "feature-spec",
+        "routing",
+        "telemetry"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "file": "patterns/use-builder-cli-telemetry-before-reopening-broad-code-contex.md",
+      "title": "Use builder CLI telemetry before reopening broad code context",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "builder-cli-telemetry",
+      "tags": [
+        "builder-logs",
+        "claude-agent-sdk",
+        "agent-debugging",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "file": "decisions/create-specialist-agents-only-at-bounded-lifecycle-boundarie.md",
+      "title": "Create specialist agents only at bounded lifecycle boundaries",
+      "type": "decision",
+      "phase": "design",
+      "entity": "specialist-agent-routing",
+      "tags": [
+        "claude-agent-sdk",
+        "subagents",
+        "specialists",
+        "orchestration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "reverse-engineering-validation-must-use-an-external-repo",
+      "file": "decisions/reverse-engineering-validation-must-use-an-external-repo.md",
+      "title": "Reverse-engineering validation must use an external repo",
+      "type": "decision",
+      "phase": "planning",
+      "entity": "validation",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "file": "patterns/optimize-runtime-behavior-from-browser-evidence-plus-builder.md",
+      "title": "Optimize runtime behavior from browser evidence plus builder telemetry",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "runtime-validation",
+      "tags": [
+        "browser",
+        "telemetry",
+        "builder-logs",
+        "verification"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    }
+  ],
+  "memories": [
+    {
+      "slug": "claude-agent-sdk-as-foundation",
+      "file": "decisions/claude-agent-sdk-as-foundation.md",
+      "title": "Claude Agent SDK as foundation",
+      "type": "decision",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "sdk",
+        "architecture",
+        "foundation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "concurrent-quality-gates-with-asyncio-gather",
+      "file": "decisions/concurrent-quality-gates-with-asyncio-gather.md",
+      "title": "Concurrent quality gates with asyncio.gather",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "asyncio",
+        "concurrency",
+        "gates"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "fastapi-route-ordering-specific-routes-before-path",
+      "file": "decisions/fastapi-route-ordering-specific-routes-before-path.md",
+      "title": "FastAPI route ordering: specific routes before path parameters",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "fastapi-routes",
+      "tags": [
+        "fastapi",
+        "routing",
+        "api-design"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "max-retries-2-for-quality-gates",
+      "file": "decisions/max-retries-2-for-quality-gates.md",
+      "title": "MAX_RETRIES=2 for quality gates",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "retries",
+        "gates",
+        "threshold"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "project-memory-captures-real-time-friction-precedent",
+      "file": "decisions/project-memory-captures-real-time-friction-precedent.md",
+      "title": "Project memory captures real-time friction precedent",
+      "type": "decision",
+      "phase": "design",
+      "entity": "memory-cli",
+      "tags": [
+        "memory",
+        "friction",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "file": "decisions/use-mcp-chrome-devtools-for-dashboard-testing-instead-of.md",
+      "title": "Use MCP Chrome DevTools for dashboard testing instead of curl",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "dashboard",
+      "tags": [
+        "mcp",
+        "testing",
+        "browser",
+        "api"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "knowledge-tag-filtering-must-align-frontend-and-api",
+      "file": "corrections/knowledge-tag-filtering-must-align-frontend-and-api.md",
+      "title": "Knowledge tag filtering must align frontend and API intersection semantics",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-api",
+      "tags": [
+        "knowledge",
+        "api",
+        "tags",
+        "filtering",
+        "frontend"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "memory-routing-json-can-use-memories-key",
+      "file": "corrections/memory-routing-json-can-use-memories-key.md",
+      "title": "Memory routing.json can use memories key",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "memory-api",
+      "tags": [
+        "memory",
+        "routing",
+        "json",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "command-execution-friction-prevention-via-steering-files",
+      "file": "patterns/command-execution-friction-prevention-via-steering-files.md",
+      "title": "Command execution friction prevention via steering files",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "steering",
+      "tags": [
+        "friction",
+        "commands",
+        "windows",
+        "automation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "deterministic-dispatch-over-agent-self-routing",
+      "file": "patterns/deterministic-dispatch-over-agent-self-routing.md",
+      "title": "Deterministic dispatch over agent self-routing",
+      "type": "pattern",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "dispatch",
+        "architecture",
+        "routing"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "react-shadcn-luma-gsap-migration",
+      "file": "patterns/react-shadcn-luma-gsap-migration.md",
+      "title": "React + shadcn Luma + GSAP migration patterns",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "frontend",
+      "tags": [
+        "react",
+        "shadcn",
+        "gsap",
+        "spa",
+        "vite"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-13",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "file": "patterns/surface-ownership-what-goes-where-agents-md-vs-steering-vs.md",
+      "title": "Surface ownership - what goes where (AGENTS.md vs steering vs workflow vs scripts)",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "agents",
+      "tags": [
+        "ownership",
+        "placement",
+        "surfaces",
+        "organization"
+      ],
+      "status": "active",
+      "related": [
+        "command-execution-friction-prevention-via-steering-files"
+      ],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "file": "patterns/tag-based-similarity-for-knowledge-graphs-without-wikilinks.md",
+      "title": "Tag-based similarity for knowledge graphs without wikilinks",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "knowledge-base",
+      "tags": [
+        "knowledge-graph",
+        "similarity",
+        "tags",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": ""
+    },
+    {
+      "slug": "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "file": "corrections/knowledge-quality-gate-must-parse-canonical-yaml-frontmatter.md",
+      "title": "Knowledge quality gate must parse canonical YAML frontmatter tags",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-quality-gate",
+      "tags": [
+        "knowledge",
+        "quality-gate",
+        "yaml",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "agent-extractor-must-use-shared-claude-runtime",
+      "file": "corrections/agent-extractor-must-use-shared-claude-runtime.md",
+      "title": "Agent extractor must use shared Claude runtime",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-agent-extractor",
+      "tags": [
+        "kb",
+        "claude-runtime",
+        "timeout",
+        "extraction"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "file": "corrections/embedded-agent-chat-should-continue-conversation-instead-of-.md",
+      "title": "Embedded agent chat should continue conversation instead of CLI resume",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agent chat runner",
+      "tags": [
+        "agent-chat",
+        "resume",
+        "claude-sdk",
+        "embedded-server"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "worktree-first-development-is-the-core-rule",
+      "file": "decisions/worktree-first-development-is-the-core-rule.md",
+      "title": "Worktree-first development is the core rule",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "worktree-workflow",
+      "tags": [
+        "worktree",
+        "development",
+        "isolation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "workflow-and-memory-creation-only-via-clis",
+      "file": "decisions/workflow-and-memory-creation-only-via-clis.md",
+      "title": "Workflow and memory creation ONLY via CLIs",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-creation",
+      "tags": [
+        "workflow",
+        "builder",
+        "cli-only"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-code-settings-use-bash-cmd-format",
+      "file": "patterns/claude-code-settings-use-bash-cmd-format.md",
+      "title": "Claude Code settings use Bash(cmd:*) format",
+      "type": "pattern",
+      "phase": "setup",
+      "entity": "claude-code-settings",
+      "tags": [
+        "settings",
+        "permissions",
+        "configuration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "file": "corrections/delete-settings-local-json-if-it-conflicts-with-claude-setti.md",
+      "title": "Delete settings.local.json if it conflicts with .claude/settings.json",
+      "type": "correction",
+      "phase": "setup",
+      "entity": "settings-management",
+      "tags": [
+        "settings",
+        "local",
+        "override",
+        "conflict"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "file": "decisions/official-builder-write-back-uses-mcp-tools-not-raw-file-muta.md",
+      "title": "Official builder write-back uses MCP tools, not raw file mutation",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "agent-runtime",
+      "tags": [
+        "sdk-mcp",
+        "memory",
+        "kb",
+        "learning",
+        "self-improvement"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-agent-maintains-shared-user-and-agent-kb",
+      "file": "decisions/documentation-agent-maintains-shared-user-and-agent-kb.md",
+      "title": "Documentation agent maintains shared user and agent KB",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "kb",
+        "docs",
+        "agent",
+        "system-docs"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-22",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "file": "decisions/documentation-freshness-is-commit-anchored-not-worktree-anch.md",
+      "title": "Documentation freshness is commit-anchored, not worktree-anchored",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "documentation-agent",
+        "knowledge-base",
+        "freshness",
+        "git",
+        "worktree"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "scoped-kb-extract-must-preserve-collection-metadata",
+      "file": "corrections/scoped-kb-extract-must-preserve-collection-metadata.md",
+      "title": "Scoped KB extract must preserve collection metadata",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge",
+      "tags": [
+        "kb",
+        "knowledge",
+        "extractor",
+        "metadata",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "external-reverse-engineering-validation-works-best-as-a-stag",
+      "file": "patterns/external-reverse-engineering-validation-works-best-as-a-stag.md",
+      "title": "External reverse-engineering validation works best as a staged runtime drill",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-lifecycle",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "embedded-server",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "file": "corrections/feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched.md",
+      "title": "Feature chat fixes must be SDK-grounded, not keyword patched",
+      "type": "correction",
+      "phase": "design",
+      "entity": "embedded-agent-chat",
+      "tags": [
+        "claude-agent-sdk",
+        "feature-spec",
+        "routing",
+        "telemetry"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "file": "patterns/use-builder-cli-telemetry-before-reopening-broad-code-contex.md",
+      "title": "Use builder CLI telemetry before reopening broad code context",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "builder-cli-telemetry",
+      "tags": [
+        "builder-logs",
+        "claude-agent-sdk",
+        "agent-debugging",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "file": "decisions/create-specialist-agents-only-at-bounded-lifecycle-boundarie.md",
+      "title": "Create specialist agents only at bounded lifecycle boundaries",
+      "type": "decision",
+      "phase": "design",
+      "entity": "specialist-agent-routing",
+      "tags": [
+        "claude-agent-sdk",
+        "subagents",
+        "specialists",
+        "orchestration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "reverse-engineering-validation-must-use-an-external-repo",
+      "file": "decisions/reverse-engineering-validation-must-use-an-external-repo.md",
+      "title": "Reverse-engineering validation must use an external repo",
+      "type": "decision",
+      "phase": "planning",
+      "entity": "validation",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "file": "patterns/optimize-runtime-behavior-from-browser-evidence-plus-builder.md",
+      "title": "Optimize runtime behavior from browser evidence plus builder telemetry",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "runtime-validation",
+      "tags": [
+        "browser",
+        "telemetry",
+        "builder-logs",
+        "verification"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    }
+  ],
+  "routing": {
+    "type:decision": [
+      "claude-agent-sdk-as-foundation",
+      "concurrent-quality-gates-with-asyncio-gather",
+      "fastapi-route-ordering-specific-routes-before-path",
+      "max-retries-2-for-quality-gates",
+      "project-memory-captures-real-time-friction-precedent",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "worktree-first-development-is-the-core-rule",
+      "workflow-and-memory-creation-only-via-clis",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "phase:design": [
+      "claude-agent-sdk-as-foundation",
+      "project-memory-captures-real-time-friction-precedent",
+      "deterministic-dispatch-over-agent-self-routing",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "entity:orchestrator": [
+      "claude-agent-sdk-as-foundation",
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "status:active": [
+      "claude-agent-sdk-as-foundation",
+      "concurrent-quality-gates-with-asyncio-gather",
+      "fastapi-route-ordering-specific-routes-before-path",
+      "max-retries-2-for-quality-gates",
+      "project-memory-captures-real-time-friction-precedent",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "memory-routing-json-can-use-memories-key",
+      "command-execution-friction-prevention-via-steering-files",
+      "deterministic-dispatch-over-agent-self-routing",
+      "react-shadcn-luma-gsap-migration",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "agent-extractor-must-use-shared-claude-runtime",
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "worktree-first-development-is-the-core-rule",
+      "workflow-and-memory-creation-only-via-clis",
+      "claude-code-settings-use-bash-cmd-format",
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "reverse-engineering-validation-must-use-an-external-repo",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "tag:sdk": [
+      "claude-agent-sdk-as-foundation"
+    ],
+    "tag:architecture": [
+      "claude-agent-sdk-as-foundation",
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "tag:foundation": [
+      "claude-agent-sdk-as-foundation"
+    ],
+    "phase:testing": [
+      "concurrent-quality-gates-with-asyncio-gather",
+      "max-retries-2-for-quality-gates",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "entity:quality-gates": [
+      "concurrent-quality-gates-with-asyncio-gather",
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:asyncio": [
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:concurrency": [
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:gates": [
+      "concurrent-quality-gates-with-asyncio-gather",
+      "max-retries-2-for-quality-gates"
+    ],
+    "phase:implementation": [
+      "fastapi-route-ordering-specific-routes-before-path",
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "memory-routing-json-can-use-memories-key",
+      "command-execution-friction-prevention-via-steering-files",
+      "react-shadcn-luma-gsap-migration",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "agent-extractor-must-use-shared-claude-runtime",
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "worktree-first-development-is-the-core-rule",
+      "workflow-and-memory-creation-only-via-clis",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "entity:fastapi-routes": [
+      "fastapi-route-ordering-specific-routes-before-path"
+    ],
+    "tag:fastapi": [
+      "fastapi-route-ordering-specific-routes-before-path"
+    ],
+    "tag:routing": [
+      "fastapi-route-ordering-specific-routes-before-path",
+      "memory-routing-json-can-use-memories-key",
+      "deterministic-dispatch-over-agent-self-routing",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "tag:api-design": [
+      "fastapi-route-ordering-specific-routes-before-path"
+    ],
+    "tag:retries": [
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:threshold": [
+      "max-retries-2-for-quality-gates"
+    ],
+    "entity:memory-cli": [
+      "project-memory-captures-real-time-friction-precedent"
+    ],
+    "tag:memory": [
+      "project-memory-captures-real-time-friction-precedent",
+      "memory-routing-json-can-use-memories-key",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "tag:friction": [
+      "project-memory-captures-real-time-friction-precedent",
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:retrieval": [
+      "project-memory-captures-real-time-friction-precedent",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
+    ],
+    "entity:dashboard": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
+    ],
+    "tag:mcp": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
+    ],
+    "tag:testing": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "tag:browser": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "tag:api": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "type:correction": [
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "memory-routing-json-can-use-memories-key",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "agent-extractor-must-use-shared-claude-runtime",
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "entity:knowledge-api": [
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "tag:knowledge": [
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "tag:tags": [
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "tag:filtering": [
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "tag:frontend": [
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "entity:memory-api": [
+      "memory-routing-json-can-use-memories-key"
+    ],
+    "tag:json": [
+      "memory-routing-json-can-use-memories-key"
+    ],
+    "tag:ui": [
+      "memory-routing-json-can-use-memories-key",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "type:pattern": [
+      "command-execution-friction-prevention-via-steering-files",
+      "deterministic-dispatch-over-agent-self-routing",
+      "react-shadcn-luma-gsap-migration",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "claude-code-settings-use-bash-cmd-format",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "entity:steering": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:commands": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:windows": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:automation": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:dispatch": [
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "entity:frontend": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:react": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:shadcn": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:gsap": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:spa": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:vite": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "entity:agents": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:ownership": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:placement": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:surfaces": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:organization": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "entity:knowledge-base": [
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "tag:knowledge-graph": [
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "tag:similarity": [
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "entity:knowledge-quality-gate": [
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
+    ],
+    "tag:quality-gate": [
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
+    ],
+    "tag:yaml": [
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
+    ],
+    "entity:knowledge-agent-extractor": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "tag:kb": [
+      "agent-extractor-must-use-shared-claude-runtime",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "tag:claude-runtime": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "tag:timeout": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "tag:extraction": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "entity:agent chat runner": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "tag:agent-chat": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "tag:resume": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "tag:claude-sdk": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "tag:embedded-server": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "external-reverse-engineering-validation-works-best-as-a-stag"
+    ],
+    "entity:worktree-workflow": [
+      "worktree-first-development-is-the-core-rule"
+    ],
+    "tag:worktree": [
+      "worktree-first-development-is-the-core-rule",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:development": [
+      "worktree-first-development-is-the-core-rule"
+    ],
+    "tag:isolation": [
+      "worktree-first-development-is-the-core-rule"
+    ],
+    "entity:documentation-creation": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "tag:workflow": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "tag:builder": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "tag:cli-only": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "phase:setup": [
+      "claude-code-settings-use-bash-cmd-format",
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "entity:claude-code-settings": [
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "tag:settings": [
+      "claude-code-settings-use-bash-cmd-format",
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "tag:permissions": [
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "tag:configuration": [
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "entity:settings-management": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "tag:local": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "tag:override": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "tag:conflict": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "entity:agent-runtime": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "tag:sdk-mcp": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "tag:learning": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "tag:self-improvement": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "entity:documentation-agent": [
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:docs": [
+      "documentation-agent-maintains-shared-user-and-agent-kb"
+    ],
+    "tag:agent": [
+      "documentation-agent-maintains-shared-user-and-agent-kb"
+    ],
+    "tag:system-docs": [
+      "documentation-agent-maintains-shared-user-and-agent-kb"
+    ],
+    "tag:documentation-agent": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:knowledge-base": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:freshness": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:git": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "entity:knowledge": [
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "tag:extractor": [
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "tag:metadata": [
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "tag:validation": [
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "entity:reverse-engineering-lifecycle": [
+      "external-reverse-engineering-validation-works-best-as-a-stag"
+    ],
+    "tag:reverse-engineering": [
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "tag:external-repo": [
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "entity:embedded-agent-chat": [
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "tag:claude-agent-sdk": [
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:feature-spec": [
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "tag:telemetry": [
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "entity:builder-cli-telemetry": [
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex"
+    ],
+    "tag:builder-logs": [
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "tag:agent-debugging": [
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex"
+    ],
+    "tag:context-efficiency": [
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex"
+    ],
+    "entity:specialist-agent-routing": [
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:subagents": [
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:specialists": [
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:orchestration": [
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "phase:planning": [
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "entity:validation": [
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "entity:runtime-validation": [
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "tag:verification": [
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ]
+  }
+}

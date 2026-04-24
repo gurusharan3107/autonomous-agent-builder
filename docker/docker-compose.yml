@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agent_builder
+      POSTGRES_USER: agent_builder
+      POSTGRES_PASSWORD: agent_builder
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent_builder"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: agent_builder
+      DB_USER: agent_builder
+      DB_PASSWORD: agent_builder
+      AAB_DEBUG: "true"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - workspaces:/tmp/aab-workspaces
+
+volumes:
+  pgdata:
+  workspaces:

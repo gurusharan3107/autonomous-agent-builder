@@ -1,0 +1,351 @@
+"""Agent runner — query() dispatch + ResultMessage cost + SDK error handling.
+
+This is the core execution engine. It:
+1. Builds a ToolRegistry for the agent
+2. Dispatches via SDK query() with proper options
+3. Captures session_id for phase chaining
+4. Extracts cost/usage from ResultMessage
+5. Handles SDK-specific errors (CLINotFoundError, ProcessError, CLIJSONDecodeError)
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Any
+
+import structlog
+
+from autonomous_agent_builder.agents.definitions import (
+    AgentDefinition,
+    get_agent_definition,
+    get_subagent_definition,
+)
+from autonomous_agent_builder.agents.tool_registry import ToolRegistry
+from autonomous_agent_builder.config import Settings
+from autonomous_agent_builder.onecli_runtime import prepare_onecli_runtime_env
+
+log = structlog.get_logger()
+
+
+class RunResult:
+    """Result of an agent run — wraps SDK ResultMessage data."""
+
+    def __init__(
+        self,
+        session_id: str | None = None,
+        cost_usd: float = 0.0,
+        tokens_input: int = 0,
+        tokens_output: int = 0,
+        tokens_cached: int = 0,
+        num_turns: int = 0,
+        duration_ms: int = 0,
+        stop_reason: str | None = None,
+        output_text: str = "",
+        error: str | None = None,
+    ):
+        self.session_id = session_id
+        self.cost_usd = cost_usd
+        self.tokens_input = tokens_input
+        self.tokens_output = tokens_output
+        self.tokens_cached = tokens_cached
+        self.num_turns = num_turns
+        self.duration_ms = duration_ms
+        self.stop_reason = stop_reason
+        self.output_text = output_text
+        self.error = error
+
+    @property
+    def hit_capability_limit(self) -> bool:
+        return self.stop_reason in ("max_turns", "budget_exceeded")
+
+
+class AgentRunner:
+    """Runs SDLC agents using the Claude Agent SDK."""
+
+    def __init__(self, settings: Settings):
+        self.settings = settings
+
+    async def run_phase(
+        self,
+        agent_name: str,
+        prompt: str,
+        workspace_path: str,
+        resume_session: str | None = None,
+        subagents: tuple[str, ...] | None = None,
+        custom_tools: dict[str, Any] | None = None,
+        on_stream: Any | None = None,
+        can_use_tool: Any | None = None,
+        on_tool_event: Any | None = None,
+    ) -> RunResult:
+        """Execute an agent phase.
+
+        Args:
+            agent_name: Key in AGENT_DEFINITIONS.
+            prompt: Formatted prompt with template vars filled.
+            workspace_path: Path to the task workspace.
+            resume_session: session_id from a prior phase for context chaining.
+            custom_tools: Dict of custom tool name -> callable.
+            on_stream: Async callback for streaming output to dashboard.
+
+        Returns:
+            RunResult with cost, session_id, and output.
+        """
+        agent_def = get_agent_definition(agent_name)
+
+        # Build ToolRegistry — schema discovery at phase start
+        allowed_tool_names = list(agent_def.tools)
+        if subagents and "Agent" not in allowed_tool_names:
+            allowed_tool_names.append("Agent")
+
+        registry = ToolRegistry.build(
+            allowed_tool_names=allowed_tool_names,
+            custom_tools=custom_tools,
+        )
+
+        log.info(
+            "agent_phase_start",
+            agent=agent_name,
+            model=agent_def.model,
+            tools=registry.list_tools(),
+            workspace=workspace_path,
+            resume=resume_session is not None,
+        )
+
+        try:
+            result = await self._execute_query(
+                agent_def=agent_def,
+                prompt=prompt,
+                workspace_path=workspace_path,
+                registry=registry,
+                resume_session=resume_session,
+                subagents=subagents,
+                on_stream=on_stream,
+                can_use_tool=can_use_tool,
+                on_tool_event=on_tool_event,
+            )
+        except ConfigurationError:
+            raise
+        except TransientError as e:
+            log.warning("agent_transient_error", agent=agent_name, error=str(e))
+            raise
+        except Exception as e:
+            log.error("agent_unexpected_error", agent=agent_name, error=str(e))
+            return RunResult(error=str(e))
+
+        log.info(
+            "agent_phase_complete",
+            agent=agent_name,
+            cost_usd=result.cost_usd,
+            tokens_input=result.tokens_input,
+            tokens_output=result.tokens_output,
+            num_turns=result.num_turns,
+            stop_reason=result.stop_reason,
+        )
+
+        return result
+
+    async def _execute_query(
+        self,
+        agent_def: AgentDefinition,
+        prompt: str,
+        workspace_path: str,
+        registry: ToolRegistry,
+        resume_session: str | None,
+        subagents: tuple[str, ...] | None,
+        on_stream: Any | None,
+        can_use_tool: Any | None,
+        on_tool_event: Any | None,
+    ) -> RunResult:
+        """Execute the SDK query() call.
+
+        This is separated to allow mocking in tests. In production,
+        this calls the actual Claude Agent SDK.
+        """
+        # Import SDK at call time — allows graceful degradation if not installed
+        try:
+            from claude_agent_sdk import (
+                AgentDefinition as SDKSubagentDefinition,
+            )
+            from claude_agent_sdk import (
+                AssistantMessage,
+                ClaudeAgentOptions,
+                ClaudeSDKClient,
+                HookMatcher,
+                ResultMessage,
+                SystemMessage,
+            )
+        except ImportError as exc:
+            raise ConfigurationError(
+                "Claude Agent SDK not installed. Run: pip install claude-agent-sdk"
+            ) from exc
+
+        session_id = None
+        output_parts: list[str] = []
+        selected_tools = (
+            agent_def.tools
+            if can_use_tool is not None
+            else (agent_def.auto_approve_tools or agent_def.tools)
+        )
+        allowed_tools = list(selected_tools)
+        if subagents and "Agent" not in allowed_tools:
+            allowed_tools.append("Agent")
+        sdk_subagents = None
+        if subagents:
+            sdk_subagents = {}
+            for subagent_name in subagents:
+                subagent_def = get_subagent_definition(subagent_name)
+                sdk_subagents[subagent_name] = SDKSubagentDefinition(
+                    description=subagent_def.description,
+                    prompt=subagent_def.prompt,
+                    tools=list(subagent_def.tools),
+                    model=subagent_def.model,
+                )
+
+        onecli_env = await prepare_onecli_runtime_env()
+
+        options = ClaudeAgentOptions(
+            allowed_tools=allowed_tools,
+            mcp_servers=self._build_mcp_servers(workspace_path),
+            permission_mode=self.settings.agent.permission_mode,
+            model=agent_def.model,
+            cwd=workspace_path or None,
+            max_turns=agent_def.max_turns,
+            max_budget_usd=agent_def.max_budget_usd,
+            can_use_tool=can_use_tool,
+            agents=sdk_subagents,
+        )
+        if onecli_env.active:
+            options.env = {**getattr(options, "env", {}), **onecli_env.env}
+
+        if resume_session:
+            # For an HTTP chat lane that needs a specific past conversation,
+            # follow the SDK contract directly: persist the SDK session id and
+            # pass it back via `resume` on the next call.
+            options.resume = resume_session
+
+        # Wire safety and audit hooks with SDK signatures
+        from autonomous_agent_builder.agents.hooks import (
+            audit_log_tool_use,
+            enforce_workspace_boundary,
+            keep_tool_stream_open,
+            validate_bash_argv,
+        )
+
+        async def _post_tool_audit(
+            input: dict[str, Any],
+            tool_use_id: str | None,
+            context: dict[str, Any],
+        ) -> dict[str, Any]:
+            await audit_log_tool_use(input, tool_use_id, context)
+            if on_tool_event is not None:
+                await on_tool_event(
+                    {
+                        "tool_name": input.get("tool_name", ""),
+                        "tool_input": input.get("tool_input", {}),
+                        "tool_response": input.get("tool_response", ""),
+                        "tool_use_id": tool_use_id,
+                    }
+                )
+            return {}
+
+        options.hooks = {
+            "PreToolUse": [
+                HookMatcher(
+                    matcher=".*",
+                    hooks=[keep_tool_stream_open],
+                    timeout=30.0,
+                ),
+                HookMatcher(
+                    matcher="Read|Edit|Write|Glob|Grep",
+                    hooks=[enforce_workspace_boundary],
+                    timeout=30.0,
+                ),
+                HookMatcher(
+                    matcher="Bash",
+                    hooks=[validate_bash_argv],
+                    timeout=30.0,
+                ),
+            ],
+            "PostToolUse": [
+                HookMatcher(
+                    matcher=".*",
+                    hooks=[_post_tool_audit],
+                    timeout=30.0,
+                ),
+            ],
+        }
+
+        try:
+            async with ClaudeSDKClient(options=options) as client:
+                await client.query(prompt)
+                async for message in client.receive_response():
+                    if isinstance(message, SystemMessage) and message.subtype == "init":
+                        session_id = message.data.get("session_id")
+
+                    elif isinstance(message, AssistantMessage):
+                        for block in message.content:
+                            if hasattr(block, "text"):
+                                output_parts.append(block.text)
+                                if on_stream:
+                                    await on_stream(block.text)
+
+                    elif isinstance(message, ResultMessage):
+                        usage = message.usage or {}
+                        return RunResult(
+                            session_id=getattr(message, "session_id", None) or session_id,
+                            cost_usd=getattr(message, "total_cost_usd", 0.0),
+                            tokens_input=usage.get("input_tokens", 0),
+                            tokens_output=usage.get("output_tokens", 0),
+                            tokens_cached=usage.get("cache_read_input_tokens", 0),
+                            num_turns=getattr(message, "num_turns", 0),
+                            duration_ms=getattr(message, "duration_ms", 0),
+                            stop_reason=getattr(message, "stop_reason", None),
+                            output_text="\n".join(output_parts),
+                        )
+
+        except Exception as e:
+            # Map SDK errors to our error types
+            error_type = type(e).__name__
+            log.error(
+                "sdk_query_error",
+                error_type=error_type,
+                error=str(e),
+                cause=str(e.__cause__) if e.__cause__ else None,
+            )
+            if error_type == "CLINotFoundError":
+                raise ConfigurationError("Claude Code CLI not installed") from e
+            elif error_type == "CLIConnectionError":
+                return RunResult(error=f"{e} (cause: {e.__cause__})")
+            elif error_type == "ProcessError":
+                exit_code = getattr(e, "exit_code", -1)
+                if exit_code in (1, 2):
+                    raise TransientError(f"Process error (exit {exit_code}): {e}") from e
+                else:
+                    return RunResult(error=str(e), stop_reason="process_error")
+            elif error_type == "CLIJSONDecodeError":
+                raise TransientError(f"Malformed SDK output: {e}") from e
+            raise
+
+        # If we get here without a ResultMessage, something went wrong
+        return RunResult(
+            session_id=session_id,
+            output_text="\n".join(output_parts),
+            error="No ResultMessage received",
+        )
+
+    def _build_mcp_servers(self, workspace_path: str) -> dict[str, Any]:
+        """Create default in-process SDK MCP servers for builder and workspace tools."""
+        from autonomous_agent_builder.agents.tools.sdk_mcp import build_default_mcp_servers
+
+        return build_default_mcp_servers(
+            workspace_path=workspace_path,
+            project_root=os.environ.get("AAB_PROJECT_ROOT"),
+        )
+
+
+class ConfigurationError(Exception):
+    """Non-retryable configuration error."""
+
+
+class TransientError(Exception):
+    """Retryable transient error."""

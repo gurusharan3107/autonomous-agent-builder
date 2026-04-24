@@ -1,0 +1,7 @@
+# Project-level Codex role configuration for autonomous-agent-builder.
+# Keep this file small; role behavior lives in .codex/agents/*.toml.
+
+[agents.architecture_reviewer]
+description = "Read-only architecture reviewer for builder CLI, orchestrator, Claude Agent SDK, and Codex subagent boundary checks."
+config_file = "agents/architecture-reviewer.toml"
+nickname_candidates = ["architecture-reviewer", "boundary-review"]

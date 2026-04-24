@@ -1,0 +1,48 @@
+<div class="card task-card task-card-{{ variant }}" data-task-id="{{ task.id }}">
+    <div class="task-card__accent task-card__accent--{{ variant }}"></div>
+    <div class="task-card__body">
+        <div class="card-header">
+            <div style="min-width: 0;">
+                <div class="card-title truncate">{{ task.title }}</div>
+                <div class="card-meta">{{ task.feature_title }}</div>
+            </div>
+            <span class="badge badge-{{ task.status }}">{{ task.status | replace("_", " ") }}</span>
+        </div>
+        {% if task.agent_name %}
+        <div class="task-card__agent-row">
+            <span class="badge badge-agent">{{ task.agent_name }}</span>
+            <span class="task-cost">${{ "%.4f"|format(task.cost_usd) }}</span>
+        </div>
+        {% endif %}
+        {% if task.total_cost > 0 %}
+        <div class="task-card__stats">
+            <span class="task-card__stat">
+                <span class="task-card__stat-label">Total</span>
+                <span class="task-card__stat-value">${{ "%.4f"|format(task.total_cost) }}</span>
+            </span>
+            {% if task.num_turns > 0 %}
+            <span class="task-card__stat">
+                <span class="task-card__stat-label">Turns</span>
+                <span class="task-card__stat-value">{{ task.num_turns }}</span>
+            </span>
+            {% endif %}
+            {% if task.duration_ms > 0 %}
+            <span class="task-card__stat">
+                <span class="task-card__stat-label">Time</span>
+                <span class="task-card__stat-value">{{ (task.duration_ms / 1000)|round(1) }}s</span>
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if task.blocked_reason %}
+        <div class="task-card__error">
+            {{ task.blocked_reason | truncate(80) }}
+        </div>
+        {% endif %}
+        {% if task.approval_gate_id %}
+        <div style="margin-top: var(--sp-md);">
+            <a href="/approvals/{{ task.approval_gate_id }}" class="btn btn-primary btn-sm" style="width: 100%;">Review &rarr;</a>
+        </div>
+        {% endif %}
+    </div>
+</div>

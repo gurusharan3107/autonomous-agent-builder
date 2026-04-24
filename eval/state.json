@@ -1,0 +1,37 @@
+{
+  "project": "autonomous-agent-builder",
+  "last_updated": "2026-04-13",
+  "completed_actions": [
+    "E2E testing: server boot, API CRUD, agent dispatch — all passing",
+    "3 bug fixes: Enum column type coercion, empty cwd crashing SDK, background task DB session leak",
+    "Dashboard Phase 1-4 (Jinja2): CSS rewrite, board/metrics/approvals templates, HTMX polling endpoints",
+    "React migration Phase 1-6: CORS, JSON APIs, Vite+React+shadcn Luma, TypeScript types, 3 pages, GSAP, production build"
+  ],
+  "dead_ends": [
+    {
+      "approach": "app.mount('/', StaticFiles(html=True)) for SPA",
+      "reason": "Catches /health and /api routes before FastAPI can handle them. Use explicit catch-all @app.get('/{full_path:path}') instead.",
+      "date": "2026-04-13"
+    },
+    {
+      "approach": "shadcn init without Tailwind v4 + tsconfig alias prereqs",
+      "reason": "Fails with 'No Tailwind CSS configuration found' and 'No import alias found'. Must set up @tailwindcss/vite plugin + @import tailwindcss + baseUrl+paths first.",
+      "date": "2026-04-13"
+    },
+    {
+      "approach": "SQLAlchemy Enum() without values_callable=_enum_values for StrEnum",
+      "reason": "Stores/loads by member NAME not value. 'PENDING' not 'pending'. Always pass values_callable=lambda e: [x.value for x in e] to Enum(MyStrEnum).",
+      "date": "2026-04-13"
+    },
+    {
+      "approach": "AgentRunner cwd='' (empty string) passed to SDK",
+      "reason": "anyio.open_process fails with empty cwd in some environments. Use workspace_path or None — never empty string.",
+      "date": "2026-04-13"
+    }
+  ],
+  "next_priorities": [
+    "Run frontend-design skill on BoardPage, MetricsPage, ApprovalPage for visual polish",
+    "Add React dev server to CLAUDE.md startup workflow",
+    "Consider adding approval polling (currently static load) on ApprovalPage"
+  ]
+}

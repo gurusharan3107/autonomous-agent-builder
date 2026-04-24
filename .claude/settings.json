@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(python:*)",
+      "Bash(bash:*)",
+      "Bash(npm:*)",
+      "Bash(pip:*)",
+      "Bash(ruff:*)",
+      "Bash(pytest:*)",
+      "Write",
+      "Edit",
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(workflow:*)",
+      "Bash(builder:*)"
+    ],
+    "deny": [
+      "Bash(pkill -f python)",
+      "Bash(shell=True)",
+      "Write(/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/.agent-builder/knowledge)",
+      "Write(/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/.memory)"
+    ],
+    "ask": [],
+    "defaultMode": "acceptEdits"
+  }
+}
