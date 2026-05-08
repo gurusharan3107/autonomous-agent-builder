@@ -8,8 +8,8 @@ repo.
 
 | When | Command | Purpose |
 |------|---------|---------|
-| Starting task | `builder memory search "<query>"` | Check repo precedent |
-| After a user correction, preference, or workflow critique that should affect future runs | `builder memory search "<query>"`; `builder memory contract`; then `builder memory add --type correction|pattern ... --json`;`builder memory reindex --json`;`builder memory lint --json` | Proactively decide whether the lesson belongs in repo memory; save only reusable project-specific guidance, then prove it is indexed and lint-clean. |
+| BEFORE starting a task | `builder memory search "<query>" --tags <tag> --limit 100` (run from builder repo cwd, never from an app workspace) | Retrieve scoped precedent. See `docs/workflows/memory-retrieval-guide.md`. |
+| AFTER user correction, ≥2-attempt debugging friction, or a non-obvious decision worth preserving | `builder memory add --type correction|pattern|decision ... --json` (run from builder repo cwd, never from an app workspace) | Capture the lesson. See `docs/workflows/memory-retrieval-guide.md` for procedure, taxonomy, and lifecycle. |
 | Unfamiliar workflow | `workflow --docs-dir docs summary <name>` | Load repo workflow doc |
 | System-wide product improvement or real-user debugging | `workflow --docs-dir docs summary system-improvement-loop` | Reproduce, trace true owner, fix, retest |
 | Reverse-engineering validation on an existing repo | `workflow --docs-dir docs summary reverse-engineering-autonomous-lifecycle-validation` | Use a disposable external repo clone as the subject; do not use `autonomous-agent-builder` itself as the reverse-engineering test target. |
@@ -28,6 +28,8 @@ repo.
 | Changing phase boundaries, operator questioning, or per-phase tool permissions | `workflow --docs-dir docs summary phase-model` | Load the canonical phase contract before changing requirements/planning/design/implementation/verification/integration behavior. |
 | Dashboard/UI assessment without requested edits | Verify the live dashboard first | Separate evaluation from implementation before proposing changes |
 | Dashboard/frontend work | `workflow --docs-dir docs summary design-language`; `builder quality-gate dashboard-ux --json` | Load visual rules and prove the user-visible state/action/evidence contract |
+| Browser-based testing or UI feature verification | `export PWCLI="$HOME/.claude/skills/playwright/scripts/playwright_cli.sh"`; `"$PWCLI" open <url> --headed`; `"$PWCLI" snapshot`; `"$PWCLI" click <ref>`; re-snapshot after navigation | Use the Playwright CLI wrapper (skill `playwright`); never curl-only or headless-only. See agent memory correction `browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp`. |
+| Debugging a live run, checking telemetry, observability, or logs | `builder logs --error`; `builder logs --info --compact --json`; `builder logs analyze --session <id-or-prefix> --json`; `builder metrics --json` | Use `builder` CLI as the canonical debugging and observability lane. `logs --error` for failure-first diagnosis, `logs analyze` for prompt-level session review, `metrics` for cost/token/gate-pass trends across runs. Do not use curl or raw API calls to inspect run state. |
 | Task isolation or resume questions | `workflow --docs-dir docs summary task-workspace-isolation` | Load workspace contract |
 | Repo-local product knowledge or state | `builder knowledge summary <query>` | Use `builder` for repo-local knowledge, memory, and delivery state |
 | Cross-project precedent or external repo behavior | `workflow knowledge search "<query>"` | Use `workflow` for broader research/global doctrine; use DeepWiki MCP when GitHub repo context is needed |
@@ -38,10 +40,7 @@ repo.
 | Adding or renaming a builder CLI command | `builder --help`; `builder <group> --help`; `builder quality-gate builder-cli --json` | Check whether an existing command or group already owns the surface before adding a new one |
 | Editing `CLAUDE.md` | `builder quality-gate claude-md --json`; `workflow --docs-dir=docs summary quality-gate/claude-md` | Check the dedicated repo-local runtime-contract gate before editing |
 | Editing other runtime-boundary docs | `workflow --docs-dir=docs summary quality-gate/architecture-boundary` | Check the broader product-vs-runtime ownership contract before editing |
-| Creating docs | `workflow summary workflow-doc-creation` | Use doc creation playbook |
 | AFTER dashboard changes | `builder start --port 9876` | Rebuild/publish the dashboard and launch the local product |
-| AFTER non-obvious decisions | `builder memory add --type decision ...` | Capture decision trace |
-| AFTER repeated friction | Create `.kiro/steering/<topic>.md` | Encode recurrence guard |
 
 ## Quick Commands
 
@@ -85,13 +84,10 @@ repo.
 
 ## Testing
 
-Dashboard verification is browser-visible, not `curl`-only. Prefer Browser Use
-/ in-app browser for localhost lifecycle validation when available, use Computer
-Use for visible human-like desktop checks, and use Chrome DevTools MCP for
-console/network/DOM diagnosis. See [chrome-devtools-dashboard-testing.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/workflows/chrome-devtools-dashboard-testing.md).
+Dashboard verification is browser-visible, not `curl`-only. Drive the browser through the Playwright CLI wrapper (`$HOME/.claude/skills/playwright/scripts/playwright_cli.sh`, skill `playwright`); pass `--headed` when the user is observing. Do not use the chrome-devtools-mcp plugin — see agent memory correction `browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp`.
 
-Forward/reverse lifecycle validation uses the dashboard-first contract in [dashboard-first-validation.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/dashboard-first-validation.md). After bootstrap and launch, prompts and lifecycle actions must go through the Agent page, Backlog, Board, Inbox, and visible approvals; `builder` CLI is evidence and diagnosis, not the substitute product path.
+Forward/reverse lifecycle validation uses the dashboard-first contract: `workflow --docs-dir docs summary dashboard-first-validation`. After bootstrap and launch, prompts and lifecycle actions must go through the Agent page, Backlog, Board, Inbox, and visible approvals; `builder` CLI is evidence and diagnosis, not the substitute product path.
 
-For autonomous-run debugging, prefer `builder logs` for agent-efficient diagnosis, and use `builder logs analyze --session <id-or-prefix> --json` when you need prompt-level session review or observability coverage. The Agent page remains the user-friendly rendering surface.
+For autonomous-run debugging, prefer `builder logs` for agent-efficient diagnosis, and use `builder logs analyze --session <id-or-prefix> --json` for prompt-level session review or observability coverage. The Agent page remains the user-friendly rendering surface.
 
-For repo-local KB checks, prefer `builder knowledge validate --json` first to establish whether the corpus is trustworthy/current, then use `builder knowledge summary` and `builder knowledge show ... --section "Change guidance"` to check whether retrieval is bounded and useful for agents.
+For repo-local KB checks, run `builder knowledge validate --json` first for trust/freshness, then `builder knowledge summary` / `builder knowledge show ... --section "Change guidance"` for bounded retrieval.

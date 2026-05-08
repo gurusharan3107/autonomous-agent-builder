@@ -38,7 +38,9 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch):
             self.resume = kwargs.get("resume")
             self.agents = kwargs.get("agents")
             self.effort = kwargs.get("effort")
-            self.max_thinking_tokens = kwargs.get("max_thinking_tokens")
+            self.thinking = kwargs.get("thinking")
+            self.settings = kwargs.get("settings")
+            self.task_budget = kwargs.get("task_budget")
             self.extra_args = kwargs.get("extra_args")
             self.hooks = None
 
@@ -161,7 +163,9 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch):
     assert captured["options"].system_prompt == {"type": "preset", "preset": "claude_code"}
     assert captured["options"].setting_sources == ["project"]
     assert captured["options"].effort == "medium"
-    assert captured["options"].max_thinking_tokens == 4096
+    assert captured["options"].thinking is None  # chat agent uses haiku → no adaptive thinking
+    assert captured["options"].settings is None  # chat agent not in autocompact strategies
+    assert captured["options"].task_budget is None  # chat agent has no task budget
     assert captured["options"].extra_args == {
         "disable-slash-commands": None,
         "strict-mcp-config": None,

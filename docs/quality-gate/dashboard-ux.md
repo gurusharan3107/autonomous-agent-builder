@@ -16,7 +16,6 @@ expectations:
 related_docs:
   - "docs/workflows/design-language.md"
   - "docs/references/dashboard-first-validation.md"
-  - "docs/workflows/chrome-devtools-dashboard-testing.md"
 ---
 
 # Dashboard UX quality gate

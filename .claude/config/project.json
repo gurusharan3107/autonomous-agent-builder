@@ -1,0 +1,16 @@
+{
+  "name": "autonomous-agent-builder",
+  "type": "fastapi",
+  "language": "python",
+  "framework": "FastAPI + React",
+  "port": 8000,
+  "frontend_port": 5173,
+  "test_command": "pytest",
+  "lint_command": "ruff check .",
+  "format_command": "ruff format .",
+  "health_check": "http://localhost:8000/health",
+  "frontend_dev": "cd frontend && npm run dev",
+  "frontend_build": "cd frontend && npm run build",
+  "entry_point": "python -m autonomous_agent_builder",
+  "detected_at": "2026-04-13T00:00:00Z"
+}

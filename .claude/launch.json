@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend-api-dev",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "uvicorn", "autonomous_agent_builder.api.app:app", "--reload", "--host", "127.0.0.1", "--port", "8000", "--app-dir", "src"],
+      "port": 8000
+    },
+    {
+      "name": "frontend-vite",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "port": 5173
+    },
+    {
+      "name": "todo-app-builder-dashboard",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/gurusharan/Documents/remote-claude/active/apps/todo-app && PYTHONPATH=/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/src exec python3 -m autonomous_agent_builder.cli.main start --port 9876 --force"],
+      "port": 9876
+    }
+  ]
+}

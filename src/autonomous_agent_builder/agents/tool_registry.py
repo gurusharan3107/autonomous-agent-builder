@@ -131,25 +131,24 @@ class ToolRegistry:
         return True
 
     def get_tool_prompt_context(self) -> str:
-        """Generate tool descriptions for injection into agent prompts.
+        """Emit behavioral constraints for tools that restrict execution scope.
 
-        This gives agents awareness of their available tools at phase start.
+        The SDK already registers full tool schemas (name, description, params)
+        with the model via allowed_tools and MCP server definitions — repeating
+        that listing wastes tokens on every run. Only the constraint annotations
+        (workspace_boundary, argv_only) are not in the SDK-registered schemas
+        and are worth emitting explicitly.
         """
-        lines = ["## Available Tools\n"]
-        for schema in self.tools.values():
-            constraint_str = ""
-            if schema.constraints:
-                constraint_str = f" [constraints: {', '.join(schema.constraints)}]"
-            params_str = ""
-            if schema.params:
-                param_parts = []
-                for p in schema.params:
-                    req = "" if p.required else "?"
-                    param_parts.append(f"{p.name}{req}: {p.type}")
-                params_str = f"({', '.join(param_parts)})"
-
-            lines.append(f"- **{schema.name}**{params_str}: {schema.description}{constraint_str}")
-
+        constrained: list[tuple[str, tuple[str, ...]]] = [
+            (schema.name, schema.constraints)
+            for schema in self.tools.values()
+            if schema.constraints
+        ]
+        if not constrained:
+            return ""
+        lines = ["## Tool Constraints\n"]
+        for name, constraints in constrained:
+            lines.append(f"- **{name}**: {', '.join(constraints)}")
         return "\n".join(lines)
 
     def list_tools(self) -> list[str]:

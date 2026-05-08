@@ -5,7 +5,8 @@ date: 2026-04-17
 phase: testing
 entity: dashboard
 tags: [mcp, testing, browser, api]
-status: active
+status: invalidated
+flag_reason: Superseded 2026-05-08: chrome-devtools-mcp caused periodic page reloads during testing in this repo and was uninstalled. Browser standard is now Playwright CLI — see browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp
 ---
 
 ## Decision

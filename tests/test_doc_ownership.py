@@ -46,19 +46,19 @@ def test_check_doc_ownership_rejects_root_level_workflow_duplicate(tmp_path):
     repo = tmp_path
     workflow_dir = repo / "docs" / "workflows"
     workflow_dir.mkdir(parents=True)
-    (workflow_dir / "chrome-devtools-dashboard-testing.md").write_text(
+    (workflow_dir / "browser-testing.md").write_text(
         "# workflow\n",
         encoding="utf-8",
     )
 
     decision = check_doc_ownership(
-        repo / "docs" / "chrome-devtools-dashboard-testing.md",
+        repo / "docs" / "browser-testing.md",
         repo_root=repo,
     )
 
     assert decision.decision == "WRONG_SURFACE"
     assert decision.doc_class == "workflow"
-    assert decision.owner_path == str(workflow_dir / "chrome-devtools-dashboard-testing.md")
+    assert decision.owner_path == str(workflow_dir / "browser-testing.md")
 
 
 def test_check_doc_ownership_rejects_root_level_workflow_suffix(tmp_path):

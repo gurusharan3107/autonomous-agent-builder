@@ -1,0 +1,547 @@
+{
+  "features": [
+    {
+      "id": "FT-001",
+      "title": "FastAPI REST API with CRUD endpoints",
+      "description": "Projects, features, tasks, gates, approvals, dispatch, dashboard JSON API — 16 endpoints total",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "All endpoints return correct status codes",
+        "Pydantic validation on request bodies",
+        "Async DB sessions with commit/rollback"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-002",
+      "title": "Agent definitions and tool registry",
+      "description": "5 versioned agent definitions (planner, designer, code-gen, pr-creator, build-verifier) with schema discovery at phase start",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Each agent has model, max_turns, budget, allowed_tools",
+        "ToolRegistry.build() returns valid schemas",
+        "validate_tool_call() blocks invalid calls"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-003",
+      "title": "Agent runner with SDK integration and cost tracking",
+      "description": "run_phase() dispatches via Claude SDK query(), captures session_id, extracts cost_usd/tokens/turns/duration",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "RunResult includes cost, tokens, session_id, stop_reason",
+        "SDK errors mapped to application errors",
+        "Cost tracked per run in AgentRun model"
+      ],
+      "dependencies": [
+        "FT-002"
+      ]
+    },
+    {
+      "id": "FT-004",
+      "title": "PreToolUse and PostToolUse hooks",
+      "description": "Workspace boundary enforcement, bash argv validation (no shell metacharacters), audit logging of all tool calls",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "File ops outside workspace blocked",
+        "Shell metacharacters (|;&`$) blocked",
+        "All tool calls logged to agent_run_events"
+      ],
+      "dependencies": [
+        "FT-003"
+      ]
+    },
+    {
+      "id": "FT-005",
+      "title": "Deterministic orchestrator with phase routing",
+      "description": "task_status → phase handler dispatch for all SDLC phases: planning, design, implementation, quality_gates, pr_creation, build_verify",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Each status maps to exactly one handler",
+        "Blocked statuses halt dispatch",
+        "Errors mark task FAILED with reason"
+      ],
+      "dependencies": [
+        "FT-003"
+      ]
+    },
+    {
+      "id": "FT-006",
+      "title": "Concurrent quality gates with AND aggregation",
+      "description": "Code quality (Ruff/ESLint), testing (pytest/Jest), security (Semgrep 2-pass), dependency (Trivy) — asyncio.gather with per-gate timeouts",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Gates run concurrently",
+        "One FAIL = overall FAIL",
+        "Timeouts produce TIMEOUT status",
+        "Tiered scheduling (pre/post integration)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-007",
+      "title": "Gate feedback retry loop",
+      "description": "Gate failure → auto-remediation → agent retry → CAPABILITY_LIMIT after max_retries=2. Dead-letter queue for unrecoverable tasks",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Auto-remediation attempted first (semgrep --autofix)",
+        "Agent re-dispatched with failure feedback",
+        "CAPABILITY_LIMIT after 2 retries",
+        "Dead-letter timestamp recorded"
+      ],
+      "dependencies": [
+        "FT-005",
+        "FT-006"
+      ]
+    },
+    {
+      "id": "FT-008",
+      "title": "Database models and async session management",
+      "description": "13 SQLAlchemy models with enums, async session factory, SQLite + PostgreSQL support, init_db() for dev",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "All 13 tables created on startup",
+        "Async sessions with expire_on_commit=False",
+        "Both SQLite and PostgreSQL connection strings work"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-009",
+      "title": "Git worktree workspace management",
+      "description": "Per-task isolated git worktrees with branch naming convention task/{task_id}",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "create_workspace() creates worktree + branch",
+        "WorkspaceInfo returned with path, branch, is_worktree",
+        "Errors raise WorkspaceError"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-010",
+      "title": "Harnessability scorer and routing",
+      "description": "8-point project readiness score: type annotations, linting, tests, module boundaries, API contracts. Routes to PROCEED/ARCHITECT_REVIEW/REJECT",
+      "priority": "P1",
+      "status": "done",
+      "acceptance_criteria": [
+        "Score 0-8 based on 5 checks",
+        "Score < 3 = REJECT",
+        "Score 3-4 = ARCHITECT_REVIEW",
+        "Score >= 5 = PROCEED"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-011",
+      "title": "Pydantic settings with .env support",
+      "description": "Database, agent, gate, harness settings via Pydantic BaseSettings with env prefix. All configurable via environment variables",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Settings load from .env file",
+        "Each section has env prefix (DB_, AGENT_, GATE_, HARNESS_)",
+        "Defaults are sensible for local dev"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-012",
+      "title": "Structured logging via structlog",
+      "description": "JSON-formatted structured logging with contextvars, stack info, timestamps. Console renderer in debug mode",
+      "priority": "P1",
+      "status": "done",
+      "acceptance_criteria": [
+        "Logs output as JSON in production",
+        "Console output in debug",
+        "stdlib logging redirected to structlog"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-013",
+      "title": "Docker Compose with PostgreSQL",
+      "description": "Dockerfile (Python 3.11-slim + git) and docker-compose.yml for agent-builder + PostgreSQL",
+      "priority": "P1",
+      "status": "done",
+      "acceptance_criteria": [
+        "docker compose up starts both services",
+        "Agent builder connects to PostgreSQL",
+        "Health check passes"
+      ],
+      "dependencies": [
+        "FT-008"
+      ]
+    },
+    {
+      "id": "FT-014",
+      "title": "React SPA dashboard — Board, Metrics, Approval pages",
+      "description": "Vite + React 19 + TypeScript, shadcn/ui Luma preset, GSAP animations, status color system, 3s polling, dark mode",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Board shows 5 pipeline sections with task cards",
+        "Metrics shows KPI cards + cost chart + runs table",
+        "Approval shows thread + gate results + action buttons",
+        "Dark mode works",
+        "Build passes (<150KB gzipped)"
+      ],
+      "dependencies": [
+        "FT-001"
+      ]
+    },
+    {
+      "id": "FT-015",
+      "title": "Typed API client and TypeScript interfaces",
+      "description": "lib/types.ts mirrors Pydantic models, lib/api.ts provides typed fetch wrappers for all 5 dashboard endpoints",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "All TS types match backend Pydantic schemas",
+        "fetchBoard/fetchMetrics/fetchApprovalDetails/dispatchTask/submitApproval typed",
+        "Error handling on non-200 responses"
+      ],
+      "dependencies": [
+        "FT-014"
+      ]
+    },
+    {
+      "id": "FT-016",
+      "title": "Design language documentation",
+      "description": "docs/design-docs/design-language.md — visual identity, typography, status colors, component conventions, animation principles, anti-patterns",
+      "priority": "P1",
+      "status": "done",
+      "acceptance_criteria": [
+        "Retrievable via workflow --docs-dir docs summary design-language",
+        "Covers all 8 sections",
+        "Trigger wired in project CLAUDE.md"
+      ],
+      "dependencies": [
+        "FT-014"
+      ]
+    },
+    {
+      "id": "FT-017",
+      "title": "End-to-end pipeline validation with synthetic project",
+      "description": "Create a trivial Python project, dispatch through the full SDLC pipeline (plan → design → implement → gates → PR → done), validate every phase executes correctly with real Claude SDK credentials",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Synthetic project created and scored by harnessability",
+        "Task dispatched and planner agent runs successfully",
+        "At least one quality gate executes and returns pass/fail",
+        "Approval flow works from dashboard",
+        "Task reaches DONE status",
+        "Cost tracking shows real USD values"
+      ],
+      "dependencies": [
+        "FT-003",
+        "FT-005",
+        "FT-006",
+        "FT-007"
+      ]
+    },
+    {
+      "id": "FT-018",
+      "title": "Backend tests — API routes and orchestrator",
+      "description": "Test API route contracts (request/response shapes, status codes, error cases) and orchestrator dispatch logic (status transitions, phase routing). Target 80% coverage",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "test_api_routes.py covers all 16 endpoints",
+        "test_orchestrator.py covers dispatch for each TaskStatus",
+        "test_gate_feedback.py covers retry loop and CAPABILITY_LIMIT",
+        "test_dashboard_api.py covers board/metrics/approval JSON shapes",
+        "pytest --cov shows >= 80%"
+      ],
+      "dependencies": [
+        "FT-001",
+        "FT-005"
+      ]
+    },
+    {
+      "id": "FT-019",
+      "title": "SSE (Server-Sent Events) for real-time dashboard updates",
+      "description": "Replace 3s polling on Board and Approval pages with SSE endpoint. Backend pushes board state changes and approval thread updates",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "GET /api/dashboard/events returns SSE stream",
+        "Board page reconnects on disconnect",
+        "Approval page receives thread updates via SSE",
+        "Fallback to polling if SSE connection fails"
+      ],
+      "dependencies": [
+        "FT-014"
+      ]
+    },
+    {
+      "id": "FT-020",
+      "title": "Project setup page — create projects and features from UI",
+      "description": "New React page for creating projects (name, repo_url, language) and adding features (title, description, priority). Uses existing POST API endpoints",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "Project creation form with validation",
+        "Feature creation form nested under project",
+        "Created project appears on Board immediately",
+        "Follows design language (same patterns, no wizard)"
+      ],
+      "dependencies": [
+        "FT-014",
+        "FT-001"
+      ]
+    },
+    {
+      "id": "FT-021",
+      "title": "Dead-letter queue management page",
+      "description": "React page showing CAPABILITY_LIMIT tasks with failure context, agent run history, and re-dispatch button. Manual fix + re-dispatch workflow",
+      "priority": "P0",
+      "status": "pending",
+      "acceptance_criteria": [
+        "Lists all tasks with status CAPABILITY_LIMIT or FAILED",
+        "Shows failure reason, last agent run details, gate results",
+        "Re-dispatch button resets retry_count and re-dispatches task",
+        "Follows design language patterns"
+      ],
+      "dependencies": [
+        "FT-014",
+        "FT-007"
+      ]
+    },
+    {
+      "id": "FT-022",
+      "title": "Feature filter dropdown on Board page",
+      "description": "Add feature selector at top of Board page to filter tasks by feature. All features shown by default",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "Dropdown lists all features from current project",
+        "Selecting a feature filters pipeline sections to that feature's tasks",
+        "'All features' option shows everything",
+        "Selection persists across polling refreshes"
+      ],
+      "dependencies": [
+        "FT-014"
+      ]
+    },
+    {
+      "id": "FT-023",
+      "title": "Remove Jinja2 legacy dashboard",
+      "description": "Delete dashboard/ module, templates/, static/, HTMX routes. Remove conditional fallback in app.py. React SPA is the only dashboard",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "dashboard/ directory deleted",
+        "No Jinja2 imports remain in codebase",
+        "app.py serves React dist/ without fallback",
+        "Build still passes"
+      ],
+      "dependencies": [
+        "FT-014"
+      ]
+    },
+    {
+      "id": "FT-024",
+      "title": "Feature-level dispatch locking",
+      "description": "asyncio.Lock keyed by feature_id prevents concurrent task dispatch within the same feature. Different features can run in parallel",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "Concurrent dispatch to same feature serialized",
+        "Concurrent dispatch to different features runs in parallel",
+        "Lock released on dispatch completion or error"
+      ],
+      "dependencies": [
+        "FT-005"
+      ]
+    },
+    {
+      "id": "FT-025",
+      "title": "Git init + Alembic migrations",
+      "description": "Initialize git repository, add Alembic for database schema migrations. Replace init_db() auto-create with migration-based schema management",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "git init with .gitignore",
+        "Alembic configured with async PostgreSQL support",
+        "Initial migration generated from current models",
+        "alembic upgrade head creates all 13 tables",
+        "init_db() only used for SQLite dev mode"
+      ],
+      "dependencies": [
+        "FT-008"
+      ]
+    },
+    {
+      "id": "FT-026",
+      "title": "Frontend tests — Vitest + MSW",
+      "description": "Unit tests for React pages using Vitest with MSW for API mocking. Cover data rendering, error states, polling behavior",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "Vitest configured in vite.config.ts",
+        "MSW handlers mock all 5 API endpoints",
+        "BoardPage test: renders sections with mocked data",
+        "MetricsPage test: renders KPI values",
+        "ApprovalPage test: renders thread and action buttons",
+        "Error state tests for API failures"
+      ],
+      "dependencies": [
+        "FT-014"
+      ]
+    },
+    {
+      "id": "FT-027",
+      "title": "Fix detect-project.sh for src/ layout and pyproject.toml dependencies",
+      "description": "Detection script misses FastAPI in pyproject.toml [project.dependencies]. Fix grep to search dependency sections and check src/**/main.py for entry points",
+      "priority": "P2",
+      "status": "pending",
+      "acceptance_criteria": [
+        "Detects FastAPI from pyproject.toml [project.dependencies]",
+        "Finds entry points in src/ layout",
+        "Returns correct JSON for this project (type=api, framework=fastapi)"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "FT-028",
+      "title": "React error boundaries",
+      "description": "Add error boundary components to catch React render errors. Show user-friendly error state instead of blank screen",
+      "priority": "P2",
+      "status": "pending",
+      "acceptance_criteria": [
+        "Top-level error boundary wraps Routes",
+        "Per-page error boundary for each route",
+        "Error UI follows design language (destructive indicator pattern)",
+        "Retry button re-renders the page"
+      ],
+      "dependencies": [
+        "FT-014"
+      ]
+    },
+    {
+      "id": "FT-029",
+      "title": "Security hooks — prompt injection detection, egress monitor, permission store",
+      "description": "Three security/audit features adapted from Goose. (1) Two-layer prompt injection detection: PreToolUse blocks injection-laden tool inputs, PostToolUse detects injection in tool output and injects systemMessage warning. (2) Egress monitor: PostToolUse hook on Bash logs all network destinations (URLs, git remotes, S3, SSH). (3) Permission store: PreToolUse hook checks per-project JSON cache of tool permission decisions with TTL. Also: refactor hooks.py to use correct SDK signatures (PreToolUseHookInput, PostToolUseHookInput, HookContext) and wire hooks to ClaudeAgentOptions.hooks in runner.py",
+      "priority": "P0",
+      "status": "done",
+      "acceptance_criteria": [
+        "hooks.py refactored to SDK hook signatures (PreToolUseHookInput, tool_use_id, HookContext)",
+        "runner.py wires hooks via options.hooks with HookMatcher(matcher=pattern, timeout=30.0)",
+        "security/prompt_inspector.py: HIGH patterns block via PreToolUse, MEDIUM/LOW logged via PostToolUse systemMessage",
+        "security/egress_monitor.py: extracts URLs, git remotes, S3, SSH, docker push from Bash commands — audit only",
+        "security/permission_store.py: JSON-backed store with check/record/cleanup_expired, SHA-256 context hashing",
+        "SecurityFinding model added to db/models.py",
+        "All hooks wrapped in try/catch (exceptions must not crash query)",
+        "Tests: test_prompt_inspector.py, test_egress_monitor.py, test_permission_store.py — happy path + edge cases"
+      ],
+      "dependencies": [
+        "FT-004",
+        "FT-003"
+      ]
+    },
+    {
+      "id": "FT-030",
+      "title": "Phase telemetry instrumentation",
+      "description": "Collect per-phase metrics (duration, token usage, context %, cost, outcome) after every agent run. Enables data-driven prioritization of context budget and parallel dispatch features. Place in existing observability/ module alongside logging.py. Add JSON API endpoint and feed data into MetricsPage",
+      "priority": "P0",
+      "status": "pending",
+      "acceptance_criteria": [
+        "observability/phase_telemetry.py: PhaseMetrics dataclass + PhaseTelemetryCollector",
+        "Orchestrator._run_agent() records PhaseMetrics after every RunResult",
+        "context_pct calculated as tokens_input / model_context_limit",
+        "get_phase_summary() returns avg_duration, avg_context_pct, p95_context_pct, avg_cost, failure_rate",
+        "GET /api/telemetry/phases returns aggregated phase metrics",
+        "Telemetry data persisted (structlog JSON + optional DB)",
+        "Tests: test_phase_telemetry.py — recording, aggregation, context % calc"
+      ],
+      "dependencies": [
+        "FT-003",
+        "FT-005",
+        "FT-012"
+      ]
+    },
+    {
+      "id": "FT-031",
+      "title": "Context budget enforcement (conditional — requires telemetry data)",
+      "description": "Explicit per-phase token budgets with deterministic head+tail truncation. NO lossy LLM summarization — preserves session chaining contract. Only implement if FT-030 telemetry shows p95_context_pct > 0.70 for any phase. Council-mandated: phase budgets not compaction",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "agents/context_budget.py: PhaseBudget dataclass with max_input_tokens per phase",
+        "check_budget() returns bool, truncate_context_to_budget() does head+tail split",
+        "Truncation marker [... context truncated to fit phase budget ...] present in output",
+        "Session chaining via resume=session_id still works after truncation",
+        "CompactionSettings in config.py with enabled=False default (off until telemetry proves need)",
+        "Tests: test_context_budget.py — budget check, truncation preserves head+tail, marker present"
+      ],
+      "dependencies": [
+        "FT-030"
+      ]
+    },
+    {
+      "id": "FT-032",
+      "title": "Orchestrator-level parallel dispatch (conditional — requires telemetry data)",
+      "description": "Parallelize implementation phase for multi-file tasks. Orchestrator partitions task by file, dispatches code-gen agents via asyncio.gather with semaphore. All-or-nothing failure semantics. Only implement if FT-030 telemetry shows p95_duration_ms > 120s AND tasks routinely touch 3+ files. Council-mandated: orchestrator owns dispatch, not agents",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "orchestrator/parallel_dispatch.py: TaskPartition (frozen, exclusive file sets), dispatch_partitions()",
+        "partition_task() enforces no file overlap, co-locates tests with source, falls back to single partition",
+        "asyncio.Semaphore(max_parallel) limits concurrent agents",
+        "All-or-nothing: one partition failure = entire task FAILED",
+        "parent_run_id added to AgentRun model for subagent lineage",
+        "SubagentSettings in config.py with enabled=False default",
+        "ToolRegistry built independently per subagent (tool availability determinism preserved)",
+        "Tests: test_parallel_dispatch.py — partitioning, no overlap, all-or-nothing, semaphore"
+      ],
+      "dependencies": [
+        "FT-030",
+        "FT-005"
+      ]
+    },
+    {
+      "id": "FT-033",
+      "title": "Recipe system — YAML task templates with parameterization",
+      "description": "Declarative YAML recipes override AgentDefinition fields (prompt additions, lower max_turns/budget). Recipes are additive only — cannot raise budgets, change model, or modify tools (preserves agent-as-artifact + tool_registry invariant). Only implement after 3+ customer workflow patterns identified",
+      "priority": "P1",
+      "status": "pending",
+      "acceptance_criteria": [
+        "recipes/loader.py: Recipe dataclass, load_recipe() from YAML, apply_recipe() returns new AgentDefinition",
+        "Recipes can APPEND prompt additions, LOWER max_turns/budget — cannot raise or change model/tools",
+        "recipe_name and recipe_params (JSON) columns added to Task model",
+        "GET /api/recipes and GET /api/recipes/{name} endpoints",
+        "At least one example recipe in recipes/ directory",
+        "Tests: test_recipes.py — YAML loading, parameter validation, constraint enforcement (reject model/tool override)"
+      ],
+      "dependencies": [
+        "FT-002",
+        "FT-005"
+      ]
+    }
+  ],
+  "metadata": {
+    "created": "2026-04-13T00:00:00Z",
+    "updated": "2026-04-14T00:00:00Z",
+    "version": "1.1",
+    "project": "autonomous-agent-builder",
+    "total_features": 33,
+    "done": 20,
+    "pending": 13,
+    "interview_completed": true,
+    "top_priority": "Security hooks + telemetry instrumentation (Goose-inspired, council-validated)",
+    "plan_reference": "~/.claude/plans/curried-hatching-lollipop.md",
+    "council_reference": "eval/runs/council/council-transcript-goose-features-2026-04-10.md"
+  }
+}

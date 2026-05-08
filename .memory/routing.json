@@ -1,6 +1,83 @@
 {
-  "generated_at": "2026-05-08T03:39:54Z",
+  "generated_at": "2026-05-08T11:30:05Z",
   "entries": [
+    {
+      "slug": "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "file": "patterns/workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve.md",
+      "title": "Workflow CLI 'Did you mean' hint can echo the failing input \u2014 verify with workflow doctor + ls",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "workflow-cli",
+      "tags": [
+        "workflow-cli",
+        "tool-quirk",
+        "debugging",
+        "fix-discipline"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "verify-cause-from-evidence-before-applying-any-fix",
+      "file": "corrections/verify-cause-from-evidence-before-applying-any-fix.md",
+      "title": "Verify cause from evidence before applying any fix",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "fix-discipline",
+      "tags": [
+        "fix-discipline",
+        "debugging",
+        "tool-quirk"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "never-mutate-the-app-workspace-being-worked-on-by-autonomous",
+      "file": "corrections/never-mutate-the-app-workspace-being-worked-on-by-autonomous.md",
+      "title": "Never mutate the app workspace being worked on by autonomous builder (incl. memory writes)",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "workspace-ownership",
+      "tags": [
+        "workspace-ownership",
+        "memory-discipline",
+        "fix-discipline"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch",
+      "file": "corrections/fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch.md",
+      "title": "Fix root cause at origin; do not stack defense-in-depth patches",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "fix-discipline",
+      "tags": [
+        "fix-discipline",
+        "root-cause",
+        "prompt-construction"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
     {
       "slug": "feature-acceptance-py-too-strict-accepts-only-playwright",
       "file": "corrections/feature-acceptance-py-too-strict-accepts-only-playwright.md",
@@ -14,6 +91,46 @@
         "jsdom",
         "verify-phase",
         "deterministic-script"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp",
+      "file": "corrections/browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp.md",
+      "title": "Browser testing \u2014 use Playwright CLI; avoid Chrome DevTools MCP",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "browser-testing",
+      "tags": [
+        "browser-testing",
+        "playwright",
+        "chrome-devtools",
+        "tool-quirk"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "apply-quality-gate-compression-rules-on-draft-1-not-after-mu",
+      "file": "corrections/apply-quality-gate-compression-rules-on-draft-1-not-after-mu.md",
+      "title": "Apply quality-gate compression rules on draft 1, not after multiple revision rounds",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agents-md",
+      "tags": [
+        "agents-md",
+        "quality-gate",
+        "fix-discipline",
+        "memory-discipline"
       ],
       "status": "active",
       "related": [],
@@ -1085,11 +1202,11 @@
         "browser",
         "api"
       ],
-      "status": "active",
+      "status": "invalidated",
       "related": [],
       "date": "2026-04-17",
       "preserve_as_precedent": false,
-      "flag_reason": "",
+      "flag_reason": "Superseded 2026-05-08: chrome-devtools-mcp caused periodic page reloads during testing in this repo and was uninstalled. Browser standard is now Playwright CLI \u2014 see browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp",
       "graduated_into": ""
     },
     {
@@ -1308,6 +1425,83 @@
   ],
   "memories": [
     {
+      "slug": "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "file": "patterns/workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve.md",
+      "title": "Workflow CLI 'Did you mean' hint can echo the failing input \u2014 verify with workflow doctor + ls",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "workflow-cli",
+      "tags": [
+        "workflow-cli",
+        "tool-quirk",
+        "debugging",
+        "fix-discipline"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "verify-cause-from-evidence-before-applying-any-fix",
+      "file": "corrections/verify-cause-from-evidence-before-applying-any-fix.md",
+      "title": "Verify cause from evidence before applying any fix",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "fix-discipline",
+      "tags": [
+        "fix-discipline",
+        "debugging",
+        "tool-quirk"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "never-mutate-the-app-workspace-being-worked-on-by-autonomous",
+      "file": "corrections/never-mutate-the-app-workspace-being-worked-on-by-autonomous.md",
+      "title": "Never mutate the app workspace being worked on by autonomous builder (incl. memory writes)",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "workspace-ownership",
+      "tags": [
+        "workspace-ownership",
+        "memory-discipline",
+        "fix-discipline"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch",
+      "file": "corrections/fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch.md",
+      "title": "Fix root cause at origin; do not stack defense-in-depth patches",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "fix-discipline",
+      "tags": [
+        "fix-discipline",
+        "root-cause",
+        "prompt-construction"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
       "slug": "feature-acceptance-py-too-strict-accepts-only-playwright",
       "file": "corrections/feature-acceptance-py-too-strict-accepts-only-playwright.md",
       "title": "feature_acceptance.py too strict \u2014 accepts only Playwright",
@@ -1320,6 +1514,46 @@
         "jsdom",
         "verify-phase",
         "deterministic-script"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp",
+      "file": "corrections/browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp.md",
+      "title": "Browser testing \u2014 use Playwright CLI; avoid Chrome DevTools MCP",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "browser-testing",
+      "tags": [
+        "browser-testing",
+        "playwright",
+        "chrome-devtools",
+        "tool-quirk"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "apply-quality-gate-compression-rules-on-draft-1-not-after-mu",
+      "file": "corrections/apply-quality-gate-compression-rules-on-draft-1-not-after-mu.md",
+      "title": "Apply quality-gate compression rules on draft 1, not after multiple revision rounds",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agents-md",
+      "tags": [
+        "agents-md",
+        "quality-gate",
+        "fix-discipline",
+        "memory-discipline"
       ],
       "status": "active",
       "related": [],
@@ -2391,11 +2625,11 @@
         "browser",
         "api"
       ],
-      "status": "active",
+      "status": "invalidated",
       "related": [],
       "date": "2026-04-17",
       "preserve_as_precedent": false,
-      "flag_reason": "",
+      "flag_reason": "Superseded 2026-05-08: chrome-devtools-mcp caused periodic page reloads during testing in this repo and was uninstalled. Browser standard is now Playwright CLI \u2014 see browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp",
       "graduated_into": ""
     },
     {
@@ -2613,35 +2847,85 @@
     }
   ],
   "routing": {
-    "type:correction": [
-      "feature-acceptance-py-too-strict-accepts-only-playwright",
+    "type:pattern": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "per-task-model-routing-is-builder-owned",
+      "optimize-builder-agents-through-evidence-not-token-rationing",
+      "check-run-terminal-state-after-target-tests-pass",
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "test-continuation-with-user-shaped-prompts",
+      "stay-in-tester-role-during-autonomous-validation",
+      "shipping-requires-integrating-the-task-worktree",
+      "reject-stale-gates-and-feed-exact-command-output-back",
+      "provider-limit-text-should-block-active-work-immediately",
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "reverse-engineering-validation-must-follow-product-visible-s",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "claude-code-settings-use-bash-cmd-format",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "command-execution-friction-prevention-via-steering-files",
+      "cli-validation-system-for-cross-platform-compatibility",
+      "dynamic-script-loading-with-package-relative-imports",
+      "deterministic-dispatch-over-agent-self-routing",
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "phase:implementation": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "verify-cause-from-evidence-before-applying-any-fix",
+      "never-mutate-the-app-workspace-being-worked-on-by-autonomous",
+      "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch",
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu",
+      "telemetry-and-observability-are-core-to-the-builder-mission",
       "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
-      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
-      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "per-task-model-routing-is-builder-owned",
       "do-not-seed-forward-backlog-during-onboarding",
-      "day-0-forward-engineering-validation-findings-2026-05",
       "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
-      "generated-app-workspace-changes-must-be-builder-owned",
-      "audit-run-telemetry-before-optimizing-autonomous-agents",
-      "runtime-switch-must-preserve-built-project-lifecycle",
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "provider-limit-text-should-block-active-work-immediately",
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "builder-owns-provider-limit-resume-and-model-policy",
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
       "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
-      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "create-task-worktree-at-design-to-implementation-handoff",
       "scoped-kb-extract-must-preserve-collection-metadata",
-      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "worktree-first-development-is-the-core-rule",
+      "workflow-and-memory-creation-only-via-clis",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
       "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
       "embedded-agent-chat-should-continue-conversation-instead-of-",
       "agent-extractor-must-use-shared-claude-runtime",
       "memory-routing-json-can-use-memories-key",
-      "knowledge-tag-filtering-must-align-frontend-and-api"
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "fastapi-route-ordering-specific-routes-before-path",
+      "command-execution-friction-prevention-via-steering-files",
+      "cli-validation-system-for-cross-platform-compatibility",
+      "dynamic-script-loading-with-package-relative-imports",
+      "react-shadcn-luma-gsap-migration"
     ],
-    "phase:verification": [
-      "feature-acceptance-py-too-strict-accepts-only-playwright"
-    ],
-    "entity:feature-acceptance-script": [
-      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    "entity:workflow-cli": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve"
     ],
     "status:active": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "verify-cause-from-evidence-before-applying-any-fix",
+      "never-mutate-the-app-workspace-being-worked-on-by-autonomous",
+      "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch",
       "feature-acceptance-py-too-strict-accepts-only-playwright",
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp",
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu",
       "telemetry-and-observability-are-core-to-the-builder-mission",
       "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
       "pre-existing-test-drift-catalog-from-may-2026-patch-series",
@@ -2690,7 +2974,6 @@
       "project-memory-captures-real-time-friction-precedent",
       "memory-routing-json-can-use-memories-key",
       "knowledge-tag-filtering-must-align-frontend-and-api",
-      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
       "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
       "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
       "fastapi-route-ordering-specific-routes-before-path",
@@ -2702,11 +2985,83 @@
       "claude-agent-sdk-as-foundation",
       "react-shadcn-luma-gsap-migration"
     ],
+    "tag:workflow-cli": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve"
+    ],
+    "tag:tool-quirk": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "verify-cause-from-evidence-before-applying-any-fix",
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp"
+    ],
+    "tag:debugging": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "verify-cause-from-evidence-before-applying-any-fix"
+    ],
+    "tag:fix-discipline": [
+      "workflow-cli-did-you-mean-hint-can-echo-the-failing-input-ve",
+      "verify-cause-from-evidence-before-applying-any-fix",
+      "never-mutate-the-app-workspace-being-worked-on-by-autonomous",
+      "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch",
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu"
+    ],
+    "type:correction": [
+      "verify-cause-from-evidence-before-applying-any-fix",
+      "never-mutate-the-app-workspace-being-worked-on-by-autonomous",
+      "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch",
+      "feature-acceptance-py-too-strict-accepts-only-playwright",
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp",
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu",
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "do-not-seed-forward-backlog-during-onboarding",
+      "day-0-forward-engineering-validation-findings-2026-05",
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
+      "generated-app-workspace-changes-must-be-builder-owned",
+      "audit-run-telemetry-before-optimizing-autonomous-agents",
+      "runtime-switch-must-preserve-built-project-lifecycle",
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "agent-extractor-must-use-shared-claude-runtime",
+      "memory-routing-json-can-use-memories-key",
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "entity:fix-discipline": [
+      "verify-cause-from-evidence-before-applying-any-fix",
+      "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch"
+    ],
+    "entity:workspace-ownership": [
+      "never-mutate-the-app-workspace-being-worked-on-by-autonomous"
+    ],
+    "tag:workspace-ownership": [
+      "never-mutate-the-app-workspace-being-worked-on-by-autonomous"
+    ],
+    "tag:memory-discipline": [
+      "never-mutate-the-app-workspace-being-worked-on-by-autonomous",
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu"
+    ],
+    "tag:root-cause": [
+      "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch"
+    ],
+    "tag:prompt-construction": [
+      "fix-root-cause-at-origin-do-not-stack-defense-in-depth-patch"
+    ],
+    "phase:verification": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "entity:feature-acceptance-script": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
     "tag:feature-verifier": [
       "feature-acceptance-py-too-strict-accepts-only-playwright"
     ],
     "tag:playwright": [
-      "feature-acceptance-py-too-strict-accepts-only-playwright"
+      "feature-acceptance-py-too-strict-accepts-only-playwright",
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp"
     ],
     "tag:jsdom": [
       "feature-acceptance-py-too-strict-accepts-only-playwright"
@@ -2717,67 +3072,44 @@
     "tag:deterministic-script": [
       "feature-acceptance-py-too-strict-accepts-only-playwright"
     ],
-    "type:pattern": [
-      "telemetry-and-observability-are-core-to-the-builder-mission",
-      "per-task-model-routing-is-builder-owned",
-      "optimize-builder-agents-through-evidence-not-token-rationing",
+    "phase:testing": [
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp",
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "day-0-forward-engineering-validation-findings-2026-05",
       "check-run-terminal-state-after-target-tests-pass",
-      "treat-empty-sdk-and-provider-limit-output-as-blockers",
       "test-continuation-with-user-shaped-prompts",
       "stay-in-tester-role-during-autonomous-validation",
-      "shipping-requires-integrating-the-task-worktree",
       "reject-stale-gates-and-feed-exact-command-output-back",
-      "provider-limit-text-should-block-active-work-immediately",
-      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
-      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
-      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
       "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
       "reverse-engineering-validation-must-follow-product-visible-s",
       "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
       "use-builder-cli-telemetry-before-reopening-broad-code-contex",
       "optimize-runtime-behavior-from-browser-evidence-plus-builder",
       "external-reverse-engineering-validation-works-best-as-a-stag",
-      "claude-code-settings-use-bash-cmd-format",
-      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
-      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
-      "command-execution-friction-prevention-via-steering-files",
-      "cli-validation-system-for-cross-platform-compatibility",
-      "dynamic-script-loading-with-package-relative-imports",
-      "deterministic-dispatch-over-agent-self-routing",
-      "react-shadcn-luma-gsap-migration"
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "max-retries-2-for-quality-gates",
+      "concurrent-quality-gates-with-asyncio-gather"
     ],
-    "phase:implementation": [
-      "telemetry-and-observability-are-core-to-the-builder-mission",
-      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
-      "per-task-model-routing-is-builder-owned",
-      "do-not-seed-forward-backlog-during-onboarding",
-      "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
-      "treat-empty-sdk-and-provider-limit-output-as-blockers",
-      "provider-limit-text-should-block-active-work-immediately",
-      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
-      "builder-owns-provider-limit-resume-and-model-policy",
-      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
-      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
-      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
-      "create-task-worktree-at-design-to-implementation-handoff",
-      "scoped-kb-extract-must-preserve-collection-metadata",
-      "documentation-freshness-is-commit-anchored-not-worktree-anch",
-      "documentation-agent-maintains-shared-user-and-agent-kb",
-      "worktree-first-development-is-the-core-rule",
-      "workflow-and-memory-creation-only-via-clis",
-      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
-      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
-      "embedded-agent-chat-should-continue-conversation-instead-of-",
-      "agent-extractor-must-use-shared-claude-runtime",
-      "memory-routing-json-can-use-memories-key",
-      "knowledge-tag-filtering-must-align-frontend-and-api",
-      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
-      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
-      "fastapi-route-ordering-specific-routes-before-path",
-      "command-execution-friction-prevention-via-steering-files",
-      "cli-validation-system-for-cross-platform-compatibility",
-      "dynamic-script-loading-with-package-relative-imports",
-      "react-shadcn-luma-gsap-migration"
+    "entity:browser-testing": [
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp"
+    ],
+    "tag:browser-testing": [
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp"
+    ],
+    "tag:chrome-devtools": [
+      "browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp"
+    ],
+    "entity:agents-md": [
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu"
+    ],
+    "tag:agents-md": [
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu",
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude"
+    ],
+    "tag:quality-gate": [
+      "apply-quality-gate-compression-rules-on-draft-1-not-after-mu",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
     ],
     "entity:observability": [
       "telemetry-and-observability-are-core-to-the-builder-mission"
@@ -2835,24 +3167,6 @@
     "tag:critical": [
       "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
       "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory"
-    ],
-    "phase:testing": [
-      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
-      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
-      "day-0-forward-engineering-validation-findings-2026-05",
-      "check-run-terminal-state-after-target-tests-pass",
-      "test-continuation-with-user-shaped-prompts",
-      "stay-in-tester-role-during-autonomous-validation",
-      "reject-stale-gates-and-feed-exact-command-output-back",
-      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
-      "reverse-engineering-validation-must-follow-product-visible-s",
-      "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
-      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
-      "optimize-runtime-behavior-from-browser-evidence-plus-builder",
-      "external-reverse-engineering-validation-works-best-as-a-stag",
-      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
-      "max-retries-2-for-quality-gates",
-      "concurrent-quality-gates-with-asyncio-gather"
     ],
     "entity:test-suite": [
       "pre-existing-test-drift-catalog-from-may-2026-patch-series"
@@ -2973,9 +3287,6 @@
       "day-0-forward-engineering-validation-findings-2026-05"
     ],
     "entity:agents-md-inheritance": [
-      "codex-global-rules-live-in-codex-agents-md-not-claude-claude"
-    ],
-    "tag:agents-md": [
       "codex-global-rules-live-in-codex-agents-md-not-claude-claude"
     ],
     "tag:inheritance": [
@@ -3469,9 +3780,6 @@
     "entity:knowledge-quality-gate": [
       "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
     ],
-    "tag:quality-gate": [
-      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
-    ],
     "tag:yaml": [
       "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
     ],
@@ -3540,6 +3848,10 @@
     "entity:dashboard": [
       "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
     ],
+    "status:invalidated": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "cli-validation-system-for-cross-platform-compatibility"
+    ],
     "tag:mcp": [
       "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
     ],
@@ -3589,9 +3901,6 @@
       "command-execution-friction-prevention-via-steering-files"
     ],
     "entity:cli-validation": [
-      "cli-validation-system-for-cross-platform-compatibility"
-    ],
-    "status:invalidated": [
       "cli-validation-system-for-cross-platform-compatibility"
     ],
     "tag:cross-platform": [

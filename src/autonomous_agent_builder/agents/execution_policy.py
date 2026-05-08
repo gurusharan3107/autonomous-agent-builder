@@ -15,8 +15,10 @@ class AgentRuntimePolicy:
 
     model: str
     effort: str
-    max_thinking_tokens: int | None
+    thinking: dict | None
     context_strategy: str
+    autocompact_enabled: bool = False
+    task_budget_tokens: int | None = None
     subagents: tuple[str, ...] = ()
     permission_policy: str = "phase_default_permissions"
     hook_policy: str = "workspace_boundary_bash_argv_tool_audit"
@@ -27,8 +29,10 @@ class AgentRuntimePolicy:
         return {
             "model": self.model,
             "effort": self.effort,
-            "max_thinking_tokens": self.max_thinking_tokens,
+            "thinking": self.thinking,
             "context_strategy": self.context_strategy,
+            "autocompact_enabled": self.autocompact_enabled,
+            "task_budget_tokens": self.task_budget_tokens,
             "selected_subagents": list(self.subagents),
             "permission_policy": self.permission_policy,
             "hook_policy": self.hook_policy,
@@ -36,10 +40,32 @@ class AgentRuntimePolicy:
         }
 
 
-_AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, str]] = {
+# Per-agent token budgets for SDK task_budget (model is made aware of the
+# countdown and self-moderates tool use accordingly). Only set for agents
+# that run long agentic loops where context accumulation and pacing matter.
+# Minimum enforced by the API is 20,000 tokens.
+_TASK_BUDGET_TOKENS: dict[str, int] = {
+    "planner": 120_000,           # 20 turns, opus reasoning-heavy
+    "designer": 120_000,          # 20 turns, opus architecture work
+    "code-gen": 150_000,          # 30 turns, sonnet implementation
+    "integration-resolver": 100_000,  # 20 turns, conflict resolution
+    "feature-verifier": 120_000,  # 24 turns, acceptance + test generation
+}
+
+# Context strategies where autocompact should be enabled.
+# These are the long-running phases (≥ 20 turns) where context accumulation
+# will hit the limit and degrade output quality without auto-summarisation.
+_AUTOCOMPACT_STRATEGIES: frozenset[str] = frozenset({
+    "compact_plan_artifact",            # planner — 20 turns
+    "compact_design_handoff",           # designer — 20 turns
+    "scripted_repeatable_work",         # code-gen — 30 turns
+    "bounded_conflict_resolution",      # integration-resolver — 20 turns
+    "agentic_acceptance_then_durable_playwright",  # feature-verifier — 24 turns
+})
+
+_AGENT_POLICY: dict[str, tuple[str, str, tuple[str, ...], str, str, str]] = {
     "chat": (
         "medium",
-        4096,
         "interactive_bounded_retrieval",
         (),
         "interactive_read_first",
@@ -48,7 +74,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "init-project-chat": (
         "medium",
-        4096,
         "interactive_project_bootstrap",
         (),
         "interactive_bootstrap",
@@ -57,7 +82,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "planner": (
         "high",
-        8192,
         "compact_plan_artifact",
         ("repo-researcher",),
         "read_only_planning",
@@ -66,7 +90,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "designer": (
         "high",
-        12288,
         "compact_design_handoff",
         ("repo-researcher",),
         "read_only_design",
@@ -74,8 +97,7 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
         "design_risk_gate",
     ),
     "code-gen": (
-        "medium",
-        4096,
+        "high",
         "scripted_repeatable_work",
         (),
         "workspace_write_with_argv_shell",
@@ -84,7 +106,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "integration-resolver": (
         "medium",
-        4096,
         "bounded_conflict_resolution",
         ("security-reviewer",),
         "workspace_write_with_review_sidecar",
@@ -93,7 +114,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "pr-creator": (
         "low",
-        2048,
         "evidence_summary_only",
         ("pr-reviewer",),
         "read_only_evidence_summary",
@@ -102,7 +122,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "build-verifier": (
         "low",
-        1024,
         "scripted_verification",
         ("build-verifier", "browser-verifier"),
         "deterministic_verification_first",
@@ -111,7 +130,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "feature-verifier": (
         "medium",
-        4096,
         "agentic_acceptance_then_durable_playwright",
         ("browser-verifier",),
         "workspace_write_after_acceptance_judgment",
@@ -120,7 +138,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "documentation-bridge": (
         "low",
-        2048,
         "delegated_doc_refresh",
         ("documentation-agent",),
         "documentation_publish_tools_only",
@@ -129,7 +146,6 @@ _AGENT_POLICY: dict[str, tuple[str, int | None, str, tuple[str, ...], str, str, 
     ),
     "optimization-agent": (
         "medium",
-        4096,
         "post_ship_structured_observability_review",
         (),
         "read_only_preflight_then_exact_candidate_write",
@@ -147,7 +163,6 @@ def resolve_agent_runtime_policy(
     """Resolve the runtime policy from stable product settings and agent role."""
     (
         effort,
-        max_thinking_tokens,
         context_strategy,
         default_subagents,
         permission_policy,
@@ -157,7 +172,6 @@ def resolve_agent_runtime_policy(
         agent_def.name,
         (
             "medium",
-            4096,
             "bounded_default",
             (),
             "phase_default_permissions",
@@ -166,16 +180,31 @@ def resolve_agent_runtime_policy(
         ),
     )
     subagents = tuple(requested_subagents or default_subagents)
+    model = _model_for_agent(agent_def, settings)
     return AgentRuntimePolicy(
-        model=_model_for_agent(agent_def, settings),
+        model=model,
         effort=effort,
-        max_thinking_tokens=max_thinking_tokens,
+        thinking=_thinking_for_model(model),
         context_strategy=context_strategy,
+        autocompact_enabled=context_strategy in _AUTOCOMPACT_STRATEGIES,
+        task_budget_tokens=_TASK_BUDGET_TOKENS.get(agent_def.name),
         subagents=subagents,
         permission_policy=permission_policy,
         hook_policy=hook_policy,
         reason_code=reason_code,
     )
+
+
+def _thinking_for_model(model: str) -> dict | None:
+    """Return adaptive thinking config for Claude models that support it.
+
+    Haiku and non-Claude models (e.g. Codex gpt-*) get None — thinking is
+    either unsupported or handled by the foreign runtime. Sonnet and Opus
+    use adaptive thinking; the effort parameter controls depth.
+    """
+    if not model or model == "haiku" or "haiku" in model or model.startswith("gpt"):
+        return None
+    return {"type": "adaptive"}
 
 
 def resolve_subagent_model(subagent_def: SubagentDefinition) -> str:

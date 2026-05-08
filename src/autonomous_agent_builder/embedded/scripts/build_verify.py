@@ -81,6 +81,8 @@ class BuildVerifyScript(Script):
         checks: list[dict[str, Any]] = []
         if package_json.exists():
             scripts = self._package_scripts(package_json)
+            if not (project_root / "node_modules").exists():
+                checks.append({"code": "npm_install", "command": ["npm", "install"]})
             if "lint" in scripts:
                 checks.append({"code": "npm_lint", "command": ["npm", "run", "lint"]})
             if "build" in scripts:

@@ -166,5 +166,5 @@ Use the narrowest durable surface:
 - writing broad docs when a deterministic test or gate should own the behavior
 
 ## Related Workflows
-- [task-workspace-isolation.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/workflows/task-workspace-isolation.md)
-- [chrome-devtools-dashboard-testing.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/workflows/chrome-devtools-dashboard-testing.md)
+- `workflow --docs-dir docs summary task-workspace-isolation`
+- Browser/UI verification: Playwright CLI skill (`$HOME/.claude/skills/playwright/scripts/playwright_cli.sh`); see agent memory `browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp`

@@ -66,9 +66,18 @@ class TestToolRegistry:
     def test_get_tool_prompt_context(self):
         registry = ToolRegistry.build(["Read", "Bash"])
         context = registry.get_tool_prompt_context()
-        assert "Read" in context
+        # Read has no constraints — only Bash (workspace_boundary, argv_only) appears
+        assert "Read" not in context
         assert "Bash" in context
-        assert "Available Tools" in context
+        assert "Tool Constraints" in context
+        assert "workspace_boundary" in context
+        assert "argv_only" in context
+
+    def test_get_tool_prompt_context_no_constraints(self):
+        registry = ToolRegistry.build(["Read", "Glob"])
+        context = registry.get_tool_prompt_context()
+        # No constrained tools — returns empty string
+        assert context == ""
 
     def test_read_only_flag(self):
         registry = ToolRegistry.build(["Read", "Edit"])

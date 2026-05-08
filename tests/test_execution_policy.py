@@ -27,15 +27,19 @@ CANONICAL_PHASE_AGENTS = (
 )
 
 
+_ADAPTIVE = {"type": "adaptive"}
+
+# (effort, thinking, context_strategy, autocompact_enabled, task_budget_tokens)
 EXPECTED_ROLE_POLICIES = {
-    "planner": ("high", 8192, "compact_plan_artifact"),
-    "designer": ("high", 12288, "compact_design_handoff"),
-    "code-gen": ("medium", 4096, "scripted_repeatable_work"),
-    "integration-resolver": ("medium", 4096, "bounded_conflict_resolution"),
-    "pr-creator": ("low", 2048, "evidence_summary_only"),
-    "build-verifier": ("low", 1024, "scripted_verification"),
-    "feature-verifier": ("medium", 4096, "agentic_acceptance_then_durable_playwright"),
-    "documentation-bridge": ("low", 2048, "delegated_doc_refresh"),
+    "planner": ("high", _ADAPTIVE, "compact_plan_artifact", True, 120_000),
+    "designer": ("high", _ADAPTIVE, "compact_design_handoff", True, 120_000),
+    "code-gen": ("high", _ADAPTIVE, "scripted_repeatable_work", True, 150_000),
+    "integration-resolver": ("medium", _ADAPTIVE, "bounded_conflict_resolution", True, 100_000),
+    # pr_model="haiku" in _settings_for_runtime → thinking disabled for haiku
+    "pr-creator": ("low", None, "evidence_summary_only", False, None),
+    "build-verifier": ("low", None, "scripted_verification", False, None),
+    "feature-verifier": ("medium", _ADAPTIVE, "agentic_acceptance_then_durable_playwright", True, 120_000),
+    "documentation-bridge": ("low", _ADAPTIVE, "delegated_doc_refresh", False, None),
 }
 
 
@@ -68,8 +72,10 @@ def test_planner_policy_uses_expensive_reasoning_only_for_planning() -> None:
 
     assert policy.model == settings.agent.planning_model
     assert policy.effort == "high"
-    assert policy.max_thinking_tokens == 8192
+    assert policy.thinking == {"type": "adaptive"}
     assert policy.context_strategy == "compact_plan_artifact"
+    assert policy.autocompact_enabled is True
+    assert policy.task_budget_tokens == 120_000
 
 
 def test_code_gen_policy_uses_sonnet_and_scripted_context_strategy() -> None:
@@ -77,8 +83,9 @@ def test_code_gen_policy_uses_sonnet_and_scripted_context_strategy() -> None:
     policy = resolve_agent_runtime_policy(get_agent_definition("code-gen"), settings)
 
     assert policy.model == settings.agent.implementation_model
-    assert policy.effort == "medium"
+    assert policy.effort == "high"
     assert policy.context_strategy == "scripted_repeatable_work"
+    assert policy.task_budget_tokens == 150_000
 
 
 def test_codex_cli_policy_uses_runtime_model_and_role_effort() -> None:
@@ -143,11 +150,13 @@ def test_canonical_phase_agents_have_builder_owned_role_policy(agent_name: str) 
         get_agent_definition(agent_name),
         _settings_for_runtime("claude"),
     )
-    expected_effort, expected_thinking, expected_context = EXPECTED_ROLE_POLICIES[agent_name]
+    expected_effort, expected_thinking, expected_context, expected_autocompact, expected_budget = EXPECTED_ROLE_POLICIES[agent_name]
 
     assert policy.effort == expected_effort
-    assert policy.max_thinking_tokens == expected_thinking
+    assert policy.thinking == expected_thinking
     assert policy.context_strategy == expected_context
+    assert policy.autocompact_enabled == expected_autocompact
+    assert policy.task_budget_tokens == expected_budget
     assert policy.reason_code
     assert policy.permission_policy
     assert policy.hook_policy
@@ -163,11 +172,17 @@ def test_runtime_switch_preserves_phase_agent_policy_shape(
         get_agent_definition(agent_name),
         _settings_for_runtime(runtime_sdk),
     )
-    expected_effort, expected_thinking, expected_context = EXPECTED_ROLE_POLICIES[agent_name]
+    expected_effort, expected_thinking, expected_context, expected_autocompact, expected_budget = EXPECTED_ROLE_POLICIES[agent_name]
 
     assert policy.effort == expected_effort
-    assert policy.max_thinking_tokens == expected_thinking
     assert policy.context_strategy == expected_context
+    assert policy.autocompact_enabled == expected_autocompact
+    assert policy.task_budget_tokens == expected_budget
+    # Codex runtime: thinking is None regardless of model (foreign runtime handles it)
+    if runtime_sdk.startswith("codex"):
+        assert policy.thinking is None
+    else:
+        assert policy.thinking == expected_thinking
     if runtime_sdk.startswith("codex"):
         assert policy.model == "gpt-5.5"
     else:

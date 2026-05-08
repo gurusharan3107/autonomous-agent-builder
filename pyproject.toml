@@ -60,6 +60,12 @@ openai-agents = [
     "openai-agents",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

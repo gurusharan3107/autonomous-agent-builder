@@ -2706,6 +2706,11 @@ class Orchestrator:
         ``<system-reminder>`` block so the cached system prefix
         (CLAUDE.md + tools + preset) stays warm across all task dispatches.
 
+        Also includes the task's slice-of-feature ownership boundary from
+        the sprint design (this task's ``file_ownership_hint`` plus sibling
+        tasks' ownerships marked as out-of-scope), so upstream tasks do not
+        over-implement into adjacent tasks' scope and trigger ghost runs.
+
         Returns an empty string when no feature is attached, so the prompt
         template's ``{scope_reminder}`` placeholder collapses safely.
         """
@@ -2716,7 +2721,13 @@ class Orchestrator:
         description = str(getattr(feature, "description", "") or "").strip()
         criteria_raw = getattr(feature, "acceptance_criteria", None) or []
         criteria = [str(item).strip() for item in criteria_raw if str(item).strip()]
-        if not (title or description or criteria):
+
+        sprint_payload = self._task_sprint_execution_payload(task)
+        own_hint = str(sprint_payload.get("file_ownership_hint", "") or "").strip()
+        own_key = str(sprint_payload.get("task_key", "") or "").strip()
+        sibling_hints = self._sibling_task_ownership_hints(task, own_key)
+
+        if not (title or description or criteria or own_hint):
             return ""
         lines = ["<system-reminder>"]
         lines.append("Active feature scope (sprint task)")
@@ -2727,6 +2738,19 @@ class Orchestrator:
         if criteria:
             lines.append("Acceptance criteria (the verifier WILL check these):")
             lines.extend(f"- {item}" for item in criteria)
+        if own_hint or sibling_hints:
+            lines.append("")
+            lines.append("Task ownership boundary (your slice of this feature)")
+            if own_hint:
+                lines.append(f"You OWN: {own_hint}")
+            if sibling_hints:
+                lines.append("Out of scope (other sprint tasks own these — do NOT implement):")
+                lines.extend(f"- {hint}" for hint in sibling_hints)
+            lines.append(
+                "Stay strictly inside your ownership. Producing work that lands "
+                "in another task's ownership causes that task to ghost-run later "
+                "with nothing to do — leaving its acceptance unverified."
+            )
         lines.append("")
         lines.append(
             "Do not introduce stack choices that contradict CLAUDE.md "
@@ -2736,6 +2760,36 @@ class Orchestrator:
         )
         lines.append("</system-reminder>\n\n")
         return "\n".join(lines)
+
+    def _sibling_task_ownership_hints(self, task: Task, own_key: str) -> list[str]:
+        """Extract sibling sprint tasks' file ownership hints from design context."""
+        depends_on = task.depends_on if isinstance(task.depends_on, dict) else {}
+        phase_context = depends_on.get("phase_context")
+        if not isinstance(phase_context, dict):
+            return []
+        design_raw = phase_context.get("design_context")
+        if not isinstance(design_raw, str):
+            return []
+        try:
+            design = json.loads(design_raw)
+        except (TypeError, ValueError):
+            return []
+        hints = design.get("task_file_ownership_hints") if isinstance(design, dict) else None
+        if not isinstance(hints, list):
+            return []
+        out: list[str] = []
+        for entry in hints:
+            if not isinstance(entry, dict):
+                continue
+            key = str(entry.get("task_key", "") or "").strip()
+            if own_key and key == own_key:
+                continue
+            ownership = str(entry.get("ownership", "") or "").strip()
+            entry_title = str(entry.get("title", "") or "").strip()
+            if not ownership:
+                continue
+            out.append(f"{entry_title} → {ownership}" if entry_title else ownership)
+        return out
 
     async def _run_agent(
         self,

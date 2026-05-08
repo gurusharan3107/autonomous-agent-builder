@@ -14,7 +14,7 @@ Examples:
 ```bash
 workflow summary claude-md-quality-gate
 workflow --docs-dir docs summary design-language
-workflow --docs-dir docs/workflows summary chrome-devtools-dashboard-testing
+workflow --docs-dir docs/workflows summary memory-retrieval-guide
 ```
 
 ## Project Memory Commands

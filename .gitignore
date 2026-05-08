@@ -27,4 +27,5 @@ node_modules/
 council-payload-*.json
 council-report-*.html
 council-transcript-*.md
+.playwright-cli/
 ~

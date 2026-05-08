@@ -219,6 +219,16 @@ class TestingGate(QualityGate):
                 },
             )
 
+        if not (package_dir / "node_modules").exists():
+            install = await asyncio.create_subprocess_exec(
+                "npm",
+                "install",
+                cwd=str(package_dir),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await install.communicate()
+
         proc = await asyncio.create_subprocess_exec(
             "npm",
             "test",

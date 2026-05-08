@@ -58,9 +58,9 @@ Use this pattern when:
 
 **Examples:**
 - `command-execution-patterns.md` → Steering (repeated friction)
-- `chrome-devtools-dashboard-testing.md` → Workflow (complex, infrequent)
+- `memory-retrieval-guide.md` → Workflow (complex, infrequent)
 - `deploy_dashboard.ps1` → Script (repetitive commands)
-- `use-mcp-chrome-devtools-for-dashboard-testing` → Memory (decision)
+- `browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp` → Memory (correction)
 - Environment constraints → CLAUDE.md (project-specific)
 - Triggers table → AGENTS.md (always-visible)
 

@@ -162,12 +162,12 @@ Runtime contract for builder-owned agent execution in this repo.
 - Stable workspace `cwd` is part of task identity.
 - Sessions preserve conversation continuity, not filesystem isolation.
 - Resume is only reliable when it reuses the same workspace `cwd`.
-- For the full workspace lifecycle, use [task-workspace-isolation.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/workflows/task-workspace-isolation.md).
+- For the full workspace lifecycle, run `workflow --docs-dir docs summary task-workspace-isolation`.
 
 ## Entry Points
-- Dashboard/frontend testing: [chrome-devtools-dashboard-testing.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/workflows/chrome-devtools-dashboard-testing.md)
-- Dashboard-first lifecycle validation: [dashboard-first-validation.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/dashboard-first-validation.md)
-- Task workspace lifecycle: [task-workspace-isolation.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/workflows/task-workspace-isolation.md)
+- Dashboard/frontend testing: Playwright CLI skill (`$HOME/.claude/skills/playwright/scripts/playwright_cli.sh`); see agent memory `browser-testing-use-playwright-cli-avoid-chrome-devtools-mcp`.
+- Dashboard-first lifecycle validation: `workflow --docs-dir docs summary dashboard-first-validation`
+- Task workspace lifecycle: `workflow --docs-dir docs summary task-workspace-isolation`
 
 ## Review Rule
 - Before editing this file, run `builder quality-gate claude-md --json`.
