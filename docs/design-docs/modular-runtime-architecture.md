@@ -12,7 +12,8 @@ Exactly one harness is active for a run.
 
 | Harness | Runtime key | Auth | Endpoint shape | Primary use |
 | --- | --- | --- | --- | --- |
-| Claude Agent SDK | `claude` | Claude Code OAuth/token path | Claude Agent SDK / Claude Code | user-facing Claude lane |
+| Claude Agent SDK | `claude` | Claude Code OAuth/token path | Claude Agent SDK / Claude Code | user-facing Claude lane (local) |
+| Anthropic Managed Agents | `claude_managed` | `ANTHROPIC_API_KEY` (Managed Agents beta) | Managed Agents API (cloud sessions, hosted agents, vault-backed MCP, webhook follow-up) | user-facing Claude lane (cloud, GitHub-backed projects only) |
 | Codex SDK | `codex_sdk` | ChatGPT/Codex login | Codex app-server/SDK JSON-RPC | user-facing Codex lane with SDK/app-server telemetry |
 
 Compatibility adapters such as `codex_cli` and `openai_agents` may remain in

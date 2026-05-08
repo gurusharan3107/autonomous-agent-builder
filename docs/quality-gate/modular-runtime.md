@@ -11,10 +11,11 @@ commands:
   - "pytest tests/test_runtime_interface.py tests/test_codex_app_server_runtime.py tests/test_onboarding_runtime_selection.py tests/test_execution_policy.py -q"
 expectations:
   - "exactly one runtime harness is active for a run"
-  - "user-facing runtime selection exposes only claude and codex_sdk; compatibility adapters must not be advertised as sprint validation lanes"
-  - "selected runtime owns the Day-0 guidance baseline: claude uses CLAUDE.md, Codex uses AGENTS.md, and builder-generated baselines migrate when lanes switch"
+  - "user-facing runtime selection exposes claude, claude_managed, and codex_sdk; compatibility adapters must not be advertised as sprint validation lanes"
+  - "selected runtime owns the Day-0 guidance baseline: claude and claude_managed use CLAUDE.md, Codex uses AGENTS.md, and builder-generated baselines migrate when lanes switch"
   - "runtime selection flows through RuntimeSettings and create_runtime() rather than product paths instantiating adapters directly"
   - "claude keeps AgentRunner and Claude Agent SDK mechanics behind ClaudeRuntime"
+  - "claude_managed delegates to Anthropic Managed Agents (cloud sessions, hosted agents, vault-backed MCP, webhook follow-up) through ManagedAgentsRuntime; feature-verifier runs through user.define_outcome rubrics on this lane"
   - "codex_sdk uses the Codex app-server/SDK JSON-RPC contract with Codex login auth and must expose token, turn, duration, native user-input, and telemetry-source fields in RunResult observability"
   - "compatibility adapters such as codex_cli and openai_agents may remain in lower-level tests but must fail user-facing runtime activation"
   - "provider limits, auth misses, unsupported models, and unsupported capabilities normalize into deterministic builder state"
@@ -35,9 +36,13 @@ related_docs:
 Use this gate when changing runtime selection, runtime adapters, provider probes,
 or dashboard/runtime settings.
 
-The check keeps the two user-facing runtime lanes distinct:
+The check keeps the three user-facing runtime lanes distinct:
 
 - `claude`: Claude Agent SDK through Claude Code auth and `ClaudeRuntime`
+- `claude_managed`: Anthropic Managed Agents (cloud) through `ManagedAgentsRuntime`,
+  with hosted agents per role, `github_repository` resources, vault-backed
+  MCP, webhook-driven orchestrator follow-up, and Outcomes-based feature
+  verification (GitHub-backed projects only)
 - `codex_sdk`: Codex app-server/SDK JSON-RPC path over the same local Codex
   login auth
 
@@ -73,8 +78,15 @@ Load this gate before:
 - Board, Metrics, approvals, task sidebars, and `builder logs analyze` use the
   normalized runtime telemetry fields instead of raw adapter-specific events.
 - Day-0 readiness validates the selected runtime's guidance file: `CLAUDE.md`
-  for Claude and `AGENTS.md` for Codex. Switching between those lanes migrates a
-  builder-generated baseline instead of leaving duplicate active guidance.
+  for `claude` and `claude_managed`, `AGENTS.md` for `codex_sdk`. Switching
+  between those lanes migrates a builder-generated baseline instead of leaving
+  duplicate active guidance.
+- `claude_managed` activation requires a GitHub-backed project plus an
+  `ANTHROPIC_API_KEY` with Managed Agents beta access. The runtime probe fails
+  fast with a deterministic error when either precondition is missing.
+- Webhook deliveries are deduped through the `webhook_deliveries` DB table and
+  resume `Orchestrator.dispatch` for the matching task; in-process LRUs are
+  not load-bearing for cross-restart correctness.
 - Compatibility adapters are not returned by user-facing runtime lists and fail
   user-facing activation with a deterministic `invalid_sdk` error.
 - Runtime probes return compact machine-readable fields: `ok`, `sdk`,

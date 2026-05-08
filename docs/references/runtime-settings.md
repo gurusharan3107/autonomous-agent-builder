@@ -14,20 +14,22 @@ selection for the dashboard, CLI, and embedded server.
 
 Runtime selection is a harness choice, not only a model-provider choice. Exactly
 one `RUNTIME_SDK` value is active for a run. The user-facing lifecycle lanes are
-Claude Agent SDK (`claude`) and Codex SDK (`codex_sdk`); compatibility adapters
-must not be used as sprint validation lanes.
+Claude Agent SDK (`claude`), Anthropic Managed Agents (`claude_managed`, cloud,
+GitHub-backed projects only), and Codex SDK (`codex_sdk`); compatibility
+adapters must not be used as sprint validation lanes.
 
 ## Supported Runtimes
 
 | `RUNTIME_SDK` | Provider default | Auth path | Endpoint shape | Settings surface |
 | --- | --- | --- | --- | --- |
 | `claude` | `claude_code` | Claude Code auth path | Claude Agent SDK / Claude Code | model only |
+| `claude_managed` | `anthropic_managed` | `ANTHROPIC_API_KEY` (Managed Agents beta access) | Managed Agents API (cloud sessions, hosted agents, vault-backed MCP, webhook follow-up) | model only |
 | `codex_sdk` | `codex_subscription` | `codex login` ChatGPT/Codex session | Codex app-server/SDK JSON-RPC | model, profile, sandbox, approval |
 
 Compatibility adapters such as `codex_cli` and `openai_agents` may remain in
 tests or lower-level adapter code while migrations are in progress, but dashboard
 runtime switching and forward-engineering sprint validation should use only
-`claude` and `codex_sdk`.
+`claude`, `claude_managed`, or `codex_sdk`.
 
 ## Environment Keys
 
@@ -53,9 +55,16 @@ health can show more than one configured/reachable lane when the project has
 both Claude env and Codex `.codex/config.toml` evidence.
 
 Runtime selection also owns the Day-0 project guidance baseline. Selecting
-`claude` uses `CLAUDE.md`; selecting `codex_sdk` uses `AGENTS.md`.
-Builder-generated baselines are migrated between those filenames when the
-selected lane changes, while user-authored guidance is preserved.
+`claude` or `claude_managed` uses `CLAUDE.md`; selecting `codex_sdk` uses
+`AGENTS.md`. Builder-generated baselines are migrated between those filenames
+when the selected lane changes, while user-authored guidance is preserved.
+
+`claude_managed` requires a GitHub-backed project (the runtime probe fails fast
+when no `github_repository` resource can be derived) and an
+`ANTHROPIC_API_KEY` with Managed Agents beta access. One-time agent provisioning
+runs through `builder agent runtime managed-agents setup`; lifecycle follow-up
+arrives via `/api/managed-agents/webhook` and is deduped through the
+`webhook_deliveries` table.
 
 Telemetry keys managed with runtime selection:
 

@@ -4,7 +4,12 @@ Use this when changing dashboard tabs, runtime settings, board cards, metrics, o
 
 ## Decision
 
-Changing runtime from `codex_sdk` to `claude`, or from `claude` to `codex_sdk`, must not rewrite, hide, relabel, or re-score already shipped work. The selected runtime controls the next Agent chat turn, next dispatch, next onboarding run, and next backend runtime log. Historical tasks, agent runs, metrics, observability, approvals, knowledge, memory, and backlog items remain visible with their original runtime attribution.
+Changing runtime between any of the three user-facing lanes (`claude`,
+`claude_managed`, `codex_sdk`) must not rewrite, hide, relabel, or re-score
+already shipped work. The selected runtime controls the next Agent chat turn,
+next dispatch, next onboarding run, and next backend runtime log. Historical
+tasks, agent runs, metrics, observability, approvals, knowledge, memory, and
+backlog items remain visible with their original runtime attribution.
 
 ## Invariants
 
@@ -123,7 +128,7 @@ Run logs must keep using the runtime that executed the run. Switching runtime af
 
 ## Regression Checklist
 
-- Switch `codex_sdk -> claude -> codex_sdk` through Settings.
+- Switch `codex_sdk -> claude -> claude_managed -> codex_sdk` through Settings.
 - Verify Board shipped cards still show the same task titles, agent names, run runtime, costs, turns, and durations.
 - Verify Metrics total run count does not decrease after switching.
 - Verify Observability keeps historical runtime rows for both runtimes after at least one run exists for each.

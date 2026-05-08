@@ -15,7 +15,7 @@ expectations:
   - "runtime-boundary changes preserve the ownership split already documented in the owner surfaces"
   - "workflow progression, retries, and blocked-state handling are not reassigned implicitly during the change"
   - "SDK-facing changes remain limited to runtime mechanics such as loops, sessions, tools, hooks, permissions, streaming, and MCP"
-  - "runtime selection keeps claude and codex_sdk user-facing lanes distinct while compatibility adapters remain internal"
+  - "runtime selection keeps claude, claude_managed, and codex_sdk user-facing lanes distinct while compatibility adapters remain internal"
   - "Codex subagents remain optional specialist lanes instead of a required product layer"
   - "shared services or stable contracts are preferred over deeper CLI subprocess coupling"
   - "runtime and SDK files cross the builder boundary through builder_tool_service instead of importing the CLI bridge or shelling out to builder directly"
