@@ -1,0 +1,53 @@
+{
+  "run_id": "gc-20260414-111436",
+  "timestamp": "2026-04-14T11:14:36Z",
+  "dry_run": true,
+  "memories_scanned": 5,
+  "transitions": [
+    {
+      "slug": "concurrent-quality-gates-with-asyncio-gather",
+      "rule": "supersession",
+      "from_status": "active",
+      "to_status": "superseded",
+      "reason": "superseded by max-retries-2-for-quality-gates (same quality-gates/testing/decision)",
+      "superseded_by": "max-retries-2-for-quality-gates"
+    }
+  ],
+  "flagged_for_review": [],
+  "summary": {
+    "active": 5,
+    "total": 5,
+    "stale": 0,
+    "superseded": 1,
+    "quota": 0,
+    "flagged": 0,
+    "total_proposed": 1
+  },
+  "graduation_candidates": [
+    {
+      "slug": "claude-agent-sdk-as-foundation",
+      "reason": "4/4 title keywords found in CLAUDE.md — already encoded?",
+      "source": "claude_md_overlap"
+    },
+    {
+      "slug": "concurrent-quality-gates-with-asyncio-gather",
+      "reason": "4/4 title keywords found in CLAUDE.md — already encoded?",
+      "source": "claude_md_overlap"
+    },
+    {
+      "slug": "max-retries-2-for-quality-gates",
+      "reason": "3/3 title keywords found in CLAUDE.md — already encoded?",
+      "source": "claude_md_overlap"
+    },
+    {
+      "slug": "never-use-shell-true-in-subprocess-calls",
+      "reason": "3/5 title keywords found in CLAUDE.md — already encoded?",
+      "source": "claude_md_overlap"
+    },
+    {
+      "slug": "deterministic-dispatch-over-agent-self-routing",
+      "reason": "4/5 title keywords found in CLAUDE.md — already encoded?",
+      "source": "claude_md_overlap"
+    }
+  ]
+}

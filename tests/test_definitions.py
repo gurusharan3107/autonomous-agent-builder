@@ -1,0 +1,225 @@
+"""Tests for agent definitions."""
+
+from __future__ import annotations
+
+import pytest
+
+from autonomous_agent_builder.agents.definitions import (
+    AGENT_DEFINITIONS,
+    SUBAGENT_DEFINITIONS,
+    get_agent_definition,
+    get_subagent_definition,
+)
+
+
+class TestAgentDefinitions:
+    def test_all_agents_defined(self):
+        expected = {
+            "chat",
+            "init-project-chat",
+            "planner",
+            "designer",
+            "code-gen",
+            "pr-creator",
+            "build-verifier",
+            "feature-verifier",
+            "integration-resolver",
+            "documentation-bridge",
+            "optimization-agent",
+        }
+        assert set(AGENT_DEFINITIONS.keys()) == expected
+        assert set(SUBAGENT_DEFINITIONS.keys()) == {
+            "browser-verifier",
+            "build-verifier",
+            "documentation-agent",
+            "pr-reviewer",
+            "repo-researcher",
+            "security-reviewer",
+        }
+
+    def test_planner_is_opus(self):
+        planner = get_agent_definition("planner")
+        assert planner.model == "opus"
+
+    def test_code_gen_is_sonnet(self):
+        codegen = get_agent_definition("code-gen")
+        assert codegen.model == "sonnet"
+
+    def test_chat_is_haiku(self):
+        chat = get_agent_definition("chat")
+        assert chat.model == "haiku"
+
+    def test_init_project_chat_is_opus(self):
+        chat = get_agent_definition("init-project-chat")
+        assert chat.model == "opus"
+
+    def test_planner_is_read_only(self):
+        planner = get_agent_definition("planner")
+        write_tools = {"Edit", "Write", "Bash"}
+        assert not write_tools.intersection(planner.tools)
+        assert "mcp__builder__kb_show" in planner.tools
+
+    def test_code_gen_has_write_tools(self):
+        codegen = get_agent_definition("code-gen")
+        assert "Edit" in codegen.tools
+        assert "Write" in codegen.tools
+        assert "Bash" not in codegen.tools
+        assert "mcp__workspace__run_command" in codegen.tools
+        assert "mcp__builder__kb_show" in codegen.tools
+
+    def test_pr_creator_requires_workspace_hygiene_check(self):
+        pr_creator = get_agent_definition("pr-creator")
+        assert "git status" in pr_creator.prompt_template
+        assert "untracked files" in pr_creator.prompt_template
+        assert "scratch" in pr_creator.prompt_template
+
+    def test_chat_can_use_builder_and_workflow_via_bash(self):
+        chat = get_agent_definition("chat")
+        assert "Bash" in chat.tools
+        assert "builder" in chat.prompt_template
+        assert "workflow" in chat.prompt_template
+        assert "AskUserQuestion" in chat.prompt_template
+        assert "AskUserQuestion" in chat.tools
+        assert chat.auto_approve_tools is not None
+        assert "AskUserQuestion" not in chat.auto_approve_tools
+        assert "Do not treat the task board as the backlog" in chat.prompt_template
+
+    def test_chat_exposes_mutation_tools_but_does_not_auto_approve_them(self):
+        chat = get_agent_definition("chat")
+        assert "mcp__builder__memory_add" in chat.tools
+        assert "mcp__builder__kb_add" in chat.tools
+        assert "mcp__builder__kb_update" in chat.tools
+        assert chat.auto_approve_tools is not None
+        assert "mcp__builder__memory_add" not in chat.auto_approve_tools
+        assert "mcp__builder__kb_add" not in chat.auto_approve_tools
+        assert "mcp__builder__kb_update" not in chat.auto_approve_tools
+
+    def test_chat_requires_approval_for_bash(self):
+        chat = get_agent_definition("chat")
+        assert chat.auto_approve_tools is not None
+        assert "Bash" not in chat.auto_approve_tools
+        assert "mcp__builder__backlog_item_list" in chat.tools
+        assert "mcp__builder__backlog_item_show" in chat.tools
+        assert "mcp__builder__backlog_item_list" in chat.auto_approve_tools
+        assert "mcp__builder__backlog_item_show" in chat.auto_approve_tools
+
+    def test_codegen_gets_only_task_scoped_context_and_workspace_execution_tools(self):
+        codegen = get_agent_definition("code-gen")
+        assert "Bash" not in codegen.tools
+        assert "mcp__workspace__get_project_info" in codegen.tools
+        assert "mcp__workspace__list_directory" in codegen.tools
+        assert "mcp__workspace__run_command" in codegen.tools
+        assert "mcp__workspace__run_tests" in codegen.tools
+        assert "mcp__workspace__run_linter" in codegen.tools
+        assert "mcp__builder__task_show" in codegen.tools
+        assert "mcp__builder__kb_search" in codegen.tools
+        assert "mcp__builder__kb_show" in codegen.tools
+        assert "mcp__builder__memory_search" in codegen.tools
+        assert "mcp__builder__board" not in codegen.tools
+        assert "mcp__builder__backlog_item_list" not in codegen.tools
+        assert "mcp__builder__memory_add" not in codegen.tools
+        assert "mcp__builder__kb_add" not in codegen.tools
+        assert "mcp__builder__kb_update" not in codegen.tools
+        assert "Knowledge requirements:" in codegen.prompt_template
+        assert "Do not inspect the task board or backlog" in codegen.prompt_template
+
+    def test_codegen_bounds_server_and_command_output_for_codex(self):
+        codegen = get_agent_definition("code-gen")
+        assert "Keep command output bounded" in codegen.prompt_template
+        assert "Never run a long-lived dev server in the foreground" in codegen.prompt_template
+        assert "stop it" in codegen.prompt_template
+
+    def test_feature_verifier_bounds_browser_validation_output_for_codex(self):
+        verifier = get_agent_definition("feature-verifier")
+        assert "Keep shell output bounded" in verifier.prompt_template
+        assert "Never run a long-lived dev server in the foreground" in verifier.prompt_template
+        assert "Do not print Playwright traces" in verifier.prompt_template
+        assert "Bash" not in verifier.tools
+        assert "mcp__workspace__run_command" in verifier.tools
+
+    def test_build_verifier_boundary_is_runtime_agnostic_for_directory_workspaces(self):
+        verifier = get_agent_definition("build-verifier")
+        assert "local generated-app directory workspaces" in verifier.prompt_template
+        assert "builder script run build_verify --json" in verifier.prompt_template
+
+    def test_designer_can_publish_repo_local_kb_through_builder_surfaces(self):
+        designer = get_agent_definition("designer")
+        assert "mcp__builder__kb_search" in designer.tools
+        assert "mcp__builder__kb_show" in designer.tools
+        assert "mcp__builder__kb_add" in designer.tools
+        assert "mcp__builder__kb_update" in designer.tools
+        assert "Knowledge requirements:" in designer.prompt_template
+        assert "builder_kb_add and builder_kb_update" in designer.prompt_template
+
+    def test_planner_mentions_required_docs_contract(self):
+        planner = get_agent_definition("planner")
+        assert "depends_on.system_docs.required_docs" in planner.prompt_template
+        assert "Knowledge requirements:" in planner.prompt_template
+
+    def test_definitions_are_frozen(self):
+        planner = get_agent_definition("planner")
+        with pytest.raises(AttributeError):
+            planner.name = "hacked"
+
+    def test_unknown_agent_raises(self):
+        with pytest.raises(KeyError):
+            get_agent_definition("nonexistent")
+
+    def test_documentation_subagent_maintains_user_and_agent_friendly_kb(self):
+        subagent = get_subagent_definition("documentation-agent")
+        assert "mcp__builder__kb_search" in subagent.tools
+        assert "mcp__builder__kb_contract" in subagent.tools
+        assert "mcp__builder__kb_lint" in subagent.tools
+        assert "mcp__builder__kb_extract" in subagent.tools
+        assert "mcp__builder__kb_add" in subagent.tools
+        assert "mcp__builder__kb_update" in subagent.tools
+        assert "mcp__builder__kb_validate" in subagent.tools
+        assert "AskUserQuestion" not in subagent.tools
+        assert "docs/" in subagent.prompt
+        assert "both human users and future agents" in subagent.prompt
+        assert (
+            "Respect the provided `resolved_action`, `target_doc_type`, `mode`, "
+            "and `freshness_mode` fields"
+        ) in subagent.prompt
+        assert (
+            "For first-doc creation, call `builder_kb_contract` before drafting."
+            in subagent.prompt
+        )
+        assert (
+            "Use `builder_kb_lint` to catch contract failures before `builder_kb_add`"
+            in subagent.prompt
+        )
+        assert (
+            "Attempt at most one repair retry after a lint or publish failure."
+            in subagent.prompt
+        )
+        assert "JSON object" in subagent.prompt
+
+    def test_documentation_bridge_only_owns_agent_tool_and_doc_auto_approvals(self):
+        bridge = get_agent_definition("documentation-bridge")
+        assert bridge.tools == ()
+        assert bridge.auto_approve_tools is not None
+        assert bridge.auto_approve_tools[0] == "Agent"
+        assert "mcp__builder__kb_update" in bridge.auto_approve_tools
+        assert "documentation-agent" in bridge.prompt_template
+
+    def test_optimization_agent_is_post_ship_bounded_and_observability_grounded(self):
+        agent = get_agent_definition("optimization-agent")
+        assert agent.model == "sonnet"
+        assert "Observability and recommendation payload" in agent.prompt_template
+        assert "Review every open recommendation" in agent.prompt_template
+        assert "recommendation_decisions" in agent.prompt_template
+        assert "Do not alter shipped feature scope" in agent.prompt_template
+        assert "OPERATOR_DECISION_JSON" in agent.prompt_template
+        assert "mcp__builder__metrics" in agent.tools
+        assert "AskUserQuestion" not in agent.tools
+
+    def test_all_have_prompt_templates(self):
+        for name, defn in AGENT_DEFINITIONS.items():
+            assert defn.prompt_template, f"{name} has empty prompt_template"
+            assert "{" in defn.prompt_template, f"{name} prompt has no template vars"
+
+    def test_budget_limits(self):
+        for name, defn in AGENT_DEFINITIONS.items():
+            assert defn.max_budget_usd > 0, f"{name} has no budget"
+            assert defn.max_turns > 0, f"{name} has no turn limit"

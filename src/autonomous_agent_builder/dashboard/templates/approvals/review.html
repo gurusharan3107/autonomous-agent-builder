@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Review — {{ gate.gate_type }} — Agent Builder{% endblock %}
+
+{% block content %}
+<div class="review-container">
+    {# Header with task context #}
+    <div class="review-hero">
+        <div class="review-hero__badge">
+            <span class="badge badge-{{ gate.status }}">{{ gate.status }}</span>
+        </div>
+        <h1 class="review-hero__title">{{ gate.gate_type | upper }} Review</h1>
+        <div class="review-hero__subtitle">{{ task.title }}</div>
+        <div class="review-hero__breadcrumb">
+            {% if project %}<span>{{ project.name }}</span>{% endif %}
+            {% if feature %}<span>&rsaquo;</span><span>{{ feature.title }}</span>{% endif %}
+        </div>
+    </div>
+
+    {# Pipeline Stepper #}
+    {% set step_map = {"planning": 0, "design_review": 0, "design": 1, "implementation": 2, "quality_gates": 3, "pr_creation": 4, "review_pending": 4, "build_verify": 5, "done": 6} %}
+    {% set task_status_str = task.status.value if task.status is not string else task.status %}
+    {% set current_step = step_map.get(task_status_str, 0) %}
+    <div class="stepper" style="margin-bottom: var(--sp-2xl); justify-content: center;">
+        {% for step_name in ["Plan", "Design", "Implement", "Gates", "PR", "Build"] %}
+        <div class="stepper__node {% if loop.index0 < current_step %}completed{% elif loop.index0 == current_step %}active{% endif %}">
+            <div class="stepper__dot"></div>
+            {% if not loop.last %}<div class="stepper__line"></div>{% endif %}
+        </div>
+        <span class="stepper__label">{{ step_name }}</span>
+        {% endfor %}
+    </div>
+
+    {# Two-column layout: thread + sidebar #}
+    <div class="review-layout">
+        {# Main: Chat Thread #}
+        <div class="review-main">
+            <div class="review-section-label">Activity</div>
+            <div class="chat-thread" id="chat-thread"
+                 hx-get="/api/approval-gates/{{ gate.id }}/thread"
+                 hx-trigger="every 3s"
+                 hx-swap="innerHTML">
+                {% for entry in thread %}
+                <div class="chat-entry">
+                    <div class="chat-author">
+                        {% if entry.role == "agent" %}
+                            <span class="badge badge-agent">{{ entry.agent_name }}</span>
+                        {% else %}
+                            <span class="badge badge-human">{{ entry.author }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="chat-content">{{ entry.content }}</div>
+                </div>
+                {% endfor %}
+                {% if not thread %}
+                <div class="empty-state" style="padding: var(--sp-2xl) var(--sp-lg);">
+                    <div class="empty-state__icon">&#9993;</div>
+                    <div class="empty-state__text">No activity yet</div>
+                    <div class="empty-state__hint">Agent run data will appear here</div>
+                </div>
+                {% endif %}
+            </div>
+
+            {# Approval Actions #}
+            {% if gate.status == "pending" %}
+            <div class="review-actions">
+                <form hx-post="/api/approval-gates/{{ gate.id }}/approve" hx-swap="outerHTML">
+                    <input type="hidden" name="approver_email" value="{{ current_user }}">
+                    <div class="action-row">
+                        <textarea name="comment" placeholder="Leave feedback for the next phase..."
+                                  class="textarea" rows="3"></textarea>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="submit" name="decision" value="approve" class="btn btn-success btn-lg" style="flex: 2;">
+                            &#10003; Approve
+                        </button>
+                        <button type="submit" name="decision" value="request_changes" class="btn btn-warning">
+                            Request Changes
+                        </button>
+                        <button type="submit" name="decision" value="reject" class="btn btn-danger">
+                            Reject
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <div class="review-resolved">
+                {{ gate.status | capitalize }} {% if gate.resolved_at %}at {{ gate.resolved_at }}{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {# Sidebar: Gate Results + Agent Runs #}
+        <div class="review-sidebar">
+            {% if gate_results %}
+            <div class="review-section-label">Quality Gates</div>
+            <div class="review-sidebar__cards">
+                {% for r in gate_results %}
+                <div class="gate-result-card gate-result-card--{{ r.status }}">
+                    <div class="flex-between">
+                        <span style="font-weight: 600; font-size: var(--text-sm);">{{ r.gate_name }}</span>
+                        <span class="badge badge-{{ r.status }}">{{ r.status }}</span>
+                    </div>
+                    <div class="gate-result-card__stats">
+                        <span>{{ r.findings_count }} finding{{ "s" if r.findings_count != 1 }}</span>
+                        <span class="mono">{{ r.elapsed_ms }}ms</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if runs %}
+            <div class="review-section-label" style="margin-top: var(--sp-xl);">Agent Runs</div>
+            <div class="review-sidebar__cards">
+                {% for run in runs %}
+                <div class="run-card">
+                    <div class="flex-between" style="margin-bottom: var(--sp-sm);">
+                        <span class="badge badge-agent">{{ run.agent_name }}</span>
+                        <span class="badge badge-{{ run.status }}">{{ run.status }}</span>
+                    </div>
+                    <div class="run-card__stats">
+                        <div class="task-card__stat">
+                            <span class="task-card__stat-label">Cost</span>
+                            <span class="task-card__stat-value">${{ "%.4f"|format(run.cost_usd) }}</span>
+                        </div>
+                        <div class="task-card__stat">
+                            <span class="task-card__stat-label">Tokens</span>
+                            <span class="task-card__stat-value">{{ "{:,}".format(run.tokens_input + run.tokens_output) }}</span>
+                        </div>
+                        <div class="task-card__stat">
+                            <span class="task-card__stat-label">Turns</span>
+                            <span class="task-card__stat-value">{{ run.num_turns }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

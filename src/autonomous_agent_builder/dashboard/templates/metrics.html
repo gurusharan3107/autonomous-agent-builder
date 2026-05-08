@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Metrics — Agent Builder{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Metrics</h1>
+        <p class="page-subtitle">Cost tracking and pipeline health</p>
+    </div>
+</div>
+
+{# KPI Cards #}
+<div class="kpi-grid">
+    <div class="kpi-card kpi-card--accent-primary">
+        <div class="kpi-card__icon">$</div>
+        <div class="kpi-card__content">
+            <div class="kpi-label">Total Cost</div>
+            <div class="kpi-value" data-count="{{ total_cost }}">${{ "%.4f"|format(total_cost) }}</div>
+            <div class="kpi-detail">across {{ total_runs }} run{{ "s" if total_runs != 1 }}</div>
+        </div>
+    </div>
+    <div class="kpi-card kpi-card--accent-info">
+        <div class="kpi-card__icon">T</div>
+        <div class="kpi-card__content">
+            <div class="kpi-label">Total Tokens</div>
+            <div class="kpi-value">{{ "{:,}".format(total_tokens) }}</div>
+            <div class="kpi-detail">input + output</div>
+        </div>
+    </div>
+    <div class="kpi-card kpi-card--accent-neutral">
+        <div class="kpi-card__icon">&#9654;</div>
+        <div class="kpi-card__content">
+            <div class="kpi-label">Agent Runs</div>
+            <div class="kpi-value">{{ total_runs }}</div>
+            <div class="kpi-detail">
+                {% if runs %}
+                    {{ runs | selectattr("status", "equalto", "completed") | list | length }} completed
+                {% else %}
+                    no runs yet
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="kpi-card kpi-card--accent-success">
+        <div class="kpi-card__icon">&#10003;</div>
+        <div class="kpi-card__content">
+            <div class="kpi-label">Gate Pass Rate</div>
+            <div class="kpi-value">{{ "%.0f"|format(gate_pass_rate) }}%</div>
+            <div class="kpi-detail">
+                {% if gate_pass_rate == 0 and total_runs == 0 %}
+                    no gates run yet
+                {% else %}
+                    quality gates
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if runs %}
+{# Cost per Run Chart #}
+<div class="card metrics-chart-card">
+    <div class="card-header" style="margin-bottom: var(--sp-xl);">
+        <h3>Cost per Run</h3>
+        <span class="muted" style="font-size: var(--text-xs);">{{ runs | length }} runs</span>
+    </div>
+    {% set max_cost = runs | map(attribute="cost_usd") | max %}
+    {% if max_cost and max_cost > 0 %}
+    <div class="cost-chart">
+        {% for run in runs %}
+        <div class="cost-bar-wrap">
+            <div class="cost-bar" style="height: {{ (run.cost_usd / max_cost * 100) | round(1) }}%;"
+                 title="{{ run.agent_name }}: ${{ '%.4f'|format(run.cost_usd) }}">
+            </div>
+            <span class="cost-bar__label">{{ run.agent_name[:3] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="cost-chart__axis">
+        <span class="mono muted">${{ "%.4f"|format(max_cost) }}</span>
+        <span class="mono muted">$0</span>
+    </div>
+    {% endif %}
+</div>
+
+{# Recent Runs Table #}
+<div class="card">
+    <div class="card-header" style="margin-bottom: var(--sp-lg);">
+        <h3>Recent Runs</h3>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Agent</th>
+                    <th>Task</th>
+                    <th>Cost</th>
+                    <th>Tokens</th>
+                    <th>Turns</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs | reverse %}
+                <tr>
+                    <td><span class="badge badge-agent">{{ run.agent_name }}</span></td>
+                    <td class="mono truncate" style="max-width: 120px;">{{ run.task_id[:8] }}</td>
+                    <td class="mono">${{ "%.4f"|format(run.cost_usd) }}</td>
+                    <td class="mono">{{ "{:,}".format(run.tokens_input + run.tokens_output) }}</td>
+                    <td>{{ run.num_turns }}</td>
+                    <td class="mono">{{ (run.duration_ms / 1000)|round(1) }}s</td>
+                    <td><span class="badge badge-{{ run.status }}">{{ run.status }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-state__icon">&#9776;</div>
+        <div class="empty-state__text">No data yet</div>
+        <div class="empty-state__hint">Dispatch a task to start collecting metrics</div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,3652 @@
+{
+  "generated_at": "2026-05-08T03:39:54Z",
+  "entries": [
+    {
+      "slug": "feature-acceptance-py-too-strict-accepts-only-playwright",
+      "file": "corrections/feature-acceptance-py-too-strict-accepts-only-playwright.md",
+      "title": "feature_acceptance.py too strict \u2014 accepts only Playwright",
+      "type": "correction",
+      "phase": "verification",
+      "entity": "feature-acceptance-script",
+      "tags": [
+        "feature-verifier",
+        "playwright",
+        "jsdom",
+        "verify-phase",
+        "deterministic-script"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "telemetry-and-observability-are-core-to-the-builder-mission",
+      "file": "patterns/telemetry-and-observability-are-core-to-the-builder-mission.md",
+      "title": "Telemetry and observability are core to the builder mission",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "observability",
+      "tags": [
+        "telemetry",
+        "observability",
+        "otel",
+        "mission-critical",
+        "readiness"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "file": "corrections/sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro.md",
+      "title": "Sprint 1 dispatch exposed critical scope-handoff and gate-routing bugs",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "sprint-dispatch",
+      "tags": [
+        "scope-handoff",
+        "code-gen",
+        "runtime-guidance",
+        "quality-gates",
+        "pr-creation",
+        "critical"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "file": "corrections/pre-existing-test-drift-catalog-from-may-2026-patch-series.md",
+      "title": "Pre-existing test drift catalog from May 2026 patch series",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "test-suite",
+      "tags": [
+        "tests",
+        "conftest",
+        "legacy-ids",
+        "drift",
+        "verification"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "per-task-model-routing-is-builder-owned",
+      "file": "patterns/per-task-model-routing-is-builder-owned.md",
+      "title": "Per-task model routing is builder-owned",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "execution-policy",
+      "tags": [
+        "model-routing",
+        "claude-agent-sdk",
+        "cost-quality",
+        "opus-4-7",
+        "sonnet-4-6",
+        "haiku-4-5"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "optimize-builder-agents-through-evidence-not-token-rationing",
+      "file": "patterns/optimize-builder-agents-through-evidence-not-token-rationing.md",
+      "title": "Optimize Builder agents through evidence, not token rationing",
+      "type": "pattern",
+      "phase": "optimization",
+      "entity": "agent-effectiveness",
+      "tags": [
+        "observability",
+        "metrics",
+        "logs",
+        "agents",
+        "tokens"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "file": "corrections/first-dashboard-run-findings-sidebar-metrics-tool-registry-w.md",
+      "title": "First dashboard run findings: sidebar metrics, tool registry warning, OTEL bundling",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "dashboard-run",
+      "tags": [
+        "dashboard",
+        "ui-bug",
+        "otel",
+        "tool-registry",
+        "init-project-chat",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "do-not-seed-forward-backlog-during-onboarding",
+      "file": "corrections/do-not-seed-forward-backlog-during-onboarding.md",
+      "title": "Do not seed forward backlog during onboarding",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "forward-engineering-onboarding",
+      "tags": [
+        "forward-engineering",
+        "onboarding",
+        "backlog",
+        "dashboard"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "day-0-forward-engineering-validation-findings-2026-05",
+      "file": "corrections/day-0-forward-engineering-validation-findings-2026-05.md",
+      "title": "Day-0 forward-engineering validation findings (2026-05)",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "day0-validation",
+      "tags": [
+        "validation",
+        "readiness",
+        "otel",
+        "model-ids",
+        "aiosqlite"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
+      "file": "corrections/codex-global-rules-live-in-codex-agents-md-not-claude-claude.md",
+      "title": "Codex global rules live in ~/.codex/AGENTS.md, not ~/.claude/CLAUDE.md",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agents-md-inheritance",
+      "tags": [
+        "agents-md",
+        "inheritance",
+        "codex",
+        "global"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "generated-app-workspace-changes-must-be-builder-owned",
+      "file": "corrections/generated-app-workspace-changes-must-be-builder-owned.md",
+      "title": "Generated app workspace changes must be builder-owned",
+      "type": "correction",
+      "phase": "optimization",
+      "entity": "generated-app-workspace-boundary",
+      "tags": [
+        "optimization-agent",
+        "runtime-guidance",
+        "generated-app",
+        "builder-agents",
+        "memory"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-06",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "audit-run-telemetry-before-optimizing-autonomous-agents",
+      "file": "corrections/audit-run-telemetry-before-optimizing-autonomous-agents.md",
+      "title": "Audit run telemetry before optimizing autonomous agents",
+      "type": "correction",
+      "phase": "optimization",
+      "entity": "autonomous-builder-runtime",
+      "tags": [
+        "telemetry",
+        "optimization-agent",
+        "codex-sdk",
+        "deterministic-scripts",
+        "control-surfaces"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-05",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "file": "decisions/use-hybrid-native-otel-plus-builder-normalized-telemetry.md",
+      "title": "Use hybrid native OTEL plus builder-normalized telemetry",
+      "type": "decision",
+      "phase": "design",
+      "entity": "observability-telemetry",
+      "tags": [
+        "telemetry",
+        "observability",
+        "otel",
+        "codex-sdk",
+        "claude-agent-sdk",
+        "recommendations"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-04",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "deterministic-quality-invariants-should-replace-agent-cleanu",
+      "file": "decisions/deterministic-quality-invariants-should-replace-agent-cleanu.md",
+      "title": "Deterministic quality invariants should replace agent cleanup rituals",
+      "type": "decision",
+      "phase": "quality",
+      "entity": "builder-maintenance",
+      "tags": [
+        "determinism",
+        "verification",
+        "docs",
+        "cli",
+        "codex"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-04",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "runtime-switch-must-preserve-built-project-lifecycle",
+      "file": "corrections/runtime-switch-must-preserve-built-project-lifecycle.md",
+      "title": "Runtime switch must preserve built project lifecycle",
+      "type": "correction",
+      "phase": "runtime",
+      "entity": "runtime-switch",
+      "tags": [
+        "runtime",
+        "onboarding",
+        "codex-sdk",
+        "claude-agent-sdk",
+        "readiness"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-03",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "codex-sdk-optimization-needs-decision-intelligence",
+      "file": "decisions/codex-sdk-optimization-needs-decision-intelligence.md",
+      "title": "Codex SDK optimization needs decision intelligence",
+      "type": "decision",
+      "phase": "observability",
+      "entity": "codex-sdk-optimization",
+      "tags": [
+        "codex-sdk",
+        "observability",
+        "cost-optimization",
+        "sprint-planning"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-03",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "check-run-terminal-state-after-target-tests-pass",
+      "file": "patterns/check-run-terminal-state-after-target-tests-pass.md",
+      "title": "Check run terminal state after target tests pass",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "reverse-engineering",
+        "agent-page",
+        "documentation-agent",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-30",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "file": "patterns/treat-empty-sdk-and-provider-limit-output-as-blockers.md",
+      "title": "Treat empty SDK and provider-limit output as blockers",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "sdk-empty-and-limit-results",
+      "tags": [
+        "sdk",
+        "provider-limit",
+        "no-op",
+        "capability-limit"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "test-continuation-with-user-shaped-prompts",
+      "file": "patterns/test-continuation-with-user-shaped-prompts.md",
+      "title": "Test continuation with user-shaped prompts",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "forward-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "forward-engineering",
+        "agent-page",
+        "dispatch",
+        "approval",
+        "context-efficiency"
+      ],
+      "status": "graduated",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": true,
+      "flag_reason": "",
+      "graduated_into": "docs/workflows/forward-engineering-autonomous-lifecycle-validation.md"
+    },
+    {
+      "slug": "stay-in-tester-role-during-autonomous-validation",
+      "file": "patterns/stay-in-tester-role-during-autonomous-validation.md",
+      "title": "Stay in tester role during autonomous validation",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "autonomous-lifecycle-validation",
+      "tags": [
+        "validation",
+        "operator-role",
+        "approval-gates",
+        "quality-gates"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "shipping-requires-integrating-the-task-worktree",
+      "file": "patterns/shipping-requires-integrating-the-task-worktree.md",
+      "title": "Shipping requires integrating the task worktree",
+      "type": "pattern",
+      "phase": "integration",
+      "entity": "task-worktree-shipping",
+      "tags": [
+        "worktree",
+        "integration",
+        "shipping",
+        "backlog"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "reject-stale-gates-and-feed-exact-command-output-back",
+      "file": "patterns/reject-stale-gates-and-feed-exact-command-output-back.md",
+      "title": "Reject stale gates and feed exact command output back",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "quality-gate-feedback-loop",
+      "tags": [
+        "validation",
+        "quality-gates",
+        "feedback",
+        "implementation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "provider-limit-text-should-block-active-work-immediately",
+      "file": "patterns/provider-limit-text-should-block-active-work-immediately.md",
+      "title": "Provider limit text should block active work immediately",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "provider-quota-detection",
+      "tags": [
+        "provider-limit",
+        "quota",
+        "blocked-state",
+        "capability-limit",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "file": "patterns/ground-orchestration-fixes-in-workflow-knowledge-and-determi.md",
+      "title": "Ground orchestration fixes in workflow knowledge and deterministic state",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "orchestrator",
+      "tags": [
+        "orchestration",
+        "workflow-knowledge",
+        "provider-limit",
+        "model-policy",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "builder-owns-provider-limit-resume-and-model-policy",
+      "file": "decisions/builder-owns-provider-limit-resume-and-model-policy.md",
+      "title": "Builder owns provider-limit resume and model policy",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "orchestrator",
+      "tags": [
+        "orchestration",
+        "provider-limit",
+        "model-policy"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "file": "patterns/claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory.md",
+      "title": "Claude Agent SDK: streaming prompt + can_use_tool are mandatory in all call paths",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "claude-agent-sdk-runtime",
+      "tags": [
+        "sdk",
+        "can_use_tool",
+        "streaming",
+        "subprocess",
+        "hang",
+        "critical"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-27",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "file": "patterns/claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are.md",
+      "title": "Claude Agent SDK: pass env=None not env={} when no overrides are needed",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "claude-agent-sdk-runtime",
+      "tags": [
+        "sdk",
+        "env",
+        "environment",
+        "subprocess",
+        "onecli",
+        "observability"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-27",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
+      "file": "corrections/claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n.md",
+      "title": "Claude Agent SDK hang diagnosis: SystemMessage received but no further output",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "claude-agent-sdk-runtime",
+      "tags": [
+        "sdk",
+        "diagnosis",
+        "hang",
+        "SystemMessage",
+        "probe",
+        "availability"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-27",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "file": "patterns/testing-closeout-should-save-anecdotes-and-typed-backlog-fin.md",
+      "title": "Testing closeout should save anecdotes and typed backlog findings",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "testing-validation-closeout",
+      "tags": [
+        "testing-closeout",
+        "backlog",
+        "incidents",
+        "improvements",
+        "optimizations",
+        "memory",
+        "agent-efficiency"
+      ],
+      "status": "graduated",
+      "related": [],
+      "date": "2026-04-25",
+      "preserve_as_precedent": true,
+      "flag_reason": "",
+      "graduated_into": "docs/workflows/forward-engineering-autonomous-lifecycle-validation.md"
+    },
+    {
+      "slug": "reverse-engineering-validation-must-follow-product-visible-s",
+      "file": "patterns/reverse-engineering-validation-must-follow-product-visible-s.md",
+      "title": "Reverse-engineering validation must follow product-visible state to shipped",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "reverse-engineering",
+        "browser-validation",
+        "backlog",
+        "inbox",
+        "dispatch",
+        "quality-gates",
+        "shipping"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-25",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "file": "patterns/close-reverse-engineering-runs-by-saving-reusable-agent-anec.md",
+      "title": "Close reverse-engineering runs by saving reusable agent anecdotes",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "reverse-engineering",
+        "closeout",
+        "learning-loop",
+        "memory",
+        "agent-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-25",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "file": "patterns/use-builder-cli-telemetry-before-reopening-broad-code-contex.md",
+      "title": "Use builder CLI telemetry before reopening broad code context",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "builder-cli-telemetry",
+      "tags": [
+        "builder-logs",
+        "claude-agent-sdk",
+        "agent-debugging",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "reverse-engineering-validation-must-use-an-external-repo",
+      "file": "decisions/reverse-engineering-validation-must-use-an-external-repo.md",
+      "title": "Reverse-engineering validation must use an external repo",
+      "type": "decision",
+      "phase": "planning",
+      "entity": "validation",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "file": "patterns/optimize-runtime-behavior-from-browser-evidence-plus-builder.md",
+      "title": "Optimize runtime behavior from browser evidence plus builder telemetry",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "runtime-validation",
+      "tags": [
+        "browser",
+        "telemetry",
+        "builder-logs",
+        "verification"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "file": "corrections/feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched.md",
+      "title": "Feature chat fixes must be SDK-grounded, not keyword patched",
+      "type": "correction",
+      "phase": "design",
+      "entity": "embedded-agent-chat",
+      "tags": [
+        "claude-agent-sdk",
+        "feature-spec",
+        "routing",
+        "telemetry"
+      ],
+      "status": "graduated",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": true,
+      "flag_reason": "",
+      "graduated_into": "docs/workflows/agent-quality-tuning-loop.md"
+    },
+    {
+      "slug": "create-task-worktree-at-design-to-implementation-handoff",
+      "file": "decisions/create-task-worktree-at-design-to-implementation-handoff.md",
+      "title": "Create task worktree at design-to-implementation handoff",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "workspace-lifecycle",
+      "tags": [
+        "worktree",
+        "workspace",
+        "orchestrator",
+        "claude-agent-sdk"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "file": "decisions/create-specialist-agents-only-at-bounded-lifecycle-boundarie.md",
+      "title": "Create specialist agents only at bounded lifecycle boundaries",
+      "type": "decision",
+      "phase": "design",
+      "entity": "specialist-agent-routing",
+      "tags": [
+        "claude-agent-sdk",
+        "subagents",
+        "specialists",
+        "orchestration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "scoped-kb-extract-must-preserve-collection-metadata",
+      "file": "corrections/scoped-kb-extract-must-preserve-collection-metadata.md",
+      "title": "Scoped KB extract must preserve collection metadata",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge",
+      "tags": [
+        "kb",
+        "knowledge",
+        "extractor",
+        "metadata",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "external-reverse-engineering-validation-works-best-as-a-stag",
+      "file": "patterns/external-reverse-engineering-validation-works-best-as-a-stag.md",
+      "title": "External reverse-engineering validation works best as a staged runtime drill",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-lifecycle",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "embedded-server",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "file": "decisions/documentation-freshness-is-commit-anchored-not-worktree-anch.md",
+      "title": "Documentation freshness is commit-anchored, not worktree-anchored",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "documentation-agent",
+        "knowledge-base",
+        "freshness",
+        "git",
+        "worktree"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-agent-maintains-shared-user-and-agent-kb",
+      "file": "decisions/documentation-agent-maintains-shared-user-and-agent-kb.md",
+      "title": "Documentation agent maintains shared user and agent KB",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "kb",
+        "docs",
+        "agent",
+        "system-docs"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-22",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "worktree-first-development-is-the-core-rule",
+      "file": "decisions/worktree-first-development-is-the-core-rule.md",
+      "title": "Worktree-first development is the core rule",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "worktree-workflow",
+      "tags": [
+        "worktree",
+        "development",
+        "isolation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "workflow-and-memory-creation-only-via-clis",
+      "file": "decisions/workflow-and-memory-creation-only-via-clis.md",
+      "title": "Workflow and memory creation ONLY via CLIs",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-creation",
+      "tags": [
+        "workflow",
+        "builder",
+        "cli-only"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "file": "decisions/official-builder-write-back-uses-mcp-tools-not-raw-file-muta.md",
+      "title": "Official builder write-back uses MCP tools, not raw file mutation",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "agent-runtime",
+      "tags": [
+        "sdk-mcp",
+        "memory",
+        "kb",
+        "learning",
+        "self-improvement"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "file": "corrections/delete-settings-local-json-if-it-conflicts-with-claude-setti.md",
+      "title": "Delete settings.local.json if it conflicts with .claude/settings.json",
+      "type": "correction",
+      "phase": "setup",
+      "entity": "settings-management",
+      "tags": [
+        "settings",
+        "local",
+        "override",
+        "conflict"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-code-settings-use-bash-cmd-format",
+      "file": "patterns/claude-code-settings-use-bash-cmd-format.md",
+      "title": "Claude Code settings use Bash(cmd:*) format",
+      "type": "pattern",
+      "phase": "setup",
+      "entity": "claude-code-settings",
+      "tags": [
+        "settings",
+        "permissions",
+        "configuration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "file": "corrections/knowledge-quality-gate-must-parse-canonical-yaml-frontmatter.md",
+      "title": "Knowledge quality gate must parse canonical YAML frontmatter tags",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-quality-gate",
+      "tags": [
+        "knowledge",
+        "quality-gate",
+        "yaml",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "file": "corrections/embedded-agent-chat-should-continue-conversation-instead-of-.md",
+      "title": "Embedded agent chat should continue conversation instead of CLI resume",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agent chat runner",
+      "tags": [
+        "agent-chat",
+        "resume",
+        "claude-sdk",
+        "embedded-server"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "agent-extractor-must-use-shared-claude-runtime",
+      "file": "corrections/agent-extractor-must-use-shared-claude-runtime.md",
+      "title": "Agent extractor must use shared Claude runtime",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-agent-extractor",
+      "tags": [
+        "kb",
+        "claude-runtime",
+        "timeout",
+        "extraction"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "project-memory-captures-real-time-friction-precedent",
+      "file": "decisions/project-memory-captures-real-time-friction-precedent.md",
+      "title": "Project memory captures real-time friction precedent",
+      "type": "decision",
+      "phase": "design",
+      "entity": "memory-cli",
+      "tags": [
+        "memory",
+        "friction",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "memory-routing-json-can-use-memories-key",
+      "file": "corrections/memory-routing-json-can-use-memories-key.md",
+      "title": "Memory routing.json can use memories key",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "memory-api",
+      "tags": [
+        "memory",
+        "routing",
+        "json",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "knowledge-tag-filtering-must-align-frontend-and-api",
+      "file": "corrections/knowledge-tag-filtering-must-align-frontend-and-api.md",
+      "title": "Knowledge tag filtering must align frontend and API intersection semantics",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-api",
+      "tags": [
+        "knowledge",
+        "api",
+        "tags",
+        "filtering",
+        "frontend"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "file": "decisions/use-mcp-chrome-devtools-for-dashboard-testing-instead-of.md",
+      "title": "Use MCP Chrome DevTools for dashboard testing instead of curl",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "dashboard",
+      "tags": [
+        "mcp",
+        "testing",
+        "browser",
+        "api"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "file": "patterns/tag-based-similarity-for-knowledge-graphs-without-wikilinks.md",
+      "title": "Tag-based similarity for knowledge graphs without wikilinks",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "knowledge-base",
+      "tags": [
+        "knowledge-graph",
+        "similarity",
+        "tags",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "file": "patterns/surface-ownership-what-goes-where-agents-md-vs-steering-vs.md",
+      "title": "Surface ownership - what goes where (AGENTS.md vs steering vs workflow vs scripts)",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "agents",
+      "tags": [
+        "ownership",
+        "placement",
+        "surfaces",
+        "organization"
+      ],
+      "status": "active",
+      "related": [
+        "command-execution-friction-prevention-via-steering-files"
+      ],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "fastapi-route-ordering-specific-routes-before-path",
+      "file": "decisions/fastapi-route-ordering-specific-routes-before-path.md",
+      "title": "FastAPI route ordering: specific routes before path parameters",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "fastapi-routes",
+      "tags": [
+        "fastapi",
+        "routing",
+        "api-design"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "command-execution-friction-prevention-via-steering-files",
+      "file": "patterns/command-execution-friction-prevention-via-steering-files.md",
+      "title": "Command execution friction prevention via steering files",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "steering",
+      "tags": [
+        "friction",
+        "commands",
+        "windows",
+        "automation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "cli-validation-system-for-cross-platform-compatibility",
+      "file": "pattern_cli-validation-system-for-cross-platform-compatibility.md",
+      "title": "CLI validation system for cross-platform compatibility",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "cli-validation",
+      "tags": [
+        "cli",
+        "validation",
+        "cross-platform",
+        "legacy"
+      ],
+      "status": "invalidated",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "Legacy memory referenced verify.sh, which is absent; current CLI validation is owned by docs/cli-validation.md and command-execution-friction-prevention-via-steering-files.",
+      "graduated_into": ""
+    },
+    {
+      "slug": "dynamic-script-loading-with-package-relative-imports",
+      "file": "patterns/dynamic-script-loading-with-package-relative-imports.md",
+      "title": "Dynamic Script Loading With Package Relative Imports",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "script-library",
+      "tags": [],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-16",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "max-retries-2-for-quality-gates",
+      "file": "decisions/max-retries-2-for-quality-gates.md",
+      "title": "MAX_RETRIES=2 for quality gates",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "retries",
+        "gates",
+        "threshold"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "deterministic-dispatch-over-agent-self-routing",
+      "file": "patterns/deterministic-dispatch-over-agent-self-routing.md",
+      "title": "Deterministic dispatch over agent self-routing",
+      "type": "pattern",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "dispatch",
+        "architecture",
+        "routing"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "concurrent-quality-gates-with-asyncio-gather",
+      "file": "decisions/concurrent-quality-gates-with-asyncio-gather.md",
+      "title": "Concurrent quality gates with asyncio.gather",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "asyncio",
+        "concurrency",
+        "gates"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-as-foundation",
+      "file": "decisions/claude-agent-sdk-as-foundation.md",
+      "title": "Claude Agent SDK as foundation",
+      "type": "decision",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "sdk",
+        "architecture",
+        "foundation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "react-shadcn-luma-gsap-migration",
+      "file": "patterns/react-shadcn-luma-gsap-migration.md",
+      "title": "React + shadcn Luma + GSAP migration patterns",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "frontend",
+      "tags": [
+        "react",
+        "shadcn",
+        "gsap",
+        "spa",
+        "vite"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-13",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    }
+  ],
+  "memories": [
+    {
+      "slug": "feature-acceptance-py-too-strict-accepts-only-playwright",
+      "file": "corrections/feature-acceptance-py-too-strict-accepts-only-playwright.md",
+      "title": "feature_acceptance.py too strict \u2014 accepts only Playwright",
+      "type": "correction",
+      "phase": "verification",
+      "entity": "feature-acceptance-script",
+      "tags": [
+        "feature-verifier",
+        "playwright",
+        "jsdom",
+        "verify-phase",
+        "deterministic-script"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-08",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "telemetry-and-observability-are-core-to-the-builder-mission",
+      "file": "patterns/telemetry-and-observability-are-core-to-the-builder-mission.md",
+      "title": "Telemetry and observability are core to the builder mission",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "observability",
+      "tags": [
+        "telemetry",
+        "observability",
+        "otel",
+        "mission-critical",
+        "readiness"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "file": "corrections/sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro.md",
+      "title": "Sprint 1 dispatch exposed critical scope-handoff and gate-routing bugs",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "sprint-dispatch",
+      "tags": [
+        "scope-handoff",
+        "code-gen",
+        "runtime-guidance",
+        "quality-gates",
+        "pr-creation",
+        "critical"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "file": "corrections/pre-existing-test-drift-catalog-from-may-2026-patch-series.md",
+      "title": "Pre-existing test drift catalog from May 2026 patch series",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "test-suite",
+      "tags": [
+        "tests",
+        "conftest",
+        "legacy-ids",
+        "drift",
+        "verification"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "per-task-model-routing-is-builder-owned",
+      "file": "patterns/per-task-model-routing-is-builder-owned.md",
+      "title": "Per-task model routing is builder-owned",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "execution-policy",
+      "tags": [
+        "model-routing",
+        "claude-agent-sdk",
+        "cost-quality",
+        "opus-4-7",
+        "sonnet-4-6",
+        "haiku-4-5"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "optimize-builder-agents-through-evidence-not-token-rationing",
+      "file": "patterns/optimize-builder-agents-through-evidence-not-token-rationing.md",
+      "title": "Optimize Builder agents through evidence, not token rationing",
+      "type": "pattern",
+      "phase": "optimization",
+      "entity": "agent-effectiveness",
+      "tags": [
+        "observability",
+        "metrics",
+        "logs",
+        "agents",
+        "tokens"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "file": "corrections/first-dashboard-run-findings-sidebar-metrics-tool-registry-w.md",
+      "title": "First dashboard run findings: sidebar metrics, tool registry warning, OTEL bundling",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "dashboard-run",
+      "tags": [
+        "dashboard",
+        "ui-bug",
+        "otel",
+        "tool-registry",
+        "init-project-chat",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "do-not-seed-forward-backlog-during-onboarding",
+      "file": "corrections/do-not-seed-forward-backlog-during-onboarding.md",
+      "title": "Do not seed forward backlog during onboarding",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "forward-engineering-onboarding",
+      "tags": [
+        "forward-engineering",
+        "onboarding",
+        "backlog",
+        "dashboard"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "day-0-forward-engineering-validation-findings-2026-05",
+      "file": "corrections/day-0-forward-engineering-validation-findings-2026-05.md",
+      "title": "Day-0 forward-engineering validation findings (2026-05)",
+      "type": "correction",
+      "phase": "testing",
+      "entity": "day0-validation",
+      "tags": [
+        "validation",
+        "readiness",
+        "otel",
+        "model-ids",
+        "aiosqlite"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
+      "file": "corrections/codex-global-rules-live-in-codex-agents-md-not-claude-claude.md",
+      "title": "Codex global rules live in ~/.codex/AGENTS.md, not ~/.claude/CLAUDE.md",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agents-md-inheritance",
+      "tags": [
+        "agents-md",
+        "inheritance",
+        "codex",
+        "global"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-07",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "generated-app-workspace-changes-must-be-builder-owned",
+      "file": "corrections/generated-app-workspace-changes-must-be-builder-owned.md",
+      "title": "Generated app workspace changes must be builder-owned",
+      "type": "correction",
+      "phase": "optimization",
+      "entity": "generated-app-workspace-boundary",
+      "tags": [
+        "optimization-agent",
+        "runtime-guidance",
+        "generated-app",
+        "builder-agents",
+        "memory"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-06",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "audit-run-telemetry-before-optimizing-autonomous-agents",
+      "file": "corrections/audit-run-telemetry-before-optimizing-autonomous-agents.md",
+      "title": "Audit run telemetry before optimizing autonomous agents",
+      "type": "correction",
+      "phase": "optimization",
+      "entity": "autonomous-builder-runtime",
+      "tags": [
+        "telemetry",
+        "optimization-agent",
+        "codex-sdk",
+        "deterministic-scripts",
+        "control-surfaces"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-05",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "file": "decisions/use-hybrid-native-otel-plus-builder-normalized-telemetry.md",
+      "title": "Use hybrid native OTEL plus builder-normalized telemetry",
+      "type": "decision",
+      "phase": "design",
+      "entity": "observability-telemetry",
+      "tags": [
+        "telemetry",
+        "observability",
+        "otel",
+        "codex-sdk",
+        "claude-agent-sdk",
+        "recommendations"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-04",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "deterministic-quality-invariants-should-replace-agent-cleanu",
+      "file": "decisions/deterministic-quality-invariants-should-replace-agent-cleanu.md",
+      "title": "Deterministic quality invariants should replace agent cleanup rituals",
+      "type": "decision",
+      "phase": "quality",
+      "entity": "builder-maintenance",
+      "tags": [
+        "determinism",
+        "verification",
+        "docs",
+        "cli",
+        "codex"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-04",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "runtime-switch-must-preserve-built-project-lifecycle",
+      "file": "corrections/runtime-switch-must-preserve-built-project-lifecycle.md",
+      "title": "Runtime switch must preserve built project lifecycle",
+      "type": "correction",
+      "phase": "runtime",
+      "entity": "runtime-switch",
+      "tags": [
+        "runtime",
+        "onboarding",
+        "codex-sdk",
+        "claude-agent-sdk",
+        "readiness"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-03",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "codex-sdk-optimization-needs-decision-intelligence",
+      "file": "decisions/codex-sdk-optimization-needs-decision-intelligence.md",
+      "title": "Codex SDK optimization needs decision intelligence",
+      "type": "decision",
+      "phase": "observability",
+      "entity": "codex-sdk-optimization",
+      "tags": [
+        "codex-sdk",
+        "observability",
+        "cost-optimization",
+        "sprint-planning"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-05-03",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "check-run-terminal-state-after-target-tests-pass",
+      "file": "patterns/check-run-terminal-state-after-target-tests-pass.md",
+      "title": "Check run terminal state after target tests pass",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "reverse-engineering",
+        "agent-page",
+        "documentation-agent",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-30",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "file": "patterns/treat-empty-sdk-and-provider-limit-output-as-blockers.md",
+      "title": "Treat empty SDK and provider-limit output as blockers",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "sdk-empty-and-limit-results",
+      "tags": [
+        "sdk",
+        "provider-limit",
+        "no-op",
+        "capability-limit"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "test-continuation-with-user-shaped-prompts",
+      "file": "patterns/test-continuation-with-user-shaped-prompts.md",
+      "title": "Test continuation with user-shaped prompts",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "forward-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "forward-engineering",
+        "agent-page",
+        "dispatch",
+        "approval",
+        "context-efficiency"
+      ],
+      "status": "graduated",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": true,
+      "flag_reason": "",
+      "graduated_into": "docs/workflows/forward-engineering-autonomous-lifecycle-validation.md"
+    },
+    {
+      "slug": "stay-in-tester-role-during-autonomous-validation",
+      "file": "patterns/stay-in-tester-role-during-autonomous-validation.md",
+      "title": "Stay in tester role during autonomous validation",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "autonomous-lifecycle-validation",
+      "tags": [
+        "validation",
+        "operator-role",
+        "approval-gates",
+        "quality-gates"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "shipping-requires-integrating-the-task-worktree",
+      "file": "patterns/shipping-requires-integrating-the-task-worktree.md",
+      "title": "Shipping requires integrating the task worktree",
+      "type": "pattern",
+      "phase": "integration",
+      "entity": "task-worktree-shipping",
+      "tags": [
+        "worktree",
+        "integration",
+        "shipping",
+        "backlog"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "reject-stale-gates-and-feed-exact-command-output-back",
+      "file": "patterns/reject-stale-gates-and-feed-exact-command-output-back.md",
+      "title": "Reject stale gates and feed exact command output back",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "quality-gate-feedback-loop",
+      "tags": [
+        "validation",
+        "quality-gates",
+        "feedback",
+        "implementation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "provider-limit-text-should-block-active-work-immediately",
+      "file": "patterns/provider-limit-text-should-block-active-work-immediately.md",
+      "title": "Provider limit text should block active work immediately",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "provider-quota-detection",
+      "tags": [
+        "provider-limit",
+        "quota",
+        "blocked-state",
+        "capability-limit",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "file": "patterns/ground-orchestration-fixes-in-workflow-knowledge-and-determi.md",
+      "title": "Ground orchestration fixes in workflow knowledge and deterministic state",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "orchestrator",
+      "tags": [
+        "orchestration",
+        "workflow-knowledge",
+        "provider-limit",
+        "model-policy",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "builder-owns-provider-limit-resume-and-model-policy",
+      "file": "decisions/builder-owns-provider-limit-resume-and-model-policy.md",
+      "title": "Builder owns provider-limit resume and model policy",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "orchestrator",
+      "tags": [
+        "orchestration",
+        "provider-limit",
+        "model-policy"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-29",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "file": "patterns/claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory.md",
+      "title": "Claude Agent SDK: streaming prompt + can_use_tool are mandatory in all call paths",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "claude-agent-sdk-runtime",
+      "tags": [
+        "sdk",
+        "can_use_tool",
+        "streaming",
+        "subprocess",
+        "hang",
+        "critical"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-27",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "file": "patterns/claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are.md",
+      "title": "Claude Agent SDK: pass env=None not env={} when no overrides are needed",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "claude-agent-sdk-runtime",
+      "tags": [
+        "sdk",
+        "env",
+        "environment",
+        "subprocess",
+        "onecli",
+        "observability"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-27",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
+      "file": "corrections/claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n.md",
+      "title": "Claude Agent SDK hang diagnosis: SystemMessage received but no further output",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "claude-agent-sdk-runtime",
+      "tags": [
+        "sdk",
+        "diagnosis",
+        "hang",
+        "SystemMessage",
+        "probe",
+        "availability"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-27",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "file": "patterns/testing-closeout-should-save-anecdotes-and-typed-backlog-fin.md",
+      "title": "Testing closeout should save anecdotes and typed backlog findings",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "testing-validation-closeout",
+      "tags": [
+        "testing-closeout",
+        "backlog",
+        "incidents",
+        "improvements",
+        "optimizations",
+        "memory",
+        "agent-efficiency"
+      ],
+      "status": "graduated",
+      "related": [],
+      "date": "2026-04-25",
+      "preserve_as_precedent": true,
+      "flag_reason": "",
+      "graduated_into": "docs/workflows/forward-engineering-autonomous-lifecycle-validation.md"
+    },
+    {
+      "slug": "reverse-engineering-validation-must-follow-product-visible-s",
+      "file": "patterns/reverse-engineering-validation-must-follow-product-visible-s.md",
+      "title": "Reverse-engineering validation must follow product-visible state to shipped",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "reverse-engineering",
+        "browser-validation",
+        "backlog",
+        "inbox",
+        "dispatch",
+        "quality-gates",
+        "shipping"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-25",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "file": "patterns/close-reverse-engineering-runs-by-saving-reusable-agent-anec.md",
+      "title": "Close reverse-engineering runs by saving reusable agent anecdotes",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-autonomous-lifecycle-validation",
+      "tags": [
+        "reverse-engineering",
+        "closeout",
+        "learning-loop",
+        "memory",
+        "agent-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-25",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "file": "patterns/use-builder-cli-telemetry-before-reopening-broad-code-contex.md",
+      "title": "Use builder CLI telemetry before reopening broad code context",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "builder-cli-telemetry",
+      "tags": [
+        "builder-logs",
+        "claude-agent-sdk",
+        "agent-debugging",
+        "context-efficiency"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "reverse-engineering-validation-must-use-an-external-repo",
+      "file": "decisions/reverse-engineering-validation-must-use-an-external-repo.md",
+      "title": "Reverse-engineering validation must use an external repo",
+      "type": "decision",
+      "phase": "planning",
+      "entity": "validation",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "file": "patterns/optimize-runtime-behavior-from-browser-evidence-plus-builder.md",
+      "title": "Optimize runtime behavior from browser evidence plus builder telemetry",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "runtime-validation",
+      "tags": [
+        "browser",
+        "telemetry",
+        "builder-logs",
+        "verification"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "file": "corrections/feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched.md",
+      "title": "Feature chat fixes must be SDK-grounded, not keyword patched",
+      "type": "correction",
+      "phase": "design",
+      "entity": "embedded-agent-chat",
+      "tags": [
+        "claude-agent-sdk",
+        "feature-spec",
+        "routing",
+        "telemetry"
+      ],
+      "status": "graduated",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": true,
+      "flag_reason": "",
+      "graduated_into": "docs/workflows/agent-quality-tuning-loop.md"
+    },
+    {
+      "slug": "create-task-worktree-at-design-to-implementation-handoff",
+      "file": "decisions/create-task-worktree-at-design-to-implementation-handoff.md",
+      "title": "Create task worktree at design-to-implementation handoff",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "workspace-lifecycle",
+      "tags": [
+        "worktree",
+        "workspace",
+        "orchestrator",
+        "claude-agent-sdk"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "file": "decisions/create-specialist-agents-only-at-bounded-lifecycle-boundarie.md",
+      "title": "Create specialist agents only at bounded lifecycle boundaries",
+      "type": "decision",
+      "phase": "design",
+      "entity": "specialist-agent-routing",
+      "tags": [
+        "claude-agent-sdk",
+        "subagents",
+        "specialists",
+        "orchestration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-24",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "scoped-kb-extract-must-preserve-collection-metadata",
+      "file": "corrections/scoped-kb-extract-must-preserve-collection-metadata.md",
+      "title": "Scoped KB extract must preserve collection metadata",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge",
+      "tags": [
+        "kb",
+        "knowledge",
+        "extractor",
+        "metadata",
+        "validation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "external-reverse-engineering-validation-works-best-as-a-stag",
+      "file": "patterns/external-reverse-engineering-validation-works-best-as-a-stag.md",
+      "title": "External reverse-engineering validation works best as a staged runtime drill",
+      "type": "pattern",
+      "phase": "testing",
+      "entity": "reverse-engineering-lifecycle",
+      "tags": [
+        "reverse-engineering",
+        "testing",
+        "embedded-server",
+        "external-repo"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "file": "decisions/documentation-freshness-is-commit-anchored-not-worktree-anch.md",
+      "title": "Documentation freshness is commit-anchored, not worktree-anchored",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "documentation-agent",
+        "knowledge-base",
+        "freshness",
+        "git",
+        "worktree"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-23",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "documentation-agent-maintains-shared-user-and-agent-kb",
+      "file": "decisions/documentation-agent-maintains-shared-user-and-agent-kb.md",
+      "title": "Documentation agent maintains shared user and agent KB",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-agent",
+      "tags": [
+        "kb",
+        "docs",
+        "agent",
+        "system-docs"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-22",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "worktree-first-development-is-the-core-rule",
+      "file": "decisions/worktree-first-development-is-the-core-rule.md",
+      "title": "Worktree-first development is the core rule",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "worktree-workflow",
+      "tags": [
+        "worktree",
+        "development",
+        "isolation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "workflow-and-memory-creation-only-via-clis",
+      "file": "decisions/workflow-and-memory-creation-only-via-clis.md",
+      "title": "Workflow and memory creation ONLY via CLIs",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "documentation-creation",
+      "tags": [
+        "workflow",
+        "builder",
+        "cli-only"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "file": "decisions/official-builder-write-back-uses-mcp-tools-not-raw-file-muta.md",
+      "title": "Official builder write-back uses MCP tools, not raw file mutation",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "agent-runtime",
+      "tags": [
+        "sdk-mcp",
+        "memory",
+        "kb",
+        "learning",
+        "self-improvement"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "file": "corrections/delete-settings-local-json-if-it-conflicts-with-claude-setti.md",
+      "title": "Delete settings.local.json if it conflicts with .claude/settings.json",
+      "type": "correction",
+      "phase": "setup",
+      "entity": "settings-management",
+      "tags": [
+        "settings",
+        "local",
+        "override",
+        "conflict"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-code-settings-use-bash-cmd-format",
+      "file": "patterns/claude-code-settings-use-bash-cmd-format.md",
+      "title": "Claude Code settings use Bash(cmd:*) format",
+      "type": "pattern",
+      "phase": "setup",
+      "entity": "claude-code-settings",
+      "tags": [
+        "settings",
+        "permissions",
+        "configuration"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-20",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "file": "corrections/knowledge-quality-gate-must-parse-canonical-yaml-frontmatter.md",
+      "title": "Knowledge quality gate must parse canonical YAML frontmatter tags",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-quality-gate",
+      "tags": [
+        "knowledge",
+        "quality-gate",
+        "yaml",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "file": "corrections/embedded-agent-chat-should-continue-conversation-instead-of-.md",
+      "title": "Embedded agent chat should continue conversation instead of CLI resume",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "agent chat runner",
+      "tags": [
+        "agent-chat",
+        "resume",
+        "claude-sdk",
+        "embedded-server"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "agent-extractor-must-use-shared-claude-runtime",
+      "file": "corrections/agent-extractor-must-use-shared-claude-runtime.md",
+      "title": "Agent extractor must use shared Claude runtime",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-agent-extractor",
+      "tags": [
+        "kb",
+        "claude-runtime",
+        "timeout",
+        "extraction"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-19",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "project-memory-captures-real-time-friction-precedent",
+      "file": "decisions/project-memory-captures-real-time-friction-precedent.md",
+      "title": "Project memory captures real-time friction precedent",
+      "type": "decision",
+      "phase": "design",
+      "entity": "memory-cli",
+      "tags": [
+        "memory",
+        "friction",
+        "retrieval"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "memory-routing-json-can-use-memories-key",
+      "file": "corrections/memory-routing-json-can-use-memories-key.md",
+      "title": "Memory routing.json can use memories key",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "memory-api",
+      "tags": [
+        "memory",
+        "routing",
+        "json",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "knowledge-tag-filtering-must-align-frontend-and-api",
+      "file": "corrections/knowledge-tag-filtering-must-align-frontend-and-api.md",
+      "title": "Knowledge tag filtering must align frontend and API intersection semantics",
+      "type": "correction",
+      "phase": "implementation",
+      "entity": "knowledge-api",
+      "tags": [
+        "knowledge",
+        "api",
+        "tags",
+        "filtering",
+        "frontend"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-18",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "file": "decisions/use-mcp-chrome-devtools-for-dashboard-testing-instead-of.md",
+      "title": "Use MCP Chrome DevTools for dashboard testing instead of curl",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "dashboard",
+      "tags": [
+        "mcp",
+        "testing",
+        "browser",
+        "api"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "file": "patterns/tag-based-similarity-for-knowledge-graphs-without-wikilinks.md",
+      "title": "Tag-based similarity for knowledge graphs without wikilinks",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "knowledge-base",
+      "tags": [
+        "knowledge-graph",
+        "similarity",
+        "tags",
+        "ui"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "file": "patterns/surface-ownership-what-goes-where-agents-md-vs-steering-vs.md",
+      "title": "Surface ownership - what goes where (AGENTS.md vs steering vs workflow vs scripts)",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "agents",
+      "tags": [
+        "ownership",
+        "placement",
+        "surfaces",
+        "organization"
+      ],
+      "status": "active",
+      "related": [
+        "command-execution-friction-prevention-via-steering-files"
+      ],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "fastapi-route-ordering-specific-routes-before-path",
+      "file": "decisions/fastapi-route-ordering-specific-routes-before-path.md",
+      "title": "FastAPI route ordering: specific routes before path parameters",
+      "type": "decision",
+      "phase": "implementation",
+      "entity": "fastapi-routes",
+      "tags": [
+        "fastapi",
+        "routing",
+        "api-design"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "command-execution-friction-prevention-via-steering-files",
+      "file": "patterns/command-execution-friction-prevention-via-steering-files.md",
+      "title": "Command execution friction prevention via steering files",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "steering",
+      "tags": [
+        "friction",
+        "commands",
+        "windows",
+        "automation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "cli-validation-system-for-cross-platform-compatibility",
+      "file": "pattern_cli-validation-system-for-cross-platform-compatibility.md",
+      "title": "CLI validation system for cross-platform compatibility",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "cli-validation",
+      "tags": [
+        "cli",
+        "validation",
+        "cross-platform",
+        "legacy"
+      ],
+      "status": "invalidated",
+      "related": [],
+      "date": "2026-04-17",
+      "preserve_as_precedent": false,
+      "flag_reason": "Legacy memory referenced verify.sh, which is absent; current CLI validation is owned by docs/cli-validation.md and command-execution-friction-prevention-via-steering-files.",
+      "graduated_into": ""
+    },
+    {
+      "slug": "dynamic-script-loading-with-package-relative-imports",
+      "file": "patterns/dynamic-script-loading-with-package-relative-imports.md",
+      "title": "Dynamic Script Loading With Package Relative Imports",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "script-library",
+      "tags": [],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-16",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "max-retries-2-for-quality-gates",
+      "file": "decisions/max-retries-2-for-quality-gates.md",
+      "title": "MAX_RETRIES=2 for quality gates",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "retries",
+        "gates",
+        "threshold"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "deterministic-dispatch-over-agent-self-routing",
+      "file": "patterns/deterministic-dispatch-over-agent-self-routing.md",
+      "title": "Deterministic dispatch over agent self-routing",
+      "type": "pattern",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "dispatch",
+        "architecture",
+        "routing"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "concurrent-quality-gates-with-asyncio-gather",
+      "file": "decisions/concurrent-quality-gates-with-asyncio-gather.md",
+      "title": "Concurrent quality gates with asyncio.gather",
+      "type": "decision",
+      "phase": "testing",
+      "entity": "quality-gates",
+      "tags": [
+        "asyncio",
+        "concurrency",
+        "gates"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "claude-agent-sdk-as-foundation",
+      "file": "decisions/claude-agent-sdk-as-foundation.md",
+      "title": "Claude Agent SDK as foundation",
+      "type": "decision",
+      "phase": "design",
+      "entity": "orchestrator",
+      "tags": [
+        "sdk",
+        "architecture",
+        "foundation"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-14",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    },
+    {
+      "slug": "react-shadcn-luma-gsap-migration",
+      "file": "patterns/react-shadcn-luma-gsap-migration.md",
+      "title": "React + shadcn Luma + GSAP migration patterns",
+      "type": "pattern",
+      "phase": "implementation",
+      "entity": "frontend",
+      "tags": [
+        "react",
+        "shadcn",
+        "gsap",
+        "spa",
+        "vite"
+      ],
+      "status": "active",
+      "related": [],
+      "date": "2026-04-13",
+      "preserve_as_precedent": false,
+      "flag_reason": "",
+      "graduated_into": ""
+    }
+  ],
+  "routing": {
+    "type:correction": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright",
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "do-not-seed-forward-backlog-during-onboarding",
+      "day-0-forward-engineering-validation-findings-2026-05",
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
+      "generated-app-workspace-changes-must-be-builder-owned",
+      "audit-run-telemetry-before-optimizing-autonomous-agents",
+      "runtime-switch-must-preserve-built-project-lifecycle",
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "agent-extractor-must-use-shared-claude-runtime",
+      "memory-routing-json-can-use-memories-key",
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "phase:verification": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "entity:feature-acceptance-script": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "status:active": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright",
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "per-task-model-routing-is-builder-owned",
+      "optimize-builder-agents-through-evidence-not-token-rationing",
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "do-not-seed-forward-backlog-during-onboarding",
+      "day-0-forward-engineering-validation-findings-2026-05",
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
+      "generated-app-workspace-changes-must-be-builder-owned",
+      "audit-run-telemetry-before-optimizing-autonomous-agents",
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "deterministic-quality-invariants-should-replace-agent-cleanu",
+      "runtime-switch-must-preserve-built-project-lifecycle",
+      "codex-sdk-optimization-needs-decision-intelligence",
+      "check-run-terminal-state-after-target-tests-pass",
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "stay-in-tester-role-during-autonomous-validation",
+      "shipping-requires-integrating-the-task-worktree",
+      "reject-stale-gates-and-feed-exact-command-output-back",
+      "provider-limit-text-should-block-active-work-immediately",
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "builder-owns-provider-limit-resume-and-model-policy",
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
+      "reverse-engineering-validation-must-follow-product-visible-s",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "reverse-engineering-validation-must-use-an-external-repo",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "create-task-worktree-at-design-to-implementation-handoff",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "worktree-first-development-is-the-core-rule",
+      "workflow-and-memory-creation-only-via-clis",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "claude-code-settings-use-bash-cmd-format",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "agent-extractor-must-use-shared-claude-runtime",
+      "project-memory-captures-real-time-friction-precedent",
+      "memory-routing-json-can-use-memories-key",
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "fastapi-route-ordering-specific-routes-before-path",
+      "command-execution-friction-prevention-via-steering-files",
+      "dynamic-script-loading-with-package-relative-imports",
+      "max-retries-2-for-quality-gates",
+      "deterministic-dispatch-over-agent-self-routing",
+      "concurrent-quality-gates-with-asyncio-gather",
+      "claude-agent-sdk-as-foundation",
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:feature-verifier": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "tag:playwright": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "tag:jsdom": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "tag:verify-phase": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "tag:deterministic-script": [
+      "feature-acceptance-py-too-strict-accepts-only-playwright"
+    ],
+    "type:pattern": [
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "per-task-model-routing-is-builder-owned",
+      "optimize-builder-agents-through-evidence-not-token-rationing",
+      "check-run-terminal-state-after-target-tests-pass",
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "test-continuation-with-user-shaped-prompts",
+      "stay-in-tester-role-during-autonomous-validation",
+      "shipping-requires-integrating-the-task-worktree",
+      "reject-stale-gates-and-feed-exact-command-output-back",
+      "provider-limit-text-should-block-active-work-immediately",
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "reverse-engineering-validation-must-follow-product-visible-s",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "claude-code-settings-use-bash-cmd-format",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "command-execution-friction-prevention-via-steering-files",
+      "cli-validation-system-for-cross-platform-compatibility",
+      "dynamic-script-loading-with-package-relative-imports",
+      "deterministic-dispatch-over-agent-self-routing",
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "phase:implementation": [
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "per-task-model-routing-is-builder-owned",
+      "do-not-seed-forward-backlog-during-onboarding",
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "provider-limit-text-should-block-active-work-immediately",
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "builder-owns-provider-limit-resume-and-model-policy",
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
+      "create-task-worktree-at-design-to-implementation-handoff",
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "worktree-first-development-is-the-core-rule",
+      "workflow-and-memory-creation-only-via-clis",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "embedded-agent-chat-should-continue-conversation-instead-of-",
+      "agent-extractor-must-use-shared-claude-runtime",
+      "memory-routing-json-can-use-memories-key",
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks",
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs",
+      "fastapi-route-ordering-specific-routes-before-path",
+      "command-execution-friction-prevention-via-steering-files",
+      "cli-validation-system-for-cross-platform-compatibility",
+      "dynamic-script-loading-with-package-relative-imports",
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "entity:observability": [
+      "telemetry-and-observability-are-core-to-the-builder-mission"
+    ],
+    "tag:telemetry": [
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "audit-run-telemetry-before-optimizing-autonomous-agents",
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "tag:observability": [
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "optimize-builder-agents-through-evidence-not-token-rationing",
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "codex-sdk-optimization-needs-decision-intelligence",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are"
+    ],
+    "tag:otel": [
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "day-0-forward-engineering-validation-findings-2026-05",
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry"
+    ],
+    "tag:mission-critical": [
+      "telemetry-and-observability-are-core-to-the-builder-mission"
+    ],
+    "tag:readiness": [
+      "telemetry-and-observability-are-core-to-the-builder-mission",
+      "day-0-forward-engineering-validation-findings-2026-05",
+      "runtime-switch-must-preserve-built-project-lifecycle"
+    ],
+    "entity:sprint-dispatch": [
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro"
+    ],
+    "tag:scope-handoff": [
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro"
+    ],
+    "tag:code-gen": [
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro"
+    ],
+    "tag:runtime-guidance": [
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "generated-app-workspace-changes-must-be-builder-owned"
+    ],
+    "tag:quality-gates": [
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "stay-in-tester-role-during-autonomous-validation",
+      "reject-stale-gates-and-feed-exact-command-output-back",
+      "reverse-engineering-validation-must-follow-product-visible-s"
+    ],
+    "tag:pr-creation": [
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro"
+    ],
+    "tag:critical": [
+      "sprint-1-dispatch-exposed-critical-scope-handoff-and-gate-ro",
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory"
+    ],
+    "phase:testing": [
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "day-0-forward-engineering-validation-findings-2026-05",
+      "check-run-terminal-state-after-target-tests-pass",
+      "test-continuation-with-user-shaped-prompts",
+      "stay-in-tester-role-during-autonomous-validation",
+      "reject-stale-gates-and-feed-exact-command-output-back",
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "reverse-engineering-validation-must-follow-product-visible-s",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "max-retries-2-for-quality-gates",
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "entity:test-suite": [
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series"
+    ],
+    "tag:tests": [
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series"
+    ],
+    "tag:conftest": [
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series"
+    ],
+    "tag:legacy-ids": [
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series"
+    ],
+    "tag:drift": [
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series"
+    ],
+    "tag:verification": [
+      "pre-existing-test-drift-catalog-from-may-2026-patch-series",
+      "deterministic-quality-invariants-should-replace-agent-cleanu",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "entity:execution-policy": [
+      "per-task-model-routing-is-builder-owned"
+    ],
+    "tag:model-routing": [
+      "per-task-model-routing-is-builder-owned"
+    ],
+    "tag:claude-agent-sdk": [
+      "per-task-model-routing-is-builder-owned",
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "runtime-switch-must-preserve-built-project-lifecycle",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "create-task-worktree-at-design-to-implementation-handoff",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:cost-quality": [
+      "per-task-model-routing-is-builder-owned"
+    ],
+    "tag:opus-4-7": [
+      "per-task-model-routing-is-builder-owned"
+    ],
+    "tag:sonnet-4-6": [
+      "per-task-model-routing-is-builder-owned"
+    ],
+    "tag:haiku-4-5": [
+      "per-task-model-routing-is-builder-owned"
+    ],
+    "phase:optimization": [
+      "optimize-builder-agents-through-evidence-not-token-rationing",
+      "generated-app-workspace-changes-must-be-builder-owned",
+      "audit-run-telemetry-before-optimizing-autonomous-agents"
+    ],
+    "entity:agent-effectiveness": [
+      "optimize-builder-agents-through-evidence-not-token-rationing"
+    ],
+    "tag:metrics": [
+      "optimize-builder-agents-through-evidence-not-token-rationing"
+    ],
+    "tag:logs": [
+      "optimize-builder-agents-through-evidence-not-token-rationing"
+    ],
+    "tag:agents": [
+      "optimize-builder-agents-through-evidence-not-token-rationing"
+    ],
+    "tag:tokens": [
+      "optimize-builder-agents-through-evidence-not-token-rationing"
+    ],
+    "entity:dashboard-run": [
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w"
+    ],
+    "tag:dashboard": [
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "do-not-seed-forward-backlog-during-onboarding"
+    ],
+    "tag:ui-bug": [
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w"
+    ],
+    "tag:tool-registry": [
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w"
+    ],
+    "tag:init-project-chat": [
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w"
+    ],
+    "tag:validation": [
+      "first-dashboard-run-findings-sidebar-metrics-tool-registry-w",
+      "day-0-forward-engineering-validation-findings-2026-05",
+      "check-run-terminal-state-after-target-tests-pass",
+      "stay-in-tester-role-during-autonomous-validation",
+      "reject-stale-gates-and-feed-exact-command-output-back",
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "cli-validation-system-for-cross-platform-compatibility"
+    ],
+    "entity:forward-engineering-onboarding": [
+      "do-not-seed-forward-backlog-during-onboarding"
+    ],
+    "tag:forward-engineering": [
+      "do-not-seed-forward-backlog-during-onboarding",
+      "test-continuation-with-user-shaped-prompts"
+    ],
+    "tag:onboarding": [
+      "do-not-seed-forward-backlog-during-onboarding",
+      "runtime-switch-must-preserve-built-project-lifecycle"
+    ],
+    "tag:backlog": [
+      "do-not-seed-forward-backlog-during-onboarding",
+      "shipping-requires-integrating-the-task-worktree",
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "reverse-engineering-validation-must-follow-product-visible-s"
+    ],
+    "entity:day0-validation": [
+      "day-0-forward-engineering-validation-findings-2026-05"
+    ],
+    "tag:model-ids": [
+      "day-0-forward-engineering-validation-findings-2026-05"
+    ],
+    "tag:aiosqlite": [
+      "day-0-forward-engineering-validation-findings-2026-05"
+    ],
+    "entity:agents-md-inheritance": [
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude"
+    ],
+    "tag:agents-md": [
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude"
+    ],
+    "tag:inheritance": [
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude"
+    ],
+    "tag:codex": [
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude",
+      "deterministic-quality-invariants-should-replace-agent-cleanu"
+    ],
+    "tag:global": [
+      "codex-global-rules-live-in-codex-agents-md-not-claude-claude"
+    ],
+    "entity:generated-app-workspace-boundary": [
+      "generated-app-workspace-changes-must-be-builder-owned"
+    ],
+    "tag:optimization-agent": [
+      "generated-app-workspace-changes-must-be-builder-owned",
+      "audit-run-telemetry-before-optimizing-autonomous-agents"
+    ],
+    "tag:generated-app": [
+      "generated-app-workspace-changes-must-be-builder-owned"
+    ],
+    "tag:builder-agents": [
+      "generated-app-workspace-changes-must-be-builder-owned"
+    ],
+    "tag:memory": [
+      "generated-app-workspace-changes-must-be-builder-owned",
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "project-memory-captures-real-time-friction-precedent",
+      "memory-routing-json-can-use-memories-key"
+    ],
+    "entity:autonomous-builder-runtime": [
+      "audit-run-telemetry-before-optimizing-autonomous-agents"
+    ],
+    "tag:codex-sdk": [
+      "audit-run-telemetry-before-optimizing-autonomous-agents",
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "runtime-switch-must-preserve-built-project-lifecycle",
+      "codex-sdk-optimization-needs-decision-intelligence"
+    ],
+    "tag:deterministic-scripts": [
+      "audit-run-telemetry-before-optimizing-autonomous-agents"
+    ],
+    "tag:control-surfaces": [
+      "audit-run-telemetry-before-optimizing-autonomous-agents"
+    ],
+    "type:decision": [
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "deterministic-quality-invariants-should-replace-agent-cleanu",
+      "codex-sdk-optimization-needs-decision-intelligence",
+      "builder-owns-provider-limit-resume-and-model-policy",
+      "reverse-engineering-validation-must-use-an-external-repo",
+      "create-task-worktree-at-design-to-implementation-handoff",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "worktree-first-development-is-the-core-rule",
+      "workflow-and-memory-creation-only-via-clis",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "project-memory-captures-real-time-friction-precedent",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of",
+      "fastapi-route-ordering-specific-routes-before-path",
+      "max-retries-2-for-quality-gates",
+      "concurrent-quality-gates-with-asyncio-gather",
+      "claude-agent-sdk-as-foundation"
+    ],
+    "phase:design": [
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie",
+      "project-memory-captures-real-time-friction-precedent",
+      "deterministic-dispatch-over-agent-self-routing",
+      "claude-agent-sdk-as-foundation"
+    ],
+    "entity:observability-telemetry": [
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry"
+    ],
+    "tag:recommendations": [
+      "use-hybrid-native-otel-plus-builder-normalized-telemetry"
+    ],
+    "phase:quality": [
+      "deterministic-quality-invariants-should-replace-agent-cleanu"
+    ],
+    "entity:builder-maintenance": [
+      "deterministic-quality-invariants-should-replace-agent-cleanu"
+    ],
+    "tag:determinism": [
+      "deterministic-quality-invariants-should-replace-agent-cleanu"
+    ],
+    "tag:docs": [
+      "deterministic-quality-invariants-should-replace-agent-cleanu",
+      "documentation-agent-maintains-shared-user-and-agent-kb"
+    ],
+    "tag:cli": [
+      "deterministic-quality-invariants-should-replace-agent-cleanu",
+      "cli-validation-system-for-cross-platform-compatibility"
+    ],
+    "phase:runtime": [
+      "runtime-switch-must-preserve-built-project-lifecycle"
+    ],
+    "entity:runtime-switch": [
+      "runtime-switch-must-preserve-built-project-lifecycle"
+    ],
+    "tag:runtime": [
+      "runtime-switch-must-preserve-built-project-lifecycle"
+    ],
+    "phase:observability": [
+      "codex-sdk-optimization-needs-decision-intelligence"
+    ],
+    "entity:codex-sdk-optimization": [
+      "codex-sdk-optimization-needs-decision-intelligence"
+    ],
+    "tag:cost-optimization": [
+      "codex-sdk-optimization-needs-decision-intelligence"
+    ],
+    "tag:sprint-planning": [
+      "codex-sdk-optimization-needs-decision-intelligence"
+    ],
+    "entity:reverse-engineering-autonomous-lifecycle-validation": [
+      "check-run-terminal-state-after-target-tests-pass",
+      "reverse-engineering-validation-must-follow-product-visible-s",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec"
+    ],
+    "tag:reverse-engineering": [
+      "check-run-terminal-state-after-target-tests-pass",
+      "reverse-engineering-validation-must-follow-product-visible-s",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec",
+      "reverse-engineering-validation-must-use-an-external-repo",
+      "external-reverse-engineering-validation-works-best-as-a-stag"
+    ],
+    "tag:agent-page": [
+      "check-run-terminal-state-after-target-tests-pass",
+      "test-continuation-with-user-shaped-prompts"
+    ],
+    "tag:documentation-agent": [
+      "check-run-terminal-state-after-target-tests-pass",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "entity:sdk-empty-and-limit-results": [
+      "treat-empty-sdk-and-provider-limit-output-as-blockers"
+    ],
+    "tag:sdk": [
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n",
+      "claude-agent-sdk-as-foundation"
+    ],
+    "tag:provider-limit": [
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "provider-limit-text-should-block-active-work-immediately",
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "builder-owns-provider-limit-resume-and-model-policy"
+    ],
+    "tag:no-op": [
+      "treat-empty-sdk-and-provider-limit-output-as-blockers"
+    ],
+    "tag:capability-limit": [
+      "treat-empty-sdk-and-provider-limit-output-as-blockers",
+      "provider-limit-text-should-block-active-work-immediately"
+    ],
+    "entity:forward-engineering-autonomous-lifecycle-validation": [
+      "test-continuation-with-user-shaped-prompts"
+    ],
+    "status:graduated": [
+      "test-continuation-with-user-shaped-prompts",
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "tag:dispatch": [
+      "test-continuation-with-user-shaped-prompts",
+      "reverse-engineering-validation-must-follow-product-visible-s",
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "tag:approval": [
+      "test-continuation-with-user-shaped-prompts"
+    ],
+    "tag:context-efficiency": [
+      "test-continuation-with-user-shaped-prompts",
+      "provider-limit-text-should-block-active-work-immediately",
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex"
+    ],
+    "entity:autonomous-lifecycle-validation": [
+      "stay-in-tester-role-during-autonomous-validation"
+    ],
+    "tag:operator-role": [
+      "stay-in-tester-role-during-autonomous-validation"
+    ],
+    "tag:approval-gates": [
+      "stay-in-tester-role-during-autonomous-validation"
+    ],
+    "phase:integration": [
+      "shipping-requires-integrating-the-task-worktree"
+    ],
+    "entity:task-worktree-shipping": [
+      "shipping-requires-integrating-the-task-worktree"
+    ],
+    "tag:worktree": [
+      "shipping-requires-integrating-the-task-worktree",
+      "create-task-worktree-at-design-to-implementation-handoff",
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "worktree-first-development-is-the-core-rule"
+    ],
+    "tag:integration": [
+      "shipping-requires-integrating-the-task-worktree"
+    ],
+    "tag:shipping": [
+      "shipping-requires-integrating-the-task-worktree",
+      "reverse-engineering-validation-must-follow-product-visible-s"
+    ],
+    "entity:quality-gate-feedback-loop": [
+      "reject-stale-gates-and-feed-exact-command-output-back"
+    ],
+    "tag:feedback": [
+      "reject-stale-gates-and-feed-exact-command-output-back"
+    ],
+    "tag:implementation": [
+      "reject-stale-gates-and-feed-exact-command-output-back"
+    ],
+    "entity:provider-quota-detection": [
+      "provider-limit-text-should-block-active-work-immediately"
+    ],
+    "tag:quota": [
+      "provider-limit-text-should-block-active-work-immediately"
+    ],
+    "tag:blocked-state": [
+      "provider-limit-text-should-block-active-work-immediately"
+    ],
+    "entity:orchestrator": [
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "builder-owns-provider-limit-resume-and-model-policy",
+      "deterministic-dispatch-over-agent-self-routing",
+      "claude-agent-sdk-as-foundation"
+    ],
+    "tag:orchestration": [
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "builder-owns-provider-limit-resume-and-model-policy",
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:workflow-knowledge": [
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi"
+    ],
+    "tag:model-policy": [
+      "ground-orchestration-fixes-in-workflow-knowledge-and-determi",
+      "builder-owns-provider-limit-resume-and-model-policy"
+    ],
+    "entity:claude-agent-sdk-runtime": [
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are",
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n"
+    ],
+    "tag:can_use_tool": [
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory"
+    ],
+    "tag:streaming": [
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory"
+    ],
+    "tag:subprocess": [
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are"
+    ],
+    "tag:hang": [
+      "claude-agent-sdk-streaming-prompt-can-use-tool-are-mandatory",
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n"
+    ],
+    "tag:env": [
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are"
+    ],
+    "tag:environment": [
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are"
+    ],
+    "tag:onecli": [
+      "claude-agent-sdk-pass-env-none-not-env-when-no-overrides-are"
+    ],
+    "tag:diagnosis": [
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n"
+    ],
+    "tag:SystemMessage": [
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n"
+    ],
+    "tag:probe": [
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n"
+    ],
+    "tag:availability": [
+      "claude-agent-sdk-hang-diagnosis-systemmessage-received-but-n"
+    ],
+    "entity:testing-validation-closeout": [
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin"
+    ],
+    "tag:testing-closeout": [
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin"
+    ],
+    "tag:incidents": [
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin"
+    ],
+    "tag:improvements": [
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin"
+    ],
+    "tag:optimizations": [
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin"
+    ],
+    "tag:agent-efficiency": [
+      "testing-closeout-should-save-anecdotes-and-typed-backlog-fin",
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec"
+    ],
+    "tag:browser-validation": [
+      "reverse-engineering-validation-must-follow-product-visible-s"
+    ],
+    "tag:inbox": [
+      "reverse-engineering-validation-must-follow-product-visible-s"
+    ],
+    "tag:closeout": [
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec"
+    ],
+    "tag:learning-loop": [
+      "close-reverse-engineering-runs-by-saving-reusable-agent-anec"
+    ],
+    "entity:builder-cli-telemetry": [
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex"
+    ],
+    "tag:builder-logs": [
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex",
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "tag:agent-debugging": [
+      "use-builder-cli-telemetry-before-reopening-broad-code-contex"
+    ],
+    "phase:planning": [
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "entity:validation": [
+      "reverse-engineering-validation-must-use-an-external-repo"
+    ],
+    "tag:testing": [
+      "reverse-engineering-validation-must-use-an-external-repo",
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
+    ],
+    "tag:external-repo": [
+      "reverse-engineering-validation-must-use-an-external-repo",
+      "external-reverse-engineering-validation-works-best-as-a-stag"
+    ],
+    "entity:runtime-validation": [
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder"
+    ],
+    "tag:browser": [
+      "optimize-runtime-behavior-from-browser-evidence-plus-builder",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
+    ],
+    "entity:embedded-agent-chat": [
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "tag:feature-spec": [
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched"
+    ],
+    "tag:routing": [
+      "feature-chat-fixes-must-be-sdk-grounded-not-keyword-patched",
+      "memory-routing-json-can-use-memories-key",
+      "fastapi-route-ordering-specific-routes-before-path",
+      "deterministic-dispatch-over-agent-self-routing"
+    ],
+    "entity:workspace-lifecycle": [
+      "create-task-worktree-at-design-to-implementation-handoff"
+    ],
+    "tag:workspace": [
+      "create-task-worktree-at-design-to-implementation-handoff"
+    ],
+    "tag:orchestrator": [
+      "create-task-worktree-at-design-to-implementation-handoff"
+    ],
+    "entity:specialist-agent-routing": [
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:subagents": [
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "tag:specialists": [
+      "create-specialist-agents-only-at-bounded-lifecycle-boundarie"
+    ],
+    "entity:knowledge": [
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "tag:kb": [
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "documentation-agent-maintains-shared-user-and-agent-kb",
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta",
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "tag:knowledge": [
+      "scoped-kb-extract-must-preserve-collection-metadata",
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "tag:extractor": [
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "tag:metadata": [
+      "scoped-kb-extract-must-preserve-collection-metadata"
+    ],
+    "entity:reverse-engineering-lifecycle": [
+      "external-reverse-engineering-validation-works-best-as-a-stag"
+    ],
+    "tag:embedded-server": [
+      "external-reverse-engineering-validation-works-best-as-a-stag",
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "entity:documentation-agent": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch",
+      "documentation-agent-maintains-shared-user-and-agent-kb"
+    ],
+    "tag:knowledge-base": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:freshness": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:git": [
+      "documentation-freshness-is-commit-anchored-not-worktree-anch"
+    ],
+    "tag:agent": [
+      "documentation-agent-maintains-shared-user-and-agent-kb"
+    ],
+    "tag:system-docs": [
+      "documentation-agent-maintains-shared-user-and-agent-kb"
+    ],
+    "entity:worktree-workflow": [
+      "worktree-first-development-is-the-core-rule"
+    ],
+    "tag:development": [
+      "worktree-first-development-is-the-core-rule"
+    ],
+    "tag:isolation": [
+      "worktree-first-development-is-the-core-rule"
+    ],
+    "entity:documentation-creation": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "tag:workflow": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "tag:builder": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "tag:cli-only": [
+      "workflow-and-memory-creation-only-via-clis"
+    ],
+    "entity:agent-runtime": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "tag:sdk-mcp": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "tag:learning": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "tag:self-improvement": [
+      "official-builder-write-back-uses-mcp-tools-not-raw-file-muta"
+    ],
+    "phase:setup": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "entity:settings-management": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "tag:settings": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti",
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "tag:local": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "tag:override": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "tag:conflict": [
+      "delete-settings-local-json-if-it-conflicts-with-claude-setti"
+    ],
+    "entity:claude-code-settings": [
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "tag:permissions": [
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "tag:configuration": [
+      "claude-code-settings-use-bash-cmd-format"
+    ],
+    "entity:knowledge-quality-gate": [
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
+    ],
+    "tag:quality-gate": [
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
+    ],
+    "tag:yaml": [
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter"
+    ],
+    "tag:retrieval": [
+      "knowledge-quality-gate-must-parse-canonical-yaml-frontmatter",
+      "project-memory-captures-real-time-friction-precedent"
+    ],
+    "entity:agent chat runner": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "tag:agent-chat": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "tag:resume": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "tag:claude-sdk": [
+      "embedded-agent-chat-should-continue-conversation-instead-of-"
+    ],
+    "entity:knowledge-agent-extractor": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "tag:claude-runtime": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "tag:timeout": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "tag:extraction": [
+      "agent-extractor-must-use-shared-claude-runtime"
+    ],
+    "entity:memory-cli": [
+      "project-memory-captures-real-time-friction-precedent"
+    ],
+    "tag:friction": [
+      "project-memory-captures-real-time-friction-precedent",
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "entity:memory-api": [
+      "memory-routing-json-can-use-memories-key"
+    ],
+    "tag:json": [
+      "memory-routing-json-can-use-memories-key"
+    ],
+    "tag:ui": [
+      "memory-routing-json-can-use-memories-key",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "entity:knowledge-api": [
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "tag:api": [
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
+    ],
+    "tag:tags": [
+      "knowledge-tag-filtering-must-align-frontend-and-api",
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "tag:filtering": [
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "tag:frontend": [
+      "knowledge-tag-filtering-must-align-frontend-and-api"
+    ],
+    "entity:dashboard": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
+    ],
+    "tag:mcp": [
+      "use-mcp-chrome-devtools-for-dashboard-testing-instead-of"
+    ],
+    "entity:knowledge-base": [
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "tag:knowledge-graph": [
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "tag:similarity": [
+      "tag-based-similarity-for-knowledge-graphs-without-wikilinks"
+    ],
+    "entity:agents": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:ownership": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:placement": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:surfaces": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "tag:organization": [
+      "surface-ownership-what-goes-where-agents-md-vs-steering-vs"
+    ],
+    "entity:fastapi-routes": [
+      "fastapi-route-ordering-specific-routes-before-path"
+    ],
+    "tag:fastapi": [
+      "fastapi-route-ordering-specific-routes-before-path"
+    ],
+    "tag:api-design": [
+      "fastapi-route-ordering-specific-routes-before-path"
+    ],
+    "entity:steering": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:commands": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:windows": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "tag:automation": [
+      "command-execution-friction-prevention-via-steering-files"
+    ],
+    "entity:cli-validation": [
+      "cli-validation-system-for-cross-platform-compatibility"
+    ],
+    "status:invalidated": [
+      "cli-validation-system-for-cross-platform-compatibility"
+    ],
+    "tag:cross-platform": [
+      "cli-validation-system-for-cross-platform-compatibility"
+    ],
+    "tag:legacy": [
+      "cli-validation-system-for-cross-platform-compatibility"
+    ],
+    "entity:script-library": [
+      "dynamic-script-loading-with-package-relative-imports"
+    ],
+    "entity:quality-gates": [
+      "max-retries-2-for-quality-gates",
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:retries": [
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:gates": [
+      "max-retries-2-for-quality-gates",
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:threshold": [
+      "max-retries-2-for-quality-gates"
+    ],
+    "tag:architecture": [
+      "deterministic-dispatch-over-agent-self-routing",
+      "claude-agent-sdk-as-foundation"
+    ],
+    "tag:asyncio": [
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:concurrency": [
+      "concurrent-quality-gates-with-asyncio-gather"
+    ],
+    "tag:foundation": [
+      "claude-agent-sdk-as-foundation"
+    ],
+    "entity:frontend": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:react": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:shadcn": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:gsap": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:spa": [
+      "react-shadcn-luma-gsap-migration"
+    ],
+    "tag:vite": [
+      "react-shadcn-luma-gsap-migration"
+    ]
+  }
+}
