@@ -1,55 +1,48 @@
 """Provision Managed Agents resources for the claude_managed lane.
 
-Phase A scope: provision exactly one agent (`planner`) + one environment,
-persisting their IDs in `.agent-builder/managed_agents.json`. Phase B
-extends this to all 11 builder roles with multiagent rosters derived
-from `_AGENT_POLICY.subagents`.
+Phase B scope: provision the environment + all 11 builder roles (top-level
+agents) + all 6 subagent roles, with multiagent rosters wired per
+`_AGENT_POLICY.subagents`. Idempotent — re-running picks up existing IDs
+from `.agent-builder/managed_agents.json` and only creates what's missing.
 
-This module reads the YAML specs in `runtime/managed_agents_specs/`,
-calls `client.beta.{agents,environments}.create`, and writes the
-resulting IDs back to the project config. Idempotent — re-running picks
-up existing IDs from the config and only creates what's missing.
+Provisioning order:
+  1. Environment (single template)
+  2. Subagents (no multiagent dependencies)
+  3. Top-level agents with multiagent rosters referencing subagent IDs
+
+Source of truth is `agents/definitions.py` + `_AGENT_POLICY`. Payload
+shape is rendered by `services/managed_agents_specs.py` — no checked-in
+YAML to drift against.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import structlog
-import yaml
 
 from autonomous_agent_builder.runtime.managed_agents_runtime import _MA_CONFIG_PATH
+from autonomous_agent_builder.services.managed_agents_specs import (
+    ALL_AGENT_ROLES,
+    ALL_SUBAGENT_ROLES,
+    build_agent_payload,
+    build_subagent_payload,
+    expected_subagent_roster,
+)
 
 log = structlog.get_logger()
 
-_SPECS_DIR = (
-    Path(__file__).resolve().parent.parent / "runtime" / "managed_agents_specs"
-)
-
-# Phase A: planner only. Phase B will expand this to all 11 roles, each
-# with a multiagent roster derived from `_AGENT_POLICY.subagents`.
+# Phase A used a planner-only constant. Phase B keeps it for backward
+# compatibility with the Phase A test (planner-only smoke).
 _PHASE_A_ROLES: tuple[str, ...] = ("planner",)
 
 
 class ManagedAgentsSetupError(RuntimeError):
-    """Raised when MA setup fails (missing YAML, API error, etc.)."""
-
-
-def _load_yaml(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        raise ManagedAgentsSetupError(f"Spec file not found: {path}")
-    return yaml.safe_load(path.read_text())
-
-
-def _spec_path(role: str) -> Path:
-    return _SPECS_DIR / f"{role}.agent.yaml"
-
-
-def _environment_spec_path() -> Path:
-    return _SPECS_DIR / "environment.yaml"
+    """Raised when MA setup fails (missing config, API error, etc.)."""
 
 
 def _config_path(project_root: Path) -> Path:
@@ -59,7 +52,7 @@ def _config_path(project_root: Path) -> Path:
 def _read_config(project_root: Path) -> dict[str, Any]:
     path = _config_path(project_root)
     if not path.exists():
-        return {"agents": {}, "environment_id": None}
+        return {"agents": {}, "subagents": {}, "environment_id": None}
     try:
         loaded = json.loads(path.read_text())
     except json.JSONDecodeError as exc:
@@ -67,6 +60,7 @@ def _read_config(project_root: Path) -> dict[str, Any]:
             f"Existing config at {path} is invalid JSON: {exc}"
         ) from exc
     loaded.setdefault("agents", {})
+    loaded.setdefault("subagents", {})
     loaded.setdefault("environment_id", None)
     return loaded
 
@@ -77,20 +71,58 @@ def _write_config(project_root: Path, config: dict[str, Any]) -> None:
     path.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n")
 
 
-async def _ensure_environment(
-    *,
-    client: Any,
-    config: dict[str, Any],
-) -> str:
-    """Create the environment from environment.yaml if not already provisioned."""
+def _environment_payload() -> dict[str, Any]:
+    """Single shared environment template for all builder MA sessions."""
+    return {
+        "name": "builder-default",
+        "description": (
+            "Default cloud environment for builder claude_managed sessions. "
+            "Allows package-manager egress + GitHub + Anthropic API; "
+            "everything else blocked at the network layer."
+        ),
+        "config": {
+            "type": "cloud",
+            "networking": {
+                "type": "package_managers_and_custom",
+                "allowed_hosts": [
+                    "api.anthropic.com",
+                    "api.githubcopilot.com",
+                    "api.github.com",
+                    "github.com",
+                    "raw.githubusercontent.com",
+                ],
+            },
+        },
+        "metadata": {"builder_managed": "true"},
+    }
+
+
+async def _ensure_environment(*, client: Any, config: dict[str, Any]) -> str:
     if config.get("environment_id"):
         return str(config["environment_id"])
-
-    spec = _load_yaml(_environment_spec_path())
-    log.info("managed_agents_setup_create_environment", name=spec.get("name"))
-    env = await client.beta.environments.create(**spec)
+    payload = _environment_payload()
+    log.info("managed_agents_setup_create_environment", name=payload["name"])
+    env = await client.beta.environments.create(**payload)
     config["environment_id"] = env.id
     return env.id
+
+
+async def _ensure_subagent(
+    *, client: Any, config: dict[str, Any], role: str
+) -> str:
+    subagents = config.setdefault("subagents", {})
+    if subagents.get(role):
+        return str(subagents[role])
+    payload = build_subagent_payload(role)
+    log.info(
+        "managed_agents_setup_create_subagent",
+        role=role,
+        name=payload["name"],
+        model=payload["model"],
+    )
+    agent = await client.beta.agents.create(**payload)
+    subagents[role] = agent.id
+    return agent.id
 
 
 async def _ensure_agent(
@@ -98,39 +130,71 @@ async def _ensure_agent(
     client: Any,
     config: dict[str, Any],
     role: str,
+    subagent_id_map: dict[str, str],
 ) -> str:
-    """Create the agent from <role>.agent.yaml if not already provisioned."""
     agents = config.setdefault("agents", {})
     if agents.get(role):
         return str(agents[role])
-
-    spec = _load_yaml(_spec_path(role))
-    log.info("managed_agents_setup_create_agent", role=role, name=spec.get("name"))
-    agent = await client.beta.agents.create(**spec)
+    payload = build_agent_payload(role, subagent_id_map=subagent_id_map)
+    log.info(
+        "managed_agents_setup_create_agent",
+        role=role,
+        name=payload["name"],
+        model=payload["model"],
+        roster=[a for a in (payload.get("multiagent") or {}).get("agents", [])],
+    )
+    agent = await client.beta.agents.create(**payload)
     agents[role] = agent.id
     return agent.id
 
 
-async def setup_phase_a(
+def _resolve_required_subagents(target_roles: tuple[str, ...]) -> tuple[str, ...]:
+    """Return only the subagents actually needed by the target top-level roles."""
+    needed: set[str] = set()
+    for role in target_roles:
+        for sub in expected_subagent_roster(role):
+            needed.add(sub)
+    # Preserve declared order from ALL_SUBAGENT_ROLES for deterministic logs
+    return tuple(name for name in ALL_SUBAGENT_ROLES if name in needed)
+
+
+async def setup_managed_agents(
     *,
     project_root: Path | None = None,
     client_factory: Callable[[], Any] | None = None,
     roles: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
-    """Provision Phase A resources (environment + planner agent).
-
-    Idempotent: existing IDs in `.agent-builder/managed_agents.json` are
-    preserved. Returns the final config dict (also written to disk).
+    """Provision the MA environment + subagents + top-level agents.
 
     Args:
-        project_root: project to write the config under. Defaults to CWD.
+        project_root: project to write `.agent-builder/managed_agents.json`
+            under. Defaults to CWD.
         client_factory: optional override (for tests). Default constructs
             an `anthropic.AsyncAnthropic()`.
-        roles: subset of roles to provision. Defaults to Phase A scope.
+        roles: subset of top-level roles to provision. Defaults to all 11
+            roles in `AGENT_DEFINITIONS`. Subagents are provisioned only
+            for the subset of subagents referenced by `roles`.
+
+    Returns the persisted config dict (also written to disk):
+        {
+            "environment_id": "env_...",
+            "agents": {"planner": "agent_...", ...},
+            "subagents": {"repo-researcher": "agent_...", ...},
+        }
+
+    Idempotent — existing IDs are preserved.
     """
     root = project_root or Path.cwd()
     config = _read_config(root)
-    target_roles = roles or _PHASE_A_ROLES
+    target_roles = roles or ALL_AGENT_ROLES
+
+    # Validate role names early — fail before any API calls
+    unknown = [r for r in target_roles if r not in ALL_AGENT_ROLES]
+    if unknown:
+        raise ManagedAgentsSetupError(
+            f"Unknown top-level agent role(s): {unknown}. "
+            f"Available: {list(ALL_AGENT_ROLES)}"
+        )
 
     if client_factory is None:
         import anthropic  # local import — only when running setup
@@ -141,17 +205,52 @@ async def setup_phase_a(
 
     try:
         env_id = await _ensure_environment(client=client, config=config)
+
+        # 1. Subagents first — only those referenced by the target roles
+        required_subagents = _resolve_required_subagents(target_roles)
+        subagent_id_map: dict[str, str] = dict(config.get("subagents") or {})
+        for sub_role in required_subagents:
+            sub_id = await _ensure_subagent(
+                client=client, config=config, role=sub_role
+            )
+            subagent_id_map[sub_role] = sub_id
+
+        # 2. Top-level agents with multiagent rosters
         for role in target_roles:
-            await _ensure_agent(client=client, config=config, role=role)
+            await _ensure_agent(
+                client=client,
+                config=config,
+                role=role,
+                subagent_id_map=subagent_id_map,
+            )
+
         _write_config(root, config)
         log.info(
             "managed_agents_setup_complete",
             environment_id=env_id,
-            agents=list(config["agents"].keys()),
+            agents=sorted(config["agents"].keys()),
+            subagents=sorted(config["subagents"].keys()),
         )
         return config
     finally:
-        import contextlib
-
         with contextlib.suppress(Exception):
             await client.close()
+
+
+# Phase A backward-compatible alias used by the Phase A tests.
+async def setup_phase_a(
+    *,
+    project_root: Path | None = None,
+    client_factory: Callable[[], Any] | None = None,
+    roles: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
+    """Phase A wrapper — provisions only the planner role by default.
+
+    Retained so the original Phase A smoke test keeps passing. New code
+    should call `setup_managed_agents` directly.
+    """
+    return await setup_managed_agents(
+        project_root=project_root,
+        client_factory=client_factory,
+        roles=roles or _PHASE_A_ROLES,
+    )

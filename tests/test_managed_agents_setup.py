@@ -30,27 +30,31 @@ def _make_client(*, env_id: str = "env_001", agent_id: str = "agent_planner_001"
 
 @pytest.mark.asyncio
 async def test_setup_phase_a_provisions_environment_and_planner(tmp_path: Path) -> None:
+    """Phase A provisions planner + its subagents (repo-researcher) per
+    `_AGENT_POLICY['planner'][3]`."""
     client = _make_client()
     config = await setup_phase_a(
         project_root=tmp_path,
         client_factory=lambda: client,
     )
     assert config["environment_id"] == "env_001"
-    assert config["agents"]["planner"] == "agent_planner_001"
+    assert "planner" in config["agents"]
+    assert "repo-researcher" in config["subagents"]
     # File written
     cfg_path = tmp_path / ".agent-builder" / "managed_agents.json"
     assert cfg_path.exists()
     on_disk = json.loads(cfg_path.read_text())
     assert on_disk["environment_id"] == "env_001"
-    assert on_disk["agents"]["planner"] == "agent_planner_001"
-    # API was called exactly once each
+    assert "planner" in on_disk["agents"]
+    assert "repo-researcher" in on_disk["subagents"]
+    # API: 1 environment create + 2 agent creates (subagent + planner)
     client.beta.environments.create.assert_awaited_once()
-    client.beta.agents.create.assert_awaited_once()
+    assert client.beta.agents.create.await_count == 2
 
 
 @pytest.mark.asyncio
 async def test_setup_phase_a_is_idempotent(tmp_path: Path) -> None:
-    """Re-running with existing IDs in config does NOT recreate."""
+    """Re-running with existing IDs (incl. subagents) does NOT recreate."""
     cfg_dir = tmp_path / ".agent-builder"
     cfg_dir.mkdir()
     (cfg_dir / "managed_agents.json").write_text(
@@ -58,6 +62,7 @@ async def test_setup_phase_a_is_idempotent(tmp_path: Path) -> None:
             {
                 "environment_id": "env_existing",
                 "agents": {"planner": "agent_existing"},
+                "subagents": {"repo-researcher": "agent_rr_existing"},
             }
         )
     )
@@ -68,18 +73,24 @@ async def test_setup_phase_a_is_idempotent(tmp_path: Path) -> None:
     )
     assert config["environment_id"] == "env_existing"
     assert config["agents"]["planner"] == "agent_existing"
-    # Neither create method was called
+    assert config["subagents"]["repo-researcher"] == "agent_rr_existing"
     client.beta.environments.create.assert_not_awaited()
     client.beta.agents.create.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_setup_phase_a_partial_existing_only_creates_missing(tmp_path: Path) -> None:
-    """Env already provisioned but no planner — only agent gets created."""
+    """Env already provisioned but no planner/subagents — both get created."""
     cfg_dir = tmp_path / ".agent-builder"
     cfg_dir.mkdir()
     (cfg_dir / "managed_agents.json").write_text(
-        json.dumps({"environment_id": "env_existing", "agents": {}})
+        json.dumps(
+            {
+                "environment_id": "env_existing",
+                "agents": {},
+                "subagents": {},
+            }
+        )
     )
     client = _make_client()
     config = await setup_phase_a(
@@ -87,9 +98,11 @@ async def test_setup_phase_a_partial_existing_only_creates_missing(tmp_path: Pat
         client_factory=lambda: client,
     )
     assert config["environment_id"] == "env_existing"
-    assert config["agents"]["planner"] == "agent_planner_001"
+    assert "planner" in config["agents"]
+    assert "repo-researcher" in config["subagents"]
     client.beta.environments.create.assert_not_awaited()
-    client.beta.agents.create.assert_awaited_once()
+    # Two agent creates: subagent + planner
+    assert client.beta.agents.create.await_count == 2
 
 
 @pytest.mark.asyncio

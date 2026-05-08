@@ -53,6 +53,110 @@ app = typer.Typer(
 runtime_app = typer.Typer(help="Show, probe, and update the active agent runtime.")
 app.add_typer(runtime_app, name="runtime")
 
+# Subgroup for Managed Agents (claude_managed lane) provisioning. Phase B
+# adds `setup` for one-time + idempotent agent / environment / subagent
+# creation. Phase C-E will extend this with `vault add`, `skill upload`, etc.
+managed_agents_app = typer.Typer(
+    help=(
+        "Provision and inspect Anthropic Managed Agents resources for the "
+        "claude_managed runtime lane (RUNTIME_SDK=claude_managed)."
+    ),
+)
+runtime_app.add_typer(managed_agents_app, name="managed-agents")
+
+
+@managed_agents_app.command("setup")
+def managed_agents_setup_command(
+    json_output: bool = typer.Option(
+        False, "--json", help="Emit JSON output suitable for agent consumption."
+    ),
+    role: list[str] | None = typer.Option(
+        None,
+        "--role",
+        help=(
+            "Subset of top-level roles to provision (repeatable). Default: "
+            "all 11 builder roles. Subagents are auto-resolved from the "
+            "selected roles' rosters."
+        ),
+    ),
+) -> None:
+    """Provision MA environment + agents + subagents.
+
+    Idempotent — re-running picks up existing IDs from
+    `.agent-builder/managed_agents.json` and only creates what's missing.
+    Requires ANTHROPIC_API_KEY with Managed Agents beta access.
+    """
+    from autonomous_agent_builder.services.managed_agents_setup import (
+        ManagedAgentsSetupError,
+        setup_managed_agents,
+    )
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        emit_error(
+            "ANTHROPIC_API_KEY is not set",
+            hint="export ANTHROPIC_API_KEY=...; retry",
+            use_json=json_output,
+        )
+        raise typer.Exit(code=1)
+
+    target_roles = tuple(role) if role else None
+
+    try:
+        config = asyncio.run(setup_managed_agents(roles=target_roles))
+    except ManagedAgentsSetupError as exc:
+        emit_error(str(exc), use_json=json_output)
+        raise typer.Exit(code=1) from exc
+
+    payload = {
+        "environment_id": config.get("environment_id"),
+        "agents": config.get("agents", {}),
+        "subagents": config.get("subagents", {}),
+        "agent_count": len(config.get("agents", {})),
+        "subagent_count": len(config.get("subagents", {})),
+    }
+    if json_output:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"environment: {payload['environment_id']}")
+        print(f"agents: {payload['agent_count']}")
+        for role_name, agent_id in sorted(payload["agents"].items()):
+            print(f"  - {role_name}: {agent_id}")
+        print(f"subagents: {payload['subagent_count']}")
+        for role_name, agent_id in sorted(payload["subagents"].items()):
+            print(f"  - {role_name}: {agent_id}")
+    raise typer.Exit(code=EXIT_SUCCESS)
+
+
+@managed_agents_app.command("show")
+def managed_agents_show_command(
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+) -> None:
+    """Show currently-provisioned MA agent / environment / subagent IDs."""
+    from autonomous_agent_builder.runtime.managed_agents_runtime import (
+        ManagedAgentsConfigError,
+        _load_managed_agents_config,
+    )
+
+    try:
+        config = _load_managed_agents_config()
+    except ManagedAgentsConfigError as exc:
+        emit_error(str(exc), use_json=json_output)
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        print(json.dumps(config, indent=2, sort_keys=True))
+    else:
+        print(f"environment: {config.get('environment_id') or '(not provisioned)'}")
+        agents = config.get("agents") or {}
+        print(f"agents: {len(agents)}")
+        for role_name, agent_id in sorted(agents.items()):
+            print(f"  - {role_name}: {agent_id}")
+        subagents = config.get("subagents") or {}
+        print(f"subagents: {len(subagents)}")
+        for role_name, agent_id in sorted(subagents.items()):
+            print(f"  - {role_name}: {agent_id}")
+    raise typer.Exit(code=EXIT_SUCCESS)
+
 
 def _documentation_refresh_format(payload: dict[str, Any]) -> str:
     lines = [
