@@ -535,6 +535,11 @@ class ApprovalDetailsResponse(BaseModel):
     thread: list[ThreadEntry]
     runs: list[MetricsRunItem]
     gate_results: list[dict]
+    # Sprint-PR refactor: populated only for ``gate_type == "sprint_pr"``.
+    sprint_id: str = ""
+    sprint_label: str = ""
+    sprint_pr_url: str = ""
+    sprint_changes_summary: str = ""
 
 
 class FeatureListItem(BaseModel):
@@ -1245,21 +1250,38 @@ async def load_approval_details_response(
     if not gate:
         raise HTTPException(status_code=404, detail="Approval gate not found")
 
-    task = await db.get(Task, gate.task_id)
+    task = await db.get(Task, gate.task_id) if gate.task_id else None
     feature = await db.get(Feature, task.feature_id) if task else None
     project = await db.get(Project, feature.project_id) if feature else None
 
-    result = await db.execute(
-        select(GateResult).where(GateResult.task_id == gate.task_id)
-    )
-    gate_results = _latest_gate_results_by_name(result.scalars().all())
+    sprint = await db.get(Sprint, gate.sprint_id) if gate.sprint_id else None
+    if sprint and not project:
+        project = await db.get(Project, sprint.project_id)
 
-    result = await db.execute(
-        select(AgentRun)
-        .where(AgentRun.task_id == gate.task_id)
-        .order_by(AgentRun.started_at)
+    # Sprint-PR refactor: when the gate is sprint-level, surface evidence from
+    # every task that landed in the sprint instead of a single task's runs.
+    sprint_task_ids: list[str] = (
+        [str(tid) for tid in (sprint.generated_task_ids or []) if str(tid).strip()]
+        if sprint
+        else []
     )
-    runs = result.scalars().all()
+    target_task_ids = sprint_task_ids if sprint_task_ids else [gate.task_id] if gate.task_id else []
+
+    if target_task_ids:
+        result = await db.execute(
+            select(GateResult).where(GateResult.task_id.in_(target_task_ids))
+        )
+        gate_results = _latest_gate_results_by_name(result.scalars().all())
+
+        result = await db.execute(
+            select(AgentRun)
+            .where(AgentRun.task_id.in_(target_task_ids))
+            .order_by(AgentRun.started_at)
+        )
+        runs = list(result.scalars().all())
+    else:
+        gate_results = []
+        runs = []
 
     result = await db.execute(
         select(Approval)
@@ -1294,19 +1316,33 @@ async def load_approval_details_response(
 
     task_status = _status_str(task) if task else ""
 
+    sprint_pr_url = ""
+    sprint_summary = ""
+    if sprint:
+        sprint_pr_url = sprint.pr_url or ""
+        evidence = sprint.verification_evidence or {}
+        if isinstance(evidence, dict):
+            sprint_pr_meta = evidence.get("sprint_pr") or {}
+            if isinstance(sprint_pr_meta, dict):
+                sprint_summary = str(sprint_pr_meta.get("summary") or "")
+
     return ApprovalDetailsResponse(
         gate_id=gate.id,
         gate_type=gate.gate_type,
         gate_status=gate.status,
         task_id=task.id if task else "",
-        task_title=task.title if task else "",
+        task_title=task.title if task else (sprint.label if sprint else ""),
         task_status=task_status,
-        task_description=task.description if task else "",
+        task_description=task.description if task else sprint_summary,
         feature_title=feature.title if feature else "",
         project_name=project.name if project else "",
         thread=thread,
         runs=[_serialize_run(run) for run in runs],
         gate_results=[_serialize_gate_result(gate_result) for gate_result in gate_results],
+        sprint_id=sprint.id if sprint else "",
+        sprint_label=sprint.label if sprint else "",
+        sprint_pr_url=sprint_pr_url,
+        sprint_changes_summary=sprint_summary,
     )
 
 

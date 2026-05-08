@@ -21,6 +21,13 @@ _DASHBOARD_CACHE_HEADERS = {
 }
 
 
+def _is_truthy(value: str | None) -> bool:
+    """Match the truthy-string convention used elsewhere in the runtime."""
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def create_app(db_path: Path, dashboard_path: Path, project_root: Path | None = None) -> FastAPI:
     """Create FastAPI application for embedded server.
 
@@ -74,19 +81,45 @@ def _init_database(app: FastAPI, db_path: Path) -> None:
 
     @app.on_event("startup")
     async def startup():
-        """Initialize database engine on startup."""
+        """Initialize database engine and local OTLP collector on startup."""
+        import os
+
         from autonomous_agent_builder.db.session import init_db
+        from autonomous_agent_builder.observability.local_collector import (
+            LocalOTLPCollector,
+            parse_local_endpoint,
+        )
 
         # Trigger engine creation
         get_engine()
         # Create tables if they don't exist
         await init_db()
 
+        # Bake-in OTLP collector: when builder is the configured local
+        # endpoint, run an in-process receiver so Day-0 readiness's
+        # ``telemetry_collector_reachable`` check passes on a fresh
+        # ``builder init`` without external setup. Operators with their own
+        # collector get a port-in-use skip.
+        app.state.local_otlp_collector = None
+        if _is_truthy(os.environ.get("AAB_CLAUDE_OTEL_ENABLED")):
+            endpoint = os.environ.get("AAB_CLAUDE_OTEL_ENDPOINT", "")
+            local = parse_local_endpoint(endpoint)
+            if local is not None:
+                host, port = local
+                project_root = app.state.project_root or Path.cwd()
+                telemetry_root = project_root / ".agent-builder" / "telemetry"
+                collector = LocalOTLPCollector(telemetry_root, host, port)
+                collector.start()
+                app.state.local_otlp_collector = collector
+
     @app.on_event("shutdown")
     async def shutdown():
-        """Close database connections on shutdown."""
+        """Close database connections and local OTLP collector on shutdown."""
         await app.state.chat_hub.shutdown()
         await close_db()
+        collector = getattr(app.state, "local_otlp_collector", None)
+        if collector is not None:
+            collector.stop()
 
 
 def _register_routes(app: FastAPI) -> None:

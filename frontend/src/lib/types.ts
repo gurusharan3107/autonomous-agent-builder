@@ -664,6 +664,11 @@ export interface ApprovalDetails {
   thread: ThreadEntry[];
   runs: AgentRunItem[];
   gate_results: GateResultItem[];
+  // Sprint-PR refactor: populated only for gate_type === "sprint_pr".
+  sprint_id?: string;
+  sprint_label?: string;
+  sprint_pr_url?: string;
+  sprint_changes_summary?: string;
 }
 
 // Dispatch

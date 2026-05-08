@@ -89,6 +89,46 @@ async def _drop_not_null_task_id_sqlite(conn: AsyncConnection) -> None:
     await conn.execute(text("ALTER TABLE approval_gates_new RENAME TO approval_gates"))
 
 
+async def _drop_not_null_task_id_approval_log_sqlite(conn: AsyncConnection) -> None:
+    """Make ``approval_log.task_id`` nullable + add ``sprint_id``.
+
+    SQLite needs a table rebuild to drop NOT NULL. Existing rows survive with
+    their original ``task_id`` populated; sprint-level audit entries land
+    after the migration with ``task_id=NULL`` and a populated ``sprint_id``.
+    """
+    has_sprint_id = await _has_column(conn, "approval_log", "sprint_id")
+    task_id_nullable = await _column_is_nullable(conn, "approval_log", "task_id")
+    if has_sprint_id and task_id_nullable:
+        return
+    await conn.execute(
+        text(
+            """
+            CREATE TABLE approval_log_new (
+                id VARCHAR(36) PRIMARY KEY,
+                task_id VARCHAR(36) REFERENCES tasks(id),
+                sprint_id VARCHAR(36) REFERENCES sprints(id),
+                approver_email VARCHAR(255) NOT NULL,
+                decision VARCHAR(50) NOT NULL,
+                reason TEXT DEFAULT '',
+                timestamp TIMESTAMP
+            )
+            """
+        )
+    )
+    # Carry forward existing columns. Pre-migration rows always have ``task_id``
+    # set; ``sprint_id`` defaults to NULL.
+    await conn.execute(
+        text(
+            "INSERT INTO approval_log_new "
+            "(id, task_id, sprint_id, approver_email, decision, reason, timestamp) "
+            "SELECT id, task_id, NULL, approver_email, decision, reason, timestamp "
+            "FROM approval_log"
+        )
+    )
+    await conn.execute(text("DROP TABLE approval_log"))
+    await conn.execute(text("ALTER TABLE approval_log_new RENAME TO approval_log"))
+
+
 async def apply(conn: AsyncConnection) -> None:
     """Apply the sprint-PR schema migration."""
     dialect = conn.engine.dialect.name
@@ -132,3 +172,19 @@ async def apply(conn: AsyncConnection) -> None:
             "ON approval_gates (sprint_id, status)"
         )
     )
+
+    # 5) approval_log: nullable task_id + sprint_id FK -------------------------
+    if dialect == "sqlite":
+        await _drop_not_null_task_id_approval_log_sqlite(conn)
+    else:
+        if not await _has_column(conn, "approval_log", "sprint_id"):
+            await conn.execute(
+                text(
+                    "ALTER TABLE approval_log ADD COLUMN sprint_id VARCHAR(36) "
+                    "REFERENCES sprints(id)"
+                )
+            )
+        if not await _column_is_nullable(conn, "approval_log", "task_id"):
+            await conn.execute(
+                text("ALTER TABLE approval_log ALTER COLUMN task_id DROP NOT NULL")
+            )

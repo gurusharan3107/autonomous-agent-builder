@@ -794,6 +794,9 @@ class TestApprovalDetailsEndpoint:
             "task_id", "task_title", "task_status", "task_description",
             "feature_title", "project_name",
             "thread", "runs", "gate_results",
+            # Sprint-PR refactor adds optional sprint metadata; per-task gates
+            # surface them as empty strings.
+            "sprint_id", "sprint_label", "sprint_pr_url", "sprint_changes_summary",
         }
         assert set(data.keys()) == expected_fields
         assert data["gate_type"] == "planning"
@@ -801,6 +804,10 @@ class TestApprovalDetailsEndpoint:
         assert isinstance(data["thread"], list)
         assert isinstance(data["runs"], list)
         assert isinstance(data["gate_results"], list)
+        # Per-task gate: sprint fields default empty.
+        assert data["sprint_id"] == ""
+        assert data["sprint_label"] == ""
+        assert data["sprint_pr_url"] == ""
 
     async def test_approval_details_show_latest_gate_result_per_gate(self, client, test_db):
         proj = await client.post(
@@ -1055,3 +1062,65 @@ class TestDashboardUtilityEndpoints:
         assert "Board" in labels
         assert "Compare" in labels
         assert "Dispatch me" in labels
+
+
+class TestSprintPrApprovalDetails:
+    """Sprint-PR refactor: approval-details endpoint surfaces sprint metadata."""
+
+    async def test_sprint_pr_gate_returns_sprint_metadata(self, client, test_db):
+        """A gate keyed on sprint_id (no task_id) renders sprint label, PR URL, and summary."""
+        proj = await client.post(
+            "/api/projects/",
+            json={"name": "sprint-pr-proj", "language": "python"},
+        )
+        project_id = proj.json()["id"]
+
+        _, factory = test_db
+        from autonomous_agent_builder.db.models import (
+            ApprovalGate,
+            Sprint,
+            SprintPhase,
+        )
+
+        async with factory() as session:
+            sprint = Sprint(
+                project_id=project_id,
+                label="Sprint 1",
+                phase=SprintPhase.PR_REVIEW,
+                branch="sprint/abcd-sprint-1",
+                pr_url="https://github.com/owner/repo/pull/42",
+                generated_task_ids=[],
+            )
+            sprint.verification_evidence = {
+                "sprint_pr": {
+                    "branch": "sprint/abcd-sprint-1",
+                    "url": "https://github.com/owner/repo/pull/42",
+                    "summary": "Sprint 1 — consolidated PR\n\nTasks delivered:\n- Hello",
+                }
+            }
+            session.add(sprint)
+            await session.flush()
+            gate = ApprovalGate(
+                task_id=None,
+                sprint_id=sprint.id,
+                gate_type="sprint_pr",
+            )
+            session.add(gate)
+            await session.flush()
+            gate_id = gate.id
+            await session.commit()
+
+        resp = await client.get(f"/api/dashboard/approvals/{gate_id}")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert data["gate_type"] == "sprint_pr"
+        assert data["task_id"] == ""
+        assert data["sprint_label"] == "Sprint 1"
+        assert data["sprint_pr_url"] == "https://github.com/owner/repo/pull/42"
+        assert "consolidated PR" in data["sprint_changes_summary"]
+        # Project name still resolves through the sprint→project relationship.
+        assert data["project_name"] == "sprint-pr-proj"
+        # Task fields fall back to sprint label/summary so per-task widgets do
+        # not crash on a sprint gate.
+        assert data["task_title"] == "Sprint 1"

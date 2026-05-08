@@ -152,7 +152,6 @@ async def submit_approval(
     # the existing path. The single-writer invariant from CLAUDE.md still
     # holds: gates persist approval rows; orchestrator owns state mutation.
     follow_up_task_ids: list[str] = []
-    audit_task_id: str | None = gate.task_id
     if gate.sprint_id and gate.gate_type == "sprint_pr":
         sprint = await db.get(Sprint, gate.sprint_id)
         sprint_tasks: list[Task] = []
@@ -170,21 +169,18 @@ async def submit_approval(
             )
             if decision == ApprovalDecision.REQUEST_CHANGES:
                 follow_up_task_ids = [t.id for t in sprint_tasks]
-            # Audit log uses the latest task that triggered ship as a
-            # breadcrumb when no explicit task_id is set on the gate.
-            if audit_task_id is None and sprint_tasks:
-                audit_task_id = sprint_tasks[-1].id
 
-        # Audit log entry (sprint-level uses the breadcrumb task above).
-        if audit_task_id is not None:
-            db.add(
-                ApprovalLog(
-                    task_id=audit_task_id,
-                    approver_email=data.approver_email,
-                    decision=decision,
-                    reason=outcome_reason,
-                )
+        # Sprint-level audit row: ``ApprovalLog.task_id`` is nullable now, so
+        # we record ``sprint_id`` as the canonical anchor.
+        db.add(
+            ApprovalLog(
+                task_id=None,
+                sprint_id=gate.sprint_id,
+                approver_email=data.approver_email,
+                decision=decision,
+                reason=outcome_reason,
             )
+        )
 
         await db.flush()
         await db.commit()
@@ -216,7 +212,7 @@ async def submit_approval(
     # Per-task gate path (planning/design/pr) — legacy behavior preserved.
     db.add(
         ApprovalLog(
-            task_id=audit_task_id,
+            task_id=gate.task_id,
             approver_email=data.approver_email,
             decision=decision,
             reason=outcome_reason,

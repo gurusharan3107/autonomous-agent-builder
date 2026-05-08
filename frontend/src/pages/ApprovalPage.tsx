@@ -231,18 +231,47 @@ export default function ApprovalPage() {
       />
 
       <div className="space-y-5">
-        <SurfacePanel className="space-y-4">
-          <SectionLabel>Task framing</SectionLabel>
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">
-              {data.task_title}
-            </h2>
-            <p className="text-sm leading-6 text-muted-foreground">
-              {data.feature_title} · {data.project_name}
-            </p>
-          </div>
-          <PhaseStepper status={data.task_status} />
-        </SurfacePanel>
+        {data.gate_type === "sprint_pr" ? (
+          <SurfacePanel className="space-y-3 border-amber-200/70 bg-amber-50/60">
+            <SectionLabel>Sprint review</SectionLabel>
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                {data.sprint_label || data.task_title || "Sprint PR"}
+              </h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                {data.project_name}
+              </p>
+            </div>
+            {data.sprint_pr_url ? (
+              <a
+                href={data.sprint_pr_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                Open pull request →
+              </a>
+            ) : null}
+            {data.sprint_changes_summary ? (
+              <pre className="whitespace-pre-wrap rounded-[1.1rem] border border-border/70 bg-background/85 p-3 text-[12px] leading-6 text-foreground/80">
+                {data.sprint_changes_summary}
+              </pre>
+            ) : null}
+          </SurfacePanel>
+        ) : (
+          <SurfacePanel className="space-y-4">
+            <SectionLabel>Task framing</SectionLabel>
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                {data.task_title}
+              </h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                {data.feature_title} · {data.project_name}
+              </p>
+            </div>
+            <PhaseStepper status={data.task_status} />
+          </SurfacePanel>
+        )}
 
         <SurfacePanel className="space-y-4">
           <SectionLabel

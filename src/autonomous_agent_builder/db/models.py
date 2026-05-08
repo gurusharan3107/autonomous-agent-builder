@@ -535,7 +535,15 @@ class ApprovalLog(Base):
     __tablename__ = "approval_log"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    # ``task_id`` is nullable so sprint-level audit entries can be persisted
+    # without inventing a breadcrumb task. Sprint-level rows populate
+    # ``sprint_id`` instead. See sprint-PR refactor Phase D.
+    task_id: Mapped[str | None] = mapped_column(
+        ForeignKey("tasks.id"), nullable=True
+    )
+    sprint_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sprints.id"), nullable=True
+    )
     approver_email: Mapped[str] = mapped_column(String(255), nullable=False)
     decision: Mapped[ApprovalDecision] = mapped_column(
         Enum(ApprovalDecision, values_callable=_enum_values), nullable=False
