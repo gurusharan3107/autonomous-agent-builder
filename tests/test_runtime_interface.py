@@ -106,7 +106,7 @@ class TestAgentRuntimeInterface:
 class TestFactory:
     def test_get_available_runtimes_contains_only_user_facing_lanes(self):
         available = get_available_runtimes()
-        assert available == ["claude", "codex_sdk"]
+        assert available == ["claude", "claude_managed", "codex_sdk"]
 
     def test_get_implemented_runtimes_may_include_compatibility_adapters(self):
         implemented = set(get_implemented_runtimes())
