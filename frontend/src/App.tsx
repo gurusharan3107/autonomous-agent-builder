@@ -410,6 +410,7 @@ function SystemInspectorDialog({
               value={runtimeSettings?.sdk ?? "claude"}
               options={[
                 { label: "Claude Agent SDK", value: "claude" },
+                { label: "Claude Managed Agents (cloud)", value: "claude_managed" },
                 { label: "Codex SDK", value: "codex_sdk" },
               ]}
               onChange={(value) => {

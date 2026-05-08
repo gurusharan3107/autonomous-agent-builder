@@ -618,3 +618,33 @@ class BuilderRecommendation(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+class WebhookDelivery(Base):
+    """Cross-process dedupe ledger for incoming webhook deliveries.
+
+    Anthropic's MA webhooks may arrive at-most-twice (the same ``event.id``
+    may be retried). The receiver inserts a row keyed on ``event_id``;
+    subsequent deliveries collide on the primary key and are skipped. Also
+    records dispatch outcome so operators can see which events were
+    consumed by the orchestrator vs failed to resume.
+
+    See plan: managed-agents Phase E2 (DB-backed dedupe + orchestrator
+    resume).
+    """
+
+    __tablename__ = "webhook_deliveries"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(100), default="")
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    dispatch_status: Mapped[str] = mapped_column(
+        String(20), default="received"
+    )  # received | processed | failed | skipped
+    session_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

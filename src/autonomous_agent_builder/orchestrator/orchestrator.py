@@ -65,6 +65,7 @@ from autonomous_agent_builder.quality_gates.base import (
 from autonomous_agent_builder.quality_gates.code_quality import CodeQualityGate
 from autonomous_agent_builder.quality_gates.testing import TestingGate
 from autonomous_agent_builder.runtime import create_runtime, resolve_runtime_config
+from autonomous_agent_builder.runtime.managed_agents_outcome import build_feature_outcome
 from autonomous_agent_builder.services.builder_tool_service import builder_kb_validate
 from autonomous_agent_builder.services.codex_optimization import (
     codex_run_optimization_summary,
@@ -979,28 +980,41 @@ class Orchestrator:
             if test_success:
                 return True, existing_result
 
-        result = await self._run_agent(
-            task,
-            "feature-verifier",
-            {
-                "feature_title": feature.title,
-                "feature_description": feature.description or "",
-                "acceptance_criteria": json.dumps(
-                    feature.acceptance_criteria or [],
-                    ensure_ascii=True,
-                ),
-                "existing_feature_test_result": existing_result,
-                "workspace_path": workspace_path,
-            },
-        )
-        if result.error:
-            return False, self._diagnose_task_failure(
-                result.error,
-                workspace_path=workspace_path,
-                result=result,
+        # Phase D2: when this project is on the claude_managed runtime, run
+        # feature-verifier through MA Outcomes (rubric-graded iterate loop)
+        # instead of the standard message-based agent path. The grader writes
+        # a terminal verdict to stop_reason that we map to a gate_results row.
+        if await self._task_runtime_is_claude_managed(task):
+            ok, message = await self._run_feature_verifier_outcome(
+                task,
+                feature,
+                workspace_path,
             )
-        if verifier_failure := self._feature_verifier_failure(result.output_text):
-            return False, verifier_failure
+            if not ok:
+                return False, message
+        else:
+            result = await self._run_agent(
+                task,
+                "feature-verifier",
+                {
+                    "feature_title": feature.title,
+                    "feature_description": feature.description or "",
+                    "acceptance_criteria": json.dumps(
+                        feature.acceptance_criteria or [],
+                        ensure_ascii=True,
+                    ),
+                    "existing_feature_test_result": existing_result,
+                    "workspace_path": workspace_path,
+                },
+            )
+            if result.error:
+                return False, self._diagnose_task_failure(
+                    result.error,
+                    workspace_path=workspace_path,
+                    result=result,
+                )
+            if verifier_failure := self._feature_verifier_failure(result.output_text):
+                return False, verifier_failure
 
         test_success, test_output = await self._record_feature_acceptance_tests(
             task,
@@ -1010,6 +1024,145 @@ class Orchestrator:
         if test_success:
             return True, test_output
         return False, f"feature_acceptance_failed: {test_output}"
+
+    async def _task_runtime_is_claude_managed(self, task: Task) -> bool:
+        """Return True when the task's project resolves to claude_managed.
+
+        Phase D2 routing predicate: feature-verifier dispatches through
+        Outcomes only on this lane. Falls back to False on any resolution
+        error so the standard agent path keeps working.
+        """
+        try:
+            project = getattr(task.feature, "project", None)
+            project_root = Path(str(getattr(project, "repo_url", "") or "")).expanduser()
+            if not project_root.exists():
+                return False
+            config = resolve_project_runtime_config(project_root)
+            return str(config.get("sdk") or "") == "claude_managed"
+        except Exception as exc:
+            log.debug("claude_managed_routing_check_failed", error=str(exc))
+            return False
+
+    async def _run_feature_verifier_outcome(
+        self,
+        task: Task,
+        feature: Feature,
+        workspace_path: str,
+    ) -> tuple[bool, str]:
+        """Run feature-verifier through MA Outcomes for the claude_managed lane.
+
+        Synthesises a rubric from `Feature.acceptance_criteria`, calls
+        `runtime.run_outcome`, and persists the verdict as both an `agent_runs`
+        row (runtime attribution) and a `gate_results` row (rubric verdict
+        + iteration count). The orchestrator's gate caller routes on the
+        returned (success, message) pair.
+        """
+        project = getattr(feature, "project", None)
+        project_root = Path(str(getattr(project, "repo_url", "") or "")).expanduser()
+        runtime_config = (
+            resolve_project_runtime_config(project_root)
+            if project_root.exists()
+            else resolve_runtime_config(self.settings)
+        )
+        runtime = create_runtime(**runtime_config)
+        run_outcome = getattr(runtime, "run_outcome", None)
+        if run_outcome is None:
+            return (
+                False,
+                "feature_acceptance_failed: runtime does not support run_outcome "
+                "(claude_managed lane required)",
+            )
+
+        outcome = build_feature_outcome(
+            feature_title=feature.title,
+            feature_description=feature.description or "",
+            acceptance_criteria=feature.acceptance_criteria or [],
+            max_iterations_cap=int(getattr(self.settings.gate, "max_retries", 5) or 5),
+        )
+
+        run = AgentRun(
+            task_id=task.id,
+            agent_name="feature-verifier",
+            runtime_sdk=str(runtime_config.get("sdk") or "claude_managed"),
+            provider=str(runtime_config.get("provider") or ""),
+            model=str(runtime_config.get("model") or ""),
+            effort="none",
+            status="running",
+        )
+        self.db.add(run)
+        await self.db.flush()
+        await self.db.commit()
+        await self._publish_realtime_board_snapshot()
+
+        started = datetime.now(UTC)
+        try:
+            result = await run_outcome(
+                agent="feature-verifier",
+                description=outcome.description,
+                rubric=outcome.rubric,
+                max_iterations=outcome.max_iterations,
+                workspace_path=workspace_path,
+            )
+        except Exception as exc:
+            log.error("feature_verifier_outcome_failed", error=str(exc))
+            run.status = "failed"
+            run.error = f"managed_agents outcome error: {exc}"
+            run.completed_at = datetime.now(UTC)
+            await self.db.commit()
+            return False, f"feature_acceptance_failed: managed_agents outcome error: {exc}"
+
+        observability = dict(result.observability or {})
+        ma_obs = observability.get("managed_agents") or {}
+        verdict_payload = ma_obs.get("outcome") or {}
+        verdict = str(verdict_payload.get("result") or "")
+        iterations = int(ma_obs.get("outcome_iterations") or 0)
+        explanation = str(verdict_payload.get("explanation") or "")
+
+        run.session_id = result.session_id
+        run.cost_usd = result.cost_usd
+        run.tokens_input = result.tokens_input
+        run.tokens_output = result.tokens_output
+        run.tokens_cached = result.tokens_cached
+        run.num_turns = result.num_turns
+        run.duration_ms = result.duration_ms
+        run.stop_reason = result.stop_reason
+        run.output_text = result.output_text
+        run.observability = observability
+        run.completed_at = datetime.now(UTC)
+        run.status = "completed" if not result.error else "failed"
+        run.error = result.error
+
+        gate_status = (
+            GateStatus.PASS
+            if verdict == "satisfied"
+            else GateStatus.FAIL
+        )
+        elapsed_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        self.db.add(
+            GateResultModel(
+                task_id=task.id,
+                gate_name="feature-verifier-outcome",
+                status=gate_status,
+                evidence={
+                    "verdict": verdict,
+                    "iterations": iterations,
+                    "max_iterations": outcome.max_iterations,
+                    "explanation": explanation,
+                    "session_id": result.session_id,
+                    "stop_reason": result.stop_reason,
+                },
+                findings_count=0 if verdict == "satisfied" else 1,
+                elapsed_ms=elapsed_ms,
+                error_code=None if verdict == "satisfied" else (verdict or "unknown"),
+            )
+        )
+        await self.db.commit()
+        await self._publish_realtime_board_snapshot()
+
+        if verdict == "satisfied":
+            return True, ""
+        message = explanation.strip() or f"verdict={verdict or 'unknown'}"
+        return False, f"feature_acceptance_failed: managed_agents outcome {message}"
 
     async def _record_feature_acceptance_tests(
         self,

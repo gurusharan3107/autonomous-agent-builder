@@ -43,10 +43,11 @@ Runtime contract for builder-owned agent execution in this repo.
 - Provider limits are first-class blocked/capability states with reset metadata,
   not stale gate failures or manual database repair requests.
 - Runtime selection is builder-owned configuration. The user-facing lifecycle
-  lanes are only `claude` for Claude Agent SDK and `codex_sdk` for Codex SDK.
-  Inspect or change them through dashboard Settings, first-run onboarding, or
-  `builder agent runtime show|probe|models|set --json`. Compatibility adapters
-  must not be used as sprint validation lanes.
+  lanes are `claude` for Claude Agent SDK (local), `codex_sdk` for Codex SDK
+  (local), and `claude_managed` for Anthropic Managed Agents (cloud, GitHub-
+  backed projects only). Inspect or change them through dashboard Settings,
+  first-run onboarding, or `builder agent runtime show|probe|models|set --json`.
+  Compatibility adapters must not be used as sprint validation lanes.
 - Model, effort, subagent, and context strategy are builder-owned runtime policy
   in `src/autonomous_agent_builder/agents/execution_policy.py`; the user should
   not choose Haiku/Sonnet/Opus or thinking level by hand.
@@ -63,6 +64,15 @@ Runtime contract for builder-owned agent execution in this repo.
   JSON-RPC path over `codex login` auth and persists Codex token, turn,
   duration, provider-limit, native user-input, and telemetry-source fields for
   analysis.
+- When `RUNTIME_SDK=claude_managed`, builder dispatches each agent invocation
+  to Anthropic's Managed Agents API: pre-provisioned agents per role (set up
+  via `builder agent runtime managed-agents setup`), cloud-sandboxed sessions
+  with `github_repository` resources, vault-backed GitHub MCP for PR creation,
+  and the `feature-verifier` phase running through `user.define_outcome`
+  rubric grading instead of free-form messaging. Lifecycle follow-up arrives
+  via `/api/managed-agents/webhook`; deliveries are deduped via the
+  `webhook_deliveries` table and resume `Orchestrator.dispatch` for the
+  matching task.
 - The documentation refresh gate is part of the `quality_gates -> pr_creation`
   boundary: after code/test gates pass or warn, validate maintained-doc
   freshness, invoke the repo-owned documentation bridge only when needed, then

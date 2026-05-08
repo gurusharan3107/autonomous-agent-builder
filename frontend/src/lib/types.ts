@@ -591,7 +591,7 @@ export interface RuntimePreferenceState {
   compareDisplayMode: "split" | "stacked";
 }
 
-export type RuntimeSdk = "claude" | "codex_sdk";
+export type RuntimeSdk = "claude" | "claude_managed" | "codex_sdk";
 
 export interface RuntimeSettings {
   sdk: string;
