@@ -52,7 +52,12 @@ def _config_path(project_root: Path) -> Path:
 def _read_config(project_root: Path) -> dict[str, Any]:
     path = _config_path(project_root)
     if not path.exists():
-        return {"agents": {}, "subagents": {}, "environment_id": None}
+        return {
+            "agents": {},
+            "subagents": {},
+            "environment_id": None,
+            "vaults": {},
+        }
     try:
         loaded = json.loads(path.read_text())
     except json.JSONDecodeError as exc:
@@ -62,6 +67,7 @@ def _read_config(project_root: Path) -> dict[str, Any]:
     loaded.setdefault("agents", {})
     loaded.setdefault("subagents", {})
     loaded.setdefault("environment_id", None)
+    loaded.setdefault("vaults", {})
     return loaded
 
 
@@ -231,6 +237,76 @@ async def setup_managed_agents(
             agents=sorted(config["agents"].keys()),
             subagents=sorted(config["subagents"].keys()),
         )
+        return config
+    finally:
+        with contextlib.suppress(Exception):
+            await client.close()
+
+
+async def add_vault(
+    *,
+    name: str,
+    credential: dict[str, Any],
+    project_root: Path | None = None,
+    client_factory: Callable[[], Any] | None = None,
+) -> dict[str, Any]:
+    """Provision a vault + credential and persist its ID under config.vaults[name].
+
+    Phase C: only `name="github"` is wired through to runtime sessions
+    (pr-creator, integration-resolver), but the helper is generic so
+    Phase D+ can add additional vault names without changing call sites.
+
+    Args:
+        name: short vault key under `config["vaults"]` (e.g. "github").
+            Sessions attach all configured vault IDs by default.
+        credential: full credential payload per MA docs §Vaults — must
+            include `display_name` and `auth` (for `mcp_oauth` shape:
+            mcp_server_url, access_token, refresh.{refresh_token,
+            client_id, token_endpoint, token_endpoint_auth}).
+        project_root: project to write `.agent-builder/managed_agents.json`
+            under. Defaults to CWD.
+        client_factory: optional override (for tests).
+
+    Returns:
+        Updated config dict.
+
+    Idempotent: if a vault with the same name already exists in config,
+    this re-uses the existing vault and ADDS the new credential to it
+    (per MA's vaults model — one vault holds multiple credentials).
+    """
+    root = project_root or Path.cwd()
+    config = _read_config(root)
+    vaults = config.setdefault("vaults", {})
+
+    if client_factory is None:
+        import anthropic  # local import — only when running setup
+
+        client = anthropic.AsyncAnthropic()
+    else:
+        client = client_factory()
+
+    try:
+        vault_id = vaults.get(name)
+        if not vault_id:
+            log.info("managed_agents_setup_create_vault", name=name)
+            vault = await client.beta.vaults.create(
+                name=f"builder-vault-{name}",
+                description=f"Builder vault for the '{name}' MCP credential set.",
+            )
+            vault_id = vault.id
+            vaults[name] = vault_id
+
+        log.info(
+            "managed_agents_setup_create_credential",
+            vault=name,
+            display_name=credential.get("display_name"),
+        )
+        await client.beta.vaults.credentials.create(
+            vault_id=vault_id,
+            **credential,
+        )
+
+        _write_config(root, config)
         return config
     finally:
         with contextlib.suppress(Exception):

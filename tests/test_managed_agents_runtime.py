@@ -210,6 +210,106 @@ async def test_probe_success(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_attaches_resources_and_vault_ids_when_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Phase C — when a github resource resolves and vaults exist, both are
+    forwarded into sessions.create()."""
+    captured_kwargs: dict[str, Any] = {}
+
+    @asynccontextmanager
+    async def _stream_ctx(**_kwargs: Any):
+        async with _FakeStream(
+            [_event(type="session.status_idle", stop_reason=_event(type="end_turn"))]
+        ) as s:
+            yield s
+
+    async def _create_session(**kwargs: Any) -> SimpleNamespace:
+        captured_kwargs.update(kwargs)
+        return SimpleNamespace(id="sesn_with_resources", status="running")
+
+    client = MagicMock()
+    client.close = AsyncMock(return_value=None)
+    client.beta.sessions.create = AsyncMock(side_effect=_create_session)
+    client.beta.sessions.events.send = AsyncMock(
+        return_value=SimpleNamespace(events=[])
+    )
+    client.beta.sessions.events.stream = MagicMock(side_effect=lambda **kw: _stream_ctx(**kw))
+
+    # Patch build_github_resource to return a fake resource without needing a
+    # real git workspace
+    fake_resource = {
+        "type": "github_repository",
+        "url": "https://github.com/x/y",
+        "authorization_token": "ghp_test",
+        "mount_path": "/workspace/y",
+    }
+    monkeypatch.setattr(
+        "autonomous_agent_builder.runtime.managed_agents_runtime.build_github_resource",
+        lambda **_kwargs: fake_resource,
+    )
+
+    runtime = ManagedAgentsRuntime(
+        config_loader=lambda: {
+            "agents": {"code-gen": "agent_codegen"},
+            "environment_id": "env_x",
+            "vaults": {"github": "vlt_gh"},
+        },
+        client_factory=lambda: client,
+    )
+    await runtime.run("write code", agent="code-gen", workspace_path="/tmp/ws")
+
+    assert "resources" in captured_kwargs
+    assert captured_kwargs["resources"] == [fake_resource]
+    assert "vault_ids" in captured_kwargs
+    assert captured_kwargs["vault_ids"] == ["vlt_gh"]
+
+
+@pytest.mark.asyncio
+async def test_run_omits_resources_when_workspace_unresolvable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No GitHub remote / no token → sessions.create called WITHOUT resources/vault_ids."""
+    captured_kwargs: dict[str, Any] = {}
+
+    @asynccontextmanager
+    async def _stream_ctx(**_kwargs: Any):
+        async with _FakeStream(
+            [_event(type="session.status_idle", stop_reason=_event(type="end_turn"))]
+        ) as s:
+            yield s
+
+    async def _create_session(**kwargs: Any) -> SimpleNamespace:
+        captured_kwargs.update(kwargs)
+        return SimpleNamespace(id="sesn_no_resources", status="running")
+
+    client = MagicMock()
+    client.close = AsyncMock(return_value=None)
+    client.beta.sessions.create = AsyncMock(side_effect=_create_session)
+    client.beta.sessions.events.send = AsyncMock(
+        return_value=SimpleNamespace(events=[])
+    )
+    client.beta.sessions.events.stream = MagicMock(side_effect=lambda **kw: _stream_ctx(**kw))
+
+    monkeypatch.setattr(
+        "autonomous_agent_builder.runtime.managed_agents_runtime.build_github_resource",
+        lambda **_kwargs: None,
+    )
+
+    runtime = ManagedAgentsRuntime(
+        config_loader=lambda: {
+            "agents": {"planner": "agent_planner"},
+            "environment_id": "env_x",
+        },
+        client_factory=lambda: client,
+    )
+    await runtime.run("plan", agent="planner")
+
+    assert "resources" not in captured_kwargs
+    assert "vault_ids" not in captured_kwargs
+
+
+@pytest.mark.asyncio
 async def test_run_happy_path_maps_run_result() -> None:
     """One agent.message + one span.model_request_end + idle end_turn."""
     sent: list[list[Any]] = []

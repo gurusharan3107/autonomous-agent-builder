@@ -127,6 +127,71 @@ def managed_agents_setup_command(
     raise typer.Exit(code=EXIT_SUCCESS)
 
 
+@managed_agents_app.command("vault-add")
+def managed_agents_vault_add_command(
+    name: str = typer.Option(
+        "github",
+        "--name",
+        help="Vault key under config['vaults'] (e.g. 'github').",
+    ),
+    credential_file: Path = typer.Option(
+        ...,
+        "--credential-file",
+        exists=True,
+        readable=True,
+        help=(
+            "Path to a JSON file containing the credential payload "
+            "(display_name + auth.{type,mcp_server_url,access_token,refresh.*}). "
+            "See MA docs §Vaults for the schema."
+        ),
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
+) -> None:
+    """Add an MCP credential to a vault for the claude_managed lane.
+
+    Phase C: the GitHub MCP credential enables pr-creator to call
+    `create_pull_request` and other GitHub MCP tools at session time.
+    Sessions auto-attach all configured vaults via vault_ids.
+    """
+    from autonomous_agent_builder.services.managed_agents_setup import (
+        ManagedAgentsSetupError,
+        add_vault,
+    )
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        emit_error(
+            "ANTHROPIC_API_KEY is not set",
+            hint="export ANTHROPIC_API_KEY=...; retry",
+            use_json=json_output,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        credential = json.loads(credential_file.read_text())
+    except json.JSONDecodeError as exc:
+        emit_error(
+            f"--credential-file is not valid JSON: {exc}",
+            use_json=json_output,
+        )
+        raise typer.Exit(code=1) from exc
+
+    try:
+        config = asyncio.run(add_vault(name=name, credential=credential))
+    except ManagedAgentsSetupError as exc:
+        emit_error(str(exc), use_json=json_output)
+        raise typer.Exit(code=1) from exc
+
+    payload = {
+        "vaults": config.get("vaults", {}),
+        "added": name,
+    }
+    if json_output:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"vault '{name}' updated; vault id = {payload['vaults'].get(name)}")
+    raise typer.Exit(code=EXIT_SUCCESS)
+
+
 @managed_agents_app.command("show")
 def managed_agents_show_command(
     json_output: bool = typer.Option(False, "--json", help="Emit JSON output."),
@@ -155,6 +220,10 @@ def managed_agents_show_command(
         print(f"subagents: {len(subagents)}")
         for role_name, agent_id in sorted(subagents.items()):
             print(f"  - {role_name}: {agent_id}")
+        vaults = config.get("vaults") or {}
+        print(f"vaults: {len(vaults)}")
+        for vault_name, vault_id in sorted(vaults.items()):
+            print(f"  - {vault_name}: {vault_id}")
     raise typer.Exit(code=EXIT_SUCCESS)
 
 

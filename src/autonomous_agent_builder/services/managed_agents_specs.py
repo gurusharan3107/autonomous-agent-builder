@@ -59,6 +59,40 @@ _ROLE_DEFAULT_MODEL: dict[str, str] = {
     "chat": "claude-sonnet-4-6",
 }
 
+# Roles that need access to the GitHub MCP server (PR creation, issue
+# management). Declared on agents.create as `mcp_servers=[...]`; the
+# session attaches a vault containing the OAuth credential at run time.
+_GITHUB_MCP_ROLES: frozenset[str] = frozenset({"pr-creator", "integration-resolver"})
+
+_GITHUB_MCP_SERVER_NAME = "github"
+_GITHUB_MCP_SERVER_URL = "https://api.githubcopilot.com/mcp/"
+
+
+def _mcp_servers_for_role(role: str) -> tuple[str, ...]:
+    """Return the MCP server names declared on an agent for the given role."""
+    if role in _GITHUB_MCP_ROLES:
+        return (_GITHUB_MCP_SERVER_NAME,)
+    return ()
+
+
+def _mcp_servers_block(role: str) -> list[dict[str, Any]]:
+    """Build the agents.create `mcp_servers` block.
+
+    Phase C declares only the GitHub Copilot MCP server. Adding more is a
+    matter of extending `_GITHUB_MCP_ROLES`/registry. Auth lives in vaults
+    attached to sessions — never inline on the agent.
+    """
+    if role not in _GITHUB_MCP_ROLES:
+        return []
+    return [
+        {
+            "type": "url",
+            "name": _GITHUB_MCP_SERVER_NAME,
+            "url": _GITHUB_MCP_SERVER_URL,
+        }
+    ]
+
+
 # Subagents per CLAUDE.md "bounded specialist evidence lanes" — model
 # choice mirrors `resolve_subagent_model` in execution_policy.py.
 _SUBAGENT_DEFAULT_MODEL: dict[str, str] = {
@@ -130,8 +164,19 @@ _MEMORY_SEARCH_CUSTOM_TOOL: dict[str, Any] = {
 }
 
 
-def _translate_tools(tool_names: tuple[str, ...]) -> list[dict[str, Any]]:
-    """Translate AgentDefinition.tools to MA agents.create tools[]."""
+def _translate_tools(
+    tool_names: tuple[str, ...],
+    *,
+    mcp_servers: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """Translate AgentDefinition.tools to MA agents.create tools[].
+
+    Args:
+        tool_names: builder Claude-Agent-SDK tool names.
+        mcp_servers: names of MCP servers declared on the same agent. For
+            each declared server, an `mcp_toolset` entry is emitted so the
+            agent can call its tools after the session attaches a vault.
+    """
     enabled_builtins = sorted(
         _BUILTIN_TOOL_MAP[name] for name in tool_names if name in _BUILTIN_TOOL_MAP
     )
@@ -154,6 +199,12 @@ def _translate_tools(tool_names: tuple[str, ...]) -> list[dict[str, Any]]:
     )
     if needs_memory_search:
         out.append(_MEMORY_SEARCH_CUSTOM_TOOL)
+
+    # mcp_toolset entries — one per declared MCP server. Per MA docs, the
+    # toolset name references the server by `mcp_server_name` matching the
+    # server's `name` field on the agent.
+    for server_name in mcp_servers:
+        out.append({"type": "mcp_toolset", "mcp_server_name": server_name})
 
     return out
 
@@ -218,18 +269,22 @@ def build_agent_payload(
             `_AGENT_POLICY[role][3]`. Missing-id raises a KeyError.
     """
     agent_def: AgentDefinition = get_agent_definition(role)
+    mcp_server_names = _mcp_servers_for_role(role)
     payload: dict[str, Any] = {
         "name": f"builder-{role}",
         "description": agent_def.description,
         "model": resolve_agent_model(role),
         "system": _render_system_prompt(agent_def.prompt_template),
-        "tools": _translate_tools(agent_def.tools),
+        "tools": _translate_tools(agent_def.tools, mcp_servers=mcp_server_names),
         "metadata": {
             "builder_role": role,
             "builder_kind": "agent",
             "builder_source": "agents/definitions.py::AGENT_DEFINITIONS",
         },
     }
+    mcp_block = _mcp_servers_block(role)
+    if mcp_block:
+        payload["mcp_servers"] = mcp_block
 
     policy = _AGENT_POLICY.get(role)
     subagent_names = policy[3] if policy else ()

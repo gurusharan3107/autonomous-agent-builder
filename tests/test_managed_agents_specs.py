@@ -214,6 +214,38 @@ def test_expected_subagent_roster_mirrors_policy() -> None:
         assert expected_subagent_roster(role) == policy[3], role
 
 
+def test_pr_creator_declares_github_mcp_server() -> None:
+    """Phase C — pr-creator's agents.create payload declares the GitHub MCP server."""
+    sub_map = {sub: f"agent_sub_{sub}" for sub in ALL_SUBAGENT_ROLES}
+    payload = build_agent_payload("pr-creator", subagent_id_map=sub_map)
+    assert "mcp_servers" in payload
+    servers = payload["mcp_servers"]
+    assert len(servers) == 1
+    assert servers[0]["type"] == "url"
+    assert servers[0]["name"] == "github"
+    assert servers[0]["url"] == "https://api.githubcopilot.com/mcp/"
+    # An mcp_toolset entry references the server by name
+    mcp_toolsets = [t for t in payload["tools"] if t.get("type") == "mcp_toolset"]
+    assert len(mcp_toolsets) == 1
+    assert mcp_toolsets[0]["mcp_server_name"] == "github"
+
+
+def test_planner_does_not_declare_github_mcp_server() -> None:
+    """Roles that don't need GitHub MCP must not have it (avoid bloat)."""
+    sub_map = {sub: f"agent_sub_{sub}" for sub in ALL_SUBAGENT_ROLES}
+    payload = build_agent_payload("planner", subagent_id_map=sub_map)
+    assert "mcp_servers" not in payload
+    mcp_toolsets = [t for t in payload["tools"] if t.get("type") == "mcp_toolset"]
+    assert mcp_toolsets == []
+
+
+def test_integration_resolver_declares_github_mcp_server() -> None:
+    """integration-resolver also needs GitHub MCP per _GITHUB_MCP_ROLES."""
+    sub_map = {sub: f"agent_sub_{sub}" for sub in ALL_SUBAGENT_ROLES}
+    payload = build_agent_payload("integration-resolver", subagent_id_map=sub_map)
+    assert "mcp_servers" in payload
+
+
 def test_system_prompt_replaces_placeholders_with_angle_markers() -> None:
     """`{language}` → `<language>` so per-task data references are visible."""
     payload = build_agent_payload("planner", subagent_id_map={

@@ -49,6 +49,10 @@ from autonomous_agent_builder.runtime.managed_agents_custom_tools import (
     CustomToolRegistry,
     default_custom_tool_registry,
 )
+from autonomous_agent_builder.runtime.managed_agents_workspace import (
+    WORKSPACE_REQUIRED_ROLES,
+    build_github_resource,
+)
 
 log = structlog.get_logger()
 
@@ -100,6 +104,20 @@ def _environment_id(config: dict[str, Any]) -> str:
             "Run `builder agent runtime managed-agents setup` to provision."
         )
     return str(env_id)
+
+
+def _vault_ids(config: dict[str, Any]) -> list[str]:
+    """Return the list of vault IDs to attach at session create.
+
+    Phase C+: vaults hold OAuth credentials for MCP servers (e.g. GitHub
+    Copilot MCP for PR creation). Sessions on roles that use MCP tools
+    (pr-creator, integration-resolver) need the vault attached so
+    Anthropic-side proxies can inject credentials post-sandbox.
+    """
+    vaults = config.get("vaults") or {}
+    if not isinstance(vaults, dict):
+        return []
+    return [str(v) for v in vaults.values() if v]
 
 
 class ManagedAgentsRuntime(AgentRuntime):
@@ -251,6 +269,16 @@ class ManagedAgentsRuntime(AgentRuntime):
         except ManagedAgentsConfigError as exc:
             return RunResult(error=str(exc))
 
+        vault_ids = _vault_ids(config)
+        repo_resource = build_github_resource(workspace_path=workspace_path)
+        if repo_resource is None and agent in WORKSPACE_REQUIRED_ROLES:
+            log.warning(
+                "managed_agents_workspace_unavailable",
+                role=agent,
+                workspace_path=workspace_path,
+                hint="Set GITHUB_TOKEN and ensure workspace has a GitHub origin remote.",
+            )
+
         client = self._client_factory()
         start_t = time.monotonic()
         try:
@@ -262,6 +290,8 @@ class ManagedAgentsRuntime(AgentRuntime):
                 role=agent,
                 on_chunk=on_chunk,
                 start_t=start_t,
+                resources=[repo_resource] if repo_resource else None,
+                vault_ids=vault_ids or None,
             )
         except Exception as exc:
             duration_ms = int((time.monotonic() - start_t) * 1000)
@@ -285,15 +315,22 @@ class ManagedAgentsRuntime(AgentRuntime):
         role: str,
         on_chunk: Callable[[str], Any] | None,
         start_t: float,
+        resources: list[dict[str, Any]] | None = None,
+        vault_ids: list[str] | None = None,
     ) -> RunResult:
         sessions = client.beta.sessions
 
         # 1. Create session referencing pre-created agent + environment
-        session = await sessions.create(
-            agent=agent_id,
-            environment_id=environment_id,
-            title=f"builder/{role}",
-        )
+        create_kwargs: dict[str, Any] = {
+            "agent": agent_id,
+            "environment_id": environment_id,
+            "title": f"builder/{role}",
+        }
+        if resources:
+            create_kwargs["resources"] = resources
+        if vault_ids:
+            create_kwargs["vault_ids"] = vault_ids
+        session = await sessions.create(**create_kwargs)
         session_id = session.id
 
         # Accumulators
@@ -314,6 +351,8 @@ class ManagedAgentsRuntime(AgentRuntime):
                 "compactions": 0,
                 "outcome_iterations": 0,
                 "thread_spawns": 0,
+                "resources": [r.get("type") for r in (resources or [])],
+                "vault_count": len(vault_ids or []),
             }
         }
 
