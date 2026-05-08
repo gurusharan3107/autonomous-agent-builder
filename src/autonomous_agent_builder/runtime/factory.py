@@ -9,6 +9,7 @@ from autonomous_agent_builder.runtime.interface import AgentRuntime
 
 DEFAULT_PROVIDER_BY_SDK = {
     "claude": "claude_code",
+    "claude_managed": "anthropic_managed",
     "codex_cli": "codex_subscription",
     "codex_sdk": "codex_subscription",
     "openai_agents": "opencode_go",
@@ -16,6 +17,7 @@ DEFAULT_PROVIDER_BY_SDK = {
 
 DEFAULT_MODEL_BY_SDK = {
     "claude": "anthropic/claude-sonnet-4-6",
+    "claude_managed": "claude-opus-4-7",
     "codex_cli": "gpt-5.5",
     "codex_sdk": "gpt-5.5",
     "openai_agents": "minimax-m2.7",
@@ -119,6 +121,7 @@ def validate_runtime_config(config: dict[str, Any]) -> list[dict[str, str]]:
 
     legal_pairs = {
         "claude": {"claude_code"},
+        "claude_managed": {"anthropic_managed"},
         "codex_cli": {"codex_subscription"},
         "codex_sdk": {"codex_subscription"},
         "openai_agents": {"opencode_go", "openai_api"},
@@ -202,6 +205,16 @@ def create_runtime(**kwargs: Any) -> AgentRuntime:
             tracing=config["tracing"],
         )
 
+    if sdk == "claude_managed":
+        from autonomous_agent_builder.runtime.managed_agents_runtime import (
+            ManagedAgentsRuntime,
+        )
+
+        return ManagedAgentsRuntime(
+            model=config["model"],
+            provider=config["provider"],
+        )
+
     from autonomous_agent_builder.runtime.claude_runtime import ClaudeRuntime
 
     return ClaudeRuntime(
@@ -212,12 +225,12 @@ def create_runtime(**kwargs: Any) -> AgentRuntime:
 
 def get_available_runtimes() -> list[str]:
     """List user-facing runtime lanes available through Builder controls."""
-    return ["claude", "codex_sdk"]
+    return ["claude", "claude_managed", "codex_sdk"]
 
 
 def get_implemented_runtimes() -> list[str]:
     """List concrete adapters, including compatibility-only internals."""
-    return ["claude", "codex_cli", "codex_sdk", "openai_agents"]
+    return ["claude", "claude_managed", "codex_cli", "codex_sdk", "openai_agents"]
 
 
 def get_current_runtime_name() -> str:
