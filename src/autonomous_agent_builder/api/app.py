@@ -84,6 +84,13 @@ def create_app() -> FastAPI:
     app.include_router(knowledge.router, prefix="/api")
     app.include_router(memory_api.router, prefix="/api")
 
+    # Managed-agents webhook receiver (claude_managed runtime lane).
+    # No-op when ANTHROPIC_WEBHOOK_SIGNING_KEY is unset — the route still
+    # mounts but rejects deliveries with 503.
+    from autonomous_agent_builder.api.routes import managed_agents_webhook
+
+    app.include_router(managed_agents_webhook.router, prefix="/api")
+
     # Health check (before static mount so it's not caught by SPA)
     @app.get("/health")
     async def health():
