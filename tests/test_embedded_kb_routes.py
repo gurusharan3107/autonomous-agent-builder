@@ -55,9 +55,12 @@ async def test_embedded_kb_routes_parse_multiline_frontmatter_tags(monkeypatch, 
         docs_response = await client.get("/api/kb/", params={"scope": "local"})
         assert docs_response.status_code == 200
         docs = docs_response.json()
-        assert docs[0]["tags"] == ["architecture", "runtime", "system-docs"]
-        assert docs[0]["title"] == "System Architecture — Runtime Map"
-        assert docs[0]["version"] == 3
+        architecture_doc = next(
+            doc for doc in docs if doc["id"].endswith("system-architecture.md")
+        )
+        assert architecture_doc["tags"] == ["architecture", "runtime", "system-docs"]
+        assert architecture_doc["title"] == "System Architecture — Runtime Map"
+        assert architecture_doc["version"] == 3
 
         tags_response = await client.get("/api/kb/tags", params={"scope": "local"})
         assert tags_response.status_code == 200

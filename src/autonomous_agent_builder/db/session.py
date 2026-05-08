@@ -61,11 +61,20 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Create all tables — for development/testing only. Use Alembic in prod."""
+    from autonomous_agent_builder.db.migrations import (
+        add_indices_2026_05,
+        sprint_pr_2026_05,
+    )
     from autonomous_agent_builder.db.models import Base
 
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Council 2026-05-08 — Item 4: ensure secondary indices exist on
+        # databases created before __table_args__ landed in models.py.
+        await add_indices_2026_05.apply(conn)
+        # Sprint-PR refactor (2026-05) — Phase A schema additions.
+        await sprint_pr_2026_05.apply(conn)
         if engine.dialect.name == "sqlite":
             result = await conn.execute(text("PRAGMA table_info(chat_sessions)"))
             columns = {row[1] for row in result.fetchall()}

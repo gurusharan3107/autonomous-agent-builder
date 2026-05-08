@@ -653,3 +653,49 @@ class TestPlanningPhase:
         ]
         assert len(added) >= 1
         assert added[0].gate_type == "planning"
+
+
+@pytest.mark.asyncio
+class TestPhaseFailureDiagnostics:
+    """Planner/designer error paths must record a real diagnostic, not a NameError."""
+
+    async def test_phase_planning_error_preserves_diagnostic_without_workspace(
+        self, orchestrator
+    ):
+        task = _make_task(TaskStatus.PENDING, workspace_path=None)
+
+        async def _errored_run(*args, **kwargs):
+            return RunResult(
+                error="planner blew up",
+                stop_reason="runtime_error",
+                output_text="",
+            )
+
+        orchestrator._run_agent = _errored_run
+        await orchestrator.dispatch(task)
+
+        assert task.status == TaskStatus.FAILED
+        assert task.blocked_reason
+        assert "planner blew up" in task.blocked_reason
+        assert "NameError" not in task.blocked_reason
+
+    async def test_phase_design_error_preserves_diagnostic_without_workspace(
+        self, orchestrator
+    ):
+        task = _make_task(TaskStatus.DESIGN, workspace_path=None)
+
+        async def _errored_run(*args, **kwargs):
+            return RunResult(
+                error="designer hit an issue",
+                stop_reason="runtime_error",
+                output_text="",
+            )
+
+        orchestrator._run_agent = _errored_run
+        orchestrator._get_last_run = AsyncMock(return_value=None)
+        await orchestrator.dispatch(task)
+
+        assert task.status == TaskStatus.FAILED
+        assert task.blocked_reason
+        assert "designer hit an issue" in task.blocked_reason
+        assert "NameError" not in task.blocked_reason

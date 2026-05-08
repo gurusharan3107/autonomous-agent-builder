@@ -29,7 +29,7 @@ class ExtractionRequest(BaseModel):
     method: str | None = None
     force: bool = False
     run_validation: bool = Field(default=True, alias="validate")
-    model: str = "claude-haiku-4-5"
+    model: str = "claude-haiku-4-5-20251001"
     doc_types: list[str] | None = None
 
 

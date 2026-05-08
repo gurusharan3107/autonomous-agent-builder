@@ -19,6 +19,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -156,6 +157,10 @@ class SprintPhase(enum.StrEnum):
     DESIGN = "design"
     IMPLEMENTATION = "implementation"
     VERIFY = "verify"
+    # Sprint has finished verify and is awaiting human review of the
+    # consolidated sprint-level PR. Replaces N per-task `pr` approval gates
+    # with one `sprint_pr` gate. See plan: sprint-PR refactor Phase C.
+    PR_REVIEW = "pr_review"
     SHIPPED = "shipped"
     BLOCKED = "blocked"
 
@@ -216,6 +221,9 @@ class Project(Base):
 
 class Feature(Base):
     __tablename__ = "features"
+    __table_args__ = (
+        Index("ix_features_project_status_created", "project_id", "status", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
@@ -249,9 +257,18 @@ class Feature(Base):
 
 class Sprint(Base):
     __tablename__ = "sprints"
+    __table_args__ = (
+        Index("ix_sprints_project_phase", "project_id", "phase"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    # Per-sprint integration branch. Set lazily when the first task of the
+    # sprint provisions its workspace; remains None for non-sprint flows.
+    branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # URL of the consolidated sprint PR opened at sprint-shipped time. None
+    # for local-app flows that ff-merge the sprint branch into main directly.
+    pr_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     label: Mapped[str] = mapped_column(String(100), default="Sprint 1")
     phase: Mapped[SprintPhase] = mapped_column(
         Enum(SprintPhase, values_callable=_enum_values), default=SprintPhase.SCOPE
@@ -272,6 +289,10 @@ class Sprint(Base):
 
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        Index("ix_tasks_feature_status", "feature_id", "status"),
+        Index("ix_tasks_status_phase", "status", "phase"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     feature_id: Mapped[str] = mapped_column(ForeignKey("features.id"), nullable=False)
@@ -334,6 +355,9 @@ class QualityGate(Base):
 
 class GateResult(Base):
     __tablename__ = "gate_results"
+    __table_args__ = (
+        Index("ix_gate_results_task_status", "task_id", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"), nullable=False)
@@ -357,17 +381,32 @@ class GateResult(Base):
 
 class ApprovalGate(Base):
     __tablename__ = "approval_gates"
+    __table_args__ = (
+        Index("ix_approval_gates_task_status", "task_id", "status"),
+        Index("ix_approval_gates_sprint_status", "sprint_id", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"), nullable=False)
-    gate_type: Mapped[str] = mapped_column(String(50), nullable=False)  # planning, design, pr
+    # Either ``task_id`` (per-task gates: planning, design, pr) or ``sprint_id``
+    # (sprint-level gates: sprint_pr) is populated. Application-layer rule:
+    # at least one must be non-null. Sprint-level gates were introduced when
+    # PR creation moved from a per-task step to a per-sprint step.
+    task_id: Mapped[str | None] = mapped_column(
+        ForeignKey("tasks.id"), nullable=True
+    )
+    sprint_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sprints.id"), nullable=True
+    )
+    gate_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # planning, design, pr (per-task) | sprint_pr (per-sprint)
     status: Mapped[str] = mapped_column(
         String(20), default="pending"
     )  # pending, approved, rejected
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    task: Mapped[Task] = relationship(back_populates="approval_gates")
+    task: Mapped[Task | None] = relationship(back_populates="approval_gates")
     approvals: Mapped[list[Approval]] = relationship(back_populates="approval_gate")
 
 
@@ -388,6 +427,10 @@ class Approval(Base):
 
 class AgentRun(Base):
     __tablename__ = "agent_runs"
+    __table_args__ = (
+        Index("ix_agent_runs_task_started", "task_id", "started_at"),
+        Index("ix_agent_runs_status", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"), nullable=False)
@@ -426,6 +469,9 @@ class AgentRun(Base):
 
 class AgentRunEvent(Base):
     __tablename__ = "agent_run_events"
+    __table_args__ = (
+        Index("ix_agent_run_events_run_ts", "run_id", "timestamp"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id"), nullable=False)
@@ -548,6 +594,14 @@ class ChatEvent(Base):
     """Typed timeline events for interactive agent chat sessions."""
 
     __tablename__ = "chat_events"
+    __table_args__ = (
+        Index(
+            "ix_chat_events_session_type_created",
+            "session_id",
+            "event_type",
+            "created_at",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     session_id: Mapped[str] = mapped_column(ForeignKey("chat_sessions.id"), nullable=False)
@@ -592,6 +646,10 @@ class BuilderRecommendation(Base):
     """
 
     __tablename__ = "builder_recommendations"
+    __table_args__ = (
+        Index("ix_builder_recs_status", "status"),
+        Index("ix_builder_recs_source_run", "source_run_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     # Source of the suggestion — which agent run produced it.

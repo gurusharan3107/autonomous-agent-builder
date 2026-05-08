@@ -1051,7 +1051,12 @@ def test_build_verify_script_runs_node_workspace_checks(monkeypatch, tmp_path):
     payload = json.loads(result.stdout)
     assert payload["success"] is True
     checks = payload["data"]["checks"]
-    assert [check["code"] for check in checks] == ["npm_lint", "npm_build", "npm_test"]
+    assert [check["code"] for check in checks] == [
+        "npm_install",
+        "npm_lint",
+        "npm_build",
+        "npm_test",
+    ]
     assert all(check["status"] == "passed" for check in checks)
 
 

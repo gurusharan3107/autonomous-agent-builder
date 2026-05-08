@@ -11,7 +11,10 @@ from pathlib import Path
 
 from autonomous_agent_builder.config import get_settings
 from autonomous_agent_builder.observability.runtime import resolve_claude_observability
-from autonomous_agent_builder.onecli_runtime import prepare_onecli_runtime_env
+from autonomous_agent_builder.onecli_runtime import (
+    prepare_onecli_runtime_env,
+    scrub_provider_env,
+)
 
 
 @dataclass(frozen=True)
@@ -169,7 +172,12 @@ async def _run_claude_cli_prompt(
             command.extend(["--allowed-tools", *allowed_tools])
 
     onecli_env = await prepare_onecli_runtime_env()
-    process_env = {**os.environ, **onecli_env.env} if onecli_env.active else None
+    base_env = {**os.environ}
+    if onecli_env.active:
+        base_env.update(onecli_env.env)
+    # Council 2026-05-08 — Item 2: never let real provider tokens cross the
+    # subprocess boundary, even if OneCLI is inactive or unavailable.
+    process_env = scrub_provider_env(base_env)
 
     process = await asyncio.create_subprocess_exec(
         *command,

@@ -32,7 +32,10 @@ from autonomous_agent_builder.agents.execution_policy import (
 from autonomous_agent_builder.agents.tool_registry import ToolRegistry
 from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.observability.runtime import resolve_claude_observability
-from autonomous_agent_builder.onecli_runtime import prepare_onecli_runtime_env
+from autonomous_agent_builder.onecli_runtime import (
+    prepare_onecli_runtime_env,
+    scrub_provider_env,
+)
 from autonomous_agent_builder.services.provider_limits import (
     is_provider_limit_text,
     parse_reset_hint,
@@ -545,10 +548,15 @@ class AgentRunner:
                 "strict-mcp-config": None,
             },
         )
-        merged_child_env = {
-            **(onecli_env.env if onecli_env.active else {}),
-            **observability.env,
-        }
+        # Council 2026-05-08 — Item 2: scrub provider tokens before any value
+        # reaches the SDK options.env so they cannot leak into the child env
+        # regardless of OneCLI active state.
+        merged_child_env = scrub_provider_env(
+            {
+                **(onecli_env.env if onecli_env.active else {}),
+                **observability.env,
+            }
+        )
         if merged_child_env:
             options.env = {**getattr(options, "env", {}), **merged_child_env}
 

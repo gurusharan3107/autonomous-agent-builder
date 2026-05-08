@@ -1504,3 +1504,172 @@ class TestAgentRunRecording:
         assert result.hit_capability_limit is True
         assert result.provider_limit is not None
         assert result.provider_limit["reset_hint"] == "resets 11:10pm"
+
+
+# ── Council 2026-05-08 — Item 3: orchestrator.apply_approval_outcome ──
+from autonomous_agent_builder.db.models import (
+    ApprovalDecision as _Decision,
+)
+from autonomous_agent_builder.orchestrator.orchestrator import (
+    apply_approval_outcome as _apply,
+)
+
+
+def _approval_task(status: TaskStatus = TaskStatus.DESIGN_REVIEW) -> Task:
+    task = Task(
+        id="task-approval",
+        feature_id="feat-1",
+        title="t",
+        description="d",
+        status=status,
+    )
+    task.depends_on = None
+    task.blocked_reason = "stale"
+    task.blocked_at = None
+    return task
+
+
+class TestApplyApprovalOutcome:
+    def test_approve_planning_advances_to_design_and_dispatches(self):
+        task = _approval_task(TaskStatus.DESIGN_REVIEW)
+        should_dispatch = _apply(task, "planning", _Decision.APPROVE)
+        assert task.status == TaskStatus.DESIGN
+        assert task.blocked_reason is None
+        assert should_dispatch is True
+
+    def test_approve_design_advances_to_implementation(self):
+        task = _approval_task(TaskStatus.DESIGN_REVIEW)
+        should_dispatch = _apply(task, "design", _Decision.APPROVE)
+        assert task.status == TaskStatus.IMPLEMENTATION
+        assert should_dispatch is True
+
+    def test_approve_pr_advances_to_build_verify(self):
+        task = _approval_task(TaskStatus.REVIEW_PENDING)
+        should_dispatch = _apply(task, "pr", _Decision.APPROVE)
+        assert task.status == TaskStatus.BUILD_VERIFY
+        assert should_dispatch is True
+
+    def test_request_changes_on_pr_loops_back_to_implementation_with_context(self):
+        task = _approval_task(TaskStatus.REVIEW_PENDING)
+        should_dispatch = _apply(
+            task, "pr", _Decision.REQUEST_CHANGES, reason="please fix tests"
+        )
+        assert task.status == TaskStatus.IMPLEMENTATION
+        assert task.depends_on is not None
+        assert (
+            task.depends_on["phase_context"]["pr_change_request"]
+            == "please fix tests"
+        )
+        assert should_dispatch is True
+
+    def test_reject_blocks_the_task_and_records_reason(self):
+        task = _approval_task(TaskStatus.DESIGN_REVIEW)
+        should_dispatch = _apply(
+            task, "planning", _Decision.REJECT, reason="scope unclear"
+        )
+        assert task.status == TaskStatus.BLOCKED
+        assert task.blocked_reason == "scope unclear"
+        assert should_dispatch is False
+
+    def test_reject_default_reason_when_none_provided(self):
+        task = _approval_task(TaskStatus.DESIGN_REVIEW)
+        should_dispatch = _apply(task, "planning", _Decision.REJECT)
+        assert task.status == TaskStatus.BLOCKED
+        assert task.blocked_reason == "Approval rejected"
+        assert should_dispatch is False
+
+    def test_request_changes_on_non_pr_falls_through_to_block(self):
+        task = _approval_task(TaskStatus.DESIGN_REVIEW)
+        should_dispatch = _apply(task, "planning", _Decision.REQUEST_CHANGES)
+        assert task.status == TaskStatus.BLOCKED
+        assert should_dispatch is False
+
+
+# ── Sprint-PR refactor (Phase A) — apply_sprint_approval_outcome ──
+from autonomous_agent_builder.db.models import (
+    Sprint as _Sprint,
+    SprintPhase as _SprintPhase,
+)
+from autonomous_agent_builder.orchestrator.orchestrator import (
+    apply_sprint_approval_outcome as _apply_sprint,
+)
+
+
+def _sprint(phase: _SprintPhase = _SprintPhase.PR_REVIEW) -> _Sprint:
+    sprint = _Sprint(
+        id="sprint-1",
+        project_id="proj-1",
+        label="Sprint 1",
+        phase=phase,
+    )
+    sprint.verification_evidence = {}
+    return sprint
+
+
+def _sprint_task(status: TaskStatus = TaskStatus.DONE) -> Task:
+    task = Task(
+        id=f"task-{id(status)}",
+        feature_id="feat-1",
+        title="t",
+        description="d",
+        status=status,
+    )
+    task.depends_on = None
+    task.blocked_reason = None
+    task.blocked_at = None
+    return task
+
+
+class TestApplySprintApprovalOutcome:
+    def test_approve_marks_sprint_shipped_and_records_evidence(self):
+        sprint = _sprint(_SprintPhase.PR_REVIEW)
+        should_followup = _apply_sprint(
+            sprint, _Decision.APPROVE, reason="ship it"
+        )
+        assert sprint.phase == _SprintPhase.SHIPPED
+        assert should_followup is True
+        evidence = sprint.verification_evidence or {}
+        assert "sprint_pr_approved_at" in evidence
+        assert evidence.get("sprint_pr_approval_reason") == "ship it"
+
+    def test_request_changes_resets_tasks_to_implementation_and_keeps_sprint_at_verify(self):
+        sprint = _sprint(_SprintPhase.PR_REVIEW)
+        tasks = [_sprint_task(TaskStatus.DONE), _sprint_task(TaskStatus.DONE)]
+        should_followup = _apply_sprint(
+            sprint,
+            _Decision.REQUEST_CHANGES,
+            reason="please add tests",
+            sprint_tasks=tasks,
+        )
+        assert sprint.phase == _SprintPhase.VERIFY
+        assert should_followup is True
+        assert all(task.status == TaskStatus.IMPLEMENTATION for task in tasks)
+        assert all(task.blocked_reason == "please add tests" for task in tasks)
+        evidence = sprint.verification_evidence or {}
+        assert evidence.get("pr_change_request") == "please add tests"
+        assert "pr_change_request_at" in evidence
+
+    def test_request_changes_default_reason_when_none(self):
+        sprint = _sprint(_SprintPhase.PR_REVIEW)
+        should_followup = _apply_sprint(sprint, _Decision.REQUEST_CHANGES)
+        assert sprint.phase == _SprintPhase.VERIFY
+        evidence = sprint.verification_evidence or {}
+        assert evidence.get("pr_change_request") == "PR changes requested"
+        assert should_followup is True
+
+    def test_reject_blocks_sprint_and_records_reason(self):
+        sprint = _sprint(_SprintPhase.PR_REVIEW)
+        should_followup = _apply_sprint(
+            sprint, _Decision.REJECT, reason="scope mismatch"
+        )
+        assert sprint.phase == _SprintPhase.BLOCKED
+        assert should_followup is False
+        evidence = sprint.verification_evidence or {}
+        assert evidence.get("sprint_pr_rejection_reason") == "scope mismatch"
+        assert "sprint_pr_rejected_at" in evidence
+
+    def test_reject_default_reason_when_none(self):
+        sprint = _sprint(_SprintPhase.PR_REVIEW)
+        _apply_sprint(sprint, _Decision.REJECT)
+        evidence = sprint.verification_evidence or {}
+        assert evidence.get("sprint_pr_rejection_reason") == "Sprint PR rejected"

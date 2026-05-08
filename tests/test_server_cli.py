@@ -8,6 +8,16 @@ from autonomous_agent_builder.cli.main import app
 runner = CliRunner()
 
 
+def _stub_port_check(monkeypatch) -> None:
+    """Bypass real port-availability checks so tests aren't host-port sensitive."""
+    from autonomous_agent_builder.cli import port_manager
+
+    def _noop_port_check(_agent_builder_dir, _port, *, force: bool = False) -> None:  # noqa: ARG001
+        return None
+
+    monkeypatch.setattr(port_manager, "ensure_builder_port_available", _noop_port_check)
+
+
 def test_server_start_uses_repo_local_port_when_flag_omitted(monkeypatch, tmp_path) -> None:
     project_root = tmp_path
     agent_builder_dir = project_root / ".agent-builder"
@@ -15,6 +25,7 @@ def test_server_start_uses_repo_local_port_when_flag_omitted(monkeypatch, tmp_pa
     (agent_builder_dir / "agent_builder.db").write_text("", encoding="utf-8")
     (agent_builder_dir / "server.port").write_text("9876", encoding="utf-8")
     monkeypatch.chdir(project_root)
+    _stub_port_check(monkeypatch)
 
     called: dict[str, object] = {}
 
@@ -52,6 +63,7 @@ def test_server_start_flag_overrides_repo_local_port(monkeypatch, tmp_path) -> N
     (agent_builder_dir / "agent_builder.db").write_text("", encoding="utf-8")
     (agent_builder_dir / "server.port").write_text("9876", encoding="utf-8")
     monkeypatch.chdir(project_root)
+    _stub_port_check(monkeypatch)
 
     called: dict[str, object] = {}
 

@@ -242,3 +242,80 @@ def test_telemetry_env_status_distinguishes_unreachable_local_collector(
     assert status["endpoint_configured"] is True
     assert status["collector_reachable"] is False
     assert status["collector"]["checked"] is True
+
+
+# ── Onboarding commits the runtime-guidance file (root-cause fix for the ──
+# ── "pathspec 'CLAUDE.md' did not match any file(s) known to git" failure). ──
+
+import subprocess
+
+
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True, check=False)
+
+
+def _init_test_repo(repo: Path) -> None:
+    repo.mkdir(parents=True, exist_ok=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    (repo / "README.md").write_text("# test\n", encoding="utf-8")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-q", "-m", "init")
+
+
+def test_onboarding_commits_freshly_created_guidance(tmp_path: Path) -> None:
+    from autonomous_agent_builder.onboarding import _commit_onboarding_guidance
+
+    repo = tmp_path / "app"
+    _init_test_repo(repo)
+    guidance = repo / "CLAUDE.md"
+    guidance.write_text("# scaffolded\n", encoding="utf-8")
+
+    _commit_onboarding_guidance(repo, str(guidance))
+
+    listed = _git(repo, "ls-files", "--", "CLAUDE.md")
+    assert listed.stdout.strip() == "CLAUDE.md", "guidance file should be tracked after commit"
+    log = _git(repo, "log", "--oneline", "--", "CLAUDE.md")
+    assert log.stdout.strip(), "guidance file should have at least one commit"
+
+
+def test_onboarding_commit_is_noop_when_not_a_git_repo(tmp_path: Path) -> None:
+    from autonomous_agent_builder.onboarding import _commit_onboarding_guidance
+
+    bare = tmp_path / "no-git"
+    bare.mkdir()
+    guidance = bare / "CLAUDE.md"
+    guidance.write_text("# scaffolded\n", encoding="utf-8")
+
+    # Should not raise even though there is no .git directory.
+    _commit_onboarding_guidance(bare, str(guidance))
+    assert guidance.read_text(encoding="utf-8") == "# scaffolded\n"
+
+
+def test_orchestrator_tracked_modified_paths_filters_untracked() -> None:
+    from autonomous_agent_builder.orchestrator.orchestrator import _tracked_modified_paths
+
+    status = (
+        "?? CLAUDE.md\n"
+        " M AGENTS.md\n"
+        "M  docs/CONTRIBUTING.md\n"
+        "A  new_runtime.md\n"
+        "R  old.md -> renamed.md\n"
+    )
+    paths = ["CLAUDE.md", "AGENTS.md", "docs/CONTRIBUTING.md", "new_runtime.md", "renamed.md", "missing.md"]
+
+    tracked = _tracked_modified_paths(status, paths)
+
+    assert "CLAUDE.md" not in tracked, "untracked guidance must be excluded"
+    assert "AGENTS.md" in tracked
+    assert "docs/CONTRIBUTING.md" in tracked
+    assert "new_runtime.md" in tracked, "staged-add files are still tracked"
+    assert "renamed.md" in tracked, "rename target should be picked up"
+    assert "missing.md" not in tracked
+
+
+def test_orchestrator_tracked_modified_paths_empty_status() -> None:
+    from autonomous_agent_builder.orchestrator.orchestrator import _tracked_modified_paths
+
+    assert _tracked_modified_paths("", ["CLAUDE.md"]) == []

@@ -67,9 +67,9 @@ class AgentSettings(BaseSettings):
     design_model: str = "opus"
     implementation_model: str = "sonnet"
     pr_model: str = "sonnet"
-    kb_extraction_model: str = "claude-haiku-4-5"
-    kb_validation_model: str = "claude-haiku-4-5"
-    kb_retry_model: str = "claude-haiku-4-5"
+    kb_extraction_model: str = "claude-haiku-4-5-20251001"
+    kb_validation_model: str = "claude-haiku-4-5-20251001"
+    kb_retry_model: str = "claude-haiku-4-5-20251001"
     kb_manual_repair_model: str = "claude-sonnet-4-6"
     kb_design_review_model: str = "claude-opus-4-7"
     query_timeout_seconds: int = 90

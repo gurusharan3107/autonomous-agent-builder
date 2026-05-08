@@ -30,6 +30,7 @@ class WorkspaceManager:
         repo_path: str,
         task_id: str,
         branch_name: str | None = None,
+        start_point: str | None = None,
     ) -> WorkspaceInfo:
         """Create an isolated worktree for a task.
 
@@ -37,6 +38,9 @@ class WorkspaceManager:
             repo_path: Path to the main repository.
             task_id: Task ID (used for workspace naming).
             branch_name: Branch name (default: task/<task_id>).
+            start_point: Optional ref to branch from (default: HEAD). Used by
+                the sprint-PR refactor so per-task branches start from the
+                sprint integration branch instead of HEAD/main.
         """
         import asyncio
 
@@ -51,14 +55,21 @@ class WorkspaceManager:
                 is_worktree=True,
             )
 
-        # Create git worktree
-        proc = await asyncio.create_subprocess_exec(
+        # Create git worktree. ``git worktree add -b <branch> <path> [<start_point>]``
+        # branches from HEAD when ``start_point`` is omitted; supplying a sprint
+        # branch routes per-task work onto the sprint integration branch.
+        worktree_args = [
             "git",
             "worktree",
             "add",
             "-b",
             branch,
             str(workspace_path),
+        ]
+        if start_point:
+            worktree_args.append(start_point)
+        proc = await asyncio.create_subprocess_exec(
+            *worktree_args,
             cwd=repo_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,

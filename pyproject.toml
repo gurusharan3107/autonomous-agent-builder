@@ -40,6 +40,9 @@ dependencies = [
     # "litellm>=1.55.0",
     # Git
     "gitpython>=3.1.43",
+    # Timezone data — required by services.provider_limits.parse_reset_hint
+    # on minimal Linux/Windows environments that ship without system tzdata.
+    "tzdata>=2024.1",
 ]
 
 [project.scripts]

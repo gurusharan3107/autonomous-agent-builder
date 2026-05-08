@@ -16,6 +16,27 @@ from autonomous_agent_builder.knowledge.publisher import (
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
+# Module-level cache for `load_docs`. Keyed on (scope, root_mtime_ns) so an
+# unchanged tree returns the same list without re-walking the filesystem.
+# Council 2026-05-08 — Item 5: per-call full-corpus deserialization was the
+# dominant cost of every KB tool turn.
+_DOCS_CACHE: dict[tuple[str, int], list[dict[str, Any]]] = {}
+
+
+def _docs_cache_key(scope: str) -> tuple[str, int] | None:
+    root = knowledge_root(scope)
+    if not root.exists():
+        return None
+    try:
+        return (scope, root.stat().st_mtime_ns)
+    except OSError:
+        return None
+
+
+def reset_docs_cache() -> None:
+    """Clear the module-level docs cache. Used by tests and `kb extract`."""
+    _DOCS_CACHE.clear()
+
 
 def _global_routing_articles() -> list[dict[str, Any]]:
     routing_path = global_kb_root() / "routing.json"
@@ -129,6 +150,15 @@ def _serialize_doc(path: Path, scope: str) -> dict[str, Any]:
 
 
 def load_docs(scope: str = "local") -> list[dict[str, Any]]:
+    cache_key = _docs_cache_key(scope)
+    if cache_key is not None:
+        cached = _DOCS_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+        # Drop snapshots for this scope when the root has changed.
+        for stale in [k for k in _DOCS_CACHE if k[0] == scope and k != cache_key]:
+            _DOCS_CACHE.pop(stale, None)
+
     root = knowledge_root(scope)
     if not root.exists():
         return []
@@ -154,6 +184,8 @@ def load_docs(scope: str = "local") -> list[dict[str, Any]]:
                 doc["date_published"] = article.get("date_processed") or doc["date_published"]
             docs.append(doc)
         docs.sort(key=lambda doc: (str(doc.get("date_published") or ""), doc["title"].lower()), reverse=True)
+        if cache_key is not None:
+            _DOCS_CACHE[cache_key] = docs
         return docs
 
     for path in root.rglob("*.md"):
@@ -176,6 +208,8 @@ def load_docs(scope: str = "local") -> list[dict[str, Any]]:
         docs.append(_serialize_doc(path, scope))
 
     docs.sort(key=lambda doc: (str(doc.get("created_at") or ""), doc["title"].lower()), reverse=True)
+    if cache_key is not None:
+        _DOCS_CACHE[cache_key] = docs
     return docs
 
 
@@ -194,7 +228,13 @@ def _tokenize(text: str) -> list[str]:
     return _TOKEN_RE.findall(text.lower())
 
 
-def _score_doc(doc: dict[str, Any], query: str) -> int:
+def _score_doc(doc: dict[str, Any], query: str, *, deep: bool = False) -> int:
+    """Score a doc against the query.
+
+    By default, scores against the compact summary fields (`card_summary`,
+    `detail_summary`, `preview`). Pass ``deep=True`` to also include the full
+    `content` body — used when a caller explicitly opts into a slower deep scan.
+    """
     normalized_query = _normalize_text(query)
     query_tokens = list(dict.fromkeys(_tokenize(query)))
     if not normalized_query and not query_tokens:
@@ -202,18 +242,14 @@ def _score_doc(doc: dict[str, Any], query: str) -> int:
 
     title = _normalize_text(str(doc.get("title", "")))
     tags = _normalize_text(" ".join(str(tag) for tag in doc.get("tags", [])))
-    content = _normalize_text(
-        " ".join(
-            part
-            for part in (
-                str(doc.get("card_summary", "")),
-                str(doc.get("detail_summary", "")),
-                str(doc.get("preview", "")),
-                str(doc.get("content", "")),
-            )
-            if part
-        )
-    )
+    content_parts = [
+        str(doc.get("card_summary", "")),
+        str(doc.get("detail_summary", "")),
+        str(doc.get("preview", "")),
+    ]
+    if deep:
+        content_parts.append(str(doc.get("content", "")))
+    content = _normalize_text(" ".join(part for part in content_parts if part))
 
     score = 0
     if normalized_query:
@@ -246,6 +282,39 @@ def _score_doc(doc: dict[str, Any], query: str) -> int:
     return score
 
 
+_SUMMARY_KEEP_FIELDS = {
+    "id",
+    "task_id",
+    "doc_type",
+    "doc_family",
+    "lifecycle_status",
+    "linked_feature",
+    "feature_id",
+    "title",
+    "version",
+    "created_at",
+    "updated",
+    "tags",
+    "date_published",
+    "source_author",
+    "source_title",
+    "source_url",
+    "card_summary",
+    "detail_summary",
+    "preview",
+}
+
+
+def _summarize_doc(doc: dict[str, Any]) -> dict[str, Any]:
+    """Strip the full `content` body from a search result.
+
+    Search results are summary-shaped by default; callers needing the full body
+    must use `kb_show` / `find_doc`. This keeps tool-result payloads bounded for
+    every search turn.
+    """
+    return {key: value for key, value in doc.items() if key in _SUMMARY_KEEP_FIELDS}
+
+
 def search_docs(
     query: str,
     *,
@@ -254,6 +323,8 @@ def search_docs(
     task_id: str | None = None,
     tags: list[str] | None = None,
     limit: int = 20,
+    deep: bool = False,
+    include_content: bool = False,
 ) -> list[dict[str, Any]]:
     results: list[tuple[int, dict[str, Any]]] = []
     selected_tags = {str(tag).strip() for tag in (tags or []) if str(tag).strip()}
@@ -264,7 +335,7 @@ def search_docs(
             continue
         if selected_tags and not selected_tags.issubset(set(doc.get("tags", []))):
             continue
-        score = _score_doc(doc, query)
+        score = _score_doc(doc, query, deep=deep)
         if score > 0:
             results.append((score, doc))
 
@@ -276,4 +347,7 @@ def search_docs(
         ),
         reverse=True,
     )
-    return [doc for _, doc in results[:limit]]
+    selected = [doc for _, doc in results[:limit]]
+    if include_content:
+        return selected
+    return [_summarize_doc(doc) for doc in selected]

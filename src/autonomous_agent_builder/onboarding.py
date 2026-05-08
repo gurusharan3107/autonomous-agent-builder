@@ -517,7 +517,7 @@ def _ensure_project_runtime_guidance(project_root: Path, state: dict[str, Any]) 
         framework=framework,
         scan_summary=scan_summary,
     )
-    ensure_project_runtime_guidance(
+    guidance_result = ensure_project_runtime_guidance(
         project_root,
         project_name=str(repo.get("name") or project_root.name),
         **guidance_context,
@@ -525,6 +525,63 @@ def _ensure_project_runtime_guidance(project_root: Path, state: dict[str, Any]) 
     ensure_project_telemetry_env(
         project_root,
         project_name=str(repo.get("name") or project_root.name),
+    )
+    # Track the runtime-guidance file in git from the moment onboarding writes
+    # it. Without this, the freshly-written CLAUDE.md / AGENTS.md sits
+    # untracked and integration-time `git checkout -- CLAUDE.md` fails with
+    # "pathspec did not match any file(s) known to git". Defense in depth: the
+    # orchestrator's runtime-guidance cleanup also tolerates untracked paths.
+    if guidance_result.get("status") in {"created", "migrated"}:
+        guidance_path = guidance_result.get("path")
+        if isinstance(guidance_path, str) and guidance_path:
+            _commit_onboarding_guidance(project_root, guidance_path)
+
+
+def _commit_onboarding_guidance(project_root: Path, guidance_path: str) -> None:
+    """Stage and commit the onboarding-written runtime-guidance file when in a git repo."""
+    import subprocess  # local import keeps this module's import cost flat
+
+    if not (project_root / ".git").exists():
+        return
+    try:
+        relative = str(Path(guidance_path).resolve().relative_to(project_root.resolve()))
+    except ValueError:
+        return
+    add = subprocess.run(
+        ["git", "add", "--", relative],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if add.returncode != 0:
+        return
+    diff = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--", relative],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if diff.returncode != 0 or not diff.stdout.strip():
+        return
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Autonomous Builder",
+            "-c",
+            "user.email=builder@example.local",
+            "commit",
+            "-m",
+            "chore: scaffold builder runtime guidance",
+            "--",
+            relative,
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 

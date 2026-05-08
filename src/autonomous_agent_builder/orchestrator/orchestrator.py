@@ -35,6 +35,7 @@ from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.db.models import (
     AgentRun,
     AgentRunEvent,
+    ApprovalDecision,
     ApprovalGate,
     Feature,
     FeatureStatus,
@@ -110,6 +111,30 @@ _WORKSPACE_COPY_EXCLUDES = (
     "dist",
     "build",
 )
+
+
+def _tracked_modified_paths(status_output: str, paths: list[str]) -> list[str]:
+    """Filter ``paths`` to those reported as tracked-modified by ``git status --short``.
+
+    ``git status --short`` prefixes each line with a two-character XY status code:
+    ``??`` for untracked, ``A `` / `` A`` for staged-add, ``M `` / `` M`` for
+    modified, etc. Only tracked paths (``XY`` is not ``??`` and at least one of
+    X/Y indicates a non-add modification) can be discarded with ``git checkout``;
+    untracked files must be left in place.
+    """
+    requested = set(paths)
+    tracked: list[str] = []
+    for line in status_output.splitlines():
+        if len(line) < 4:
+            continue
+        xy, rest = line[:2], line[3:].strip()
+        if xy == "??":
+            continue
+        # Strip optional rename arrow ("orig -> new") to get the current path.
+        path = rest.split(" -> ")[-1].strip().strip('"')
+        if path in requested and path not in tracked:
+            tracked.append(path)
+    return tracked
 
 
 def _is_codex_chunk_limit_error(error: str) -> bool:
@@ -230,6 +255,106 @@ BLOCKED_STATUSES = {
 }
 
 
+# Council 2026-05-08 — Item 3: the orchestrator owns the mapping from an
+# approval decision to the resulting task transition. The HTTP route persists
+# the approval/audit rows and then asks the orchestrator to apply the outcome,
+# so the single-writer invariant in CLAUDE.md is preserved at the seam.
+def apply_approval_outcome(
+    task: Task,
+    gate_type: str,
+    decision: ApprovalDecision,
+    *,
+    reason: str | None = None,
+) -> bool:
+    """Apply an approval outcome to ``task`` and report whether to dispatch.
+
+    Returns ``True`` when the caller should schedule a dispatch run for the
+    task (approve / request-changes-on-pr). Returns ``False`` for terminal
+    blocked outcomes.
+    """
+    if decision == ApprovalDecision.APPROVE:
+        if gate_type == "planning":
+            set_task_status(task, TaskStatus.DESIGN)
+        elif gate_type == "design":
+            set_task_status(task, TaskStatus.IMPLEMENTATION)
+        elif gate_type == "pr":
+            set_task_status(task, TaskStatus.BUILD_VERIFY)
+        else:
+            return False
+        task.blocked_reason = None
+        task.blocked_at = None
+        return True
+
+    if decision == ApprovalDecision.REQUEST_CHANGES and gate_type == "pr":
+        message = reason or "PR changes requested"
+        depends_on = dict(task.depends_on or {})
+        phase_context = dict(depends_on.get("phase_context") or {})
+        phase_context["pr_change_request"] = message
+        depends_on["phase_context"] = phase_context
+        task.depends_on = depends_on
+        task.blocked_reason = None
+        set_task_status(task, TaskStatus.IMPLEMENTATION)
+        return True
+
+    if decision in (ApprovalDecision.REJECT, ApprovalDecision.REQUEST_CHANGES):
+        set_task_status(task, TaskStatus.BLOCKED)
+        task.blocked_reason = reason or "Approval rejected"
+    return False
+
+
+# Sprint-PR refactor (Phase A): per-sprint approval outcome helper. Mirrors
+# ``apply_approval_outcome`` for the new ``sprint_pr`` gate type that opens at
+# sprint-shipped time. Caller persists the ``Approval`` row + audit entry, then
+# delegates the sprint-state mutation to the orchestrator-owned helper so the
+# single-writer invariant in CLAUDE.md continues to hold for sprints too.
+def apply_sprint_approval_outcome(
+    sprint: Sprint,
+    decision: ApprovalDecision,
+    *,
+    reason: str | None = None,
+    sprint_tasks: list[Task] | None = None,
+) -> bool:
+    """Apply a sprint-level approval outcome to ``sprint``.
+
+    Returns ``True`` when the caller should schedule follow-up work
+    (post-ship optimization on approve, or re-dispatch of reset tasks on
+    request-changes). Returns ``False`` for terminal blocked outcomes.
+
+    ``sprint_tasks`` is the list of tasks generated for the sprint; passed in
+    by the caller so this helper does not need a DB session of its own.
+    """
+    evidence = dict(sprint.verification_evidence or {})
+
+    if decision == ApprovalDecision.APPROVE:
+        sprint.phase = SprintPhase.SHIPPED
+        evidence["sprint_pr_approved_at"] = datetime.now(UTC).isoformat()
+        if reason:
+            evidence["sprint_pr_approval_reason"] = reason
+        sprint.verification_evidence = evidence
+        return True
+
+    if decision == ApprovalDecision.REQUEST_CHANGES:
+        sprint.phase = SprintPhase.VERIFY
+        evidence["pr_change_request"] = reason or "PR changes requested"
+        evidence["pr_change_request_at"] = datetime.now(UTC).isoformat()
+        sprint.verification_evidence = evidence
+        # Reset every task in the sprint back to IMPLEMENTATION so the agent
+        # picks up the requested changes on the next dispatch. Simpler than
+        # parsing the request body and surgically targeting individual tasks.
+        for task in sprint_tasks or []:
+            set_task_status(task, TaskStatus.IMPLEMENTATION)
+            task.blocked_reason = reason or "Sprint PR changes requested"
+            task.blocked_at = None
+        return True
+
+    if decision == ApprovalDecision.REJECT:
+        sprint.phase = SprintPhase.BLOCKED
+        evidence["sprint_pr_rejected_at"] = datetime.now(UTC).isoformat()
+        evidence["sprint_pr_rejection_reason"] = reason or "Sprint PR rejected"
+        sprint.verification_evidence = evidence
+    return False
+
+
 class Orchestrator:
     """Deterministic orchestrator — dispatches tasks through SDLC phases."""
 
@@ -309,7 +434,7 @@ class Orchestrator:
             set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = self._diagnose_task_failure(
                 result.error,
-                workspace_path=workspace.path,
+                workspace_path=task.workspace.path if task.workspace else "",
                 result=result,
             )
         elif self._apply_operator_decision_handoff(task, result.output_text):
@@ -367,7 +492,7 @@ class Orchestrator:
             set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = self._diagnose_task_failure(
                 result.error,
-                workspace_path=workspace_path,
+                workspace_path=task.workspace.path if task.workspace else "",
                 result=result,
             )
         elif self._apply_operator_decision_handoff(task, result.output_text):
@@ -475,7 +600,31 @@ class Orchestrator:
             )
 
         manager = WorkspaceManager(self.settings.workspace_root)
-        workspace_info = await self._provision_workspace_info(manager, repo_root, task.id)
+        # Sprint-PR refactor (Phase B): when the task is part of a sprint,
+        # branch the per-task worktree off the sprint branch so all task
+        # commits roll up into a single sprint-level integration head.
+        sprint_start_point: str | None = None
+        sprint = await self._resolve_sprint_for_task(task)
+        if sprint is not None:
+            async def run_git(*args: str) -> tuple[int, str]:
+                proc = await asyncio.create_subprocess_exec(
+                    "git",
+                    *args,
+                    cwd=str(repo_root),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await proc.communicate()
+                return proc.returncode, (
+                    stdout.decode(errors="replace") + stderr.decode(errors="replace")
+                )
+
+            sprint_start_point = await self._ensure_sprint_branch(
+                sprint, repo_root, run_git
+            )
+        workspace_info = await self._provision_workspace_info(
+            manager, repo_root, task.id, start_point=sprint_start_point
+        )
 
         if existing and existing_path:
             workspace = existing
@@ -506,12 +655,23 @@ class Orchestrator:
         return workspace
 
     async def _provision_workspace_info(
-        self, manager: WorkspaceManager, repo_root: Path, task_id: str
+        self,
+        manager: WorkspaceManager,
+        repo_root: Path,
+        task_id: str,
+        *,
+        start_point: str | None = None,
     ) -> WorkspaceInfo:
-        """Create a git worktree by default, with an explicit directory fallback."""
+        """Create a git worktree by default, with an explicit directory fallback.
+
+        ``start_point`` lets the sprint-PR refactor branch task worktrees off
+        the sprint integration branch instead of HEAD.
+        """
         git_dir = repo_root / ".git"
         if git_dir.exists():
-            return await manager.create_workspace(str(repo_root), task_id)
+            return await manager.create_workspace(
+                str(repo_root), task_id, start_point=start_point
+            )
 
         workspace_path = Path(self.settings.workspace_root) / task_id
         if workspace_path.exists():
@@ -752,6 +912,67 @@ class Orchestrator:
         depends_on = task.depends_on if isinstance(task.depends_on, dict) else {}
         payload = depends_on.get(SPRINT_EXECUTION_KEY)
         return payload if isinstance(payload, dict) else {}
+
+    async def _resolve_sprint_for_task(self, task: Task) -> Sprint | None:
+        """Return the ``Sprint`` row attached to ``task`` (via ``depends_on``)."""
+        sprint_payload = self._task_sprint_execution_payload(task)
+        sprint_id = str(sprint_payload.get("sprint_id") or "").strip()
+        if not sprint_id:
+            return None
+        return await self.db.get(Sprint, sprint_id)
+
+    @staticmethod
+    def _sprint_branch_name(sprint: Sprint) -> str:
+        """Return a deterministic branch name for ``sprint``.
+
+        Uses the first 8 chars of the sprint id plus a slugified label to keep
+        the discriminator first (tab-completion ergonomics) while still being
+        human-readable on git logs.
+        """
+        slug = re.sub(r"[^a-z0-9]+", "-", (sprint.label or "sprint").lower()).strip("-")
+        slug = slug or "sprint"
+        return f"sprint/{sprint.id[:8]}-{slug}"
+
+    async def _ensure_sprint_branch(
+        self,
+        sprint: Sprint,
+        repo_root: Path,
+        run_git: _GitRunner,
+    ) -> str | None:
+        """Lazy-create the per-sprint integration branch.
+
+        Returns the branch name on success, or ``None`` when the repo has no
+        commits yet (unborn HEAD — caller falls back to today's behavior).
+        Persists ``sprint.branch`` so subsequent tasks reuse the same branch.
+        """
+        if sprint.branch:
+            return sprint.branch
+        head_code, _ = await run_git("rev-parse", "--verify", "HEAD")
+        if head_code != 0:
+            # Unborn HEAD — sprint branch can't fork from anything yet. Caller
+            # uses the legacy main-targeting integration path, which still
+            # initializes main from the first task commit.
+            return None
+        branch_name = self._sprint_branch_name(sprint)
+        # ``git branch -f`` is intentional: if a stale branch from an aborted
+        # earlier attempt exists at the same ref, this resets it to current
+        # HEAD. Only fires when ``sprint.branch`` is None, so this never
+        # rewrites a branch we have already accepted as the integration head.
+        verify_code, _ = await run_git("rev-parse", "--verify", branch_name)
+        if verify_code != 0:
+            create_code, create_output = await run_git(
+                "branch", branch_name, "HEAD"
+            )
+            if create_code != 0:
+                log.warning(
+                    "sprint_branch_create_failed",
+                    sprint_id=sprint.id,
+                    branch=branch_name,
+                    output=create_output.strip(),
+                )
+                return None
+        sprint.branch = branch_name
+        return branch_name
 
     async def _run_builder_script(
         self,
@@ -1285,20 +1506,70 @@ class Orchestrator:
         )
         acceptance_runs = list(acceptance_result.scalars().all())
         acceptance_run_ids = [run.id for run in acceptance_runs if run.status == "completed"]
-        sprint.phase = SprintPhase.SHIPPED
+        approved_feature_ids = [
+            str(feature_id) for feature_id in (sprint.approved_feature_ids or [])
+        ]
+
+        verification_summary = (
+            "All generated sprint tasks completed; feature-verifier acceptance, "
+            "durable feature tests, and final build verification passed."
+        )
         sprint.verification_status = "passed"
-        sprint.verification_evidence = {
+        base_evidence = {
             "status": "passed",
             "source_task_id": task.id,
             "generated_task_ids": generated_ids,
             "feature_acceptance_run_ids": acceptance_run_ids,
-            "summary": (
-                "All generated sprint tasks completed; feature-verifier acceptance, "
-                "durable feature tests, and final build verification passed."
-            ),
+            "summary": verification_summary,
             "completed_at": datetime.now(UTC).isoformat(),
         }
-        approved_feature_ids = [str(feature_id) for feature_id in (sprint.approved_feature_ids or [])]
+
+        # Sprint-PR refactor (Phase C): decide remote-PR vs local-merge before
+        # flipping the sprint to SHIPPED. The remote path opens a single
+        # sprint-level PR and parks the sprint at PR_REVIEW pending human
+        # approval; the local path ff-merges the sprint branch into main and
+        # ships immediately. Both paths share the verification-evidence base.
+        repo_root = Path(
+            str(getattr(task.feature.project, "repo_url", "") or "")
+        ).expanduser()
+        if (
+            sprint.branch
+            and repo_root.exists()
+            and await self._project_has_remote(repo_root)
+        ):
+            sprint_pr_error = await self._open_sprint_pr(
+                sprint, sprint_tasks, task, repo_root, base_evidence
+            )
+            if sprint_pr_error:
+                evidence = {**base_evidence, "sprint_pr_error": sprint_pr_error}
+                sprint.phase = SprintPhase.BLOCKED
+                sprint.verification_status = "blocked"
+                sprint.verification_evidence = evidence
+                log.error(
+                    "sprint_pr_open_failed",
+                    sprint_id=sprint.id,
+                    error=sprint_pr_error,
+                )
+                return
+            return
+
+        merge_error = await self._maybe_ff_merge_sprint_branch(sprint, repo_root)
+        if merge_error:
+            sprint.phase = SprintPhase.BLOCKED
+            sprint.verification_status = "blocked"
+            sprint.verification_evidence = {
+                **base_evidence,
+                "sprint_merge_error": merge_error,
+            }
+            log.error(
+                "sprint_local_merge_failed",
+                sprint_id=sprint.id,
+                error=merge_error,
+            )
+            return
+
+        sprint.phase = SprintPhase.SHIPPED
+        sprint.verification_evidence = base_evidence
         if approved_feature_ids:
             feature_result = await self.db.execute(
                 select(Feature).where(Feature.id.in_(approved_feature_ids))
@@ -1330,6 +1601,154 @@ class Orchestrator:
                 task_id=task.id,
                 error=str(exc),
             )
+
+    @staticmethod
+    async def _project_has_remote(repo_root: Path) -> bool:
+        """Return True when ``repo_root`` is a git repo with at least one remote."""
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "remote",
+            cwd=str(repo_root),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        return bool(stdout.decode(errors="replace").strip())
+
+    async def _maybe_ff_merge_sprint_branch(
+        self, sprint: Sprint, repo_root: Path
+    ) -> str | None:
+        """Local-app sprint completion: ff-merge sprint branch into main.
+
+        Returns an error string on failure or ``None`` on success / no-op.
+        Idempotent — if the sprint branch is already at the same commit as
+        main (or no sprint branch exists), this is a no-op.
+        """
+        branch = sprint.branch
+        if not branch or not repo_root.exists():
+            return None
+
+        async def run_git(*args: str) -> tuple[int, str]:
+            proc = await asyncio.create_subprocess_exec(
+                "git",
+                *args,
+                cwd=str(repo_root),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            return proc.returncode, (
+                stdout.decode(errors="replace") + stderr.decode(errors="replace")
+            )
+
+        head_code, _ = await run_git("rev-parse", "--verify", "HEAD")
+        if head_code != 0:
+            return None
+        guidance_snapshot = self._project_runtime_guidance_snapshot(repo_root)
+        clean_error = await self._clean_project_runtime_guidance_for_git_operation(
+            run_git, guidance_snapshot
+        )
+        if clean_error:
+            return clean_error
+        checkout_code, checkout_output = await run_git("checkout", "main")
+        if checkout_code != 0:
+            return (
+                f"Sprint completion failed: could not check out main: "
+                f"{checkout_output.strip()}"
+            )
+        merge_code, merge_output = await run_git("merge", "--ff-only", branch)
+        if merge_code != 0:
+            return (
+                f"Sprint completion failed: could not fast-forward main from "
+                f"{branch}: {merge_output.strip()}"
+            )
+        restore_error = await self._restore_project_runtime_guidance_snapshot(
+            repo_root, guidance_snapshot, run_git
+        )
+        if restore_error:
+            return restore_error
+        log.info(
+            "sprint_branch_ff_merged_to_main",
+            sprint_id=sprint.id,
+            branch=branch,
+        )
+        return None
+
+    @staticmethod
+    def _sprint_changes_summary(sprint: Sprint, sprint_tasks: list[Task]) -> str:
+        """Compose a sprint-level PR description from per-task titles."""
+        lines = [
+            f"Sprint {sprint.label} — consolidated PR",
+            "",
+            "Tasks delivered in this sprint:",
+        ]
+        for sprint_task in sprint_tasks:
+            title = (sprint_task.title or "").strip() or sprint_task.id
+            lines.append(f"- {title}")
+        return "\n".join(lines)
+
+    async def _open_sprint_pr(
+        self,
+        sprint: Sprint,
+        sprint_tasks: list[Task],
+        latest_task: Task,
+        repo_root: Path,
+        base_evidence: dict[str, Any],
+    ) -> str | None:
+        """Run ``pr-creator`` once on the sprint branch and persist the gate.
+
+        Returns an error string on failure or ``None`` on success.
+        """
+        if not sprint.branch:
+            return "sprint branch is not initialized"
+        sprint_workspace_path = str(repo_root)
+        summary = self._sprint_changes_summary(sprint, sprint_tasks)
+        result = await self._run_agent(
+            latest_task,
+            "pr-creator",
+            {
+                "task_description": summary,
+                "gate_results": "PASS",
+                "workspace_path": sprint_workspace_path,
+            },
+        )
+        if result.error:
+            return self._diagnose_task_failure(
+                result.error,
+                workspace_path=sprint_workspace_path,
+                result=result,
+            )
+        pr_url = self._extract_pr_url(result.output_text)
+        sprint.pr_url = pr_url
+        sprint.phase = SprintPhase.PR_REVIEW
+        sprint.verification_evidence = {
+            **base_evidence,
+            "sprint_pr": {
+                "branch": sprint.branch,
+                "url": pr_url,
+                "opened_at": datetime.now(UTC).isoformat(),
+                "summary": summary,
+            },
+        }
+        gate = ApprovalGate(
+            task_id=None,
+            sprint_id=sprint.id,
+            gate_type="sprint_pr",
+        )
+        self.db.add(gate)
+        log.info(
+            "sprint_pr_opened",
+            sprint_id=sprint.id,
+            branch=sprint.branch,
+            pr_url=pr_url,
+        )
+        return None
+
+    @staticmethod
+    def _extract_pr_url(output_text: str) -> str | None:
+        """Pluck the first ``https://github.com/.../pull/N`` URL from agent output."""
+        match = re.search(r"https://[^\s)]+/pull/\d+", output_text or "")
+        return match.group(0) if match else None
 
     async def _run_post_ship_optimization_agent(
         self,
@@ -2241,6 +2660,23 @@ class Orchestrator:
                 stdout.decode(errors="replace") + stderr.decode(errors="replace")
             )
 
+        # Sprint-PR refactor (Phase B): when the task is part of a sprint with
+        # a live integration branch, ff-merge into that sprint branch instead
+        # of main. The sprint-shipped flow rolls up the sprint branch into
+        # main once at sprint completion (Phase C).
+        sprint = await self._resolve_sprint_for_task(task)
+        target_branch: str | None = None
+        if sprint is not None:
+            sprint_branch = await self._ensure_sprint_branch(sprint, repo_root, run_git)
+            if sprint_branch:
+                target_branch = sprint_branch
+                checkout_code, checkout_output = await run_git("checkout", sprint_branch)
+                if checkout_code != 0:
+                    return (
+                        f"Integration failed: could not check out sprint branch "
+                        f"{sprint_branch}: {checkout_output.strip()}"
+                    )
+
         owner_surface_error = await self._preserve_project_runtime_guidance(
             task,
             str(getattr(workspace, "path", "") or ""),
@@ -2311,7 +2747,12 @@ class Orchestrator:
         )
         if restore_error:
             return restore_error
-        log.info("workspace_integrated_fast_forward", task_id=task.id, branch=branch)
+        log.info(
+            "workspace_integrated_fast_forward",
+            task_id=task.id,
+            branch=branch,
+            target=target_branch or "main",
+        )
         return None
 
     async def _commit_task_workspace_changes(self, task: Task) -> str | None:
@@ -2561,7 +3002,15 @@ class Orchestrator:
             )
         if not status_output.strip():
             return None
-        checkout_code, checkout_output = await run_git("checkout", "--", *paths)
+        # `git checkout -- <path>` only works for tracked paths; untracked
+        # guidance files (e.g. a freshly-written CLAUDE.md that has never been
+        # committed) raise "pathspec did not match any file(s) known to git".
+        # Restrict the checkout to tracked-modified paths and let the snapshot
+        # restore step replay any untracked files after the merge.
+        tracked_modified = _tracked_modified_paths(status_output, paths)
+        if not tracked_modified:
+            return None
+        checkout_code, checkout_output = await run_git("checkout", "--", *tracked_modified)
         if checkout_code != 0:
             return (
                 "Integration failed: could not prepare runtime guidance before merge: "

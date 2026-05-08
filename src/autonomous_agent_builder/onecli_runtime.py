@@ -62,7 +62,27 @@ def _onecli_agent_identifier() -> str | None:
 
 
 def _onecli_fail_closed() -> bool:
-    return _env_enabled("AAB_ONECLI_FAIL_CLOSED")
+    # Council 2026-05-08 — Item 2: when OneCLI is enabled, default to
+    # fail-closed so a fetch failure never silently inherits provider tokens
+    # from the parent process. Operators can still set AAB_ONECLI_FAIL_CLOSED=0
+    # explicitly to revert to legacy fail-open behavior.
+    if "AAB_ONECLI_FAIL_CLOSED" in os.environ:
+        return _env_enabled("AAB_ONECLI_FAIL_CLOSED")
+    return _onecli_enabled()
+
+
+def scrub_provider_env(env: dict[str, str]) -> dict[str, str]:
+    """Replace real provider tokens in ``env`` with ``"placeholder"``.
+
+    Council 2026-05-08 — Item 2: every Claude child env must pass through this
+    helper before launch so neither ``ANTHROPIC_API_KEY`` nor
+    ``CLAUDE_CODE_OAUTH_TOKEN`` reach the subprocess unscrubbed, regardless of
+    whether OneCLI fetched a runtime config.
+    """
+    return {
+        key: ("placeholder" if key in PROVIDER_AUTH_ENV_KEYS else value)
+        for key, value in env.items()
+    }
 
 
 async def prepare_onecli_runtime_env() -> OneCLIRuntimeEnv:

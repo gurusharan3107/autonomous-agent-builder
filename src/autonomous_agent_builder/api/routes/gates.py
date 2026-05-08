@@ -25,11 +25,14 @@ from autonomous_agent_builder.db.models import (
     ApprovalGate,
     ApprovalLog,
     GateResult,
+    Sprint,
     Task,
-    TaskStatus,
-    set_task_status,
 )
 from autonomous_agent_builder.db.session import get_db
+from autonomous_agent_builder.orchestrator.orchestrator import (
+    apply_approval_outcome,
+    apply_sprint_approval_outcome,
+)
 from autonomous_agent_builder.services.dispatch_lock import reserve_dispatch
 
 router = APIRouter(tags=["gates"])
@@ -138,46 +141,97 @@ async def submit_approval(
     )
     db.add(approval)
 
-    # Create immutable audit log entry
-    audit_entry = ApprovalLog(
-        task_id=gate.task_id,
-        approver_email=data.approver_email,
-        decision=decision,
-        reason=data.reason or data.comment,
-    )
-    db.add(audit_entry)
+    outcome_reason = data.reason or data.comment
 
     # Update gate status
     gate.status = data.decision
     gate.resolved_at = datetime.now(UTC)
 
-    # Advance task status based on decision
-    task = await db.get(Task, gate.task_id)
+    # Sprint-PR refactor (Phase D): a sprint-level gate fans out to the
+    # sprint-state helper instead of the per-task one. Per-task gates keep
+    # the existing path. The single-writer invariant from CLAUDE.md still
+    # holds: gates persist approval rows; orchestrator owns state mutation.
+    follow_up_task_ids: list[str] = []
+    audit_task_id: str | None = gate.task_id
+    if gate.sprint_id and gate.gate_type == "sprint_pr":
+        sprint = await db.get(Sprint, gate.sprint_id)
+        sprint_tasks: list[Task] = []
+        if sprint and sprint.generated_task_ids:
+            generated = [str(tid) for tid in sprint.generated_task_ids if str(tid).strip()]
+            if generated:
+                result = await db.execute(select(Task).where(Task.id.in_(generated)))
+                sprint_tasks = list(result.scalars().all())
+        if sprint:
+            apply_sprint_approval_outcome(
+                sprint,
+                decision,
+                reason=outcome_reason,
+                sprint_tasks=sprint_tasks,
+            )
+            if decision == ApprovalDecision.REQUEST_CHANGES:
+                follow_up_task_ids = [t.id for t in sprint_tasks]
+            # Audit log uses the latest task that triggered ship as a
+            # breadcrumb when no explicit task_id is set on the gate.
+            if audit_task_id is None and sprint_tasks:
+                audit_task_id = sprint_tasks[-1].id
+
+        # Audit log entry (sprint-level uses the breadcrumb task above).
+        if audit_task_id is not None:
+            db.add(
+                ApprovalLog(
+                    task_id=audit_task_id,
+                    approver_email=data.approver_email,
+                    decision=decision,
+                    reason=outcome_reason,
+                )
+            )
+
+        await db.flush()
+        await db.commit()
+        await publish_board_snapshot(db)
+        await publish_approval_snapshot(db, gate_id)
+
+        if follow_up_task_ids:
+            from autonomous_agent_builder.api.routes.dispatch import (
+                _NON_DISPATCHABLE_STATUSES,
+                _run_dispatch,
+            )
+
+            for tid in follow_up_task_ids:
+                follow_up = await db.get(Task, tid)
+                if follow_up is None:
+                    continue
+                follow_up_status = (
+                    follow_up.status.value
+                    if hasattr(follow_up.status, "value")
+                    else str(follow_up.status)
+                )
+                if follow_up_status in _NON_DISPATCHABLE_STATUSES:
+                    continue
+                if reserve_dispatch(follow_up.id):
+                    background.add_task(_run_dispatch, follow_up.id)
+
+        return {"status": "ok", "gate_status": gate.status}
+
+    # Per-task gate path (planning/design/pr) — legacy behavior preserved.
+    db.add(
+        ApprovalLog(
+            task_id=audit_task_id,
+            approver_email=data.approver_email,
+            decision=decision,
+            reason=outcome_reason,
+        )
+    )
+
+    task = await db.get(Task, gate.task_id) if gate.task_id else None
     should_dispatch = False
     if task:
-        if decision == ApprovalDecision.APPROVE:
-            if gate.gate_type == "planning":
-                set_task_status(task, TaskStatus.DESIGN)
-            elif gate.gate_type == "design":
-                set_task_status(task, TaskStatus.IMPLEMENTATION)
-            elif gate.gate_type == "pr":
-                set_task_status(task, TaskStatus.BUILD_VERIFY)
-            task.blocked_reason = None
-            task.blocked_at = None
-            should_dispatch = True
-        elif decision == ApprovalDecision.REQUEST_CHANGES and gate.gate_type == "pr":
-            reason = data.reason or data.comment or "PR changes requested"
-            depends_on = dict(task.depends_on or {})
-            phase_context = dict(depends_on.get("phase_context") or {})
-            phase_context["pr_change_request"] = reason
-            depends_on["phase_context"] = phase_context
-            task.depends_on = depends_on
-            task.blocked_reason = None
-            set_task_status(task, TaskStatus.IMPLEMENTATION)
-            should_dispatch = True
-        elif decision in (ApprovalDecision.REJECT, ApprovalDecision.REQUEST_CHANGES):
-            set_task_status(task, TaskStatus.BLOCKED)
-            task.blocked_reason = data.reason or data.comment or "Approval rejected"
+        should_dispatch = apply_approval_outcome(
+            task,
+            gate.gate_type,
+            decision,
+            reason=outcome_reason,
+        )
 
     await db.flush()
     await db.commit()

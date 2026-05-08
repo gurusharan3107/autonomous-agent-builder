@@ -402,6 +402,15 @@ def _persist_document(
         allow_existing=previous_markdown is not None,
     )
     path.write_text(canonical_markdown, encoding="utf-8")
+    # Council 2026-05-08 — Item 5: invalidate the retrieval cache so callers
+    # observing the same scope see this write on the next load_docs() call,
+    # even when the root-directory mtime did not bump.
+    try:
+        from autonomous_agent_builder.knowledge import retrieval as _retrieval
+
+        _retrieval.reset_docs_cache()
+    except Exception:  # pragma: no cover - defensive: never fail a publish on cache reset
+        pass
 
     return _serialize_document(path, normalized_scope)
 

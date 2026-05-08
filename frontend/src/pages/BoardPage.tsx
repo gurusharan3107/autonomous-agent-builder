@@ -26,7 +26,14 @@ import type { BoardData, CurrentSprintSummary, SprintPlanSummary, TaskActivityEv
 import { cn } from "@/lib/utils";
 
 type LaneKey = "active" | "review" | "pending" | "done" | "blocked";
-type SprintStage = "plan" | "design" | "implementation" | "blocked" | "verify" | "shipped";
+type SprintStage =
+  | "plan"
+  | "design"
+  | "implementation"
+  | "blocked"
+  | "verify"
+  | "pr_review"
+  | "shipped";
 
 const LANE_ORDER: Array<{ key: LaneKey; title: string; tone: "active" | "review" | "pending" | "done" | "blocked" }> = [
   { key: "active", title: "In progress", tone: "active" },
@@ -42,6 +49,8 @@ const SPRINT_STAGES: Array<{ key: SprintStage; label: string }> = [
   { key: "implementation", label: "Implementation" },
   { key: "blocked", label: "Blocked" },
   { key: "verify", label: "Verify" },
+  // Sprint-PR refactor: a single approval gate replaces N per-task PR gates.
+  { key: "pr_review", label: "PR Review" },
   { key: "shipped", label: "Shipped" },
 ];
 
@@ -390,6 +399,8 @@ function sprintStageFromPhase(phase?: string | null): SprintStage | null {
       return "blocked";
     case "verify":
       return "verify";
+    case "pr_review":
+      return "pr_review";
     case "shipped":
       return "shipped";
     default:

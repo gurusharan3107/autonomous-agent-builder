@@ -70,7 +70,11 @@ async def test_prepare_onecli_runtime_env_fetches_config_and_sanitizes_provider_
 
 
 @pytest.mark.asyncio
-async def test_prepare_onecli_runtime_env_fails_open_by_default(monkeypatch):
+async def test_prepare_onecli_runtime_env_fails_closed_by_default_when_enabled(
+    monkeypatch,
+):
+    """Council 2026-05-08 — Item 2: when OneCLI is enabled, default is fail-closed."""
+
     async def fake_fetch_onecli_container_config(**_kwargs):
         raise RuntimeError("onecli unavailable")
 
@@ -82,10 +86,51 @@ async def test_prepare_onecli_runtime_env_fails_open_by_default(monkeypatch):
         fake_fetch_onecli_container_config,
     )
 
+    with pytest.raises(RuntimeError, match="OneCLI runtime bootstrap failed"):
+        await onecli_runtime.prepare_onecli_runtime_env()
+
+
+@pytest.mark.asyncio
+async def test_prepare_onecli_runtime_env_explicit_fail_open_still_honored(
+    monkeypatch,
+):
+    """Operators can still opt in to legacy fail-open with AAB_ONECLI_FAIL_CLOSED=0."""
+
+    async def fake_fetch_onecli_container_config(**_kwargs):
+        raise RuntimeError("onecli unavailable")
+
+    monkeypatch.setenv("AAB_ONECLI_ENABLED", "true")
+    monkeypatch.setenv("AAB_ONECLI_FAIL_CLOSED", "0")
+    monkeypatch.setattr(
+        onecli_runtime,
+        "_fetch_onecli_container_config",
+        fake_fetch_onecli_container_config,
+    )
+
     result = await onecli_runtime.prepare_onecli_runtime_env()
 
     assert result.active is False
     assert result.message == "onecli unavailable"
+
+
+def test_scrub_provider_env_replaces_real_provider_tokens():
+    env = {
+        "ANTHROPIC_API_KEY": "sk-real",
+        "CLAUDE_CODE_OAUTH_TOKEN": "real-oauth",
+        "OTHER_VAR": "keep-me",
+        "PATH": "/usr/bin",
+    }
+    scrubbed = onecli_runtime.scrub_provider_env(env)
+    assert scrubbed["ANTHROPIC_API_KEY"] == "placeholder"
+    assert scrubbed["CLAUDE_CODE_OAUTH_TOKEN"] == "placeholder"
+    assert scrubbed["OTHER_VAR"] == "keep-me"
+    assert scrubbed["PATH"] == "/usr/bin"
+    # input must not be mutated
+    assert env["ANTHROPIC_API_KEY"] == "sk-real"
+
+
+def test_scrub_provider_env_handles_empty_input():
+    assert onecli_runtime.scrub_provider_env({}) == {}
 
 
 @pytest.mark.asyncio
