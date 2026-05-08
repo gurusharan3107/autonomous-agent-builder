@@ -234,6 +234,97 @@ class ManagedAgentsRuntime(AgentRuntime):
             capabilities=self.capabilities(),
         )
 
+    async def run_outcome(
+        self,
+        *,
+        agent: str,
+        description: str,
+        rubric: str,
+        max_iterations: int = 5,
+        workspace_path: str | None = None,
+        on_chunk: Callable[[str], Any] | None = None,
+    ) -> RunResult:
+        """Phase D — drive an MA session as a rubric-graded iterate loop.
+
+        Sends `user.define_outcome` instead of the Phase A `user.message`
+        kickoff. The MA grader runs in its own context window; on each
+        iteration it scores the agent's artifact against the rubric and
+        returns ``span.outcome_evaluation_end.result`` ∈ {satisfied,
+        needs_revision, max_iterations_reached, failed, interrupted}.
+
+        The runtime captures the terminal verdict in
+        ``RunResult.observability['managed_agents']['outcome']`` and maps
+        it to ``stop_reason``:
+            satisfied              → "outcome_satisfied"
+            max_iterations_reached → "max_iterations_reached"
+            failed                 → "outcome_failed"
+            interrupted            → "interrupted"
+
+        Caller (orchestrator's feature-verifier branch in Phase D2) reads
+        the verdict and writes the corresponding `gate_results` row.
+
+        Args:
+            agent: builder role (typically "feature-verifier").
+            description: the task being verified — what "done" looks like.
+            rubric: explicit gradeable criteria (one per line, grader scores
+                each independently).
+            max_iterations: cap on the iterate→grade→revise loop. Per MA
+                docs: default 3, max 20.
+            workspace_path / on_chunk: same as run().
+        """
+        try:
+            config = self._config_loader()
+            agent_id = _agent_id_for_role(config, agent)
+            environment_id = _environment_id(config)
+        except ManagedAgentsConfigError as exc:
+            return RunResult(error=str(exc))
+
+        vault_ids = _vault_ids(config)
+        repo_resource = build_github_resource(workspace_path=workspace_path)
+        if repo_resource is None and agent in WORKSPACE_REQUIRED_ROLES:
+            log.warning(
+                "managed_agents_workspace_unavailable",
+                role=agent,
+                workspace_path=workspace_path,
+                hint="Set GITHUB_TOKEN and ensure workspace has a GitHub origin remote.",
+            )
+
+        # Per MA docs: max_iterations default 3, max 20. Clamp defensively.
+        clamped_max_iter = max(1, min(int(max_iterations), 20))
+
+        kickoff_event: dict[str, Any] = {
+            "type": "user.define_outcome",
+            "description": description,
+            "rubric": {"type": "text", "content": rubric},
+            "max_iterations": clamped_max_iter,
+        }
+
+        client = self._client_factory()
+        start_t = time.monotonic()
+        try:
+            return await self._run_session(
+                client=client,
+                agent_id=agent_id,
+                environment_id=environment_id,
+                user_input="",  # outcome path uses kickoff_event instead
+                role=agent,
+                on_chunk=on_chunk,
+                start_t=start_t,
+                resources=[repo_resource] if repo_resource else None,
+                vault_ids=vault_ids or None,
+                kickoff_event=kickoff_event,
+            )
+        except Exception as exc:
+            duration_ms = int((time.monotonic() - start_t) * 1000)
+            log.error("managed_agents_outcome_run_failed", role=agent, error=str(exc))
+            return RunResult(
+                error=f"managed_agents outcome run failed: {exc}",
+                duration_ms=duration_ms,
+            )
+        finally:
+            with contextlib.suppress(Exception):
+                await client.close()
+
     async def run(
         self,
         input: str,
@@ -317,6 +408,7 @@ class ManagedAgentsRuntime(AgentRuntime):
         start_t: float,
         resources: list[dict[str, Any]] | None = None,
         vault_ids: list[str] | None = None,
+        kickoff_event: dict[str, Any] | None = None,
     ) -> RunResult:
         sessions = client.beta.sessions
 
@@ -353,20 +445,23 @@ class ManagedAgentsRuntime(AgentRuntime):
                 "thread_spawns": 0,
                 "resources": [r.get("type") for r in (resources or [])],
                 "vault_count": len(vault_ids or []),
+                "outcome": None,  # populated by Phase D outcome verdict
             }
         }
+        outcome_terminal: dict[str, Any] | None = None  # last outcome verdict
 
-        # 2. Stream-first: open SSE BEFORE sending the kickoff user.message
+        # 2. Stream-first: open SSE BEFORE sending the kickoff event.
         # Per MA Pattern 7 — sending first risks missing early events.
+        # Default kickoff is `user.message`; Phase D's run_outcome supplies
+        # `user.define_outcome` via kickoff_event.
         async with sessions.events.stream(session_id=session_id) as stream:
+            send_event = kickoff_event or {
+                "type": "user.message",
+                "content": [{"type": "text", "text": user_input}],
+            }
             await sessions.events.send(
                 session_id=session_id,
-                events=[
-                    {
-                        "type": "user.message",
-                        "content": [{"type": "text", "text": user_input}],
-                    }
-                ],
+                events=[send_event],
             )
 
             async for event in stream:
@@ -401,6 +496,23 @@ class ManagedAgentsRuntime(AgentRuntime):
 
                 elif event_type == "span.outcome_evaluation_end":
                     observability["managed_agents"]["outcome_iterations"] += 1
+                    # Capture the verdict for the runtime caller. The grader
+                    # may emit multiple `_end` events (one per iteration);
+                    # we keep the last one — terminal results are always
+                    # last.
+                    verdict = {
+                        "result": getattr(event, "result", None),
+                        "explanation": getattr(event, "explanation", None),
+                        "iteration": getattr(event, "iteration", None),
+                    }
+                    observability["managed_agents"]["outcome"] = verdict
+                    if verdict["result"] in {
+                        "satisfied",
+                        "max_iterations_reached",
+                        "failed",
+                        "interrupted",
+                    }:
+                        outcome_terminal = verdict
 
                 elif event_type == "agent.custom_tool_use":
                     await self._handle_custom_tool(
@@ -446,6 +558,20 @@ class ManagedAgentsRuntime(AgentRuntime):
 
         duration_ms = int((time.monotonic() - start_t) * 1000)
         cost_usd = _estimate_cost(self._model, tokens_input, tokens_output, tokens_cached)
+
+        # Phase D — when the outcome grader emitted a terminal verdict,
+        # surface it in stop_reason so the caller (orchestrator's gate
+        # handler) can route on it without parsing observability.
+        if outcome_terminal is not None:
+            verdict_to_stop = {
+                "satisfied": "outcome_satisfied",
+                "max_iterations_reached": "max_iterations_reached",
+                "failed": "outcome_failed",
+                "interrupted": "interrupted",
+            }
+            mapped = verdict_to_stop.get(outcome_terminal["result"])
+            if mapped:
+                stop_reason = mapped
 
         return RunResult(
             session_id=session_id,
