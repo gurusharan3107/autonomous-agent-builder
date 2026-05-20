@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from autonomous_agent_builder.embedded.server import agent_prompt_builders
 from autonomous_agent_builder.embedded.server.routes import agent as agent_routes
 from tests.agent_route_test_support import append_chat_event, create_chat_session
 
@@ -280,14 +281,12 @@ async def test_select_specialist_route_prefers_explicit_specialist_over_continua
         blocked_summary="Architecture reviewer blocked.",
         completed_summary="Architecture review complete.",
     )
-    monkeypatch.setattr(
-        agent_routes,
-        "_SPECIALIST_ROUTE_POLICIES",
-        {
-            "architecture-reviewer": fake_policy,
-            **agent_routes._SPECIALIST_ROUTE_POLICIES,
-        },
-    )
+    new_policies = {
+        "architecture-reviewer": fake_policy,
+        **agent_routes._SPECIALIST_ROUTE_POLICIES,
+    }
+    monkeypatch.setattr(agent_routes, "_SPECIALIST_ROUTE_POLICIES", new_policies)
+    monkeypatch.setattr(agent_prompt_builders, "_SPECIALIST_ROUTE_POLICIES", new_policies)
 
     async with factory() as db:
         route = await agent_routes._select_specialist_route(

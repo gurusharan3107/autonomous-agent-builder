@@ -11,7 +11,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from sse_starlette.sse import EventSourceResponse
 
 from autonomous_agent_builder.agents.definitions import get_agent_definition
@@ -20,19 +19,8 @@ from autonomous_agent_builder.agents.runner import AgentRunner, RunResult
 from autonomous_agent_builder.agents.tool_registry import is_read_only_tool
 from autonomous_agent_builder.config import get_settings
 from autonomous_agent_builder.db.models import (
-    Approval,
-    ApprovalDecision,
-    ApprovalGate,
-    ApprovalLog,
-    BacklogItemType,
     ChatEvent,
     ChatSession,
-    Feature,
-    FeatureStatus,
-    Sprint,
-    Task,
-    TaskStatus,
-    set_task_status,
     utcnow,
 )
 from autonomous_agent_builder.db.session import get_db, get_session_factory
@@ -47,6 +35,39 @@ from autonomous_agent_builder.embedded.server.agent_api_models import (
     ChatSessionItem,
     ChatSessionListResponse,
     RuntimeSettingsUpdate,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _approve_review_gate_for_continuation as _approve_review_gate_for_continuation,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _first_dispatchable_task as _first_dispatchable_task,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _first_pending_review_approval as _first_pending_review_approval,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _first_recoverable_task as _first_recoverable_task,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _has_builder_work_state as _has_builder_work_state,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _has_dispatchable_task_state as _has_dispatchable_task_state,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _has_ready_delivery_feature_state as _has_ready_delivery_feature_state,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _has_recoverable_task_state as _has_recoverable_task_state,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _needs_init_project_bootstrap as _needs_init_project_bootstrap,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _normalized_follow_up_message as _normalized_follow_up_message,
+)
+from autonomous_agent_builder.embedded.server.agent_board_state import (
+    _stream_deltas_are_user_visible as _stream_deltas_are_user_visible,
 )
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_chat_event as _append_chat_event,
@@ -63,9 +84,6 @@ from autonomous_agent_builder.embedded.server.agent_control_owners import (
 from autonomous_agent_builder.embedded.server.agent_delivery_closeout import (
     append_delivery_closeout_if_ready as _append_delivery_closeout_if_ready,
 )
-from autonomous_agent_builder.embedded.server.agent_documentation_context import (
-    documentation_context_pack as _documentation_context_pack,
-)
 from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
     feature_for_delivery_permission_question as _feature_for_delivery_permission_question,
 )
@@ -77,9 +95,6 @@ from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
 )
 from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
     schedule_task_dispatch as _schedule_task_dispatch,
-)
-from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
-    FEATURE_LIST_MARKER as _FEATURE_LIST_MARKER,
 )
 from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
     extract_feature_list_payload as _extract_feature_list_payload,
@@ -132,6 +147,39 @@ from autonomous_agent_builder.embedded.server.agent_project_context import (
 from autonomous_agent_builder.embedded.server.agent_project_context import (
     inject_feature_list_constraints as _inject_feature_list_constraints,
 )
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _feature_spec_chat_prompt as _feature_spec_chat_prompt,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _general_chat_prompt as _general_chat_prompt,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _init_project_chat_prompt as _init_project_chat_prompt,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _init_project_continuation_prompt as _init_project_continuation_prompt,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _init_project_requires_autonomous_continuation as _init_project_requires_autonomous_continuation,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _SPECIALIST_ROUTE_POLICIES as _SPECIALIST_ROUTE_POLICIES,  # noqa: F401
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _message_matches_documentation_continuation as _message_matches_documentation_continuation,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _message_needs_recent_context as _message_needs_recent_context,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _question_tool_guidance as _question_tool_guidance,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _recent_chat_context_for_prompt as _recent_chat_context_for_prompt,
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _select_specialist_route as _select_specialist_route,
+)
 from autonomous_agent_builder.embedded.server.agent_runtime_status import (
     chat_run_status_payload as _chat_run_status_payload,
 )
@@ -177,9 +225,6 @@ from autonomous_agent_builder.embedded.server.agent_tool_policy import (
 from autonomous_agent_builder.embedded.server.agent_tool_policy import (
     tool_summary as _tool_summary,
 )
-from autonomous_agent_builder.embedded.server.agent_workspace_surface import (
-    has_generated_app_surface as _has_generated_app_surface,
-)
 from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
 from autonomous_agent_builder.embedded.server.chat_turn_direct_actions import (
     publish_direct_chat_turn_if_handled,
@@ -197,19 +242,14 @@ from autonomous_agent_builder.embedded.server.chat_turn_prompting import (
 from autonomous_agent_builder.embedded.server.chat_turn_publication import ChatTurnPublisher
 from autonomous_agent_builder.embedded.server.chat_turn_runtime import run_chat_runtime_loop
 from autonomous_agent_builder.embedded.server.documentation_routing import (
-    DOCUMENTATION_AGENT_AUTO_APPROVE_TOOLS as _DOCUMENTATION_AGENT_AUTO_APPROVE_TOOLS,
-)
-from autonomous_agent_builder.embedded.server.documentation_routing import (
     ActiveSpecialistRoute,
-    SpecialistRoutePolicy,
-    normalized_follow_up_message,
-    select_specialist_route,
+    SpecialistRoutePolicy,  # noqa: F401
 )
 from autonomous_agent_builder.embedded.server.documentation_routing import (
     message_has_documentation_intent as _message_has_documentation_intent,
 )
 from autonomous_agent_builder.embedded.server.documentation_routing import (
-    message_matches_documentation_continuation as _message_matches_documentation_continuation,
+    resolve_documentation_action as _resolve_documentation_action,  # noqa: F401
 )
 from autonomous_agent_builder.logs.diagnostics import summarize_chat_event, summarize_tool_event
 from autonomous_agent_builder.onboarding import (
@@ -221,19 +261,13 @@ from autonomous_agent_builder.onboarding import (
 from autonomous_agent_builder.runtime import create_runtime
 from autonomous_agent_builder.services.project_context import request_project_root
 from autonomous_agent_builder.services.readiness import (
-    READY_STATE,
     assess_readiness,
-    load_readiness_status,
 )
 from autonomous_agent_builder.services.runtime_settings import (
     persist_runtime_settings,
     reconcile_runtime_project_state,
     resolve_project_runtime_config,
     runtime_settings_payload,
-)
-from autonomous_agent_builder.services.task_dispatch_policy import (
-    task_dispatch_sort_key,
-    task_is_dispatchable,
 )
 
 router = APIRouter()
@@ -249,678 +283,6 @@ def _project_root(request: Request) -> Path:
 
 def _chat_hub(request: Request) -> ChatSessionHub:
     return request.app.state.chat_hub
-
-
-def _feature_list_path(project_root: Path) -> Path:
-    return project_root / ".claude" / "progress" / "feature-list.json"
-
-
-async def _has_builder_work_state(db: AsyncSession) -> bool:
-    for model in (Task, Feature):
-        result = await db.execute(select(model.id).limit(1))
-        if result.scalar_one_or_none() is not None:
-            return True
-    return False
-
-
-async def _has_dispatchable_task_state(db: AsyncSession) -> bool:
-    return await _first_dispatchable_task(db) is not None
-
-
-async def _has_recoverable_task_state(db: AsyncSession) -> bool:
-    return await _first_recoverable_task(db) is not None
-
-
-async def _has_ready_delivery_feature_state(db: AsyncSession) -> bool:
-    result = await db.execute(
-        select(Feature.id)
-        .where(Feature.item_type == BacklogItemType.FEATURE)
-        .where(
-            Feature.status.in_(
-                [
-                    FeatureStatus.BACKLOG,
-                    FeatureStatus.SPRINT_BACKLOG,
-                    FeatureStatus.SPRINT_CANDIDATE,
-                    FeatureStatus.SPRINT_PLANNED,
-                ]
-            )
-        )
-        .limit(1)
-    )
-    return result.scalar_one_or_none() is not None
-
-
-async def _first_dispatchable_task(db: AsyncSession) -> Task | None:
-    sprint_result = await db.execute(
-        select(Sprint)
-        .where(Sprint.generated_task_ids.is_not(None))
-        .order_by(Sprint.created_at.desc())
-    )
-    for sprint in sprint_result.scalars().all():
-        generated_task_ids = [
-            str(task_id).strip()
-            for task_id in (sprint.generated_task_ids or [])
-            if str(task_id).strip()
-        ]
-        if not generated_task_ids:
-            continue
-        task_result = await db.execute(
-            select(Task)
-            .options(selectinload(Task.feature).selectinload(Feature.project))
-            .where(Task.id.in_(generated_task_ids))
-        )
-        tasks_by_id = {task.id: task for task in task_result.scalars().all()}
-        for task_id in generated_task_ids:
-            task = tasks_by_id.get(task_id)
-            if task is None or task.status == TaskStatus.DONE:
-                continue
-            if task_is_dispatchable(task):
-                return task
-            break
-
-    result = await db.execute(
-        select(Task)
-        .options(selectinload(Task.feature).selectinload(Feature.project))
-        .order_by(Task.updated_at.desc(), Task.created_at.desc())
-    )
-    dispatchable_tasks = sorted(
-        [task for task in result.scalars().all() if task_is_dispatchable(task)],
-        key=task_dispatch_sort_key,
-    )
-    return dispatchable_tasks[0] if dispatchable_tasks else None
-
-
-async def _first_recoverable_task(db: AsyncSession) -> Task | None:
-    recoverable_statuses = [
-        TaskStatus.BLOCKED,
-        TaskStatus.CAPABILITY_LIMIT,
-        TaskStatus.FAILED,
-    ]
-    sprint_result = await db.execute(
-        select(Sprint)
-        .where(Sprint.generated_task_ids.is_not(None))
-        .order_by(Sprint.created_at.desc())
-    )
-    for sprint in sprint_result.scalars().all():
-        generated_task_ids = [
-            str(task_id).strip()
-            for task_id in (sprint.generated_task_ids or [])
-            if str(task_id).strip()
-        ]
-        if not generated_task_ids:
-            continue
-        generated_task_order = {task_id: index for index, task_id in enumerate(generated_task_ids)}
-        task_result = await db.execute(
-            select(Task)
-            .options(selectinload(Task.feature).selectinload(Feature.project))
-            .where(Task.id.in_(generated_task_ids))
-            .where(Task.status.in_(recoverable_statuses))
-        )
-        recoverable_tasks = sorted(
-            task_result.scalars().all(),
-            key=lambda task: generated_task_order.get(task.id, len(generated_task_order)),
-        )
-        if recoverable_tasks:
-            return recoverable_tasks[0]
-
-    result = await db.execute(
-        select(Task)
-        .options(selectinload(Task.feature).selectinload(Feature.project))
-        .where(Task.status.in_(recoverable_statuses))
-        .order_by(Task.updated_at.desc(), Task.created_at.desc())
-    )
-    return result.scalars().first()
-
-
-async def _first_pending_review_approval(db: AsyncSession) -> tuple[ApprovalGate, Task] | None:
-    sprint_result = await db.execute(
-        select(Sprint)
-        .where(Sprint.generated_task_ids.is_not(None))
-        .order_by(Sprint.created_at.desc())
-    )
-    for sprint in sprint_result.scalars().all():
-        generated_task_ids = [
-            str(task_id).strip()
-            for task_id in (sprint.generated_task_ids or [])
-            if str(task_id).strip()
-        ]
-        if not generated_task_ids:
-            continue
-        gate_result = await db.execute(
-            select(ApprovalGate)
-            .options(selectinload(ApprovalGate.task))
-            .where(
-                ApprovalGate.status == "pending",
-                ApprovalGate.gate_type == "pr",
-                ApprovalGate.task_id.in_(generated_task_ids),
-            )
-        )
-        gates_by_task_id = {gate.task_id: gate for gate in gate_result.scalars().all()}
-        for task_id in generated_task_ids:
-            gate = gates_by_task_id.get(task_id)
-            if gate is not None and gate.task is not None:
-                return gate, gate.task
-
-    result = await db.execute(
-        select(ApprovalGate)
-        .options(selectinload(ApprovalGate.task))
-        .where(ApprovalGate.status == "pending", ApprovalGate.gate_type == "pr")
-        .order_by(ApprovalGate.created_at.asc())
-        .limit(1)
-    )
-    gate = result.scalar_one_or_none()
-    if gate is None or gate.task is None:
-        return None
-    return gate, gate.task
-
-
-async def _approve_review_gate_for_continuation(db: AsyncSession) -> Task | None:
-    gate_and_task = await _first_pending_review_approval(db)
-    if gate_and_task is None:
-        return None
-    gate, task = gate_and_task
-    approval = Approval(
-        approval_gate_id=gate.id,
-        approver_email="agent-chat@local",
-        decision=ApprovalDecision.APPROVE,
-        comment="Approved from Agent chat continuation intent.",
-    )
-    db.add(approval)
-    db.add(
-        ApprovalLog(
-            task_id=task.id,
-            approver_email="agent-chat@local",
-            decision=ApprovalDecision.APPROVE,
-            reason="Approved from Agent chat continuation intent.",
-        )
-    )
-    gate.status = ApprovalDecision.APPROVE.value
-    gate.resolved_at = utcnow()
-    set_task_status(task, TaskStatus.BUILD_VERIFY)
-    task.blocked_reason = None
-    task.blocked_at = None
-    await db.flush()
-    return task
-
-
-async def _needs_init_project_bootstrap(project_root: Path, db: AsyncSession) -> bool:
-    state = load_onboarding_state(project_root)
-    readiness = load_readiness_status(project_root)
-    return (
-        bool(state.get("ready"))
-        and state.get("onboarding_mode") == "forward_engineering"
-        and readiness.get("state") == READY_STATE
-        and not _feature_list_path(project_root).exists()
-        and not await _has_builder_work_state(db)
-        and not _has_generated_app_surface(project_root)
-    )
-
-
-def _stream_deltas_are_user_visible(runtime_name: str) -> bool:
-    """Return whether runtime chunk deltas should be shown in the Agent transcript.
-
-    The dashboard contract is to show Builder-owned, user-facing transcript text
-    without leaking SDK-specific reasoning. Codex app-server deltas can surface
-    draft/planning content before the final assistant message is settled, so the
-    Agent page should wait for the completed assistant message instead.
-    """
-
-    return runtime_name != "codex_sdk"
-
-
-_SPECIALIST_ROUTE_POLICIES: dict[str, SpecialistRoutePolicy] = {
-    "documentation-agent": SpecialistRoutePolicy(
-        name="documentation-agent",
-        explicit_intent_matcher=_message_has_documentation_intent,
-        continuation_matcher=_message_matches_documentation_continuation,
-        context_builder=_documentation_context_pack,
-        auto_approve_tools=_DOCUMENTATION_AGENT_AUTO_APPROVE_TOOLS,
-        active_summary="Documentation agent working on repo-local KB scope.",
-        blocked_summary="Documentation agent hit a KB update or validation error.",
-        completed_summary="Documentation refresh complete.",
-    )
-}
-
-
-def _normalized_follow_up_message(user_message: str) -> str:
-    return normalized_follow_up_message(user_message)
-
-
-async def _select_specialist_route(
-    db: AsyncSession,
-    project_root: Path,
-    session_id: str,
-    user_message: str,
-) -> ActiveSpecialistRoute | None:
-    return await select_specialist_route(
-        db=db,
-        project_root=project_root,
-        session_id=session_id,
-        user_message=user_message,
-        policies=_SPECIALIST_ROUTE_POLICIES,
-    )
-
-
-def _general_chat_prompt(
-    project_root: Path,
-    user_message: str,
-    documentation_context: dict[str, Any] | None = None,
-    *,
-    runtime_sdk: str = "",
-    recent_context: str = "",
-    model_backed_delivery_context: bool = False,
-    forward_engineering_context: bool = False,
-) -> str:
-    question_guidance = _question_tool_guidance(runtime_sdk)
-    continuation_guidance = ""
-    if _message_requests_autonomous_continuation(user_message):
-        continuation_guidance = (
-            "\n\nAutonomous continuation mode is active for this turn.\n"
-            "- Treat the user's message as a request to keep the build moving, not as a request "
-            "for a status report or menu.\n"
-            "- First inspect Builder-owned Board/task state with `mcp__builder__board`, "
-            "`mcp__builder__task_show`, or `mcp__builder__task_status`.\n"
-            "- Derive the next tool call from your responsibility as the Agent page operator: "
-            "recover blocked work, dispatch ready work, or ask a bounded clarification.\n"
-            "- If exactly one blocked, failed, or capability-limited Board task is the next "
-            "blocking item, call `mcp__builder__task_recover` for that task and then "
-            "`mcp__builder__task_dispatch` to continue it.\n"
-            "- If there is an active or pending dispatchable task, call "
-            "`mcp__builder__task_dispatch` for that exact task.\n"
-            "- Do not ask the user which listed feature to build when the board already gives "
-            "a deterministic next task by status and priority.\n"
-            "- Ask the user only for genuinely missing product direction, credentials, external "
-            "approval, or another decision that cannot be inferred from repo state.\n"
-            "- If multiple tasks could be recovered or dispatched, use `AskUserQuestion` instead "
-            "of guessing.\n"
-        )
-    elif model_backed_delivery_context:
-        continuation_guidance = (
-            "\n\nModel-backed delivery context is active for this turn.\n"
-            "- The user's message must be interpreted by you, the selected runtime model; do not "
-            "treat it as a fixed command or deterministic shortcut.\n"
-            "- Use the available Builder tools to inspect the ready Board work, decide the next "
-            "action, and choose any needed tool chain. Useful surfaces include Board/task state, "
-            "task detail/status, and dispatch, but you choose which tools to call and in what "
-            "order.\n"
-            "- If Builder Board evidence shows a pending or otherwise dispatchable task for the "
-            "approved sprint, dispatch that Board task with `mcp__builder__task_dispatch` before "
-            "any source edits, shell commands, tests, or generated-app changes. The task pipeline "
-            "owns implementation, verification, integration, and closeout evidence.\n"
-            "- Do not use generic code-editing or shell tools to implement approved sprint work "
-            "directly from this chat turn; that bypasses Board synchronization and pollutes the "
-            "user-facing lifecycle.\n"
-            "- The product goal is to continue the approved delivery without asking the operator "
-            "for task IDs, backlog terms, sprint terms, or lifecycle terminology.\n"
-            "- If the next product action is still ambiguous after bounded Builder evidence, use "
-            "`AskUserQuestion` with plain product wording.\n"
-        )
-    forward_guidance = ""
-    if forward_engineering_context:
-        forward_guidance = (
-            "\n\nForward-engineering project context is active for this turn.\n"
-            "- This workspace is ready for a first app/product scope, but the user's prompt still "
-            "owns intent. Do not treat every prompt as a request to start requirements gathering.\n"
-            "- If the user is greeting you, checking whether the Agent page works, or otherwise "
-            "not asking for product work, answer naturally and ask what they want to build only as "
-            "an optional next step.\n"
-            "- If the user names a product or app they want to build, use model judgment to decide "
-            "whether to answer directly, ask product-tailoring questions, or emit "
-            "`FEATURE_SPEC_JSON:`. Do not use tool calls or structured questions just because this "
-            "is a clean-slate workspace; choose the minimum useful tool path for the actual prompt.\n"
-            "- For broad first-product prompts, bias toward requirements intake before delivery "
-            "approval. The goal is to get enough user-specific requirements that the first backlog "
-            "is much closer to what this user actually wants, not a generic MVP inferred from the "
-            "product category.\n"
-            "- Ask runtime-native structured questions only when they will materially improve the "
-            "first backlog. If the user already provided enough specific audience, workflow, data, "
-            "success criteria, and product-tone constraints to make the first version genuinely "
-            "tailored, emit `FEATURE_SPEC_JSON:` without extra questioning.\n"
-            "- When questions are needed, ask as many product-shaping questions or follow-up rounds "
-            "as the specification needs. Use one question when the answer changes the next follow-up; "
-            "batch independent questions when that is more efficient. Do not cap the total interview "
-            "at one question or one structured request. Each structured-choice question should have "
-            "2-3 plain-language choices with the recommended option first.\n"
-            "- Good first-product tailoring dimensions include: who will use it, the core daily "
-            "workflow, what data matters, what outcome the user wants to see first, privacy or "
-            "persistence expectations, and the product tone or interaction style. Do not ask for "
-            "technical implementation details unless they materially affect the user experience.\n"
-            "- Do not convert a first product idea directly into `Ready for Builder to start now` "
-            "approval. Approval belongs after the product is tailored enough to describe the first "
-            "shippable scope in user terms.\n"
-        )
-    prompt = (
-        "You are a helpful AI assistant for the project rooted at "
-        f"{project_root}.\n\n"
-        "Answer the user's question directly. Use the repo context when it improves correctness. "
-        "When the user references prior discussion, memory, recommendations, existing backlog, "
-        "current sprint, board state, or project history, first inspect the relevant Builder "
-        "surface with available tools such as builder memory search, builder backlog item list/show, "
-        "builder task list/show, or compact repo commands before asking the user for missing context. "
-        "For observability, metrics, or recommendation questions, analyze the operator's intent and "
-        "use compact Builder-owned evidence first, such as bounded logs, metrics, and observability "
-        "summaries; avoid raw or full outputs unless the compact evidence is insufficient. "
-        "When answering from board state, distinguish global board counts from current or selected "
-        "sprint counts when both are available. "
-        "Allowed Builder actions in this chat lane: inspect read-only Builder state, explain what "
-        "the state means, propose the next safe operator step, ask a bounded question, request "
-        "explicit approval for a prepared action, and execute requested mutations through granted "
-        "Builder tools when the exact target and consequence are clear or the visible approval path "
-        "confirms them. Not allowed: invent a `don't-ask mode`, treat a broad instruction as "
-        "approval, claim that you will mark, move, clear, delete, approve, deny, dispatch, or ship "
-        "Builder backlog/Board/approval state unless an allowed Builder tool for that exact mutation "
-        "has been granted and the visible approval/prepared-action path has confirmed the exact "
-        "target and consequence. For bulk requests such as clearing backlog, "
-        "marking everything shipped, or approving/denying many items, use runtime judgment to inspect "
-        "read-only state first, then explain the risk and ask for the specific visible product action "
-        "or approval needed; do not proceed silently. "
-        "For free-form product requests, you own intent understanding. The operator does not need to "
-        "know backlog, sprint, product backlog, or task terminology. If the user asks to add a feature "
-        "or improve an existing app, decide whether the scope is clear enough. If it is unclear, ask the next "
-        "plain product question through the runtime-native structured question mechanism. If it is clear, "
-        "summarize the agreed improvement and emit `FEATURE_SPEC_JSON:` followed immediately by one raw "
-        "JSON object with title, description, priority, acceptance_criteria, and dependencies. Do not "
-        "tell the user to create backlog items, plan a sprint, or create tasks; Builder handles those "
-        "internal lifecycle steps after the captured improvement is approved. "
-        "Do not say you will check memory, backlog, board, or project state unless you actually use "
-        "the corresponding tool in that turn. Ask for clarification only after bounded retrieval cannot "
-        "resolve the missing context. "
-        f"{question_guidance}\n\n"
-        f"Project root: {project_root}\n\n"
-        f"User: {user_message}"
-        f"{continuation_guidance}"
-        f"{forward_guidance}"
-    )
-    if recent_context.strip():
-        prompt = (
-            f"{prompt}\n\n"
-            "Bounded retrieval context already available for this turn. Use this context before "
-            "asking the user to restate prior discussion:\n"
-            f"{recent_context.strip()}"
-        )
-    if not documentation_context:
-        return prompt
-    context_json = json.dumps(documentation_context, indent=2, sort_keys=True)
-    return (
-        f"{prompt}\n\n"
-        "Documentation routing is active for this turn.\n"
-        "- Invoke the `documentation-agent` specialist before your final answer.\n"
-        "- Keep the work under `.agent-builder/knowledge` using canonical builder KB tools only.\n"
-        "- Treat the maintained KB as shared product knowledge for both users and future agents.\n"
-        "- Use the bounded context pack below first; fetch more through builder KB tools only if needed.\n"
-        "- Respect the resolved documentation action from the context pack; do not make the specialist rediscover the lane from scratch.\n"
-        "- For first-doc creation, the documentation agent must fetch the canonical KB contract and lint the draft before publishing.\n"
-        "- Treat `main` as the canonical maintained-doc freshness baseline. On non-`main` branches, stay advisory-only and do not advance canonical commit baselines.\n"
-        "- Use the `freshness_candidates` manifest to keep candidate selection diff-bounded before rereading maintained docs.\n"
-        "- Refresh `system-docs` through the canonical extraction lane when broader app context is stale.\n"
-        "- Ensure maintained feature docs remain agent-friendly: what the feature does, key files, change guidance, verification, and important reminders.\n"
-        "- Do not edit repo docs under `docs/` or write memory.\n"
-        "- If you still need a user decision, return to the main lane and use AskUserQuestion there.\n"
-        "- Keep your final user-facing answer concise and normalize to one of: `already current`, "
-        "`updated and verified`, or `partially updated; remaining gap: ...`.\n\n"
-        "Documentation context pack:\n"
-        f"{context_json}"
-    )
-
-
-_RECENT_CONTEXT_TERMS = (
-    "previous",
-    "prior",
-    "recent conversation",
-    "conversation",
-    "discussed",
-    "recommendation",
-    "recommendations",
-    "backlog",
-    "sprint",
-    "board",
-    "history",
-    "memory",
-)
-_RECENT_CONTEXT_EVENT_LIMIT = 6
-_RECENT_CONTEXT_ENTRY_CHARS = 280
-def _message_needs_recent_context(user_message: str) -> bool:
-    normalized = " ".join(user_message.lower().split())
-    return any(term in normalized for term in _RECENT_CONTEXT_TERMS)
-
-
-def _recent_chat_context_for_prompt(
-    session: ChatSession,
-    user_message: str,
-    *,
-    limit: int = _RECENT_CONTEXT_EVENT_LIMIT,
-) -> str:
-    """Build a compact deterministic transcript pack for referential chat turns."""
-    if not _message_needs_recent_context(user_message):
-        return ""
-    entries: list[str] = []
-    events = sorted(
-        (event for event in session.events if event.event_type in agent_chat_transcript.VISIBLE_EVENT_TYPES),
-        key=lambda event: event.created_at,
-    )
-    for event in events:
-        event_type = event.event_type
-        payload = event.payload_json or {}
-        if event_type == "voice_operator_message":
-            label = "Operator by voice"
-            content = str(payload.get("content") or "").strip()
-        elif event_type == "user_message":
-            label = "Samantha delegated" if payload.get("source") == "realtime_voice" else "User"
-            content = str(payload.get("content") or "").strip()
-        elif event_type == "assistant_message":
-            label = "Builder Agent"
-            content = str(payload.get("content") or "").strip()
-        elif event_type == "ask_user_question":
-            label = "Pending question"
-            content = str(payload.get("question") or payload.get("summary") or "").strip()
-        elif event_type == "tool_approval_request":
-            label = "Pending approval"
-            content = str(payload.get("summary") or payload.get("tool_name") or "").strip()
-        else:
-            continue
-        normalized = " ".join(content.split())
-        if not normalized:
-            continue
-        truncated = len(normalized) > _RECENT_CONTEXT_ENTRY_CHARS
-        preview = normalized[:_RECENT_CONTEXT_ENTRY_CHARS].rstrip()
-        if truncated:
-            preview = f"{preview}..."
-        entries.append(f"- {label}: {preview}")
-    if not entries:
-        return "No prior Agent-page transcript events were found in this Builder session."
-    selected = entries[-limit:]
-    omitted = max(len(entries) - len(selected), 0)
-    if omitted:
-        selected.insert(0, f"- Context pack clipped {omitted} older event(s).")
-    return "\n".join(selected)
-
-
-def _feature_spec_chat_prompt(
-    project_root: Path,
-    user_message: str,
-    *,
-    runtime_sdk: str = "",
-) -> str:
-    question_guidance = _question_tool_guidance(runtime_sdk)
-    return f"""You are the improvement-scoping guide for an already-initialized software project.
-
-Your job is to turn a sufficiently bounded user request into one concrete improvement that Builder can ship.
-
-Rules:
-- Use the existing session context. Treat short follow-up replies as answers to your most recent clarifying question when they resolve it.
-- Keep the scope to one implementation-sized feature.
-- Use read-only repo context only when it materially improves correctness. If the operator prompt is already specific enough to define the improvement, skip shell/file tools and move directly to the next product question or feature payload.
-- When repo discovery is necessary, keep it bounded: avoid raw, --full, recursive, or broad file-listing commands; cap shell output to a small command-specific window; prefer targeted `rg` and short file slices over dumping logs, build output, or whole files.
-- If the operator names a product or app they want to build, use model judgment to decide whether the first shippable scope is already specific enough or whether user-specific requirements are still needed.
-- For broad first-product prompts, bias toward product-tailoring questions before feature capture. The goal is to avoid a generic MVP inferred from the product category and instead capture enough user-specific requirements that the first backlog item matches this user.
-- Ask as many product-shaping questions or follow-up rounds as the specification needs. Use one question when the answer changes the next follow-up; batch independent questions when that is more efficient. Do not cap the interview at one question or one structured request.
-- Good first-product tailoring dimensions include: who will use it, the core daily workflow, what data matters, what outcome the user wants to see first, privacy or persistence expectations, and the product tone or interaction style. Do not ask for technical implementation details unless they materially affect the user experience.
-- If the request is still ambiguous, continue the interview until the first implementation scope has no obvious gaps.
-- Ask non-obvious clarifying questions that materially shape the feature contract.
-- {question_guidance}
-- Do not ask the user for technical facts that read-only repo discovery can answer.
-- Do not repeat a question the user has already answered in the current session.
-- Your responsibility stops at one agreed improvement. Do not invent task creation, dispatch, or execution progress in this lane.
-- Do not produce documentation-agent output or maintained KB markdown.
-- When the scope is ready, summarize the agreed feature briefly and emit the feature payload exactly as instructed below.
-
-When the scope is NOT ready:
-- Ask the next highest-leverage question or compact set of independent
-  questions through the runtime-native structured question mechanism described
-  above. Continue for as many rounds as the product specification needs.
-
-When the scope IS ready:
-- Start the response with `AGREEMENT:` followed by a concise implementation-oriented summary.
-- Then emit `FEATURE_SPEC_JSON:` followed immediately by one raw JSON object and nothing else after that object.
-
-The JSON object must match this shape exactly:
-{{
-  "title": "Meaningful improvement title",
-  "description": "What the improvement delivers and its boundaries",
-  "priority": 50,
-  "acceptance_criteria": ["observable outcome 1", "observable outcome 2"],
-  "dependencies": []
-}}
-
-Project root: {project_root}
-
-User: {user_message}"""
-
-
-def _init_project_requires_autonomous_continuation(response_text: str) -> bool:
-    """Requirements onboarding may stop only at the final backlog payload."""
-
-    response = response_text.strip()
-    if not response:
-        return True
-    return _FEATURE_LIST_MARKER not in response
-
-
-def _init_project_continuation_prompt(
-    project_root: Path,
-    *,
-    previous_response: str,
-    runtime_sdk: str = "",
-) -> str:
-    question_guidance = _question_tool_guidance(runtime_sdk)
-    prior_response = previous_response.strip() or "(empty response)"
-    return f"""Continue the forward-engineering requirements interview for the project rooted at {project_root}.
-
-The previous assistant response ended without a structured question or final
-backlog payload. Treat it as internal scratch, not as the completed user-facing
-stop:
-
-{prior_response}
-
-Rules:
-- Do not acknowledge, recap, or confirm the selected answer.
-- Decide whether the first shippable scope is ready.
-- If scope is not ready, immediately ask the next highest-leverage bounded
-  product decision through the runtime-native structured question mechanism.
-- If scope is ready, emit `AGREEMENT:` and `FEATURE_LIST_JSON:` exactly as the
-  requirements prompt requires.
-- {question_guidance}
-"""
-
-
-def _question_tool_guidance(runtime_sdk: str) -> str:
-    """Return runtime-native guidance for structured user-choice questions."""
-    normalized_sdk = str(runtime_sdk or "")
-    if normalized_sdk.startswith("codex"):
-        return (
-            "When a bounded user decision is required, call the Codex `request_user_input` "
-            "tool rather than writing a manual multiple-choice list in plain text. Pass a "
-            "`questions` array with concise `header` and `question` fields and exactly 3 "
-            "suggested `options`, each with `label` and `description`; put the recommended "
-            "option first and suffix its label with `(Recommended)`. The Agent page provides "
-            "the fourth path as an inline custom-answer text box when the operator has something "
-            "else in mind. This is operator-facing UI: use plain product wording and do not include "
-            "internal terms such as backlog, sprint, task id, lifecycle, bounded, raw logs, full logs, "
-            "chunk, or token pressure."
-        )
-    if normalized_sdk == "openai_agents":
-        return (
-            "When a bounded user decision is required, call the OpenAI Agents SDK "
-            "`request_user_input` function tool rather than writing a manual multiple-choice "
-            "list in plain text. Pass a `questions` array with concise `header` and `question` "
-            "fields and exactly 3 suggested `options`, each with `label` and `description`; put "
-            "the recommended option first and suffix its label with `(Recommended)`. The Agent page "
-            "provides the fourth path as an inline custom-answer text box when the operator has "
-            "something else in mind. This is operator-facing UI: use plain product wording and do not "
-            "include internal terms such as backlog, sprint, task id, lifecycle, bounded, raw logs, "
-            "full logs, chunk, or token pressure."
-        )
-    return (
-        "When there are a few clear choices, use AskUserQuestion with concise headers, exactly "
-        "3 suggested options, short labels, and the recommended option first. The Agent page "
-        "provides the fourth path as an inline custom-answer text box when the operator has "
-        "something else in mind. When any bounded user decision is required, use AskUserQuestion "
-        "rather than writing a manual multiple-choice list in plain text. Never infer a `don't-ask "
-        "mode`; if a user request needs a decision or approval, ask through the structured question "
-        "or approval path. This is operator-facing UI: use plain product wording and do not include "
-        "internal terms such as backlog, sprint, task id, lifecycle, bounded, raw logs, full logs, "
-        "chunk, or token pressure."
-    )
-
-
-def _init_project_chat_prompt(
-    project_root: Path,
-    user_message: str,
-    *,
-    runtime_sdk: str = "",
-) -> str:
-    question_guidance = _question_tool_guidance(runtime_sdk)
-    return f"""You are the requirements-phase interviewer for a brand-new software project.
-
-Your job is to keep the conversation focused on defining the first shippable scope and
-product direction before delivery work begins.
-
-Rules:
-- Ask only the highest-leverage follow-up questions needed to remove ambiguity.
-- Prefer specific, product-shaping questions over generic brainstorming.
-- Use bounded repo, workflow, knowledge, or web context when it materially improves correctness.
-- {question_guidance}
-- After the user answers a structured question, do not stop with an acknowledgement,
-  recap, or confirmation of the selected answer.
-- Keep going autonomously until you either ask the next structured question or emit
-  the final `FEATURE_LIST_JSON` payload.
-- Every non-final response in this phase must be a runtime-native structured
-  question request. Do not write the next requirement question as plain assistant text.
-- Do not generate feature JSON until the user has clearly agreed the scope is ready.
-- Once scope is ready, summarize the agreement and emit the feature backlog payload exactly as instructed below.
-
-When the scope is NOT ready:
-- Ask the next highest-leverage question or compact set of independent
-  questions through the runtime-native structured question mechanism described
-  above. Continue for as many rounds as the product specification needs.
-
-When the user clearly confirms the scope IS ready:
-- Start the response with `AGREEMENT:` followed by a concise scope summary.
-- Then emit `FEATURE_LIST_JSON:` followed immediately by one raw JSON object and nothing else after that object.
-
-The JSON object must match this shape exactly:
-{{
-  "metadata": {{
-    "project": "{project_root.name}",
-    "done": 0,
-    "pending": <number of pending features>
-  }},
-  "features": [
-    {{
-      "id": "feature-01",
-      "title": "Meaningful feature title",
-      "description": "What the feature delivers",
-      "status": "pending",
-      "priority": "100",
-      "acceptance_criteria": ["observable outcome 1", "observable outcome 2"],
-      "dependencies": []
-    }}
-  ]
-}}
-
-Project root: {project_root}
-
-User: {user_message}"""
 
 
 async def _resolve_chat_turn_intent(

@@ -186,6 +186,13 @@ current branch is reverified after the ongoing decomposition pass.
   provider-limit freshness checks, task/run snapshots, and call-session binding
   into a focused service owner and ratchet the voice operator below 3,050
   measured lines.
+- [x] Move Agent sprint-planning prompt/delivery helpers into a focused
+  route-adjacent owner and ratchet the embedded Agent route and test hotspot
+  baselines down.
+- [x] Move board-state query helpers and prompt builders into focused route-adjacent
+  owners; move post-ship optimization CLI probe, runtime guidance refresh, and
+  voice support classes into focused owners; split Builder quality-gate CLI
+  contracts out of the broad CLI surface suite. Ratchet all baselines down.
 - [ ] Continue the top-down 500-line decomposition pass on the remaining
   hotspots, starting with the embedded Agent route, Realtime voice operator,
   and remaining CLI/runtime owners, without changing user-visible lifecycle

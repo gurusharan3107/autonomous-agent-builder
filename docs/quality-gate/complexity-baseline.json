@@ -65,9 +65,19 @@
       "lines": 500,
       "owner": "embedded Agent route owner"
     },
+    "src/autonomous_agent_builder/embedded/server/agent_board_state.py": {
+      "extraction_plan": "Move board-state query helpers into named board-state modules before adding new board query behavior.",
+      "lines": 260,
+      "owner": "embedded Agent route owner"
+    },
+    "src/autonomous_agent_builder/embedded/server/agent_prompt_builders.py": {
+      "extraction_plan": "Move prompt-building helpers into named prompt-builder modules before adding new prompt behavior.",
+      "lines": 486,
+      "owner": "embedded Agent route owner"
+    },
     "src/autonomous_agent_builder/embedded/server/routes/agent.py": {
       "extraction_plan": "Continue moving chat-turn, voice, documentation, delivery, and token-evidence policy into focused route-adjacent services before adding new Agent-page behavior.",
-      "lines": 2398,
+      "lines": 1760,
       "owner": "embedded Agent route owner"
     },
     "src/autonomous_agent_builder/embedded/server/routes/dashboard.py": {
@@ -132,7 +142,22 @@
     },
     "src/autonomous_agent_builder/orchestrator/orchestrator.py": {
       "extraction_plan": "Move subprocess, workspace, gate, sprint-merge, and post-ship orchestration slices into named lifecycle services as behavior changes touch them.",
-      "lines": 2828,
+      "lines": 2013,
+      "owner": "orchestrator lifecycle owner"
+    },
+    "src/autonomous_agent_builder/orchestrator/post_ship_cli_probe.py": {
+      "extraction_plan": "No further extraction needed at current size.",
+      "lines": 145,
+      "owner": "orchestrator lifecycle owner"
+    },
+    "src/autonomous_agent_builder/orchestrator/post_ship_optimization.py": {
+      "extraction_plan": "Move remaining optimization helpers into focused orchestrator modules before adding new post-ship optimization behavior.",
+      "lines": 447,
+      "owner": "orchestrator lifecycle owner"
+    },
+    "src/autonomous_agent_builder/orchestrator/post_ship_runtime_guidance.py": {
+      "extraction_plan": "Move runtime-guidance refresh helpers into focused orchestrator modules before adding new guidance behavior.",
+      "lines": 439,
       "owner": "orchestrator lifecycle owner"
     },
     "src/autonomous_agent_builder/runtime/codex_app_server_runtime.py": {
@@ -182,7 +207,12 @@
     },
     "src/autonomous_agent_builder/services/voice_operator.py": {
       "extraction_plan": "Extract intent policy, navigation recovery, dispatch, and digest builders into focused voice services before expanding voice behavior.",
-      "lines": 2781,
+      "lines": 2396,
+      "owner": "realtime voice operator owner"
+    },
+    "src/autonomous_agent_builder/services/voice_operator_support.py": {
+      "extraction_plan": "No further extraction needed at current size.",
+      "lines": 419,
       "owner": "realtime voice operator owner"
     },
     "tests/e2e/test_pipeline.py": {
@@ -197,7 +227,12 @@
     },
     "tests/test_builder_cli_surfaces.py": {
       "extraction_plan": "Move command-family contract tests into focused CLI test files when touching their surfaces; keep this file for shared CLI wiring only.",
-      "lines": 2797,
+      "lines": 2589,
+      "owner": "builder CLI contract test owner"
+    },
+    "tests/test_builder_quality_gate_cli_surface.py": {
+      "extraction_plan": "No further extraction needed at current size.",
+      "lines": 219,
       "owner": "builder CLI contract test owner"
     },
     "tests/test_builder_tool_service.py": {
