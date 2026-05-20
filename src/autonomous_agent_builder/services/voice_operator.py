@@ -1326,31 +1326,11 @@ class AgentOperatorService:
             await db.refresh(session)
             return session
 
-    async def load_voice_board_status(self, db: Any, *, status_prompt: str = "") -> dict[str, Any]:
-        board_response = await load_board_response(db)
-        status_scope = board_status_scope_from_message(status_prompt, board_response.current_sprint)
-        visible_task_ids = board_response_task_ids(board_response)
-        scoped_task_ids = set(status_scope.generated_task_ids)
-        result = await db.execute(select(Task).options(selectinload(Task.feature)))
-        tasks = list(result.scalars().all())
-        if visible_task_ids:
-            tasks = [task for task in tasks if task.id in visible_task_ids]
-        if status_scope.is_current_sprint:
-            tasks = [task for task in tasks if task.id in scoped_task_ids]
-        feature_result = await db.execute(select(Feature).order_by(Feature.priority.desc()))
-        backlog_items = list(feature_result.scalars().all())
-        sprint_summaries = [
-            {
-                "id": sprint.sprint_id,
-                "label": sprint.label,
-                "phase": sprint.active_phase,
-                "approved_feature_count": len(sprint.included_items or []),
-                "generated_task_count": len(sprint.generated_task_ids or []),
-                "verification_status": sprint.verification_status,
-            }
-            for sprint in (board_response.sprints or [])
-        ]
-        tasks_by_id = {task.id: task for task in tasks}
+    def _aggregate_backlog_items(
+        self,
+        backlog_items: list[Any],
+    ) -> tuple[dict[str, int], dict[str, int], list[dict[str, Any]]]:
+        """Aggregate backlog items by status and type. Returns (status_counts, type_counts, open_items)."""
         backlog_status_counts: dict[str, int] = {}
         backlog_type_counts: dict[str, int] = {}
         open_backlog_items: list[dict[str, Any]] = []
@@ -1368,24 +1348,27 @@ class AgentOperatorService:
                         "type": item_type,
                     }
                 )
+        return backlog_status_counts, backlog_type_counts, open_backlog_items
+
+    def _aggregate_task_status_counts(self, tasks: list[Any]) -> dict[str, int]:
+        """Count tasks by status."""
         status_counts: dict[str, int] = {}
         for task in tasks:
             status = _task_status_value(task)
             status_counts[status] = status_counts.get(status, 0) + 1
+        return status_counts
+
+    def _build_blocked_tasks(
+        self,
+        tasks: list[Any],
+    ) -> list[dict[str, Any]]:
+        """Build list of blocked tasks with reasons."""
         blocked_statuses = {
             TaskStatus.BLOCKED.value,
             TaskStatus.CAPABILITY_LIMIT.value,
             TaskStatus.FAILED.value,
         }
-        run_result = await db.execute(
-            select(AgentRun).order_by(AgentRun.started_at.desc()).limit(50)
-        )
-        latest_runs_by_task: dict[str, AgentRun] = {}
-        for run in run_result.scalars().all():
-            if run.task_id not in latest_runs_by_task:
-                latest_runs_by_task[run.task_id] = run
-
-        blocked_tasks = [
+        return [
             {
                 "id": task.id,
                 "title": task.title,
@@ -1397,6 +1380,13 @@ class AgentOperatorService:
             for task in tasks
             if _task_status_value(task) in blocked_statuses
         ]
+
+    def _build_task_lane_lists(
+        self,
+        tasks: list[Any],
+        latest_runs_by_task: dict[str, Any],
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+        """Build queued, active, and dispatchable task lists. Returns (queued, active, dispatchable)."""
         queued_tasks = [
             {
                 "id": task.id,
@@ -1422,6 +1412,14 @@ class AgentOperatorService:
                 key=_task_dispatch_sort_key,
             )
         ][:5]
+        return queued_tasks, active_tasks, dispatchable_tasks
+
+    def _build_provider_limit_runs(
+        self,
+        latest_runs_by_task: dict[str, Any],
+        tasks_by_id: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Build list of provider-limit runs with task context."""
         provider_limit_runs = []
         for run in latest_runs_by_task.values():
             if str(run.stop_reason or "") != "provider_limit":
@@ -1461,6 +1459,50 @@ class AgentOperatorService:
                     "completed_at": run.completed_at.isoformat() if run.completed_at else "",
                 }
             )
+        return provider_limit_runs
+
+    async def load_voice_board_status(self, db: Any, *, status_prompt: str = "") -> dict[str, Any]:
+        board_response = await load_board_response(db)
+        status_scope = board_status_scope_from_message(status_prompt, board_response.current_sprint)
+        visible_task_ids = board_response_task_ids(board_response)
+        scoped_task_ids = set(status_scope.generated_task_ids)
+        result = await db.execute(select(Task).options(selectinload(Task.feature)))
+        tasks = list(result.scalars().all())
+        if visible_task_ids:
+            tasks = [task for task in tasks if task.id in visible_task_ids]
+        if status_scope.is_current_sprint:
+            tasks = [task for task in tasks if task.id in scoped_task_ids]
+        feature_result = await db.execute(select(Feature).order_by(Feature.priority.desc()))
+        backlog_items = list(feature_result.scalars().all())
+        sprint_summaries = [
+            {
+                "id": sprint.sprint_id,
+                "label": sprint.label,
+                "phase": sprint.active_phase,
+                "approved_feature_count": len(sprint.included_items or []),
+                "generated_task_count": len(sprint.generated_task_ids or []),
+                "verification_status": sprint.verification_status,
+            }
+            for sprint in (board_response.sprints or [])
+        ]
+        tasks_by_id = {task.id: task for task in tasks}
+        backlog_status_counts, backlog_type_counts, open_backlog_items = self._aggregate_backlog_items(
+            backlog_items
+        )
+        status_counts = self._aggregate_task_status_counts(tasks)
+        run_result = await db.execute(
+            select(AgentRun).order_by(AgentRun.started_at.desc()).limit(50)
+        )
+        latest_runs_by_task: dict[str, AgentRun] = {}
+        for run in run_result.scalars().all():
+            if run.task_id not in latest_runs_by_task:
+                latest_runs_by_task[run.task_id] = run
+
+        blocked_tasks = self._build_blocked_tasks(tasks)
+        queued_tasks, active_tasks, dispatchable_tasks = self._build_task_lane_lists(
+            tasks, latest_runs_by_task
+        )
+        provider_limit_runs = self._build_provider_limit_runs(latest_runs_by_task, tasks_by_id)
         return {
             "task_count": len(tasks),
             "sprint_count": len(sprint_summaries),
