@@ -519,11 +519,28 @@ class Orchestrator:
         """
         workspace_path = str(getattr(workspace, "path", "") or "")
         if not workspace_path:
-            return None
+            # No workspace_path means _ensure_workspace did not provision one.
+            # Do NOT silently succeed — the next dispatch would still hit
+            # FileNotFoundError. Surface a real blocked_reason.
+            return (
+                "scaffold_failed: workspace path is empty — orchestrator did "
+                "not provision a worktree for this task"
+            )
+        if not Path(workspace_path).exists():
+            return (
+                f"scaffold_failed: workspace path {workspace_path!r} does not "
+                "exist on disk — cannot scaffold a missing workspace"
+            )
         needs, detected = should_scaffold(workspace_path)
         feature = task.feature
         project = feature.project if feature is not None else None
-        if not needs:
+        # Recovery from "Gate infrastructure error" / FileNotFoundError sets
+        # force_scaffold=True in recovery_context. In that case we run scaffold
+        # even when a language is already detectable, because the real problem
+        # is missing gate binaries (FINDING-20).
+        recovery_ctx = self._recovery_context(task)
+        force = bool(recovery_ctx.get("force_scaffold")) if isinstance(recovery_ctx, dict) else False
+        if not needs and not force:
             # Workspace already has a detectable language. Sync Project.language
             # so the quality gate runner picks up the right binaries.
             if project is not None and detected and project.language != detected:

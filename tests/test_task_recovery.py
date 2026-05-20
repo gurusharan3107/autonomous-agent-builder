@@ -94,6 +94,82 @@ async def test_recover_final_checkout_build_failure_returns_to_implementation() 
     assert "final materialized checkout" in task.depends_on["recovery_context"]["instruction"]
 
 
+@pytest.mark.asyncio
+async def test_recover_gate_infrastructure_error_returns_to_implementation() -> None:
+    # Regression: tasks blocked with the legacy "Gate infrastructure error
+    # ... FileNotFoundError" reason were dead-ended at 409 task_not_recoverable.
+    # The scaffold step at IMPLEMENTATION entry now handles this — re-running
+    # implementation runs scaffold first and registers the matching gate set.
+    task = Task(
+        id="task-1",
+        feature_id="feature-1",
+        title="Set up domain model",
+        description="...",
+        status=TaskStatus.BLOCKED,
+        phase=TaskPhase.VERIFICATION,
+        blocked_reason=(
+            "Gate infrastructure error in code_quality, testing "
+            "(FileNotFoundError). Configure the gate or bootstrap the workspace "
+            "before retrying."
+        ),
+    )
+    db = AsyncMock()
+
+    with (
+        patch(
+            "autonomous_agent_builder.services.task_recovery.publish_board_snapshot",
+            new=AsyncMock(),
+        ),
+        patch(
+            "autonomous_agent_builder.services.task_recovery._has_pr_change_request_gate",
+            new=AsyncMock(return_value=False),
+        ),
+        patch(
+            "autonomous_agent_builder.services.task_recovery._enriched_final_checkout_failure",
+            new=AsyncMock(return_value=""),
+        ),
+    ):
+        result = await recover_failed_task(task, db)
+
+    assert result["previous_status"] == "blocked"
+    assert result["current_status"] == "implementation"
+    assert task.status == TaskStatus.IMPLEMENTATION
+    assert task.blocked_reason is None
+
+
+@pytest.mark.asyncio
+async def test_recover_scaffold_failed_returns_to_implementation() -> None:
+    task = Task(
+        id="task-1",
+        feature_id="feature-1",
+        title="Set up domain model",
+        description="...",
+        status=TaskStatus.BLOCKED,
+        phase=TaskPhase.IMPLEMENTATION,
+        blocked_reason="scaffold_failed: SCAFFOLD_RESULT_JSON missing language",
+    )
+    db = AsyncMock()
+
+    with (
+        patch(
+            "autonomous_agent_builder.services.task_recovery.publish_board_snapshot",
+            new=AsyncMock(),
+        ),
+        patch(
+            "autonomous_agent_builder.services.task_recovery._has_pr_change_request_gate",
+            new=AsyncMock(return_value=False),
+        ),
+        patch(
+            "autonomous_agent_builder.services.task_recovery._enriched_final_checkout_failure",
+            new=AsyncMock(return_value=""),
+        ),
+    ):
+        result = await recover_failed_task(task, db)
+
+    assert result["current_status"] == "implementation"
+    assert task.status == TaskStatus.IMPLEMENTATION
+
+
 def test_verifier_output_failed_check_detection() -> None:
     assert _verifier_output_has_failed_check("`npm test` PASS: 8/8 tests") is False
     assert (

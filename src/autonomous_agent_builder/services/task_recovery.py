@@ -153,6 +153,17 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
         # already detectable).
         return task_status, TaskStatus.IMPLEMENTATION
 
+    if task_status == TaskStatus.BLOCKED.value and (
+        "FileNotFoundError" in blocked_reason
+        or "Gate infrastructure error" in blocked_reason
+    ):
+        # Legacy gate-infrastructure blocked state from dispatches that pre-date
+        # the workspace_scaffold step. Recovering routes back through
+        # IMPLEMENTATION, which now runs scaffold first and registers the
+        # appropriate gate set before code-gen retries. Closes the "Gate
+        # infrastructure error" → 409 Recover dead end (FINDING-15/-16).
+        return task_status, TaskStatus.IMPLEMENTATION
+
     if task_status == TaskStatus.DONE.value and await _latest_verifier_reported_failed_check(
         task, db
     ):
@@ -177,7 +188,7 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
             "message": (
                 "Only failed tasks, capability-limit tasks, documentation-gate blocked tasks, "
                 "dispatch-failed blocked tasks, scaffold-failed blocked tasks, "
-                "invalid pending verifier tasks, "
+                "gate-infrastructure-error blocked tasks, invalid pending verifier tasks, "
                 "or PR change-request blocked tasks can be recovered. "
                 "Dispatchable tasks should be dispatched directly."
             ),
@@ -241,6 +252,29 @@ async def recover_failed_task(task: Task, db: AsyncSession) -> dict[str, str]:
                 "instruction": (
                     "Retry final sprint shipping; Builder should preserve local checkout "
                     "changes, rerun final verification, and update sprint/backlog state."
+                ),
+            }
+            task.depends_on = depends_on
+        if (
+            "FileNotFoundError" in blocked_reason
+            or "Gate infrastructure error" in blocked_reason
+            or blocked_reason.startswith("scaffold_failed:")
+        ):
+            # Force the orchestrator to run scaffold even if a language is
+            # already detectable — the actual problem is missing gate tool
+            # binaries (ruff/pytest/eslint/etc.), not missing language config.
+            # Tracks FINDING-20: should_scaffold's language check isn't
+            # sufficient when partial deps exist.
+            depends_on = dict(task.depends_on) if isinstance(task.depends_on, dict) else {}
+            depends_on["recovery_context"] = {
+                "reason": f"force_scaffold: {blocked_reason[:200]}",
+                "target_status": target_status.value,
+                "force_scaffold": True,
+                "instruction": (
+                    "A quality gate failed with FileNotFoundError, meaning the "
+                    "gate binary is missing. Re-run scaffold to ensure all gate "
+                    "tools (ruff/pytest for python, eslint/jest for node, etc.) "
+                    "are installed and runnable before retrying code-gen."
                 ),
             }
             task.depends_on = depends_on

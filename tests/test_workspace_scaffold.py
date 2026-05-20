@@ -26,12 +26,35 @@ def test_should_scaffold_skips_when_python_already_present(tmp_path) -> None:
     assert detected == "python"
 
 
+def test_should_scaffold_runs_when_python_partial_only_requirements(tmp_path) -> None:
+    # Regression for FINDING-20 (live devpulse run): requirements.txt alone
+    # made _detect_language return "python", but pyproject.toml was missing
+    # and the code_quality gate then errored with FileNotFoundError trying
+    # to invoke ruff.
+    (tmp_path / "requirements.txt").write_text("fastapi\n")
+
+    needs, detected = should_scaffold(str(tmp_path))
+
+    assert needs is True
+    assert detected == "python"
+
+
 def test_should_scaffold_skips_when_node_already_present(tmp_path) -> None:
     (tmp_path / "package.json").write_text("{}")
+    (tmp_path / "eslint.config.js").write_text("module.exports = {};")
 
     needs, detected = should_scaffold(str(tmp_path))
 
     assert needs is False
+    assert detected == "node"
+
+
+def test_should_scaffold_runs_when_node_lacks_eslint_config(tmp_path) -> None:
+    (tmp_path / "package.json").write_text("{}")
+
+    needs, detected = should_scaffold(str(tmp_path))
+
+    assert needs is True
     assert detected == "node"
 
 

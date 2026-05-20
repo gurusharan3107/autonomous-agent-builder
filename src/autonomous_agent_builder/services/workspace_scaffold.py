@@ -50,15 +50,46 @@ class ScaffoldResult:
 def should_scaffold(workspace_path: str) -> tuple[bool, str]:
     """Return (needs_scaffold, detected_language).
 
-    Returns False with the detected language when a known language is already
-    present in the workspace, so the orchestrator can skip the model call.
-    Returns True with "unknown" when scaffold needs to run.
+    Returns False with the detected language ONLY when the workspace has both
+    (a) a detectable language AND (b) the per-language gate config that quality
+    gates need to run. Otherwise returns True with the best-effort detected
+    language so the orchestrator runs the scaffold agent.
+
+    The gate-config check (e.g. pyproject.toml for python) was added after
+    live testing surfaced a workspace where `requirements.txt` existed (→
+    language=python) but `pyproject.toml` was missing — code_quality gate
+    then errored with FileNotFoundError trying to run ruff. See FINDING-20
+    in docs/IMPROVEMENTS.md.
     """
     path = Path(workspace_path)
     if not path.exists():
         return True, "unknown"
     detected = _detect_language(path)
-    return detected == "unknown", detected
+    if detected == "unknown":
+        return True, "unknown"
+    if not _language_has_gate_config(path, detected):
+        return True, detected
+    return False, detected
+
+
+def _language_has_gate_config(workspace: Path, language: str) -> bool:
+    """Heuristic: do the per-language gate config files exist?"""
+    if language == "python":
+        return (workspace / "pyproject.toml").exists()
+    if language == "node":
+        return (workspace / "package.json").exists() and (
+            (workspace / "eslint.config.js").exists()
+            or (workspace / ".eslintrc.json").exists()
+            or (workspace / ".eslintrc.js").exists()
+            or (workspace / ".eslintrc").exists()
+        )
+    if language == "go":
+        return (workspace / "go.mod").exists()
+    if language == "rust":
+        return (workspace / "Cargo.toml").exists()
+    if language == "java":
+        return (workspace / "pom.xml").exists() or (workspace / "build.gradle").exists()
+    return True
 
 
 def parse_scaffold_result(output_text: str) -> ScaffoldResult:
