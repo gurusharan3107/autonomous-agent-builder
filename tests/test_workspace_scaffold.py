@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from autonomous_agent_builder.services.workspace_scaffold import (
     ScaffoldResult,
     build_scaffold_template_vars,
     parse_scaffold_result,
     should_scaffold,
+    write_minimal_gate_config,
 )
 
 
@@ -130,6 +133,55 @@ def test_build_scaffold_template_vars_serialises_operator_answers() -> None:
     )
 
     assert '"stack": "web app"' in vars_dict["operator_answers"]
+
+
+def test_write_minimal_gate_config_python_creates_pyproject(tmp_path) -> None:
+    # Live regression: scaffold agent ran 22 turns but didn't write
+    # pyproject.toml. The deterministic fallback fills that gap when
+    # language=python.
+    (tmp_path / "requirements.txt").write_text("fastapi\n")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "demo").mkdir()
+
+    wrote, written = write_minimal_gate_config(str(tmp_path), "python", "devpulse")
+
+    assert wrote is True
+    pyproject = tmp_path / "pyproject.toml"
+    content = pyproject.read_text()
+    assert "[tool.ruff" in content
+    assert "[tool.pytest.ini_options]" in content
+    assert "devpulse" in content
+    assert (tmp_path / "src" / "demo" / "__init__.py").exists()
+    needs, _ = should_scaffold(str(tmp_path))
+    assert needs is False
+
+
+def test_write_minimal_gate_config_node_creates_package_and_eslint(tmp_path) -> None:
+    wrote, written = write_minimal_gate_config(str(tmp_path), "node", "devpulse")
+
+    assert wrote is True
+    assert (tmp_path / "package.json").exists()
+    assert (tmp_path / "eslint.config.js").exists()
+    needs, _ = should_scaffold(str(tmp_path))
+    assert needs is False
+
+
+def test_write_minimal_gate_config_unsupported_language_does_nothing(tmp_path) -> None:
+    wrote, written = write_minimal_gate_config(str(tmp_path), "elixir", "demo")
+
+    assert wrote is False
+    assert written == []
+
+
+def test_write_minimal_gate_config_python_idempotent(tmp_path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "existing"\n[tool.ruff]\n[tool.pytest.ini_options]\n'
+    )
+
+    wrote, written = write_minimal_gate_config(str(tmp_path), "python", "demo")
+
+    assert wrote is False
+    assert tmp_path / "pyproject.toml" not in [Path(p) for p in written]
 
 
 def test_scaffold_result_dataclass_is_frozen() -> None:

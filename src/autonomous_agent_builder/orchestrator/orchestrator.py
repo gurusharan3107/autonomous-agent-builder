@@ -89,6 +89,7 @@ from autonomous_agent_builder.services.workspace_scaffold import (
     parse_scaffold_result,
     persist_scaffold_language,
     should_scaffold,
+    write_minimal_gate_config,
 )
 from autonomous_agent_builder.orchestrator.phase_context import (
     compact_phase_output,
@@ -567,14 +568,32 @@ class Orchestrator:
         if parsed.action != "scaffolded":
             return parsed.reason or "scaffold_failed: unknown scaffold failure"
 
-        # Verify the agent actually produced detectable config (defends against
-        # the agent reporting success without writing files).
-        _, verify_detected = should_scaffold(workspace_path)
-        if verify_detected == "unknown":
-            return (
-                "scaffold_failed: agent reported language="
-                f"{parsed.language} but no config files were detected after run"
+        # Verify the agent actually produced the per-language gate config the
+        # workspace needs. Re-run the full should_scaffold check — the agent
+        # can claim language=python while writing zero files (live FINDING-22).
+        # When the model agent fails, fall back to a deterministic writer for
+        # the languages we have a safety net for (python, node). Other
+        # languages surface a clear scaffold_failed: reason.
+        still_needs, verify_detected = should_scaffold(workspace_path)
+        if still_needs:
+            wrote, written = write_minimal_gate_config(
+                workspace_path, parsed.language, project.name
             )
+            if wrote:
+                log.info(
+                    "scaffold_deterministic_fallback_used",
+                    language=parsed.language,
+                    files=written,
+                    reason="model_agent_did_not_write_gate_config",
+                )
+                still_needs, verify_detected = should_scaffold(workspace_path)
+            if still_needs:
+                return (
+                    "scaffold_failed: agent reported language="
+                    f"{parsed.language} but the workspace still lacks the gate "
+                    "config required to run code_quality / testing gates "
+                    f"(post-scaffold detection: language={verify_detected})"
+                )
         await persist_scaffold_language(project, parsed.language, self.db)
         return None
 

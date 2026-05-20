@@ -161,6 +161,113 @@ async def persist_scaffold_language(
     await db.flush()
 
 
+_MINIMAL_PYPROJECT_TEMPLATE = """\
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{project_name}"
+version = "0.0.1"
+description = "Generated app scaffold"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+"""
+
+_MINIMAL_PACKAGE_JSON_TEMPLATE = """\
+{{
+  "name": "{project_name}",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {{
+    "lint": "eslint .",
+    "test": "node --test"
+  }},
+  "devDependencies": {{
+    "eslint": "^9.0.0"
+  }}
+}}
+"""
+
+_MINIMAL_ESLINT_CONFIG = """\
+import js from "@eslint/js";
+export default [js.configs.recommended];
+"""
+
+
+def write_minimal_gate_config(
+    workspace_path: str, language: str, project_name: str = "app"
+) -> tuple[bool, list[str]]:
+    """Deterministic emergency safety net for when the model-backed scaffold
+    agent claims success but doesn't actually produce the per-language gate
+    config the workspace needs. Returns (wrote_anything, [paths_written]).
+
+    Gates are project-type-specific — this fallback only covers the most
+    common live failure modes (python, node). The primary path is the
+    model-backed scaffold agent, which is responsible for any language
+    (java/go/rust/elixir/swift/etc.). When this fallback can't help, the
+    orchestrator surfaces a scaffold_failed: blocked_reason that the
+    operator can recover through the dashboard.
+    """
+    path = Path(workspace_path)
+    safe_name = (project_name or "app").strip().replace(" ", "-").lower() or "app"
+    written: list[str] = []
+
+    if language == "python":
+        pyproject = path / "pyproject.toml"
+        if not (pyproject.exists() and pyproject.read_text().strip()):
+            pyproject.write_text(_MINIMAL_PYPROJECT_TEMPLATE.format(project_name=safe_name))
+            written.append(str(pyproject))
+        # Best-effort: ensure src and tests __init__.py exist so imports resolve.
+        src_dir = path / "src"
+        if src_dir.exists() and src_dir.is_dir():
+            for child in src_dir.iterdir():
+                if child.is_dir() and not (child / "__init__.py").exists():
+                    (child / "__init__.py").write_text("")
+                    written.append(str(child / "__init__.py"))
+        tests_dir = path / "tests"
+        if tests_dir.exists() and tests_dir.is_dir():
+            init_file = tests_dir / "__init__.py"
+            if not init_file.exists():
+                init_file.write_text("")
+                written.append(str(init_file))
+        return bool(written), written
+
+    if language == "node":
+        package_json = path / "package.json"
+        if not (package_json.exists() and package_json.read_text().strip()):
+            package_json.write_text(_MINIMAL_PACKAGE_JSON_TEMPLATE.format(project_name=safe_name))
+            written.append(str(package_json))
+        eslint_config = path / "eslint.config.js"
+        # Honor any pre-existing legacy config file.
+        legacy = any(
+            (path / name).exists()
+            for name in (".eslintrc.json", ".eslintrc.js", ".eslintrc")
+        )
+        if not eslint_config.exists() and not legacy:
+            eslint_config.write_text(_MINIMAL_ESLINT_CONFIG)
+            written.append(str(eslint_config))
+        return bool(written), written
+
+    # Other languages (go/rust/java/etc.) fall through. The orchestrator will
+    # surface a scaffold_failed: reason naming the missing config.
+    return False, []
+
+
 def build_scaffold_template_vars(
     *,
     feature_description: str,
