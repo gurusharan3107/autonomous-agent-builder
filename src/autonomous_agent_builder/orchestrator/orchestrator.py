@@ -80,7 +80,6 @@ from autonomous_agent_builder.orchestrator.documentation_refresh_gate import (
 )
 from autonomous_agent_builder.orchestrator.failure_diagnosis import (
     diagnose_task_failure,
-    workspace_contains_builder_internals,
 )
 from autonomous_agent_builder.orchestrator.gate_feedback import (
     GateFeedbackHandler,
@@ -173,9 +172,14 @@ from autonomous_agent_builder.orchestrator.workspace_integration import (
     remove_generated_artifacts_from_git_checkout,
     run_integration_conflict_resolver,
 )
+from autonomous_agent_builder.orchestrator.workspace_integration import (
+    ensure_workspace as _ensure_workspace_fn,
+)
+from autonomous_agent_builder.orchestrator.workspace_integration import (
+    sanitize_task_workspace_for_agent as _sanitize_task_workspace_for_agent_fn,
+)
 from autonomous_agent_builder.orchestrator.workspace_policy import (
     WORKSPACE_COPY_EXCLUDES,
-    directory_workspace_is_stale,
     next_clean_directory_workspace_path,
 )
 from autonomous_agent_builder.quality_gates.base import (
@@ -498,113 +502,7 @@ class Orchestrator:
         return recovery_context if isinstance(recovery_context, dict) else {}
 
     async def _ensure_workspace(self, task: Task) -> Workspace:
-        """Provision and persist a task workspace when the task enters code-mutating phases."""
-        existing = getattr(task, "workspace", None)
-        existing_path = getattr(existing, "path", "") if existing else ""
-        if existing and existing_path:
-            project = getattr(getattr(task, "feature", None), "project", None)
-            repo_url_value = getattr(project, "repo_url", "")
-            if repo_url_value and not isinstance(repo_url_value, str):
-                return existing
-            existing_path_obj = Path(existing_path)
-            if not existing_path_obj.exists():
-                log.warning(
-                    "task_workspace_path_missing_reprovisioning",
-                    task_id=task.id,
-                    path=existing_path,
-                    is_worktree=bool(getattr(existing, "is_worktree", False)),
-                )
-            elif not getattr(
-                existing, "is_worktree", False
-            ) and workspace_contains_builder_internals(existing_path):
-                log.warning(
-                    "task_workspace_polluted_reprovisioning",
-                    task_id=task.id,
-                    path=existing_path,
-                )
-            elif not getattr(existing, "is_worktree", False) and directory_workspace_is_stale(
-                existing_path,
-                task.feature.project.repo_url if task.feature and task.feature.project else "",
-            ):
-                log.warning(
-                    "task_workspace_stale_reprovisioning",
-                    task_id=task.id,
-                    path=existing_path,
-                )
-            else:
-                sanitize_error = await self._sanitize_task_workspace_for_agent(
-                    existing_path,
-                    is_worktree=bool(getattr(existing, "is_worktree", False)),
-                )
-                if sanitize_error:
-                    raise RuntimeError(sanitize_error)
-                return existing
-
-        repo_url = task.feature.project.repo_url or ""
-        if not repo_url.strip():
-            raise RuntimeError("Task workspace cannot be provisioned: project repo_url is empty")
-        repo_root = Path(repo_url).expanduser()
-        if not repo_root.exists():
-            raise RuntimeError(
-                f"Task workspace cannot be provisioned: repo root does not exist at {repo_root}"
-            )
-
-        manager = WorkspaceManager(self.settings.workspace_root)
-        # Sprint-PR refactor (Phase B): when the task is part of a sprint,
-        # branch the per-task worktree off the sprint branch so all task
-        # commits roll up into a single sprint-level integration head.
-        sprint_start_point: str | None = None
-        sprint = await self._resolve_sprint_for_task(task)
-        if sprint is not None:
-
-            async def run_git(*args: str) -> tuple[int, str]:
-                result = await run_bounded_subprocess(
-                    "git",
-                    *args,
-                    cwd=str(repo_root),
-                    timeout_seconds=_ORCHESTRATOR_GIT_TIMEOUT_SECONDS,
-                    label="orchestrator git",
-                )
-                return result.returncode, result.output
-
-            sprint_start_point = await self._ensure_sprint_branch(sprint, repo_root, run_git)
-        workspace_info = await self._provision_workspace_info(
-            manager, repo_root, task.id, start_point=sprint_start_point
-        )
-
-        if existing and existing_path:
-            workspace = existing
-            workspace.path = workspace_info.path
-            workspace.branch = workspace_info.branch
-            workspace.is_worktree = workspace_info.is_worktree
-        else:
-            workspace = Workspace(
-                task_id=task.id,
-                path=workspace_info.path,
-                branch=workspace_info.branch,
-                is_worktree=workspace_info.is_worktree,
-            )
-            self.db.add(workspace)
-        task.workspace = workspace
-        store_phase_context(
-            task,
-            "workspace_backend",
-            "worktree" if workspace_info.is_worktree else "directory",
-        )
-        owner_surface_error = await self._preserve_project_runtime_guidance(
-            task,
-            workspace_info.path,
-        )
-        if owner_surface_error:
-            raise RuntimeError(owner_surface_error)
-        sanitize_error = await self._sanitize_task_workspace_for_agent(
-            workspace_info.path,
-            is_worktree=workspace_info.is_worktree,
-        )
-        if sanitize_error:
-            raise RuntimeError(sanitize_error)
-        await self.db.flush()
-        return workspace
+        return await _ensure_workspace_fn(self, task)
 
     async def _sanitize_task_workspace_for_agent(
         self,
@@ -612,76 +510,7 @@ class Orchestrator:
         *,
         is_worktree: bool,
     ) -> str | None:
-        """Remove Builder/runtime artifacts before an agent receives the workspace."""
-        if not workspace_path:
-            return "Task workspace sanitization failed: workspace path is missing"
-        workspace = Path(workspace_path).expanduser()
-        if not workspace.exists():
-            return f"Task workspace sanitization failed: workspace does not exist at {workspace}"
-
-        existing_paths = [
-            relative
-            for relative in _TASK_WORKSPACE_SANITIZE_PATHS
-            if (workspace / relative).exists()
-        ]
-        if not existing_paths:
-            return None
-
-        if is_worktree:
-            result = await run_bounded_subprocess(
-                "git",
-                "rm",
-                "-r",
-                "--ignore-unmatch",
-                "--",
-                *existing_paths,
-                cwd=str(workspace),
-                timeout_seconds=_ORCHESTRATOR_GIT_TIMEOUT_SECONDS,
-                label="workspace sanitization git rm",
-            )
-            if result.returncode != 0:
-                output = result.output.strip()
-                return f"Task workspace sanitization failed: could not untrack runtime artifacts: {output}"
-
-        for relative in existing_paths:
-            path = workspace / relative
-            if path.is_dir():
-                shutil.rmtree(path, ignore_errors=True)
-            elif path.exists():
-                path.unlink()
-
-        if is_worktree:
-            result = await run_bounded_subprocess(
-                "git",
-                "clean",
-                "-fd",
-                "--",
-                *existing_paths,
-                cwd=str(workspace),
-                timeout_seconds=_ORCHESTRATOR_GIT_TIMEOUT_SECONDS,
-                label="workspace sanitization git clean",
-            )
-            if result.returncode != 0:
-                output = result.output.strip()
-                return f"Task workspace sanitization failed: could not clean runtime artifacts: {output}"
-
-        remaining = [
-            relative
-            for relative in _TASK_WORKSPACE_SANITIZE_PATHS
-            if (workspace / relative).exists()
-        ]
-        if remaining:
-            return (
-                "Task workspace sanitization failed: runtime artifacts remain in workspace: "
-                + ", ".join(remaining)
-            )
-        log.info(
-            "task_workspace_sanitized_for_agent",
-            workspace_path=str(workspace),
-            paths=existing_paths,
-            is_worktree=is_worktree,
-        )
-        return None
+        return await _sanitize_task_workspace_for_agent_fn(workspace_path, is_worktree=is_worktree)
 
     async def _provision_workspace_info(
         self,

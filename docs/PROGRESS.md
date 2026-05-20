@@ -1,5 +1,29 @@
 # Autonomous Builder Robustness Progress
 
+### 2026-05-20 Orchestrator Workspace Provisioning Split
+
+- Backend decomposition pass: extracted `_ensure_workspace` (108 lines) and
+  `_sanitize_task_workspace_for_agent` (76 lines) from `orchestrator.py` into
+  the existing
+  `src/autonomous_agent_builder/orchestrator/workspace_integration.py` as
+  module-level `ensure_workspace(orchestrator, task)` and
+  `sanitize_task_workspace_for_agent(workspace_path, *, is_worktree)`.
+  `_provision_workspace_info` stays in orchestrator.py since tests patch it as
+  a method; `ensure_workspace` calls it through `orchestrator._provision_workspace_info`.
+  Class methods converted to one-liner delegations.
+- Size evidence: `src/autonomous_agent_builder/orchestrator/orchestrator.py` is
+  now 1,420 measured lines, down from 1,591 in this pass (-11%).
+  `workspace_integration.py` grew from 500 to 705 lines to absorb the moved
+  workspace provisioning code.
+- decomposition_result: {"parent_before": 1591, "parent_after": 1420,
+  "target_module": "orchestrator/workspace_integration.py",
+  "target_module_lines": 705, "methods_moved": 2}
+- Verification: `uv tool run ruff check` passed. `uv run pytest
+  tests/test_orchestrator.py tests/test_orchestrator_gates.py -q` passed
+  `93 passed`. `uv run builder lint --complexity-report --json` passed with
+  0 violations after ratcheting `orchestrator.py` baseline from 1,591 to 1,420
+  and adding `workspace_integration.py` at 705.
+
 ### 2026-05-20 Orchestrator Sprint Lifecycle Split
 
 - Backend decomposition pass: extracted 9 sprint branch management methods
