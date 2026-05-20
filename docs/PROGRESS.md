@@ -1,5 +1,29 @@
 # Autonomous Builder Robustness Progress
 
+### 2026-05-20 Orchestrator Quality Gate Runner Split
+
+- Backend decomposition pass: extracted 3 quality gate methods
+  (`_phase_quality_gates` → `run_phase_quality_gates`,
+  `_run_feature_acceptance_gate` → `run_feature_acceptance_gate`,
+  `_record_feature_acceptance_tests` → `run_record_feature_acceptance_tests`)
+  from `orchestrator.py` into
+  `src/autonomous_agent_builder/orchestrator/quality_gate_runner.py`. All take
+  `orchestrator: Any` first param. Class methods converted to one-liner
+  delegations. Test patches updated from
+  `orchestrator.orchestrator.run_quality_gates|TestingGate|validate_task_system_docs`
+  to `orchestrator.quality_gate_runner.*` (10 patches in test_orchestrator_gates.py).
+- Size evidence: `src/autonomous_agent_builder/orchestrator/orchestrator.py` is
+  now 1,224 measured lines, down from 1,420 in this pass (-14%). The new quality
+  gate runner is 224 lines.
+- decomposition_result: {"parent_before": 1420, "parent_after": 1224,
+  "new_module": "orchestrator/quality_gate_runner.py",
+  "new_module_lines": 224, "methods_moved": 3}
+- Verification: `uv tool run ruff check` passed. `uv run pytest
+  tests/test_orchestrator.py tests/test_orchestrator_gates.py -q` passed
+  `93 passed`. `uv run builder lint --complexity-report --json` passed with
+  0 violations after ratcheting `orchestrator.py` baseline from 1,420 to 1,224
+  and adding `quality_gate_runner.py` at 224.
+
 ### 2026-05-20 Orchestrator Workspace Provisioning Split
 
 - Backend decomposition pass: extracted `_ensure_workspace` (108 lines) and

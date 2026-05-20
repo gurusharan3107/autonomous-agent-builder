@@ -92,7 +92,7 @@ class TestQualityGatesPhase:
             ],
         )
         with patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_quality_gates",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
             new_callable=AsyncMock,
             return_value=pass_result,
         ), patch.object(
@@ -118,7 +118,7 @@ class TestQualityGatesPhase:
             ],
         )
         with patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_quality_gates",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
             new_callable=AsyncMock,
             return_value=warn_result,
         ), patch.object(
@@ -145,7 +145,7 @@ class TestQualityGatesPhase:
         )
         orchestrator.gate_handler.handle_gate_failure = AsyncMock()
         with patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_quality_gates",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
             new_callable=AsyncMock,
             return_value=fail_result,
         ):
@@ -172,7 +172,7 @@ class TestQualityGatesPhase:
         )
 
         with patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_quality_gates",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
             new_callable=AsyncMock,
             return_value=pass_result,
         ):
@@ -233,15 +233,15 @@ class TestQualityGatesPhase:
             return gate
 
         with patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.validate_task_system_docs",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.validate_task_system_docs",
             side_effect=lambda depends_on, **kwargs: validate_task_system_docs(
                 depends_on, kb_root=kb_root, **kwargs
             ),
         ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.TestingGate",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.TestingGate",
             side_effect=_fake_testing_gate,
         ) as testing_gate, patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_quality_gates",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
             new_callable=AsyncMock,
             return_value=pass_result,
         ), patch.object(
@@ -301,12 +301,12 @@ class TestQualityGatesPhase:
         )
 
         with patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.validate_task_system_docs",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.validate_task_system_docs",
             side_effect=lambda depends_on, **kwargs: validate_task_system_docs(
                 depends_on, kb_root=kb_root, **kwargs
             ),
         ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_quality_gates",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
             new_callable=AsyncMock,
             return_value=pass_result,
         ):
@@ -1343,7 +1343,7 @@ class TestDocumentationRefreshGate:
         )
 
         with patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_quality_gates",
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
             new_callable=AsyncMock,
             return_value=pass_result,
         ), patch.object(

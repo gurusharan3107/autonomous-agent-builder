@@ -37,9 +37,6 @@ from autonomous_agent_builder.db.models import (
     Workspace,
     set_task_status,
 )
-from autonomous_agent_builder.db.models import (
-    GateResult as GateResultModel,
-)
 from autonomous_agent_builder.knowledge.system_docs import (
     format_task_system_doc_guidance,
     validate_task_system_docs,
@@ -55,8 +52,6 @@ from autonomous_agent_builder.orchestrator.approval_outcomes import (
 )
 from autonomous_agent_builder.orchestrator.build_verification import (
     build_verifier_failure,
-    feature_verifier_failure,
-    is_sprint_feature_verification_task,
     sprint_branch_name,
     task_sprint_execution_payload,
     use_deterministic_build_verifier,
@@ -65,7 +60,6 @@ from autonomous_agent_builder.orchestrator.build_verification import (
 from autonomous_agent_builder.orchestrator.deterministic_verification import (
     record_deterministic_build_verification,
     record_deterministic_evidence,
-    record_feature_acceptance_tests,
     run_builder_script,
 )
 from autonomous_agent_builder.orchestrator.documentation_refresh_gate import (
@@ -125,6 +119,15 @@ from autonomous_agent_builder.orchestrator.post_ship_runtime_guidance import (
 from autonomous_agent_builder.orchestrator.post_ship_runtime_guidance import (
     _run_deterministic_post_ship_optimization as _post_ship_run_deterministic_optimization,
 )
+from autonomous_agent_builder.orchestrator.quality_gate_runner import (
+    run_feature_acceptance_gate as _run_feature_acceptance_gate_fn,
+)
+from autonomous_agent_builder.orchestrator.quality_gate_runner import (
+    run_phase_quality_gates as _run_phase_quality_gates_fn,
+)
+from autonomous_agent_builder.orchestrator.quality_gate_runner import (
+    run_record_feature_acceptance_tests as _run_record_feature_acceptance_tests_fn,
+)
 from autonomous_agent_builder.orchestrator.runtime_guidance_preservation import (
     GitRunner as _GitRunner,
 )
@@ -182,14 +185,6 @@ from autonomous_agent_builder.orchestrator.workspace_policy import (
     WORKSPACE_COPY_EXCLUDES,
     next_clean_directory_workspace_path,
 )
-from autonomous_agent_builder.quality_gates.base import (
-    AggregateGateResult,
-    GateResult,
-    GateStatus,
-    run_quality_gates,
-)
-from autonomous_agent_builder.quality_gates.code_quality import CodeQualityGate
-from autonomous_agent_builder.quality_gates.testing import TestingGate
 from autonomous_agent_builder.runtime import create_runtime
 from autonomous_agent_builder.services.async_subprocess import run_bounded_subprocess
 from autonomous_agent_builder.services.provider_limits import mark_provider_limit
@@ -540,147 +535,7 @@ class Orchestrator:
         return WorkspaceInfo(path=str(workspace_path), branch="", is_worktree=False)
 
     async def _phase_quality_gates(self, task: Task) -> None:
-        """Run concurrent quality gates with AND aggregation."""
-        try:
-            workspace = await self._ensure_workspace(task)
-        except RuntimeError as exc:
-            existing = getattr(task, "workspace", None)
-            workspace_path = str(getattr(existing, "path", "") or "")
-            gate = GateResult(
-                gate_name="workspace_provisioning",
-                status=GateStatus.ERROR,
-                findings_count=1,
-                error_code="WORKSPACE_PROVISIONING_FAILED",
-                evidence={
-                    "summary": str(exc),
-                    "workspace_path": workspace_path,
-                },
-                remediation_possible=False,
-            )
-            self.db.add(
-                GateResultModel(
-                    task_id=task.id,
-                    gate_name=gate.gate_name,
-                    status=gate.status.value,
-                    evidence=gate.evidence,
-                    findings_count=gate.findings_count,
-                    elapsed_ms=0,
-                    error_code=gate.error_code,
-                    timeout=False,
-                    remediation_attempted=False,
-                    remediation_succeeded=False,
-                )
-            )
-            set_task_status(task, TaskStatus.BLOCKED)
-            task.blocked_reason = f"Workspace provisioning failed before quality gates: {str(exc)}"
-            await self.db.flush()
-            return
-        workspace_path = str(getattr(workspace, "path", "") or "")
-        language = task.feature.project.language
-        doc_requirements = validate_task_system_docs(
-            task.depends_on,
-            task_id=task.id,
-            feature_id=task.feature_id,
-        )
-
-        if not await self._workspace_has_task_changes(workspace_path):
-            no_delta = GateResult(
-                gate_name="implementation_delta",
-                status=GateStatus.FAIL,
-                findings_count=1,
-                error_code="NO_TASK_CHANGES",
-                evidence={
-                    "summary": "Task workspace has no changes relative to main.",
-                    "workspace_path": workspace_path,
-                },
-                remediation_possible=False,
-            )
-            self.db.add(
-                GateResultModel(
-                    task_id=task.id,
-                    gate_name=no_delta.gate_name,
-                    status=no_delta.status.value,
-                    evidence=no_delta.evidence,
-                    findings_count=no_delta.findings_count,
-                    elapsed_ms=0,
-                    error_code=no_delta.error_code,
-                    timeout=False,
-                    remediation_attempted=False,
-                    remediation_succeeded=False,
-                )
-            )
-            await self.gate_handler.handle_gate_failure(
-                task,
-                AggregateGateResult(status=GateStatus.FAIL, results=[no_delta]),
-            )
-            await self.db.flush()
-            return
-
-        # Pre-integration gates: Ruff + pytest
-        pre_gates = [
-            CodeQualityGate(language=language),
-            TestingGate(language=language, testing_doc_id=doc_requirements.testing_doc_id),
-        ]
-
-        gate_result = await run_quality_gates(workspace_path, pre_gates)
-
-        # Save gate results to DB
-        for r in gate_result.results:
-            db_result = GateResultModel(
-                task_id=task.id,
-                gate_name=r.gate_name,
-                status=r.status.value,
-                evidence=r.evidence,
-                findings_count=r.findings_count,
-                elapsed_ms=r.elapsed_ms,
-                error_code=r.error_code,
-                timeout=r.timeout,
-                remediation_attempted=False,
-                remediation_succeeded=False,
-            )
-            self.db.add(db_result)
-
-        if gate_result.status in {GateStatus.PASS, GateStatus.WARN} and not doc_requirements.passed:
-            set_task_status(task, TaskStatus.BLOCKED)
-            task.blocked_reason = "; ".join(doc_requirements.issues)
-        elif gate_result.status == GateStatus.PASS:
-            documentation_gap = await self._run_documentation_refresh_gate(task, workspace_path)
-            if documentation_gap:
-                set_task_status(task, TaskStatus.BLOCKED)
-                task.blocked_reason = documentation_gap
-            else:
-                task.blocked_reason = None
-                set_task_status(task, TaskStatus.PR_CREATION)
-        elif gate_result.status == GateStatus.WARN:
-            documentation_gap = await self._run_documentation_refresh_gate(task, workspace_path)
-            if documentation_gap:
-                set_task_status(task, TaskStatus.BLOCKED)
-                task.blocked_reason = documentation_gap
-            else:
-                task.blocked_reason = None
-                set_task_status(task, TaskStatus.PR_CREATION)  # advisory, continue
-        elif gate_result.status == GateStatus.ERROR:
-            # Gate infrastructure error (e.g., FileNotFoundError on a missing
-            # lint config in a freshly-generated workspace). Distinct from
-            # FAIL: agent-assisted fix doesn't help, the workspace bootstrap
-            # or gate config is what's wrong. Hard block — operator inspects
-            # and re-runs after fixing the config.
-            error_codes = sorted({r.error_code for r in gate_result.results if r.error_code})
-            erroring = sorted(
-                {r.gate_name for r in gate_result.results if r.status == GateStatus.ERROR}
-            )
-            set_task_status(task, TaskStatus.BLOCKED)
-            task.blocked_reason = (
-                "Gate infrastructure error in "
-                f"{', '.join(erroring) or 'unknown gate'} "
-                f"({', '.join(error_codes) or 'unknown error'}). "
-                "Configure the gate or bootstrap the workspace before retrying."
-            )
-        else:
-            # FAIL — enter gate feedback loop
-            await self.gate_handler.handle_gate_failure(task, gate_result)
-
-        await self.db.flush()
+        return await _run_phase_quality_gates_fn(self, task)
 
     async def _workspace_has_task_changes(self, workspace_path: str) -> bool:
         if not workspace_path:
@@ -862,52 +717,7 @@ class Orchestrator:
         task: Task,
         workspace_path: str,
     ) -> tuple[bool, str]:
-        if not is_sprint_feature_verification_task(task):
-            return True, ""
-
-        feature = await self.db.get(Feature, task.feature_id)
-        if feature is None:
-            return False, "feature_acceptance_failed: feature record not found"
-
-        test_success, existing_result = await self._record_feature_acceptance_tests(
-            task,
-            workspace_path,
-            feature,
-        )
-        if test_success:
-            return True, existing_result
-
-        result = await self._run_agent(
-            task,
-            "feature-verifier",
-            {
-                "feature_title": feature.title,
-                "feature_description": feature.description or "",
-                "acceptance_criteria": json.dumps(
-                    feature.acceptance_criteria or [],
-                    ensure_ascii=True,
-                ),
-                "existing_feature_test_result": existing_result,
-                "workspace_path": workspace_path,
-            },
-        )
-        if result.error:
-            return False, diagnose_task_failure(
-                result.error,
-                workspace_path=workspace_path,
-                result=result,
-            )
-        if verifier_failure := feature_verifier_failure(result.output_text):
-            return False, verifier_failure
-
-        test_success, test_output = await self._record_feature_acceptance_tests(
-            task,
-            workspace_path,
-            feature,
-        )
-        if test_success:
-            return True, test_output
-        return False, f"feature_acceptance_failed: {test_output}"
+        return await _run_feature_acceptance_gate_fn(self, task, workspace_path)
 
     async def _record_feature_acceptance_tests(
         self,
@@ -915,13 +725,7 @@ class Orchestrator:
         workspace_path: str,
         feature: Feature,
     ) -> tuple[bool, str]:
-        return await record_feature_acceptance_tests(
-            self.db,
-            task,
-            workspace_path,
-            feature,
-            self._publish_realtime_board_snapshot,
-        )
+        return await _run_record_feature_acceptance_tests_fn(self, task, workspace_path, feature)
 
     async def _has_completed_agent_run(self, task: Task, agent_name: str) -> bool:
         result = await self.db.execute(
