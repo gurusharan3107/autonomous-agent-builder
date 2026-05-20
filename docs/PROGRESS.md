@@ -1,5 +1,31 @@
 # Autonomous Builder Robustness Progress
 
+### 2026-05-20 Observability Summary Deterministic Recommendations Split
+
+- Backend decomposition pass: extracted `_deterministic_recommendations`
+  (324 lines, 67 branches — active threshold violation), `_deterministic_recommendation`,
+  `_rank_recommendations`, `_recommendation_priority`, `_top_cost_driver`,
+  `_cost_driver`, and `_candidate_evidence_source` into
+  `src/autonomous_agent_builder/observability/summary_recommendations.py`.
+  The parent `summary.py` imports `_deterministic_recommendations` and
+  `_rank_recommendations` back as aliases so all callers are unaffected.
+- Size evidence: `src/autonomous_agent_builder/observability/summary.py` is
+  now 1,751 measured lines, down from 2,185 in this pass. The new
+  recommendations owner is 450 lines. The function-level baseline for
+  `summary_recommendations.py::_deterministic_recommendations` is registered
+  at 324 lines / 67 branches pending further per-signal decomposition.
+- decomposition_result: {"parent_before": 2185, "parent_after": 1751,
+  "new_module": "observability/summary_recommendations.py",
+  "new_module_lines": 450, "functions_moved": 7,
+  "violation_cleared_from_parent": true}
+- Verification: `uv tool run ruff check
+  src/autonomous_agent_builder/observability/summary.py
+  src/autonomous_agent_builder/observability/summary_recommendations.py`
+  passed. `uv run pytest tests/test_observability_summary.py -q` passed
+  `18 passed`. `uv run builder lint --complexity-report --json` passed with
+  0 violations after ratcheting the `summary.py` baseline from 2,185 to 1,751
+  and registering the new `summary_recommendations.py` function baseline.
+
 Goal source: active thread goal. Execution instructions: [PLAN.md](PLAN.md).
 
 Current status: **in progress on the architecture and 500-line ratchet**. The
