@@ -322,6 +322,15 @@ class TestQualityGatesPhase:
 
 @pytest.mark.asyncio
 class TestKnowledgeLifecycleContext:
+    @pytest.fixture(autouse=True)
+    def _skip_workspace_scaffold(self, orchestrator):
+        # The scaffold step runs at the entry of _phase_implementation. These
+        # tests use _make_task() with a MagicMock workspace path that does not
+        # exist on disk, which would trigger scaffold and consume the mocked
+        # _run_agent before code-gen. Bypass scaffold here — separate tests in
+        # test_workspace_scaffold.py cover scaffold itself.
+        orchestrator._run_workspace_scaffold_if_needed = AsyncMock(return_value=None)
+
     async def test_design_phase_passes_task_scoped_knowledge_requirements(self, orchestrator):
         task = _make_task(TaskStatus.DESIGN)
         task.depends_on = {

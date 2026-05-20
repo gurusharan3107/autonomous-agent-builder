@@ -680,6 +680,27 @@ async def builder_task_recover(task_id: str, *, project_root: str | None = None)
         return _error_payload(str(exc), exit_code=exc.exit_code, detail=exc.detail)
 
 
+async def builder_workspace_scaffold(
+    task_id: str, *, project_root: str | None = None
+) -> dict[str, Any]:
+    """Trigger the workspace scaffold step for a task.
+
+    Idempotent: the orchestrator-side helper deterministically skips when a
+    language is already detectable. Exposed as `mcp__builder__workspace_scaffold`
+    so the chat agent can route a setup intent through the lifecycle instead of
+    attempting shell or filesystem workarounds.
+    """
+    try:
+        data = await _api_request(
+            "POST",
+            f"/tasks/{task_id}/scaffold",
+            project_root=project_root,
+        )
+        return _mcp_text_payload(data)
+    except BuilderToolServiceError as exc:
+        return _error_payload(str(exc), exit_code=exc.exit_code, detail=exc.detail)
+
+
 async def builder_metrics(project_root: str | None = None) -> dict[str, Any]:
     try:
         data = await _api_request("GET", "/dashboard/metrics", project_root=project_root)

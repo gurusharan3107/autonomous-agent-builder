@@ -896,6 +896,63 @@ async def test_sdk_mcp_task_recover_delegates_to_shared_service(monkeypatch):
     assert captured == {"task_id": "task-123", "project_root": "/tmp/project-root"}
 
 
+async def test_sdk_mcp_workspace_scaffold_delegates_to_shared_service(monkeypatch):
+    captured: dict[str, object] = {}
+
+    async def fake_workspace_scaffold(
+        task_id: str, *, project_root: str | None = None
+    ) -> dict:
+        captured["task_id"] = task_id
+        captured["project_root"] = project_root
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps(
+                        {"status": "ok", "action": "scaffold_ready", "language": "python"}
+                    ),
+                }
+            ],
+            "metadata": {"exit_code": 0},
+        }
+
+    def fake_tool(name, description, input_schema, annotations=None):
+        def decorator(func):
+            func._sdk_tool_name = name
+            return func
+
+        return decorator
+
+    def fake_create_sdk_mcp_server(name, version="1.0.0", tools=None):
+        return {"name": name, "tools": tools or []}
+
+    fake_sdk = ModuleType("claude_agent_sdk")
+    fake_sdk.create_sdk_mcp_server = fake_create_sdk_mcp_server
+    fake_sdk.tool = fake_tool
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_sdk)
+    monkeypatch.setattr(
+        builder_tool_service, "builder_workspace_scaffold", fake_workspace_scaffold
+    )
+
+    from autonomous_agent_builder.agents.tools import sdk_mcp
+
+    importlib.reload(sdk_mcp)
+
+    servers = sdk_mcp.build_default_mcp_servers(
+        workspace_path=".",
+        project_root="/tmp/project-root",
+        allowed_tool_names={"mcp__builder__workspace_scaffold"},
+    )
+    builder_tools = {tool._sdk_tool_name: tool for tool in servers["builder"]["tools"]}
+
+    assert "workspace_scaffold" in builder_tools
+    result = await builder_tools["workspace_scaffold"]({"task_id": "task-abc"})
+
+    payload = json.loads(result["content"][0]["text"])
+    assert payload == {"status": "ok", "action": "scaffold_ready", "language": "python"}
+    assert captured == {"task_id": "task-abc", "project_root": "/tmp/project-root"}
+
+
 def test_sdk_mcp_servers_filter_tools_to_agent_allowlist(monkeypatch):
     def fake_tool(name, description, input_schema, annotations=None):
         def decorator(func):

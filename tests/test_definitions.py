@@ -19,6 +19,7 @@ class TestAgentDefinitions:
             "init-project-chat",
             "planner",
             "designer",
+            "scaffold",
             "code-gen",
             "pr-creator",
             "build-verifier",
@@ -77,18 +78,22 @@ class TestAgentDefinitions:
         assert "untracked files" in pr_creator.prompt_template
         assert "scratch" in pr_creator.prompt_template
 
-    def test_chat_can_use_builder_and_workflow_via_bash(self):
+    def test_chat_routes_through_mcps_not_shell(self):
+        # Per docs/rubric/autonomous-builder-agents.md: chat must not have Bash,
+        # Write, or Edit. Its job is to translate operator intent into Builder
+        # lifecycle moves via MCP tools — never via shell or direct file edits.
         chat = get_agent_definition("chat")
-        assert "Bash" in chat.tools
-        assert "builder" in chat.prompt_template
-        assert "workflow" in chat.prompt_template
-        assert "AskUserQuestion" in chat.prompt_template
+        assert "Bash" not in chat.tools
+        assert "Write" not in chat.tools
+        assert "Edit" not in chat.tools
         assert "AskUserQuestion" in chat.tools
         assert chat.auto_approve_tools is not None
         assert "AskUserQuestion" not in chat.auto_approve_tools
+        # Prompt explicitly forbids shell/filesystem workarounds.
+        assert "You do NOT have Bash, Write, or Edit" in chat.prompt_template
+        # Lifecycle routing remains explicit.
         assert "Do not treat the task board as the backlog" in chat.prompt_template
         assert "`mcp__builder__board` first" in chat.prompt_template
-        assert "Do not use Bash, git, npm, or test results" in chat.prompt_template
         assert "never mark a Board task complete" in chat.prompt_template
         assert "mcp__builder__task_recover" in chat.prompt_template
         assert "requiring an exact recovery phrase" in chat.prompt_template
@@ -121,6 +126,42 @@ class TestAgentDefinitions:
         assert "mcp__builder__backlog_item_show" in chat.tools
         assert "mcp__builder__backlog_item_list" in chat.auto_approve_tools
         assert "mcp__builder__backlog_item_show" in chat.auto_approve_tools
+
+    def test_scaffold_runtime_contract(self):
+        # Scaffold decides stack at runtime, writes minimum config, never
+        # mutates backlog/board. See docs/rubric/autonomous-builder-agents.md.
+        scaffold = get_agent_definition("scaffold")
+        # Workspace edit tools — scaffold must be able to write config files.
+        assert "Read" in scaffold.tools
+        assert "Write" in scaffold.tools
+        assert "Edit" in scaffold.tools
+        assert "mcp__workspace__run_command" in scaffold.tools
+        # Stack ambiguity is resolved via AskUserQuestion, not freeform prose.
+        assert "AskUserQuestion" in scaffold.tools
+        # No backlog/board mutation — scaffold cannot touch lifecycle state.
+        forbidden = {
+            "mcp__builder__board",
+            "mcp__builder__task_dispatch",
+            "mcp__builder__task_recover",
+            "mcp__builder__kb_add",
+            "mcp__builder__kb_update",
+            "mcp__builder__memory_add",
+            "mcp__builder__backlog_item_list",
+        }
+        assert forbidden.isdisjoint(set(scaffold.tools))
+        # AskUserQuestion never auto-approves: operator must answer explicitly.
+        assert scaffold.auto_approve_tools is not None
+        assert "AskUserQuestion" not in scaffold.auto_approve_tools
+        # Cap the agent aggressively to avoid the runaway-turn pattern.
+        assert scaffold.max_turns <= 12
+        assert scaffold.max_budget_usd <= 2.00
+        # Prompt encodes the SCAFFOLD_RESULT_JSON contract used by the
+        # orchestrator to update Project.language.
+        assert "SCAFFOLD_RESULT_JSON" in scaffold.prompt_template
+        assert "product language" in scaffold.prompt_template
+        # Scaffold uses operator-facing terms ('web app', 'command-line tool')
+        # and never leaks framework names into questions.
+        assert "framework" in scaffold.prompt_template.lower()
 
     def test_codegen_gets_only_task_scoped_context_and_workspace_execution_tools(self):
         codegen = get_agent_definition("code-gen")

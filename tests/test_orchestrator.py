@@ -279,6 +279,9 @@ class TestDispatchPhases:
     async def test_queued_implementation_runs_codegen(self, orchestrator, mock_sdk, tmp_path):
         workspace = tmp_path / "workspace"
         workspace.mkdir()
+        # Seed a language marker so scaffold is skipped — this test exercises
+        # the code-gen step, not the scaffold step.
+        (workspace / "pyproject.toml").touch()
         task = _make_task(TaskStatus.QUEUED, workspace_path=str(workspace))
         task.phase = TaskPhase.IMPLEMENTATION
         await orchestrator.dispatch(task)
@@ -303,6 +306,7 @@ class TestDispatchPhases:
     async def test_implementation_runs_codegen(self, orchestrator, mock_sdk, tmp_path):
         workspace = tmp_path / "workspace"
         workspace.mkdir()
+        (workspace / "pyproject.toml").touch()
         task = _make_task(TaskStatus.IMPLEMENTATION, workspace_path=str(workspace))
         task.depends_on = {
             "operator_decision": {
@@ -731,6 +735,7 @@ class TestDispatchPhases:
             is_worktree=True,
         )
         Path(workspace_info.path).mkdir(parents=True)
+        (Path(workspace_info.path) / "pyproject.toml").touch()
         orchestrator._provision_workspace_info = AsyncMock(return_value=workspace_info)
 
         await orchestrator.dispatch(task)
@@ -764,6 +769,7 @@ class TestDispatchPhases:
             is_worktree=True,
         )
         Path(workspace_info.path).mkdir(parents=True)
+        (Path(workspace_info.path) / "pyproject.toml").touch()
         orchestrator._provision_workspace_info = AsyncMock(return_value=workspace_info)
 
         await orchestrator.dispatch(task)

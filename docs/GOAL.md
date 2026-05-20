@@ -84,3 +84,183 @@ Guiding principles:
 2. Simplest solution first. Do not add abstractions or flexibility that weren't explicitly requested.
 3. Don't touch unrelated code. If a file or function is not directly part of the current task, do not modify it.
 4. Flag uncertainty explicitly. If not confident about an approach, say so before proceeding.
+
+## Per-Agent Boundaries (first principles)
+
+Each agent has one job, derived from the customer requirement. Its tool
+allowlist must match that job exactly — no broader. Mismatches become
+operator-UX leaks (agent asks the user about permissions, Write hooks,
+dispatch, worktrees, etc.).
+
+- **agent-chat**: translate operator intent into Builder lifecycle moves and
+  explain Builder state in product language. Tools: Read, `mcp__builder__*`
+  read + narrow lifecycle mutations (backlog item create, sprint approve,
+  task dispatch/supersede, task recover), AskUserQuestion-equivalent. NO
+  Write, NO Edit, NO raw Bash. If the operator needs files written, agent-chat
+  must invoke a lifecycle MCP that triggers the scaffold or code-gen agent —
+  it must never write code itself.
+- **scaffold** (runtime-decided, model-backed): pick the stack from feature
+  intent, ask the operator only if the stack is genuinely ambiguous, scaffold
+  the appropriate config files, register language-appropriate gates. Tools:
+  Read/Write/Edit/Bash inside workspace, mcp__workspace__* run_command/
+  run_tests, AskUserQuestion, language-aware gate-registration tool. NO
+  backlog/board mutations. **Scaffold is not Python-specific** — it decides
+  stack at runtime per feature/operator intent.
+- **code-gen**: implement one approved task inside its worktree. Tools: Read/
+  Write/Edit/Glob/Grep/Bash with `cwd=worktree`, mcp__workspace__*. NO
+  backlog/board mutations. NO writes outside the worktree (enforced by
+  `enforce_workspace_boundary` hook).
+- **build-verifier**: run lint/test/build/browser proofs and return structured
+  evidence. Tools: Read, mcp__workspace__ run_tests/run_linter/run_command,
+  read-only Bash. NO Write/Edit, NO mutations.
+- **repo-researcher**: read-only repo discovery for reverse engineering and
+  for diagnosing existing surfaces. Read/Glob/Grep, mcp__builder__* reads.
+  NO Write/Edit, NO mutations.
+- **doc-bridge**: maintained-doc freshness at the delivery edge. Edit on docs
+  paths only. NO Bash, NO Write outside docs/.
+
+## Tuning Methodology
+
+### Continuous CLI monitoring (always-on, not on-demand)
+
+While ANY agent run is in flight on the dashboard, the tester must have
+`builder` CLI signals streaming in parallel. Do not wait until the agent
+"settles" to inspect — a 27-turn $0.46 run that errors at the end is much
+cheaper to catch on turn 5 via live CLI than at turn 27 via post-mortem.
+
+Set up these streams before the first operator prompt of any test cycle and
+keep them running for the whole cycle (foreground tail, persistent Monitor,
+or equivalent — whatever your harness supports):
+
+- `watch -n 5 'cd <devpulse-workspace> && builder board show --json'`
+  → catches Board lane transitions (pending → active → blocked → done →
+  shipped) and count drift in real time.
+- `watch -n 5 'builder logs analyze --session <id> --json'`
+  → catches per-turn changes in prompt_count, total_cost_usd, raw_token_total,
+  cached_tokens, cache_ratio, chunk_pressure, recommended_next_change.
+- `watch -n 5 'builder logs --error --compact --json'`
+  → fires on every new runtime error, SDK failure, hook denial, gate error.
+- `watch -n 5 'builder backlog task status <task-id> --json'`
+  → catches blocked_reason updates and capability_limit transitions on the
+  task under test.
+- `watch -n 5 'builder agent sessions --limit 5 --json'`
+  → catches new agent runs starting (scaffold → code-gen → verifier chain).
+
+A test cycle running without these streams is functionally blind. If your
+harness blocks the tester from continuous polling, set up CLI-driven
+notifications that fire on each delta and act on every delta as it arrives.
+
+### Per-prompt tuning loop
+
+After each operator prompt completes:
+
+1. `builder agent history --session <id> --full --json` — enumerate every
+   tool call the agent actually made.
+2. For each tool call ask: is this within the agent's narrow job?
+   - If yes, allow.
+   - If no, move the tool OUT of this agent's allowlist.
+3. For each tool call that was DENIED but the agent genuinely needed: prefer
+   introducing or invoking a different agent that owns that job over widening
+   the current agent's tools. Default to narrow specialists; broaden only when
+   no specialist fits.
+4. Re-run the same operator prompt after tuning. Token cost, turn count, and
+   blocked-state count must all go down. If they don't, the tuning was wrong.
+5. Cross-check `builder logs analyze --session <id> --json` and
+   `builder metrics show --json --full` after every tuning iteration to catch
+   regressions in cache ratio, chunk pressure, and avoidable-cost flags.
+
+## Forbidden Operator Language
+
+This rule binds **both sides** of the operator transcript: the human / tester
+acting as operator AND the agent responding to them. A real operator is a
+non-technical product user — they do not know what a "lifecycle", "scaffold
+tool", "worktree", "permission mode", or "Recover button" is, and they will
+not type those words. Testing the product with internals-laden prompts hides
+real operator-UX bugs, because the agent gets a free hint that bypasses the
+disambiguation work it should be doing.
+
+Banned terms (unless the operator literally typed them first, verbatim, in a
+prior turn): write hook, permission mode, allowlist, dispatch, gate, worktree,
+scaffold, blocked_reason, can_use_tool, allowed_tools, MCP, mcp__builder__*,
+subagent, SDK, session_id, cwd, hook policy, lifecycle, phase, dispatch flow,
+quality gate, code-gen, agent-chat, recover, recovery action.
+
+The agent must own the concept internally; the operator-side prompt must use
+product language.
+
+**Good operator prompts (use these shapes when testing):**
+- "I want a developer pulse dashboard for my team's GitHub activity."
+- "It's still not working. When can I see the dashboard?"
+- "Add a search box to the page I just saw."
+- "This button is broken — fix it."
+- "What's the holdup?"
+- "Show me what shipped."
+- "Drop the persistence idea and keep the rest."
+- "Make it faster."
+
+**Bad operator prompts (do not use when testing):**
+- "Recover the blocked task and dispatch it through the proper lifecycle."
+- "Use the scaffold tool to set up the workspace."
+- "Approve the sprint plan and trigger the next phase."
+- "Override the permission policy so Write is enabled."
+
+The word "recover" may appear in the **agent's reply** only if the dashboard
+exposes a visible Recover control AND that control is actually functional for
+the current blocked state. A 409 "task_not_recoverable" with the Recover
+button still rendered is a hard operator-trust failure.
+
+## Operator Scenarios (forward, edge, reverse)
+
+Forward engineering:
+
+- F1: fresh workspace → "I want a developer pulse dashboard for my team" —
+  agent-chat asks 3-5 product questions → scaffold decides stack → planner
+  approves → code-gen implements → ship with browser proof.
+- F2: "Add a search box to my dashboard" — incremental on existing app; skip
+  scaffold; capture as improvement; plan/approve/implement.
+- F3: "This button is broken — fix it" — repo-researcher locates; capture
+  incident; code-gen patches; build-verifier confirms; ship.
+- F4: "Make it faster" — clarify which surface; measure; capture optimization;
+  plan; implement.
+- F5: "Drop the persistence feature" mid-sprint — confirm, supersede task,
+  update backlog.
+- F6: "What's the status?" — read board/runs/metrics; answer in product
+  language; no mutations.
+- F7: "Show me a screenshot of what shipped" — invoke build-verifier; embed
+  result in chat.
+- F8: "Make it better" (ambiguous) — ask structured questions; do not capture
+  until intent is clear.
+- F9: "Yes, ship it" — approve sprint; trigger dispatch.
+- F10: "What's the weather?" — politely redirect; no tool calls.
+
+Edge cases / failure scenarios:
+
+- E1: code-gen fails mid-sprint — orchestrator marks blocked with actionable
+  text; auto-retry once if transient; never ask operator about
+  Write/permissions/worktree.
+- E2: provider limit hit — pause with `capability_limit` + reset metadata;
+  auto-resume on reset.
+- E3: approval rejected — ask "what should change?" with structured options.
+- E4: concurrent tabs — state consistent; second tab inherits same session.
+- E5: transient SDK / network error — retry with backoff; surface only if
+  persistent.
+- E6: irreversible action requested — structured confirmation with explicit
+  consequence text before any mutation.
+- E7: sprint completion — summarize shipped scope, browser proof, cost; ask
+  "what's next?".
+- E8: stack mismatch discovered late — block + offer migration path; never
+  silently break.
+- E9: operator answers a question card with freeform text — parse intent;
+  route to the matching lifecycle action.
+
+Reverse engineering:
+
+- R1: "Help me understand this codebase" — repo-researcher inventories;
+  summarize in product language.
+- R2: "Add tests to this Java repo" — scaffold detects existing Java/Maven;
+  registers junit/checkstyle gates; does not rescaffold.
+- R3: "Migrate to TypeScript" — capture as project with multi-sprint plan;
+  approve per phase.
+
+Every code change to agent definitions, tool allowlists, or phases must be
+validated against this scenario list before merging.

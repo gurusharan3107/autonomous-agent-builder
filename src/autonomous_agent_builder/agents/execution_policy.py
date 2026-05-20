@@ -47,6 +47,7 @@ class AgentRuntimePolicy:
 _TASK_BUDGET_TOKENS: dict[str, int] = {
     "planner": 120_000,  # 20 turns, opus reasoning-heavy
     "designer": 120_000,  # 20 turns, opus architecture work
+    "scaffold": 60_000,  # 12 turns, sonnet stack-decision + minimum config
     "code-gen": 150_000,  # 30 turns, sonnet implementation
     "integration-resolver": 100_000,  # 20 turns, conflict resolution
     "feature-verifier": 120_000,  # 24 turns, acceptance + test generation
@@ -97,6 +98,14 @@ _AGENT_POLICY: dict[str, tuple[str, str, tuple[str, ...], str, str, str]] = {
         "read_only_design",
         "session_start_context_and_tool_audit",
         "design_risk_gate",
+    ),
+    "scaffold": (
+        "medium",
+        "scripted_repeatable_work",
+        (),
+        "workspace_write_with_argv_shell",
+        "workspace_boundary_bash_argv_tool_audit",
+        "scaffold_efficiency",
     ),
     "code-gen": (
         "high",

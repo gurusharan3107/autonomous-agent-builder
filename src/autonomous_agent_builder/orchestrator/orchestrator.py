@@ -84,6 +84,12 @@ from autonomous_agent_builder.orchestrator.operator_decisions import (
     clear_operator_decision_handoff,
     extract_operator_decision,
 )
+from autonomous_agent_builder.services.workspace_scaffold import (
+    build_scaffold_template_vars,
+    parse_scaffold_result,
+    persist_scaffold_language,
+    should_scaffold,
+)
 from autonomous_agent_builder.orchestrator.phase_context import (
     compact_phase_output,
     phase_context,
@@ -452,6 +458,17 @@ class Orchestrator:
         )
 
         workspace = await self._ensure_workspace(task)
+        # Gates-first invariant: ensure the workspace has the language-appropriate
+        # lint/test config before dispatching code-gen. The scaffold agent is
+        # runtime-decided (it picks the stack from feature intent) and writes
+        # only minimum config; it never implements the feature. Skipped
+        # deterministically when a language is already detectable.
+        scaffold_block = await self._run_workspace_scaffold_if_needed(task, workspace)
+        if scaffold_block is not None:
+            set_task_status(task, TaskStatus.BLOCKED)
+            task.blocked_reason = scaffold_block
+            await self.db.flush()
+            return
         # Implementation runs in the task workspace, while design may have run in
         # the repo root. Do not resume across cwd boundaries; pass compact design
         # context explicitly instead.
@@ -490,6 +507,59 @@ class Orchestrator:
             set_task_status(task, TaskStatus.QUALITY_GATES)
 
         await self.db.flush()
+
+    async def _run_workspace_scaffold_if_needed(
+        self,
+        task: Task,
+        workspace: Workspace,
+    ) -> str | None:
+        """Run the scaffold agent before code-gen when the workspace lacks a
+        detectable language. Returns None on success/skip, or an actionable
+        `blocked_reason` string when scaffold fails.
+        """
+        workspace_path = str(getattr(workspace, "path", "") or "")
+        if not workspace_path:
+            return None
+        needs, detected = should_scaffold(workspace_path)
+        feature = task.feature
+        project = feature.project if feature is not None else None
+        if not needs:
+            # Workspace already has a detectable language. Sync Project.language
+            # so the quality gate runner picks up the right binaries.
+            if project is not None and detected and project.language != detected:
+                await persist_scaffold_language(project, detected, self.db)
+            return None
+        if project is None:
+            return (
+                "scaffold_failed: cannot scaffold workspace without a project — "
+                "feature has no project association"
+            )
+
+        feature_description = (feature.description or feature.title or "").strip()
+        template_vars = build_scaffold_template_vars(
+            feature_description=feature_description,
+            project_name=project.name,
+            workspace_path=workspace_path,
+        )
+        result = await self._run_agent(task, "scaffold", template_vars)
+
+        if result.error:
+            return f"scaffold_failed: {result.error}"
+
+        parsed = parse_scaffold_result(result.output_text or "")
+        if parsed.action != "scaffolded":
+            return parsed.reason or "scaffold_failed: unknown scaffold failure"
+
+        # Verify the agent actually produced detectable config (defends against
+        # the agent reporting success without writing files).
+        _, verify_detected = should_scaffold(workspace_path)
+        if verify_detected == "unknown":
+            return (
+                "scaffold_failed: agent reported language="
+                f"{parsed.language} but no config files were detected after run"
+            )
+        await persist_scaffold_language(project, parsed.language, self.db)
+        return None
 
     def _recovery_context(self, task: Task) -> dict[str, Any]:
         depends_on = task.depends_on if isinstance(task.depends_on, dict) else {}

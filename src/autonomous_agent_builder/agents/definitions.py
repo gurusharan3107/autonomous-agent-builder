@@ -102,9 +102,14 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "- Provide guidance on development tasks\n"
             "- Search through project knowledge and memory\n\n"
             "Use Read/Glob/Grep to explore the codebase when needed.\n"
-            "Use Bash for repo-safe argv commands when direct CLI evidence is needed.\n"
-            "The `builder` CLI and `workflow` CLI are approved for this project and "
-            "should be treated as first-class tools.\n"
+            "You do NOT have Bash, Write, or Edit in this lane. If a request needs files "
+            "written, code generated, or the workspace bootstrapped, do not attempt shell "
+            "or filesystem workarounds. Route the action through the matching Builder MCP "
+            "(for example `mcp__builder__task_dispatch` for code work or "
+            "`mcp__builder__workspace_scaffold` for language-aware workspace setup when that "
+            "tool is granted). If no Builder MCP covers the request, surface it via "
+            "`AskUserQuestion` or by explaining the blocker in product language to the "
+            "operator — never invent permissions, shell hacks, or write hooks.\n"
             "Use builder_backlog_item_list or builder_backlog_item_show for typed backlog "
             "items such as feature, improvement, optimization, and incident entries. "
             "Do not treat the task board as the backlog.\n"
@@ -119,7 +124,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "or task-count status, use the SDK MCP tools by their exact names: "
             "`mcp__builder__board` first, then `mcp__builder__task_show` or "
             "`mcp__builder__task_status` for a specific task. Treat these as "
-            "read-only status checks. Do not use Bash, git, npm, or test results "
+            "read-only status checks. Do not use git, npm, or test results "
             "as the primary evidence for Board state, and never mark a Board task "
             "complete unless the builder Board/task status says it is done. Do not "
             "infer Board state from backlog items alone.\n\n"
@@ -152,7 +157,6 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Read",
             "Glob",
             "Grep",
-            "Bash",
             "mcp__builder__board",
             "mcp__builder__kb_search",
             "mcp__builder__kb_add",
@@ -166,6 +170,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "mcp__builder__task_status",
             "mcp__builder__task_recover",
             "mcp__builder__task_dispatch",
+            "mcp__builder__workspace_scaffold",
             "AskUserQuestion",
         ),
         auto_approve_tools=(
@@ -310,6 +315,88 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         model="opus",
         max_turns=20,
         max_budget_usd=3.00,
+    ),
+    "scaffold": AgentDefinition(
+        name="scaffold",
+        description=(
+            "Runtime-decided workspace bootstrap. Decides the stack from feature "
+            "intent and operator answers, writes the minimum lint/test config "
+            "the chosen stack needs, and reports the chosen language so gates "
+            "register cleanly. Runs before the first code-gen dispatch in any "
+            "workspace whose language is unknown."
+        ),
+        prompt_template=(
+            "You are the scaffold agent. Your only job is preparing the workspace "
+            "at {workspace_path} so the first implementation run can lint and test "
+            "cleanly. Do NOT implement the feature itself.\n\n"
+            "Decide the stack — web app, mobile app, command-line tool, library, "
+            "desktop app — from the feature description and any operator answers "
+            "already in this session. Pick the simplest stack that satisfies the "
+            "feature.\n\n"
+            "When the stack is genuinely ambiguous (and ONLY then), use "
+            "`AskUserQuestion` with options written in product language ('web app', "
+            "'command-line tool', 'mobile app') — never expose framework or "
+            "language names to the operator.\n\n"
+            "Output discipline:\n"
+            "- Write only the minimum config files the chosen stack needs for "
+            "  lint and test to succeed on an empty source tree. Examples: "
+            "  Python → `pyproject.toml` with ruff + pytest sections, "
+            "  `src/<pkg>/__init__.py`, `tests/__init__.py`; Node → `package.json` "
+            "  with scripts, `eslint.config.js`, `tsconfig.json`; Go → `go.mod`. "
+            "  Match the project's existing patterns if any are detected.\n"
+            "- Idempotent. Do not overwrite files that already exist with non-empty "
+            "  content.\n"
+            "- Only write inside {workspace_path}. Never edit Builder runtime "
+            "  guidance files (`CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md`).\n"
+            "- Do not narrate progress. Use bounded command output via "
+            "  mcp__workspace__run_command; keep responses short.\n\n"
+            "On success, finish with one JSON object on its own line, no other "
+            "trailing text:\n\n"
+            "SCAFFOLD_RESULT_JSON: {{\"language\": \"<python|node|go|java|rust|...>\", "
+            "\"stack\": \"<short stack id, e.g. python-cli or node-vite-react>\", "
+            "\"files_written\": [\"<relative path>\", ...], "
+            "\"gate_set\": [\"<gate name>\", ...]}}\n\n"
+            "If you cannot decide the stack even after one structured question, do "
+            "NOT keep asking. Emit `OPERATOR_DECISION_JSON:` followed immediately "
+            "by one raw JSON object with shape:\n"
+            "{{\n"
+            '  "phase": "scaffold",\n'
+            '  "summary": "<brief why scaffold cannot proceed>",\n'
+            '  "question": "<exact operator decision needed>",\n'
+            '  "options": ["<option 1>", "<option 2>"],\n'
+            '  "recommended_option": "<one option or empty>"\n'
+            "}}\n\n"
+            "{tool_context}\n\n"
+            "Feature: {feature_description}\n"
+            "Project: {project_name}\n"
+            "Operator answers so far: {operator_answers}\n"
+            "Workspace: {workspace_path}\n"
+        ),
+        tools=(
+            "Read",
+            "Edit",
+            "Write",
+            "Glob",
+            "Grep",
+            "mcp__workspace__get_project_info",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+            "mcp__workspace__run_command",
+            "mcp__builder__memory_search",
+            "AskUserQuestion",
+        ),
+        auto_approve_tools=(
+            "Read",
+            "Glob",
+            "Grep",
+            "mcp__workspace__get_project_info",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+            "mcp__builder__memory_search",
+        ),
+        model="sonnet",
+        max_turns=12,
+        max_budget_usd=1.50,
     ),
     "code-gen": AgentDefinition(
         name="code-gen",

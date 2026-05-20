@@ -145,6 +145,14 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
     ):
         return task_status, TaskStatus.IMPLEMENTATION
 
+    if task_status == TaskStatus.BLOCKED.value and blocked_reason.startswith(
+        "scaffold_failed:"
+    ):
+        # Scaffold runs at the entry of IMPLEMENTATION; re-running implementation
+        # invokes scaffold again deterministically (it skips if a language is
+        # already detectable).
+        return task_status, TaskStatus.IMPLEMENTATION
+
     if task_status == TaskStatus.DONE.value and await _latest_verifier_reported_failed_check(
         task, db
     ):
@@ -168,7 +176,8 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
             "blocked_reason": task.blocked_reason,
             "message": (
                 "Only failed tasks, capability-limit tasks, documentation-gate blocked tasks, "
-                "dispatch-failed blocked tasks, invalid pending verifier tasks, "
+                "dispatch-failed blocked tasks, scaffold-failed blocked tasks, "
+                "invalid pending verifier tasks, "
                 "or PR change-request blocked tasks can be recovered. "
                 "Dispatchable tasks should be dispatched directly."
             ),

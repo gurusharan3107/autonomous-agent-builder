@@ -95,7 +95,9 @@ def truncate_preview(value: str, *, limit: int = 800) -> str:
 
 
 def normalize_tool_response(tool_response: Any) -> tuple[str, str]:
-    if isinstance(tool_response, dict):
+    # Render for transport/storage. Use a stable JSON form for dicts and lists,
+    # and a plain string for primitive payloads.
+    if isinstance(tool_response, dict | list):
         try:
             rendered = json.dumps(tool_response, ensure_ascii=True, sort_keys=True)
         except TypeError:
@@ -103,12 +105,45 @@ def normalize_tool_response(tool_response: Any) -> tuple[str, str]:
     else:
         rendered = str(tool_response or "")
 
-    lowered = rendered.lower()
-    if '"status": "error"' in lowered or '"status":"error"' in lowered:
+    # Classification rule: only the tool envelope's own error signal counts.
+    # Do NOT substring-scan the rendered payload for "status": "error", because
+    # a successful MCP response can legitimately include nested error data
+    # (e.g. mcp__builder__task_show returning a task whose `gate_results[*].
+    # status == "error"`). Substring scanning misclassifies every such success
+    # as a tool_error, and the chat agent then retries unnecessarily.
+    if _tool_response_is_error(tool_response):
         return "tool_error", truncate_preview(rendered)
-    if lowered.startswith("error:") or "\nerror:" in lowered:
-        return "tool_error", truncate_preview(rendered)
+    if isinstance(tool_response, str):
+        stripped = tool_response.strip().lower()
+        if stripped.startswith("error:") or stripped.startswith("traceback"):
+            return "tool_error", truncate_preview(rendered)
     return "tool_result", truncate_preview(rendered)
+
+
+def _tool_response_is_error(tool_response: Any) -> bool:
+    """Return True only when the tool envelope itself signals failure.
+
+    Recognises:
+    - Claude Agent SDK content-block lists with ``is_error: True`` on any block.
+    - Top-level dict envelopes with ``is_error: True`` or
+      ``status: "error"``/``"failed"`` or ``ok: False``.
+
+    Nested ``error`` fields inside a successful payload are NOT errors.
+    """
+    if isinstance(tool_response, list):
+        for block in tool_response:
+            if isinstance(block, dict) and block.get("is_error") is True:
+                return True
+        return False
+    if isinstance(tool_response, dict):
+        if tool_response.get("is_error") is True:
+            return True
+        if tool_response.get("ok") is False:
+            return True
+        status_value = tool_response.get("status")
+        if isinstance(status_value, str) and status_value.lower() in {"error", "failed"}:
+            return True
+    return False
 
 
 def kb_validate_policy(

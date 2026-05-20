@@ -325,6 +325,21 @@ def build_default_mcp_servers(
             args["task_id"], project_root=resolved_project_root
         )
 
+    @tool(
+        "workspace_scaffold",
+        (
+            "Scaffold the workspace for the task's project: decide the stack at "
+            "runtime, write minimum lint/test config, and persist the chosen "
+            "language so quality gates resolve their binaries. Idempotent — "
+            "calling on an already-scaffolded workspace is a no-op."
+        ),
+        _TASK_ID_SCHEMA,
+    )
+    async def workspace_scaffold(args: dict[str, Any]) -> dict:
+        return await builder_tool_service.builder_workspace_scaffold(
+            args["task_id"], project_root=resolved_project_root
+        )
+
     @tool("metrics", "Get project metrics such as cost, runs, and gate pass rate.", _EMPTY_SCHEMA)
     async def metrics(_args: dict[str, Any]) -> dict:
         return await builder_tool_service.builder_metrics(project_root=resolved_project_root)
@@ -598,6 +613,7 @@ def build_default_mcp_servers(
             ("task_status", task_status),
             ("task_dispatch", task_dispatch),
             ("task_recover", task_recover),
+            ("workspace_scaffold", workspace_scaffold),
             ("metrics", metrics),
             ("backlog_item_list", backlog_item_list),
             ("backlog_item_show", backlog_item_show),

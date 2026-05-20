@@ -139,6 +139,53 @@ async def recover_task(task_id: str, db: AsyncSession = Depends(get_db)):
     return await recover_failed_task(task, db)
 
 
+@router.post("/tasks/{task_id}/scaffold")
+async def scaffold_workspace_for_task(
+    task_id: str, db: AsyncSession = Depends(get_db)
+):
+    """Run the scaffold step for a task's workspace on demand.
+
+    Used by `mcp__builder__workspace_scaffold` so the chat agent can route a
+    workspace-setup intent through the lifecycle instead of attempting shell
+    or filesystem workarounds. Idempotent — skips deterministically when the
+    workspace already has a detectable language.
+    """
+    from autonomous_agent_builder.config import get_settings
+    from autonomous_agent_builder.orchestrator.orchestrator import Orchestrator
+
+    result = await db.execute(
+        select(Task)
+        .where(Task.id == task_id)
+        .options(
+            selectinload(Task.feature).selectinload(Feature.project),
+            selectinload(Task.workspace),
+            selectinload(Task.agent_runs),
+            selectinload(Task.approval_gates),
+        )
+    )
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    orchestrator = Orchestrator(get_settings(), db)
+    workspace = await orchestrator._ensure_workspace(task)
+    blocked_reason = await orchestrator._run_workspace_scaffold_if_needed(task, workspace)
+    if blocked_reason is not None:
+        return {
+            "status": "blocked",
+            "action": "scaffold_failed",
+            "reason": blocked_reason,
+            "task_id": task.id,
+        }
+    project = task.feature.project if task.feature is not None else None
+    return {
+        "status": "ok",
+        "action": "scaffold_ready",
+        "task_id": task.id,
+        "language": project.language if project is not None else "",
+    }
+
+
 async def _run_dispatch(task_id: str) -> None:
     await run_dispatch_followup_chain(
         task_id,

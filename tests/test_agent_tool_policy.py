@@ -26,6 +26,50 @@ def test_normalize_tool_response_classifies_error_payloads() -> None:
     assert '"message": "failed"' in content
 
 
+def test_normalize_tool_response_keeps_success_with_nested_gate_errors() -> None:
+    # Regression: mcp__builder__task_show returns a successful task payload that
+    # legitimately includes gate_results with status="error" for failed gates.
+    # The classifier must look at the envelope, not substring-scan the body.
+    task_show_success = {
+        "schema_version": "1",
+        "id": "t1",
+        "status": "blocked",
+        "blocked_reason": "Gate infrastructure error in code_quality, testing",
+        "gate_results": [
+            {"gate_name": "testing", "status": "error"},
+            {"gate_name": "code_quality", "status": "error"},
+        ],
+    }
+
+    event_type, _ = normalize_tool_response(task_show_success)
+
+    assert event_type == "tool_result"
+
+
+def test_normalize_tool_response_honours_sdk_is_error_blocks() -> None:
+    sdk_error_blocks = [{"type": "text", "text": "denied", "is_error": True}]
+    sdk_success_blocks = [
+        {
+            "type": "text",
+            "text": '{"status": "blocked", "gate_results": [{"status": "error"}]}',
+        }
+    ]
+
+    err_type, _ = normalize_tool_response(sdk_error_blocks)
+    ok_type, _ = normalize_tool_response(sdk_success_blocks)
+
+    assert err_type == "tool_error"
+    assert ok_type == "tool_result"
+
+
+def test_normalize_tool_response_treats_string_error_prefix_as_error() -> None:
+    event_type, _ = normalize_tool_response("Error: something failed")
+    traceback_type, _ = normalize_tool_response("Traceback (most recent call last):")
+
+    assert event_type == "tool_error"
+    assert traceback_type == "tool_error"
+
+
 def test_kb_validate_policy_rejects_parent_directory_escape(tmp_path) -> None:
     allowed, updated_input, deny_reason, next_action = kb_validate_policy(
         tmp_path,
