@@ -1,5 +1,29 @@
 # Autonomous Builder Robustness Progress
 
+### 2026-05-20 Observability Summary Runtime Aggregates Split
+
+- Backend decomposition pass: extracted 14 runtime aggregate functions
+  (`_empty_runtime_aggregates`, `_recommendations`, `_recommendation`,
+  `_phase_ceremony_summary`, `_agent_cost`, `_approval_wait_summary`,
+  `_provider_limit_summary`, `_error_summary`, `_error_row_has_later_success`,
+  `_session_user_prompt`, `_has_later_successful_prompt_session`,
+  `_session_terminal_runtime`, `_session_has_later_successful_terminal_status`,
+  `_has_later_successful_voice_tool`) into
+  `src/autonomous_agent_builder/observability/summary_runtime_aggregates.py`.
+  New module imports from `summary_db.py`, `summary_recommendation_lifecycle.py`,
+  and `services/provider_limits.py`.
+- Size evidence: `src/autonomous_agent_builder/observability/summary.py` is
+  now 540 measured lines, down from 1,138 in this pass (-53%). The new runtime
+  aggregates owner is 621 lines and is baselined.
+- decomposition_result: {"parent_before": 1138, "parent_after": 540,
+  "new_module": "observability/summary_runtime_aggregates.py",
+  "new_module_lines": 621, "functions_moved": 14}
+- Verification: `uv tool run ruff check` passed. `uv run pytest
+  tests/test_observability_summary.py -q` passed `18 passed`.
+  `uv run builder lint --complexity-report --json` passed with 0 violations
+  after ratcheting `summary.py` baseline from 1,138 to 540 and adding
+  `summary_runtime_aggregates.py` at 621.
+
 ### 2026-05-20 Observability Summary Recommendation Lifecycle Split
 
 - Backend decomposition pass: extracted 8 recommendation lifecycle functions

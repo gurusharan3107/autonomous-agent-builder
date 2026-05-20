@@ -132,7 +132,7 @@
     },
     "src/autonomous_agent_builder/observability/summary.py": {
       "extraction_plan": "Move recommendation rules, payload assembly, and summarization sections into named policy modules before adding observability behavior.",
-      "lines": 1138,
+      "lines": 540,
       "owner": "observability owner"
     },
     "src/autonomous_agent_builder/onboarding.py": {
@@ -324,6 +324,11 @@
       "extraction_plan": "This module IS the extraction target \u2014 split further if lifecycle reader exceeds threshold.",
       "lines": 319,
       "owner": "observability recommendation lifecycle owner"
+    },
+    "src/autonomous_agent_builder/observability/summary_runtime_aggregates.py": {
+      "extraction_plan": "This module IS the extraction target \u2014 split provider-limit, error, and approval-wait readers into focused sub-modules if they exceed threshold.",
+      "lines": 621,
+      "owner": "observability runtime aggregates owner"
     }
   },
   "functions": {
