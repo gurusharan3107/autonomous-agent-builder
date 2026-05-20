@@ -207,7 +207,7 @@
     },
     "src/autonomous_agent_builder/services/voice_operator.py": {
       "extraction_plan": "Extract intent policy, navigation recovery, dispatch, and digest builders into focused voice services before expanding voice behavior.",
-      "lines": 2396,
+      "lines": 2306,
       "owner": "realtime voice operator owner"
     },
     "src/autonomous_agent_builder/services/voice_operator_support.py": {
