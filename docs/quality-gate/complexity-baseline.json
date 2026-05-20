@@ -132,7 +132,7 @@
     },
     "src/autonomous_agent_builder/observability/summary.py": {
       "extraction_plan": "Move recommendation rules, payload assembly, and summarization sections into named policy modules before adding observability behavior.",
-      "lines": 1751,
+      "lines": 1437,
       "owner": "observability owner"
     },
     "src/autonomous_agent_builder/onboarding.py": {
@@ -314,6 +314,11 @@
       "extraction_plan": "This module IS the extraction target \u2014 split _deterministic_recommendations into smaller rule functions when branches exceed threshold.",
       "lines": 339,
       "owner": "observability recommendations owner"
+    },
+    "src/autonomous_agent_builder/observability/summary_db.py": {
+      "extraction_plan": "This module IS the extraction target \u2014 split further if new SQL query logic exceeds threshold.",
+      "lines": 342,
+      "owner": "observability db query owner"
     }
   },
   "functions": {

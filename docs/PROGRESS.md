@@ -1,5 +1,29 @@
 # Autonomous Builder Robustness Progress
 
+### 2026-05-20 Observability Summary DB Query Helpers Split
+
+- Backend decomposition pass: extracted 18 SQL/DB query primitive functions
+  (`_agent_run_rows`, `_chat_run_rows`, `_runtime_recovery_summary`,
+  `_context_budget_summary`, `_merge_rows`, `_sum_rows`, `_add_row`,
+  `_stop_reason_counts`, `_tool_counts`, `_event_types`,
+  `_repeated_retrieval_signal`, `_column_or_default`, `_table_exists`,
+  `_table_columns`, `_row_dict`, `_maybe_json_dict`, `_parse_datetime`,
+  `_provider_payload`) into
+  `src/autonomous_agent_builder/observability/summary_db.py`.
+  Parent imports all 17 public-facing names back as aliases.
+- Size evidence: `src/autonomous_agent_builder/observability/summary.py` is
+  now 1,437 measured lines, down from 1,751 in this pass. The new DB query
+  owner is 342 lines and remains below the 500-line target.
+- decomposition_result: {"parent_before": 1751, "parent_after": 1437,
+  "new_module": "observability/summary_db.py", "new_module_lines": 342,
+  "functions_moved": 18}
+- Verification: `uv tool run ruff check
+  src/autonomous_agent_builder/observability/summary.py
+  src/autonomous_agent_builder/observability/summary_db.py` passed.
+  `uv run pytest tests/test_observability_summary.py -q` passed `18 passed`.
+  `uv run builder lint --complexity-report --json` passed with 0 violations
+  after ratcheting `summary.py` baseline from 1,751 to 1,437.
+
 ### 2026-05-20 Observability Summary Deterministic Recommendations Split
 
 - Backend decomposition pass: extracted `_deterministic_recommendations`
