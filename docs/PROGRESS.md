@@ -1,5 +1,33 @@
 # Autonomous Builder Robustness Progress
 
+### 2026-05-20 Orchestrator Sprint Lifecycle Split
+
+- Backend decomposition pass: extracted 9 sprint branch management methods
+  (`_maybe_mark_sprint_shipped` → `sprint_mark_shipped`,
+  `_verify_materialized_sprint_checkout` → `sprint_verify_materialized_checkout`,
+  `_maybe_ff_merge_sprint_branch` → `sprint_maybe_ff_merge`,
+  `_verify_sprint_checkout_clean_after_merge` → `sprint_verify_clean_after_merge`,
+  `_stash_dirty_head_paths` → `sprint_stash_dirty_paths`,
+  `_restore_missing_head_paths` → `sprint_restore_missing_paths`,
+  `_open_sprint_pr` → `sprint_open_pr`,
+  `_sprint_changes_summary` → `sprint_changes_summary`,
+  `_extract_pr_url` → `sprint_extract_pr_url`) into
+  `src/autonomous_agent_builder/orchestrator/sprint_lifecycle.py`.
+  Class methods in `orchestrator.py` converted to one-liner delegations.
+  Pure functions (no `self`) call module-level helpers directly;
+  methods needing db/agents take `orchestrator: Any` as first param.
+- Size evidence: `src/autonomous_agent_builder/orchestrator/orchestrator.py` is
+  now 1,591 measured lines, down from 2,013 in this pass (-21%). The new sprint
+  lifecycle owner is 550 lines and is baselined.
+- decomposition_result: {"parent_before": 2013, "parent_after": 1591,
+  "new_module": "orchestrator/sprint_lifecycle.py",
+  "new_module_lines": 550, "methods_moved": 9}
+- Verification: `uv tool run ruff check` passed. `uv run pytest
+  tests/test_orchestrator.py tests/test_orchestrator_gates.py -q` passed
+  `93 passed`. `uv run builder lint --complexity-report --json` passed with
+  0 violations after ratcheting `orchestrator.py` baseline from 2,013 to 1,591
+  and adding `sprint_lifecycle.py` at 550.
+
 ### 2026-05-20 Observability Summary Runtime Aggregates Split
 
 - Backend decomposition pass: extracted 14 runtime aggregate functions

@@ -142,7 +142,12 @@
     },
     "src/autonomous_agent_builder/orchestrator/orchestrator.py": {
       "extraction_plan": "Move subprocess, workspace, gate, sprint-merge, and post-ship orchestration slices into named lifecycle services as behavior changes touch them.",
-      "lines": 2013,
+      "lines": 1591,
+      "owner": "orchestrator lifecycle owner"
+    },
+    "src/autonomous_agent_builder/orchestrator/sprint_lifecycle.py": {
+      "extraction_plan": "This module IS the extraction target — split ff-merge, PR opening, and materialized checkout into focused sprint sub-modules if they exceed threshold.",
+      "lines": 550,
       "owner": "orchestrator lifecycle owner"
     },
     "src/autonomous_agent_builder/orchestrator/post_ship_cli_probe.py": {
