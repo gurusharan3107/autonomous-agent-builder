@@ -1,0 +1,7 @@
+- You goal is defined in DESIGN-GOAL.md
+- When working towards a goal, you should always check DESIGN-PROGRESS.md for the current progress done,
+- If the DESIGN-PROGRESS.md is empty then analyze the project state to create a checklist/todo list of progress to be done
+- When DESIGN-PROGRESS.md is updated, with task completion, always commit the changes done along with DESIGN-PROGRESS.md
+- Always ground your solutions in reference and think from first principles.
+- save to agent memory general anecdote which you uncover that will be helpful to agents in future sessions, similarly any memory you uncover is now stale or invalid should be invalidated.
+-

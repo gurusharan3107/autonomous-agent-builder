@@ -1,0 +1,330 @@
+{
+  "files": {
+    "src/autonomous_agent_builder/agents/definitions.py": {
+      "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
+      "lines": 903,
+      "owner": "Agent runtime owner"
+    },
+    "src/autonomous_agent_builder/agents/hooks.py": {
+      "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
+      "lines": 599,
+      "owner": "Agent runtime owner"
+    },
+    "src/autonomous_agent_builder/agents/runner.py": {
+      "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
+      "lines": 801,
+      "owner": "Agent runtime owner"
+    },
+    "src/autonomous_agent_builder/agents/tool_registry.py": {
+      "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
+      "lines": 562,
+      "owner": "Agent runtime owner"
+    },
+    "src/autonomous_agent_builder/agents/tools/sdk_mcp.py": {
+      "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
+      "lines": 638,
+      "owner": "Agent runtime owner"
+    },
+    "src/autonomous_agent_builder/api/routes/dashboard_api.py": {
+      "extraction_plan": "Move request schemas, serialization, state transitions, and orchestration branches into focused route-adjacent services before adding route behavior.",
+      "lines": 1714,
+      "owner": "embedded/API route owner"
+    },
+    "src/autonomous_agent_builder/cli/commands/agent.py": {
+      "extraction_plan": "Move command-family helpers and output builders into focused CLI modules before adding commands or options.",
+      "lines": 503,
+      "owner": "CLI command owner"
+    },
+    "src/autonomous_agent_builder/cli/commands/kb.py": {
+      "extraction_plan": "Move command-family helpers and output builders into focused CLI modules before adding commands or options.",
+      "lines": 1735,
+      "owner": "CLI command owner"
+    },
+    "src/autonomous_agent_builder/cli/commands/logs.py": {
+      "extraction_plan": "Move command-family helpers and output builders into focused CLI modules before adding commands or options.",
+      "lines": 1679,
+      "owner": "CLI command owner"
+    },
+    "src/autonomous_agent_builder/cli/commands/memory.py": {
+      "extraction_plan": "Move command-family helpers and output builders into focused CLI modules before adding commands or options.",
+      "lines": 1203,
+      "owner": "CLI command owner"
+    },
+    "src/autonomous_agent_builder/cli/commands/metrics.py": {
+      "extraction_plan": "Move command-family helpers and output builders into focused CLI modules before adding commands or options.",
+      "lines": 528,
+      "owner": "CLI command owner"
+    },
+    "src/autonomous_agent_builder/db/models.py": {
+      "extraction_plan": "Split cohesive responsibilities into named owner modules before adding behavior.",
+      "lines": 676,
+      "owner": "database model owner"
+    },
+    "src/autonomous_agent_builder/embedded/server/agent_sprint_planning.py": {
+      "extraction_plan": "Continue moving sprint-planning and delivery-approval policy into focused services before adding new sprint planning behavior.",
+      "lines": 500,
+      "owner": "embedded Agent route owner"
+    },
+    "src/autonomous_agent_builder/embedded/server/routes/agent.py": {
+      "extraction_plan": "Continue moving chat-turn, voice, documentation, delivery, and token-evidence policy into focused route-adjacent services before adding new Agent-page behavior.",
+      "lines": 2398,
+      "owner": "embedded Agent route owner"
+    },
+    "src/autonomous_agent_builder/embedded/server/routes/dashboard.py": {
+      "extraction_plan": "Move request schemas, serialization, state transitions, and orchestration branches into focused route-adjacent services before adding route behavior.",
+      "lines": 1667,
+      "owner": "embedded/API route owner"
+    },
+    "src/autonomous_agent_builder/embedded/server/routes/kb.py": {
+      "extraction_plan": "Move request schemas, serialization, state transitions, and orchestration branches into focused route-adjacent services before adding route behavior.",
+      "lines": 586,
+      "owner": "embedded/API route owner"
+    },
+    "src/autonomous_agent_builder/embedded/server/routes/realtime.py": {
+      "extraction_plan": "Move request schemas, serialization, state transitions, and orchestration branches into focused route-adjacent services before adding route behavior.",
+      "lines": 1030,
+      "owner": "embedded/API route owner"
+    },
+    "src/autonomous_agent_builder/knowledge/architecture_evidence.py": {
+      "extraction_plan": "Split parsing, extraction, validation, and persistence responsibilities by knowledge concern before adding new knowledge behavior.",
+      "lines": 944,
+      "owner": "knowledge subsystem owner"
+    },
+    "src/autonomous_agent_builder/knowledge/document_spec.py": {
+      "extraction_plan": "Split parsing, extraction, validation, and persistence responsibilities by knowledge concern before adding new knowledge behavior.",
+      "lines": 1084,
+      "owner": "knowledge subsystem owner"
+    },
+    "src/autonomous_agent_builder/knowledge/evidence_graph.py": {
+      "extraction_plan": "Split parsing, extraction, validation, and persistence responsibilities by knowledge concern before adding new knowledge behavior.",
+      "lines": 1817,
+      "owner": "knowledge subsystem owner"
+    },
+    "src/autonomous_agent_builder/knowledge/extractor.py": {
+      "extraction_plan": "Split parsing, extraction, validation, and persistence responsibilities by knowledge concern before adding new knowledge behavior.",
+      "lines": 1314,
+      "owner": "knowledge subsystem owner"
+    },
+    "src/autonomous_agent_builder/knowledge/publisher.py": {
+      "extraction_plan": "Split parsing, extraction, validation, and persistence responsibilities by knowledge concern before adding new knowledge behavior.",
+      "lines": 698,
+      "owner": "knowledge subsystem owner"
+    },
+    "src/autonomous_agent_builder/knowledge/quality_gate.py": {
+      "extraction_plan": "Split parsing, extraction, validation, and persistence responsibilities by knowledge concern before adding new knowledge behavior.",
+      "lines": 747,
+      "owner": "knowledge subsystem owner"
+    },
+    "src/autonomous_agent_builder/observability/runtime_optimization.py": {
+      "extraction_plan": "Move recommendation rules, payload assembly, and summarization sections into named policy modules before adding observability behavior.",
+      "lines": 728,
+      "owner": "observability owner"
+    },
+    "src/autonomous_agent_builder/observability/summary.py": {
+      "extraction_plan": "Move recommendation rules, payload assembly, and summarization sections into named policy modules before adding observability behavior.",
+      "lines": 2185,
+      "owner": "observability owner"
+    },
+    "src/autonomous_agent_builder/onboarding.py": {
+      "extraction_plan": "Split cohesive responsibilities into named owner modules before adding behavior.",
+      "lines": 1932,
+      "owner": "module owner"
+    },
+    "src/autonomous_agent_builder/orchestrator/orchestrator.py": {
+      "extraction_plan": "Move subprocess, workspace, gate, sprint-merge, and post-ship orchestration slices into named lifecycle services as behavior changes touch them.",
+      "lines": 2828,
+      "owner": "orchestrator lifecycle owner"
+    },
+    "src/autonomous_agent_builder/runtime/codex_app_server_runtime.py": {
+      "extraction_plan": "Split request construction, streaming, retry classification, and output normalization into focused runtime helpers before adding runtime behavior.",
+      "lines": 1350,
+      "owner": "runtime adapter owner"
+    },
+    "src/autonomous_agent_builder/runtime/codex_cli_runtime.py": {
+      "extraction_plan": "Split request construction, streaming, retry classification, and output normalization into focused runtime helpers before adding runtime behavior.",
+      "lines": 635,
+      "owner": "runtime adapter owner"
+    },
+    "src/autonomous_agent_builder/services/builder_tool_service.py": {
+      "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
+      "lines": 1386,
+      "owner": "service boundary owner"
+    },
+    "src/autonomous_agent_builder/services/codex_optimization.py": {
+      "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
+      "lines": 549,
+      "owner": "service boundary owner"
+    },
+    "src/autonomous_agent_builder/services/readiness.py": {
+      "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
+      "lines": 576,
+      "owner": "service boundary owner"
+    },
+    "src/autonomous_agent_builder/services/run_reconciliation.py": {
+      "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
+      "lines": 512,
+      "owner": "service boundary owner"
+    },
+    "src/autonomous_agent_builder/services/runtime_guidance.py": {
+      "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
+      "lines": 1211,
+      "owner": "service boundary owner"
+    },
+    "src/autonomous_agent_builder/services/runtime_settings.py": {
+      "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
+      "lines": 670,
+      "owner": "service boundary owner"
+    },
+    "src/autonomous_agent_builder/services/sprint_execution.py": {
+      "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
+      "lines": 825,
+      "owner": "service boundary owner"
+    },
+    "src/autonomous_agent_builder/services/voice_operator.py": {
+      "extraction_plan": "Extract intent policy, navigation recovery, dispatch, and digest builders into focused voice services before expanding voice behavior.",
+      "lines": 2781,
+      "owner": "realtime voice operator owner"
+    },
+    "tests/e2e/test_pipeline.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 525,
+      "owner": "pipeline test owner"
+    },
+    "tests/test_api_routes.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 1133,
+      "owner": "api routes test owner"
+    },
+    "tests/test_builder_cli_surfaces.py": {
+      "extraction_plan": "Move command-family contract tests into focused CLI test files when touching their surfaces; keep this file for shared CLI wiring only.",
+      "lines": 2797,
+      "owner": "builder CLI contract test owner"
+    },
+    "tests/test_builder_tool_service.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 1123,
+      "owner": "builder tool service test owner"
+    },
+    "tests/test_claude_runtime.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 529,
+      "owner": "claude runtime test owner"
+    },
+    "tests/test_codex_app_server_runtime.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 1111,
+      "owner": "codex app server runtime test owner"
+    },
+    "tests/test_dashboard_api.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 2190,
+      "owner": "dashboard api test owner"
+    },
+    "tests/test_embedded_server_app.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 1247,
+      "owner": "embedded server app test owner"
+    },
+    "tests/test_kb_publisher.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 931,
+      "owner": "kb publisher test owner"
+    },
+    "tests/test_memory_cli.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 552,
+      "owner": "memory cli test owner"
+    },
+    "tests/test_observability_summary.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 1029,
+      "owner": "observability summary test owner"
+    },
+    "tests/test_onboarding_api.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 744,
+      "owner": "onboarding api test owner"
+    },
+    "tests/test_orchestrator.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 970,
+      "owner": "orchestrator test owner"
+    },
+    "tests/test_orchestrator_gates.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 1747,
+      "owner": "orchestrator gates test owner"
+    },
+    "tests/test_realtime_voice_operator.py": {
+      "extraction_plan": "Move policy, navigation, recovery, dispatch, and digest tests into focused realtime voice test modules as those behaviors change.",
+      "lines": 2839,
+      "owner": "realtime voice operator test owner"
+    },
+    "tests/test_run_reconciliation.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 513,
+      "owner": "run reconciliation test owner"
+    },
+    "tests/test_sprint_branch_lifecycle.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 625,
+      "owner": "sprint branch lifecycle test owner"
+    },
+    "tests/test_sprint_execution.py": {
+      "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
+      "lines": 966,
+      "owner": "sprint execution test owner"
+    }
+  },
+  "functions": {
+    "src/autonomous_agent_builder/agents/runner.py::AgentRunner._execute_query": {
+      "branches": 38,
+      "extraction_plan": "Split query execution into runtime selection, event persistence, and response assembly when changing Agent runner behavior.",
+      "lines": 301,
+      "owner": "Agent runner owner"
+    },
+    "src/autonomous_agent_builder/agents/tools/sdk_mcp.py::build_default_mcp_servers": {
+      "branches": 1,
+      "extraction_plan": "Move each default MCP server descriptor into named factory functions before adding more server definitions.",
+      "lines": 364,
+      "owner": "SDK MCP tool owner"
+    },
+    "src/autonomous_agent_builder/knowledge/architecture_evidence.py::ArchitectureEvidencePlanner._collect_claims": {
+      "branches": 10,
+      "extraction_plan": "Split claim collection by source type and evidence normalization before adding new architecture evidence inputs.",
+      "lines": 298,
+      "owner": "architecture evidence owner"
+    },
+    "src/autonomous_agent_builder/observability/summary.py::_deterministic_recommendations": {
+      "branches": 67,
+      "extraction_plan": "Move recommendation rules into named policy objects or rule functions before adding new deterministic recommendations.",
+      "lines": 324,
+      "owner": "observability summary owner"
+    },
+    "src/autonomous_agent_builder/runtime/codex_app_server_runtime.py::CodexAppServerRuntime._run_once": {
+      "branches": 48,
+      "extraction_plan": "Move request construction, streaming collection, output normalization, and retry classification into focused runtime helpers before adding runtime behavior.",
+      "lines": 336,
+      "owner": "Codex app-server runtime owner"
+    },
+    "src/autonomous_agent_builder/services/voice_operator.py::AgentOperatorService.send_message": {
+      "branches": 52,
+      "extraction_plan": "Split message routing, page action dispatch, Builder delegation, and recovery handling before adding new operator intents.",
+      "lines": 269,
+      "owner": "realtime voice operator owner"
+    },
+    "src/autonomous_agent_builder/services/voice_operator.py::AgentOperatorService.voice_digest": {
+      "branches": 60,
+      "extraction_plan": "Move voice digest sections into named digest builders before adding new digest branches.",
+      "lines": 164,
+      "owner": "realtime voice operator owner"
+    }
+  },
+  "generated_at": "2026-05-18",
+  "schema_version": 1,
+  "thresholds": {
+    "max_file_lines": 500,
+    "max_function_branches": 50,
+    "max_function_lines": 250
+  }
+}

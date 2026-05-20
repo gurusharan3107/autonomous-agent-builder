@@ -1,0 +1,11 @@
+{
+  "name": "agent-sprint-cycle-explainer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "hyperframes preview",
+    "check": "hyperframes lint && hyperframes inspect",
+    "render": "hyperframes render",
+    "publish": "hyperframes publish"
+  }
+}

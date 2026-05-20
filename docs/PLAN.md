@@ -1,0 +1,9 @@
+- The active goal lives in `docs/GOAL.md`. Always read it first.
+- `docs/IMPROVEMENTS.md` is a living document for builder inefficiencies found during testing. Every time a symptom is found during a live run, add an entry with: symptom, root cause, solution, and status. Update the status as the fix progresses. Never batch updates — write to it as soon as a finding is confirmed.
+- `docs/PROGRESS.md` is the overall progress checklist. Check it before starting any work. Update it as items complete. Commit it alongside any code change.
+- `docs/SPRINT-PROGRESS.md` is the per-sprint checklist. Resume from the last incomplete step if it exists. Update after every task completion.
+- User prompts must always be processed by the model. The model decides which tools to call. Deterministic prompt routing based on exact wording must never happen — the model infers intent.
+- Always ground solutions in documentation and best practices. Fix root causes, not symptoms.
+- Inspect all neighbouring surfaces (Agent, Voice, Board, Backlog, Metrics, Observability) when testing — efficiency, performance, and UX all matter.
+- Memory is bidirectional. Read repo precedent before fixing (`builder memory search` — GOAL.md Fix standard step 0) AND write back after fixing if the learning is durable (`builder memory add --type correction|pattern|decision` — GOAL.md Fix standard step 7). Invalidate any memory found to be stale (`builder memory invalidate <slug>`). Run all `builder memory` commands from the Builder source repo, not from managed-app workspaces — scopes are intentionally separate, and an empty result from a managed workspace is not a missing memory (see IMP-005).
+- `docs/autoresearch/` holds the dormant Track B optimization loop (Karpathy-style autoresearch adapted for the Builder). Do not activate it until every prerequisite in `docs/autoresearch/README.md` is satisfied — Track A (bug fixes in IMPROVEMENTS.md) runs first.

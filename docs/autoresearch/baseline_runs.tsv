@@ -1,0 +1,1 @@
+run_id	timestamp	main_sha	fixture_id	noncached_plus_output_tokens	cache_ratio	chunk_pressure_risk	avoidable_cost_flags	gate_pass_rate	feature_correct	wallclock_s	operator_turns	composite	gates_passed	notes
