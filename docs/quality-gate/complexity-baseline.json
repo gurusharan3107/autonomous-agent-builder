@@ -132,7 +132,7 @@
     },
     "src/autonomous_agent_builder/observability/summary.py": {
       "extraction_plan": "Move recommendation rules, payload assembly, and summarization sections into named policy modules before adding observability behavior.",
-      "lines": 1437,
+      "lines": 1138,
       "owner": "observability owner"
     },
     "src/autonomous_agent_builder/onboarding.py": {
@@ -319,6 +319,11 @@
       "extraction_plan": "This module IS the extraction target \u2014 split further if new SQL query logic exceeds threshold.",
       "lines": 342,
       "owner": "observability db query owner"
+    },
+    "src/autonomous_agent_builder/observability/summary_recommendation_lifecycle.py": {
+      "extraction_plan": "This module IS the extraction target \u2014 split further if lifecycle reader exceeds threshold.",
+      "lines": 319,
+      "owner": "observability recommendation lifecycle owner"
     }
   },
   "functions": {

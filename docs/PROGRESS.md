@@ -1,5 +1,28 @@
 # Autonomous Builder Robustness Progress
 
+### 2026-05-20 Observability Summary Recommendation Lifecycle Split
+
+- Backend decomposition pass: extracted 8 recommendation lifecycle functions
+  (`_empty_recommendation_lifecycle`, `_recommendation_lifecycle`,
+  `_decision_entries`, `_recommendation_codes`, `_record_recommendation_decision`,
+  `_apply_recommendation_lifecycle`, `_open_script_candidates`,
+  `_is_historical_info_recommendation`) into
+  `src/autonomous_agent_builder/observability/summary_recommendation_lifecycle.py`.
+  New module imports DB helpers from `summary_db.py` and
+  `_deterministic_recommendation` from `summary_recommendations.py`.
+- Size evidence: `src/autonomous_agent_builder/observability/summary.py` is
+  now 1,138 measured lines, down from 1,437 in this pass. The new lifecycle
+  owner is 319 lines and remains below the 500-line target.
+- decomposition_result: {"parent_before": 1437, "parent_after": 1138,
+  "new_module": "observability/summary_recommendation_lifecycle.py",
+  "new_module_lines": 319, "functions_moved": 8}
+- Verification: `uv tool run ruff check
+  src/autonomous_agent_builder/observability/summary.py
+  src/autonomous_agent_builder/observability/summary_recommendation_lifecycle.py`
+  passed. `uv run pytest tests/test_observability_summary.py -q` passed
+  `18 passed`. `uv run builder lint --complexity-report --json` passed with
+  0 violations after ratcheting `summary.py` baseline from 1,437 to 1,138.
+
 ### 2026-05-20 Observability Summary DB Query Helpers Split
 
 - Backend decomposition pass: extracted 18 SQL/DB query primitive functions
