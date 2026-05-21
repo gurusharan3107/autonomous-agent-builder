@@ -124,6 +124,7 @@ export interface TaskBoardItem {
   agent_runs: TaskAgentRunSummary[];
   activity_timeline: TaskActivityEvent[];
   updated_at: string | null;
+  can_recover?: boolean;
 }
 
 export interface SprintBatchSummary {

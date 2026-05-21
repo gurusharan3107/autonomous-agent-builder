@@ -735,7 +735,13 @@ export function TaskCard({
             </Link>
           </Button>
         ) : null}
-        {(["blocked", "capability_limit", "failed"].includes(task.status)) && onRecover ? (
+        {/* Gate the Recover button on the API's can_recover signal so we
+            never render a 409 trap. Fall back to status-based heuristic when
+            the API hasn't included the field yet (older payload shape). */}
+        {(
+          task.can_recover ??
+          ["blocked", "capability_limit", "failed"].includes(task.status)
+        ) && onRecover ? (
           <Button
             type="button"
             variant="ghost"

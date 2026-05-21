@@ -288,6 +288,7 @@ class TaskBoardItem(BaseModel):
     agent_runs: list[TaskAgentRunSummary] = Field(default_factory=list)
     activity_timeline: list[TaskActivityEvent] = Field(default_factory=list)
     updated_at: datetime | None
+    can_recover: bool = False
 
 
 class TaskActivityEvent(BaseModel):
@@ -769,7 +770,17 @@ def _build_task_item(t: Task) -> TaskBoardItem:
             )
         ],
         updated_at=t.updated_at,
+        can_recover=_task_is_recoverable(t),
     )
+
+
+def _task_is_recoverable(task: Task) -> bool:
+    """Lazy thunk around services.task_recovery.task_is_recoverable to avoid
+    a circular import (task_recovery itself imports publish_board_snapshot
+    from this module)."""
+    from autonomous_agent_builder.services.task_recovery import task_is_recoverable
+
+    return task_is_recoverable(task)
 
 
 def _json_doc_content(doc: DesignDocument | None) -> dict[str, Any]:

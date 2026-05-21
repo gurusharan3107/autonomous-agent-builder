@@ -9,7 +9,50 @@ from autonomous_agent_builder.services.task_recovery import (
     _has_completed_build_verifier,
     _verifier_output_has_failed_check,
     recover_failed_task,
+    task_is_recoverable,
 )
+
+
+def _make_task(status: TaskStatus, blocked_reason: str = "") -> Task:
+    return Task(
+        id="t1",
+        feature_id="f1",
+        title="t",
+        description="d",
+        status=status,
+        phase=TaskPhase.IMPLEMENTATION,
+        blocked_reason=blocked_reason or None,
+    )
+
+
+def test_task_is_recoverable_failed_task_returns_true() -> None:
+    assert task_is_recoverable(_make_task(TaskStatus.FAILED)) is True
+
+
+def test_task_is_recoverable_capability_limit_returns_true() -> None:
+    assert task_is_recoverable(_make_task(TaskStatus.CAPABILITY_LIMIT)) is True
+
+
+def test_task_is_recoverable_blocked_scaffold_failed_returns_true() -> None:
+    task = _make_task(TaskStatus.BLOCKED, "scaffold_failed: missing language")
+    assert task_is_recoverable(task) is True
+
+
+def test_task_is_recoverable_blocked_gate_infra_error_returns_true() -> None:
+    task = _make_task(
+        TaskStatus.BLOCKED,
+        "Gate infrastructure error in code_quality, testing (FileNotFoundError).",
+    )
+    assert task_is_recoverable(task) is True
+
+
+def test_task_is_recoverable_pending_returns_false() -> None:
+    assert task_is_recoverable(_make_task(TaskStatus.PENDING)) is False
+
+
+def test_task_is_recoverable_blocked_unknown_reason_returns_false() -> None:
+    task = _make_task(TaskStatus.BLOCKED, "Waiting on operator decision")
+    assert task_is_recoverable(task) is False
 
 
 @pytest.mark.asyncio

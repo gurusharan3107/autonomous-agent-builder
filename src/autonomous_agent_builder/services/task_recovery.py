@@ -29,6 +29,42 @@ _DISPATCH_FAILED_BLOCK_PREFIX = "Dispatch failed:"
 _SPRINT_EXECUTION_KEY = "sprint_execution"
 
 
+def task_is_recoverable(task: Task) -> bool:
+    """Synchronous board-projection predicate: would `recover_failed_task`
+    accept this task (best-effort), or would it 409?
+
+    This is intentionally a strict subset of `_recovery_target_status` —
+    the async owner is the source of truth. The board projection only
+    needs to be honest about the **deterministic** recoverable shapes so
+    the Recover button stops appearing on tasks the API will refuse. The
+    extra async paths (PR change-request gate, failed-build-verifier on
+    DONE/PENDING, sprint merge errors) silently allow recover; we under-
+    promise on the board and let the actual click handle them.
+    """
+    task_status = task.status.value if hasattr(task.status, "value") else str(task.status)
+    blocked_reason = str(task.blocked_reason or "").strip()
+    if task_status == TaskStatus.FAILED.value:
+        return True
+    if task_status == TaskStatus.CAPABILITY_LIMIT.value:
+        return True
+    if task_status == TaskStatus.BLOCKED.value:
+        if blocked_reason.startswith(_DOC_GATE_BLOCK_PREFIX):
+            return True
+        if blocked_reason.startswith(_DISPATCH_FAILED_BLOCK_PREFIX):
+            return True
+        if blocked_reason.startswith("implementation blocked:"):
+            return True
+        if blocked_reason.startswith("final_checkout_build_failed:"):
+            return True
+        if blocked_reason.startswith("scaffold_failed:"):
+            return True
+        if "FileNotFoundError" in blocked_reason:
+            return True
+        if "Gate infrastructure error" in blocked_reason:
+            return True
+    return False
+
+
 def _verifier_output_has_failed_check(output_text: str) -> bool:
     return any(
         "FAIL" in line.split(":", 1)[0] or " FAIL" in line
