@@ -22,6 +22,7 @@ Everything an agent needs to know about *why* it's working, *what* "done" looks 
 10. **Inspect all neighbouring surfaces when testing.** Agent, Voice, Board, Backlog, Metrics, Observability — efficiency, performance, and UX all matter. A change verified only on the surface it touched is unverified.
 11. **Memory is bidirectional.** Read repo precedent before fixing ([FIX-STANDARD.md § Step 0](FIX-STANDARD.md#step-0--load-repo-precedent-first)) AND write back after fixing when the learning is durable ([FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-the-learning-is-durable)). Invalidate stale memory when a fix proves it wrong. All `builder memory` commands run from the Builder source repo, not from managed-app workspaces — scopes are intentionally separate.
 12. **Autoresearch (Track B) is dormant until prerequisites pass.** [`docs/autoresearch/`](../autoresearch/README.md) activates only when the prerequisites in its README are met. Running Track B before Track A optimizes around broken behavior.
+13. **A checklist item is not closed until it is committed and pushed.** Ticking `[x]` in ROADMAP.md, updating STATUS.md, and committing supporting evidence files must land in a pushed commit before the item counts as done. An unpushed `[x]` is not closed.
 
 ---
 
