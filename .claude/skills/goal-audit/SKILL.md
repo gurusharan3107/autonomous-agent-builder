@@ -148,12 +148,21 @@ End the section with a recommendation: which OPTIMIZE_IDEAS items should sit at 
 
 #### Section C — Recommended Actions
 
+Before writing any action, **cross-check ROADMAP.md**:
+
+1. Read `goal_snapshot.ROADMAP.md` (already in the collector output).
+2. For each candidate action you are about to recommend, scan ROADMAP.md for a matching `[ ]` or `[x]` item:
+   - If a matching `[x]` item exists → the action is already done. Do NOT recommend it. Note it as "closed in ROADMAP.md" in the Section A or C prose if it's evidence of progress.
+   - If a matching `[ ]` item exists → the action is already tracked. Do NOT recommend it as a new action. You may say "already tracked as ROADMAP.md § MX.Y — no new action needed" to confirm it's visible.
+   - If no matching item exists → the action is a genuine gap. Recommend it and note it is not yet on the roadmap.
+3. Also scan the last INSIGHTS.md entry's Recommended Actions for items that were acted on since that run. Call them out explicitly as closed — this makes the INSIGHTS→ROADMAP lifecycle visible.
+
 Concrete and scoped. Each item is a single sentence with the rationale. Examples:
 
 - "Move OPTIMIZE_IDEAS item 6 (cap tool-output reinjection) to position 1 — `large_command_output` recurred in 4 of 5 recent Builder sessions."
 - "Update STATUS.md Current Position to reflect actual focus — devpulse validation has been paused for 3 days while framework migration happened; STATUS still says M1.1 is in flight."
-- "No ROADMAP changes needed this audit."
-- "Banned-term audit (M2.4) shows fresh signal — operator typed 'recover' twice this week against a non-functional Recover button. Promote in priority over decomposition (M1.3)."
+- "No ROADMAP changes needed this audit — Codex lane is already tracked as M1.2 `[ ]` item."
+- "Banned-term audit (M2.4) shows fresh signal — operator typed 'recover' twice this week against a non-functional Recover button. Not yet on ROADMAP; promote in priority over decomposition (M1.3)."
 
 3-7 actions max. If there are no actions worth recommending, say so explicitly.
 
@@ -332,6 +341,7 @@ These are specific traps the model will fall into without being told. They are t
 - **Do not run the skill more than once per day per project.** Running it multiple times in quick succession produces redundant entries with the same data and dilutes the change-over-time signal in INSIGHTS.
 - **If the user asks to compare to last week's audit, do not write a new entry.** Read the last 2 entries in INSIGHTS.md and diff them in your conversation reply.
 - **`session_report.by_project` is already filtered to Builder projects** by `analyze-sessions.mjs --filter-pattern`. The collector trusts the analyzer; there is no second defensive filter in Python.
+- **Do not recommend what is already on ROADMAP.md.** Before writing Section C, scan `goal_snapshot.ROADMAP.md` for each candidate action. A `[ ]` match means it is already tracked — say so and skip. A `[x]` match means it is done — credit it as closed, do not re-recommend. Only actions with no ROADMAP match are genuine gaps worth recommending.
 
 ## Notes
 
