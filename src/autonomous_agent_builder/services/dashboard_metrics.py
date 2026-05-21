@@ -214,6 +214,13 @@ async def _load_voice_ledger(db: AsyncSession) -> dict[str, Any]:
     return build_realtime_voice_ledger(list(voice_event_result.scalars().all()))
 
 
+async def _load_active_run_count(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(func.count(AgentRun.id)).where(AgentRun.status == "running")
+    )
+    return int(result.scalar() or 0)
+
+
 async def _load_run_aggregates(db: AsyncSession) -> tuple[int, float, int]:
     run_count_result = await db.execute(
         select(
@@ -316,6 +323,7 @@ async def load_dashboard_metrics_response(
     orchestrator_count, orchestrator_cost, orchestrator_tokens = await _load_run_aggregates(db)
     chat_count, chat_cost, chat_tokens = await _load_chat_aggregates(db)
     gate_pass_rate = await _load_gate_pass_rate(db)
+    active_run_count = await _load_active_run_count(db)
 
     all_runs = [
         *[serialize_metric_run(run) for run in orchestrator_runs],
@@ -323,6 +331,15 @@ async def load_dashboard_metrics_response(
     ]
     all_runs.sort(key=lambda run: run.completed_at or run.started_at, reverse=True)
     optimization_summary = summarize_runs_for_optimization(all_runs)
+    if active_run_count > 0:
+        optimization_summary = {
+            **optimization_summary,
+            "active_runs": active_run_count,
+            "active_runs_note": (
+                f"{active_run_count} run(s) in progress — token data not yet available. "
+                "Check again after the run completes."
+            ),
+        }
     total_estimated_cost_usd = sum(run.estimated_cost_usd for run in all_runs)
     credit_values = [
         run.estimated_codex_credits

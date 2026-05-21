@@ -671,7 +671,7 @@ class TestBoardEndpoint:
             "cost_usd", "total_cost", "tokens_input", "tokens_output", "tokens_cached",
             "num_turns", "duration_ms", "approval_gate_id",
             "approval_gate_type", "pending_approval_count",
-            "blocked_reason", "latest_run_status", "observability",
+            "blocked_reason", "can_recover", "latest_run_status", "observability",
             "gate_results", "agent_runs", "activity_timeline", "updated_at",
         }
         assert set(task_item.keys()) == expected_fields
@@ -1620,6 +1620,44 @@ class TestMetricsEndpoint:
         assert ledger["totals"]["failed_tool_outputs"] == 0
         assert ledger["totals"]["wait_events"] == 1
         assert ledger["usage"][0]["voice_call_id"] == "rtc_metrics"
+
+    async def test_metrics_active_run_injects_diagnostic_note(self, client, test_db):
+        proj = await client.post(
+            "/api/projects/", json={"name": "active-run-proj", "language": "python"}
+        )
+        feat = await client.post(
+            f"/api/projects/{proj.json()['id']}/features",
+            json={"title": "Active run feature"},
+        )
+        task = await client.post(
+            f"/api/features/{feat.json()['id']}/tasks",
+            json={"title": "Active run task"},
+        )
+        _, factory = test_db
+        from autonomous_agent_builder.db.models import AgentRun
+
+        async with factory() as session:
+            session.add(
+                AgentRun(
+                    task_id=task.json()["id"],
+                    agent_name="code-gen",
+                    cost_usd=0.0,
+                    tokens_input=0,
+                    tokens_output=0,
+                    num_turns=3,
+                    duration_ms=0,
+                    status="running",
+                    started_at=datetime(2026, 5, 21, 10, 0, tzinfo=UTC),
+                )
+            )
+            await session.commit()
+
+        resp = await client.get("/api/dashboard/metrics")
+        assert resp.status_code == 200
+        data = resp.json()
+        summary = data["optimization_summary"]
+        assert summary["active_runs"] == 1
+        assert "token data not yet available" in summary["active_runs_note"]
 
 
 @pytest.mark.asyncio

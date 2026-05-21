@@ -366,10 +366,10 @@ current branch is reverified after the ongoing decomposition pass.
   owners; move post-ship optimization CLI probe, runtime guidance refresh, and
   voice support classes into focused owners; split Builder quality-gate CLI
   contracts out of the broad CLI surface suite. Ratchet all baselines down.
-- [ ] Continue the top-down 500-line decomposition pass on the remaining
+- [x] Continue the top-down 500-line decomposition pass on the remaining
   hotspots, starting with the embedded Agent route, Realtime voice operator,
   and remaining CLI/runtime owners, without changing user-visible lifecycle
-  behavior.
+  behavior. (`builder lint --complexity-report --json` reports 0 violations.)
 
 ## 2026-05-20 WSL devpulse validation cycle
 
@@ -377,7 +377,7 @@ current branch is reverified after the ongoing decomposition pass.
 
 **Track B (optimization loop)** at [`autoresearch/`](autoresearch/) is dormant and activates only after this cycle's checklist completes and baseline variance is measured per [`autoresearch/baseline_variance.md`](autoresearch/baseline_variance.md).
 
-- [ ] Close IMP-001 through IMP-004 in `docs/IMPROVEMENTS.md` with SDK-grounded fixes and regression tests (blocks all items below).
+- [x] Close IMP-001 through IMP-004 in `docs/IMPROVEMENTS.md` with SDK-grounded fixes and regression tests (blocks all items below).
 - [ ] Ship first feature on fresh devpulse workspace through live Agent page
   (Claude Agent SDK lane, port 9876) and capture token evidence per turn.
 - [ ] Ship second feature and verify Board → implementation → verification

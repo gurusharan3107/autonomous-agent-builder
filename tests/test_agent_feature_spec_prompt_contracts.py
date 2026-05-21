@@ -76,3 +76,52 @@ def test_build_it_followup_routes_to_feature_delivery():
     assert agent_message_intent.message_confirms_feature_delivery("That sounds right.") is True
     assert agent_message_intent.message_confirms_feature_delivery("Yes, please start it now.") is True
     assert agent_message_intent.message_requests_autonomous_continuation("Start now.") is True
+
+
+def test_feature_spec_prompt_injects_recent_context_on_followup(tmp_path):
+    recent = "- User: I want to add a search feature\n- Builder Agent: What type of search?"
+    prompt = agent_routes._feature_spec_chat_prompt(
+        tmp_path,
+        "Full-text search please.",
+        runtime_sdk="codex_sdk",
+        recent_context=recent,
+    )
+    assert "Full-text search please." in prompt
+    assert "Prior session context for this intake turn" in prompt
+    assert "I want to add a search feature" in prompt
+    assert "What type of search?" in prompt
+
+
+def test_feature_spec_prompt_without_recent_context_omits_section(tmp_path):
+    prompt = agent_routes._feature_spec_chat_prompt(
+        tmp_path,
+        "Add a search box.",
+        runtime_sdk="codex_sdk",
+        recent_context="",
+    )
+    assert "Prior session context for this intake turn" not in prompt
+    assert "Add a search box." in prompt
+
+
+def test_recent_chat_context_for_prompt_force_bypasses_message_filter(tmp_path):
+    from unittest.mock import MagicMock
+
+    from autonomous_agent_builder.db.models import ChatEvent, ChatSession
+    from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+        _recent_chat_context_for_prompt,
+    )
+
+    event = MagicMock(spec=ChatEvent)
+    event.event_type = "user_message"
+    event.payload_json = {"content": "I want a developer pulse dashboard."}
+    event.created_at = __import__("datetime").datetime(2026, 5, 21)
+
+    session = MagicMock(spec=ChatSession)
+    session.events = [event]
+
+    short_answer = "Yes, for my engineering team."
+    context_without_force = _recent_chat_context_for_prompt(session, short_answer)
+    context_with_force = _recent_chat_context_for_prompt(session, short_answer, force=True)
+
+    assert context_without_force == ""
+    assert "developer pulse dashboard" in context_with_force

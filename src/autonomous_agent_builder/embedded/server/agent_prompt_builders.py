@@ -252,9 +252,10 @@ def _recent_chat_context_for_prompt(
     user_message: str,
     *,
     limit: int = _RECENT_CONTEXT_EVENT_LIMIT,
+    force: bool = False,
 ) -> str:
     """Build a compact deterministic transcript pack for referential chat turns."""
-    if not _message_needs_recent_context(user_message):
+    if not force and not _message_needs_recent_context(user_message):
         return ""
     entries: list[str] = []
     events = sorted(
@@ -303,8 +304,16 @@ def _feature_spec_chat_prompt(
     user_message: str,
     *,
     runtime_sdk: str = "",
+    recent_context: str = "",
 ) -> str:
     question_guidance = _question_tool_guidance(runtime_sdk)
+    prior_context_section = ""
+    if recent_context.strip():
+        prior_context_section = (
+            "\n\nPrior session context for this intake turn. "
+            "Use this to treat short follow-up answers as answers to the questions you last asked:\n"
+            f"{recent_context.strip()}"
+        )
     return f"""You are the improvement-scoping guide for an already-initialized software project.
 
 Your job is to turn a sufficiently bounded user request into one concrete improvement that Builder can ship.
@@ -347,7 +356,7 @@ The JSON object must match this shape exactly:
 
 Project root: {project_root}
 
-User: {user_message}"""
+User: {user_message}{prior_context_section}"""
 
 
 def _init_project_requires_autonomous_continuation(response_text: str) -> bool:

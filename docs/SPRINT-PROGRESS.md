@@ -740,3 +740,21 @@ Goal source: active thread goal. Execution instructions: [PLAN.md](PLAN.md).
   operator test hotspot dropped to 3,090 lines; broad Agent/Realtime proof
   passed `186 passed`, focused post-support proof passed `80 passed`, and
   `builder lint --json` passed with 0 complexity ratchet violations.
+- [x] WSL devpulse IMP-001 through IMP-004 resolved with SDK-grounded fixes and
+  regression tests.
+  - **IMP-001** (feature spec context loss): Added `recent_context` parameter to
+    `_feature_spec_chat_prompt` and `force=True` bypass to
+    `_recent_chat_context_for_prompt`; `routes/agent.py` re-computes context with
+    `force=True` on feature_spec turns even when the user message is a short
+    follow-up answer. 3 regression tests in
+    `test_agent_feature_spec_prompt_contracts.py`, all passing.
+  - **IMP-002** (gates-first not enforced): Already fixed by scaffold commits
+    1fae0bd, c1a39c8, a88ee2c. Orchestrator now detects missing gate infrastructure
+    before dispatch and triggers workspace bootstrap.
+  - **IMP-003** (metrics 0 tokens during active run): Root cause — tokens are
+    written at run completion, not start. Fixed in `dashboard_metrics.py` with
+    `_load_active_run_count` and diagnostic `active_runs_note` in
+    `optimization_summary`. Regression test: `test_metrics_active_run_injects_diagnostic_note`.
+  - **IMP-004** (Recover button 409): Already fixed by commits 1fae0bd, c1a39c8
+    (backend: gate_infrastructure_error now recoverable) and 8799f1b (frontend:
+    Recover button gated on backend `can_recover` signal).

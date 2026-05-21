@@ -148,6 +148,9 @@ from autonomous_agent_builder.embedded.server.agent_project_context import (
     inject_feature_list_constraints as _inject_feature_list_constraints,
 )
 from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
+    _SPECIALIST_ROUTE_POLICIES as _SPECIALIST_ROUTE_POLICIES,  # noqa: F401
+)
+from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
     _feature_spec_chat_prompt as _feature_spec_chat_prompt,
 )
 from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
@@ -161,9 +164,6 @@ from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
 )
 from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
     _init_project_requires_autonomous_continuation as _init_project_requires_autonomous_continuation,
-)
-from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
-    _SPECIALIST_ROUTE_POLICIES as _SPECIALIST_ROUTE_POLICIES,  # noqa: F401
 )
 from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
     _message_matches_documentation_continuation as _message_matches_documentation_continuation,
@@ -1029,6 +1029,8 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
             model_backed_delivery_context_requested
         )
         callback_state.feature_spec_requested = feature_spec_requested
+        if feature_spec_requested and not recent_context:
+            recent_context = _recent_chat_context_for_prompt(session, user_message, force=True)
         if await publish_direct_chat_turn_if_handled(
             intent=intent,
             session_id=session_id,

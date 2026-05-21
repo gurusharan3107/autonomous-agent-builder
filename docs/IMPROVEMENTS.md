@@ -15,7 +15,7 @@ Each entry has: symptom, root cause, solution, status.
 
 **Solution:** Align the metrics aggregation scope with the task execution scope. Verify `repo_identity` used by the code-gen agent matches the key used by `builder metrics show`. Add a CLI-level diagnostic that warns when metrics show 0 tokens while active runs exist.
 
-**Status:** open
+**Status:** resolved — root cause was that `agent_runs.tokens_input/output` are written at run completion; in-progress runs always show 0. Fixed in `dashboard_metrics.py` by adding `_load_active_run_count` and injecting `active_runs` + `active_runs_note` into `optimization_summary` when any runs are in progress. Regression test: `test_metrics_active_run_injects_diagnostic_note` in `test_dashboard_api.py`.
 
 ---
 
@@ -29,7 +29,7 @@ Each entry has: symptom, root cause, solution, status.
 
 **Solution:** Before dispatching the first implementation task in a new workspace, the orchestrator must run `builder readiness assess` or equivalent Day-0 checks and block task dispatch if `code_quality`/`testing` gate infrastructure is missing. The operator should see a clear pre-flight message: "Your workspace needs linting and test setup before Builder can ship code." Bootstrap scripts or guided setup should run first.
 
-**Status:** open — requires orchestrator pre-dispatch readiness gate, not just documentation.
+**Status:** resolved — fixed by scaffold commits 1fae0bd, c1a39c8, a88ee2c. The orchestrator now detects missing gate infrastructure before dispatch, triggers workspace bootstrap, and blocks implementation until readiness is confirmed. Scaffold trigger fires on missing gate config or recoverable gate-infra error; deterministic python/node fallback ensures bootstrap runs deterministically; strict post-check gates re-entry.
 
 ---
 
@@ -43,7 +43,7 @@ Each entry has: symptom, root cause, solution, status.
 
 **Solution:** The second-turn prompt must include the prior conversation context (operator's original request + agent's intake questions + operator's answers). The Claude Agent SDK `chat` lane should either (a) pass the full prior conversation thread as context, or (b) persist the partial feature spec candidate and re-inject it into the follow-up prompt alongside the operator's answers so the model can complete the intake loop and produce `FEATURE_SPEC_JSON`.
 
-**Status:** open — needs investigation of `embedded/server/routes/agent.py` forward-engineering prompt assembly and multi-turn context threading.
+**Status:** resolved — fixed in `agent_prompt_builders.py` (added `recent_context` parameter to `_feature_spec_chat_prompt`), `chat_turn_prompting.py` (pass `recent_context` to feature spec prompt branch), and `routes/agent.py` (force-build recent context when `feature_spec_requested=True` even when the user message is a short follow-up answer). The `force=True` bypass in `_recent_chat_context_for_prompt` ensures short operator answers like "Yes, for my team" are still paired with prior context. Regression tests in `test_agent_feature_spec_prompt_contracts.py`.
 
 ---
 
@@ -73,7 +73,7 @@ Each entry has: symptom, root cause, solution, status.
 1. **Backend**: Add `gate_infrastructure_error` to the recoverable states in the task recovery handler — recovery for this case should reset the task to `pending` so it can be re-dispatched after the operator fixes the workspace infrastructure.
 2. **Frontend**: The Board task card should only render the Recover button when the task's `blocked_reason` type is actually recoverable. For gate-infrastructure errors, show an actionable message: "Set up linting and tests in your workspace, then retry." with a link to setup guidance.
 
-**Status:** open
+**Status:** resolved — fixed in two parts. Backend: commits 1fae0bd and c1a39c8 added `gate_infrastructure_error` to recoverable states so the recovery endpoint no longer returns 409 for this case. Frontend: commit 8799f1b gates the Recover button on the backend `can_recover` signal so it only renders when recovery is actually possible. Operators now see an actionable message instead of a dead 409.
 
 ---
 

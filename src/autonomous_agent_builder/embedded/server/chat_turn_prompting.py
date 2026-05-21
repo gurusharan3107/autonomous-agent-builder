@@ -48,6 +48,7 @@ def build_chat_turn_prompt_plan(
             project_root,
             user_message,
             runtime_sdk=runtime_name,
+            recent_context=recent_context,
         )
     else:
         prompt = general_chat_prompt(
