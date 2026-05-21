@@ -1,0 +1,245 @@
+# Insights — Direction Audit Log
+
+> **This file is the output surface for the `goal-audit` skill.** Read [README.md](README.md) first; this file is not the framework entry point.
+
+The `goal-audit` skill (project-local at `.claude/skills/goal-audit/`) appends a dated entry here each time it runs. Each entry contains:
+
+- **Intent vs current focus**: alignment between what the user has been pushing on across recent sessions (extracted from Claude Code transcripts) and what [STATUS.md](STATUS.md) / [ROADMAP.md](ROADMAP.md) claim is in flight.
+- **Autoresearch focus candidates**: recurring `top_cost_drivers` from Builder CLI evidence, mapped to [`docs/autoresearch/OPTIMIZE_IDEAS.md`](../autoresearch/OPTIMIZE_IDEAS.md) items.
+- **Recommended actions**: concrete next moves with cited evidence.
+
+## How to invoke
+
+From the project root:
+
+```text
+"audit alignment"
+"are we aligned?"
+"is the roadmap right?"
+"what should we focus on next?"
+"where should autoresearch go next?"
+```
+
+Or invoke the skill directly. Default window is the last 7 days; pass `--since 24h|30d|all` to widen or narrow.
+
+## What the skill does and does not do
+
+| Action | The skill | The user |
+| --- | --- | --- |
+| Append new entry to this file | ✓ | — |
+| Reorder [`docs/autoresearch/OPTIMIZE_IDEAS.md`](../autoresearch/OPTIMIZE_IDEAS.md) when a single driver recurs in ≥3 sessions | ✓ (auditable comment added) | — |
+| Edit [STATUS.md](STATUS.md), [ROADMAP.md](ROADMAP.md), [NORTH-STAR.md](NORTH-STAR.md), [EVALUATION.md](EVALUATION.md), or any control-owned file | — | ✓ (after reading skill recommendations) |
+
+## Lifecycle of an insight
+
+When a skill recommendation from this file has been acted on and verified:
+
+1. **Move it to [ROADMAP.md](ROADMAP.md)** as a `[x]` item under the correct milestone. This is the canonical completed-work checklist — not a separate file.
+2. **Remove it from the open Recommended Actions list** in the entry it came from (or note it as closed with a brief one-liner).
+3. Open insight recommendations stay here as `[ ]` items until acted on. Do not delete them silently.
+
+## Entries
+
+## 2026-05-21 — Run #1 (since 7d, 28 Builder-related sessions analyzed)
+
+### Intent vs current focus
+
+- **The framework-migration / skill-building work has dominated the last 7 days but is not reflected as in-flight work.** 25.1 active hours / 157 human messages went into the architecture-review repo on framework migration (`PLAN.md`/`GOAL.md`/`MISSION.md` → `docs/goal/`, new `FIX-STANDARD.md` / `OPERATOR-LANGUAGE.md` / `TUNING.md`, autoresearch framework, goal-audit skill creation). STATUS.md `Current Item In Flight` still reads "End-to-end re-verify" — that's an honest description of where M1.1 sits in code, but the operational reality of the past week was meta-framework, not M1.1 re-verify. Evidence: prompts `"its time for the migration of our existing goal system sitting in docs folder directly"` (2026-05-21T07:21, session `6d0300b4`, 432K uncached cache-break), `"can you check the docs/goal/README.md and continue"` (2026-05-21T07:50, 8.7M tokens), `"i will go with your recommendation"` (2026-05-20T20:35, 412K uncached cache-break).
+- **Devpulse — the named Active Workspace — received almost no attention this week.** STATUS lists devpulse as active for M1.1 re-verify, but session-report shows only 0.3 active hours / 11 human messages on devpulse over 7 days, vs 25.1 active hours in the architecture-review repo. Re-verify cannot have started.
+- **The user has repeatedly invoked the exact pattern this skill was built to detect.** Cache-break clusters are dominated by meta-direction prompts: `"Can you analyze all my prompts and check the docs/GOAL.md and think if our GOAL is fully aligned"` (2026-05-20T11:56, 141K), `"are you following same pattern like it was done earlier you can check docs/PROGRESS.md"` (2026-05-20T16:38, 107K), `"its time for the migration of our existing goal system"` (2026-05-21T07:21, 432K). 5 of 9 cache-breaks > 100K are direction-check questions, not execution prompts.
+- **Top prompts by token weight confirm two threads: planning ceremony and direction-check.** #1 `"Can you create a plan for it first"` (39M tokens), #2 `/resume-session` (24M), #3 `"Please continue with the plan in docs/PLAN.md"` (20M), #6 `"You are the expert here , do you think something else needs to be done?"` (14M), #11 `"are you checking the run through builder cli?"` (11M). The pattern is "plan → resume → check" — not implementation.
+- **The framework is now in place — STATUS.md just needs to acknowledge it.** Two `2026-05-21` Recent Decisions entries already record the framework migration and IMP-007/IMP-009 closure, so the historical record is correct. The `Current Item In Flight` and `Last Update` fields are the lagging surface.
+
+**Alignment verdict:** **drifting** — substantive intent (build the management framework) does not match the named Current Item (devpulse re-verify). Framework work was the right thing to do; STATUS just didn't track it.
+
+**Suggested STATUS.md change:** Update `Current Item In Flight` to reflect that framework migration + goal-audit skill are now live and the next concrete action is the actual devpulse re-verify (M1.1 final step). Add a Recent Decisions line: `"2026-05-21 — Direction-audit infrastructure live: docs/goal/INSIGHTS.md + .claude/skills/goal-audit/ (self-contained, bundled analyzer). First run produced this entry."`
+
+**Suggested ROADMAP.md change:** None. M1.1 remains valid and the framework work was infrastructure FOR the roadmap, not a roadmap item. Once devpulse re-verify completes, M1.1 → done as planned.
+
+### Autoresearch focus candidates
+
+| Driver | Sessions in scope | OPTIMIZE_IDEAS map |
+| --- | --- | --- |
+| *(none — `aggregated_drivers.top_cost_drivers` is empty)* | 0 | — |
+
+`aggregated_drivers.recommended_next_change` is `{maintain_current_flow: 6}` across all 6 analyzed Builder-runtime sessions (3 devpulse + 3 todo-app). The Builder side is operating cleanly — no chunk pressure, no avoidable cost flags, no recurring driver. **No autoresearch action this run; system stable.**
+
+Two side-notes from session-report data (not Builder-runtime, so not autoresearch action items):
+
+- **`general-purpose` Claude Code subagent averages 3.45M tokens / call** (`by_subagent_type` data). This is above the 2M threshold the SKILL.md mentions. However, this maps to Claude Code's `general-purpose` subagent scoping, not Builder's `code-gen` subagent. The mapping is *not* OPTIMIZE_IDEAS idea 8.
+- **Cache-break locations show prefix is stable**: the `here` prompt on each cache-break is operator-typed text, not a large tool result reinjection. That rules out idea 6 (tool-output reinjection cap) — the breaks are user-prompt-driven, not tool-driven.
+
+**OPTIMIZE_IDEAS.md actions taken:** none. No driver met the `≥3 sessions` threshold because the empirical `top_cost_drivers` shape returned by `builder logs analyze` differs from what the SKILL.md mapping table assumes (see Recommended Actions #3).
+
+### Recommended actions
+
+1. **Update STATUS.md `Current Item In Flight` and add a Recent Decisions line** as drafted under "Suggested STATUS.md change" above. Without this, future agents landing on the framework will read a stale claim about devpulse re-verify being in flight.
+2. **Run the devpulse re-verify.** It's the last gate before M1.1 → done. The framework can't help the roadmap advance if the next concrete item never gets executed. Allocate one focused session to it.
+3. **Fix the goal-audit driver-shape mismatch.** The SKILL.md static driver mapping table assumes `top_cost_drivers` is a list of named driver strings (`large_command_output`, `truncate_tool_output_before_reinjection`, etc.), but `builder logs analyze --full --json` actually returns objects keyed by `agent_name`. Until `collect.py:aggregate_drivers` is updated to handle both shapes (or to extract the *actual* driver signal — likely `recommended_next_change`, `avoidable_cost_flags`, and per-agent `noncached_plus_output_tokens` ratios), the OPTIMIZE_IDEAS reorder logic will never fire. Two-line fix in `aggregate_drivers()`.
+4. **No OPTIMIZE_IDEAS.md reorder needed this run.** The system is stable. Re-run the audit after #3 lands to see if any real driver clusters emerge.
+
+---
+
+## 2026-05-21 — Run #2 (since 7d, ~16 min after Run #1, 28 Builder-related sessions analyzed)
+
+### Intent vs current focus
+
+- **Delta since Run #1 is tiny but consistent in direction.** Total input tokens grew from 391M to 403M (+12M), active hours from 13.0 → 13.5, human messages from 210 → 212 in the 16-minute window between Run #1 (collected 08:28:57Z) and this run (08:44:41Z). The two new human prompts produced too little token weight to crack the token-ranked `top_prompts` list — those snapshots are still dominated by the heavy planning/resume prompts from earlier in the week.
+- **The work in that 16-minute window was follow-through on Run #1's recommendations** (corroborated from the active conversation thread, since prompt-text evidence is below the token cap):
+  - **Run #1 Action #3 (fix driver-shape mismatch) → done.** `aggregate_drivers()` in `collect.py` rewritten to extract three independent streams (`recommended_next_change`, `avoidable_cost_flags` from `optimization_decision`, `agent_names_with_avoidable_tokens` from `top_cost_drivers[*]` where `avoidable_token_estimate > 0`). The SKILL.md mapping table was reorganized into 3 sub-tables matching the streams. Smoke test confirms 4 sub-keys present in the aggregated_drivers structure.
+  - **Bug 1 (skill mutating STATUS.md) → fixed in SKILL.md.** Added an ⚠ HARD RULE block at the top of SKILL.md listing the 14 forbidden-to-edit files, plus a Step-7 self-check before reporting.
+  - **Bug 3 (skill not invocable via Skill tool) → fixed in frontmatter.** Added `model: sonnet`, `effort: high`, `allowed-tools: Read, Edit, Bash` to match the format the existing project-local skills (`implementation`, `init-project`) use.
+  - **Run #1 Action #1 (update STATUS.md) → not done.** This is by design — the new ⚠ HARD RULE blocks the skill from editing STATUS.md. That recommendation is a *user decision*, not a skill action.
+  - **Run #1 Action #2 (devpulse re-verify) → not done.** Still the next concrete roadmap action; no time spent on it in this window.
+- **No new cache_breaks > 100K and no new direction-pivot prompts in scope.** The 16-minute window was tightly focused (bug-fix loop on the audit tool itself), not direction-changing. That's a healthy signal — direction has been stable since Run #1's verdict.
+- **STATUS.md state still reads as it did at Run #1** (`Current Item In Flight = End-to-end re-verify`, Active Workspace = devpulse). This is consistent with the HARD RULE: the skill cannot fix this; the user must.
+
+**Alignment verdict:** **drifting (unchanged from Run #1)** — same gap as before: STATUS lags reality. The framework + skill infrastructure is now hardened (3 bugs fixed); the next move is for the user to either update STATUS.md or run the devpulse re-verify (which would then justify keeping STATUS as-is).
+
+**Suggested STATUS.md change:** unchanged from Run #1. Update `Current Item In Flight` to reflect the framework + audit-infrastructure milestone, OR run the devpulse re-verify so the current item makes sense as in-flight again.
+
+**Suggested ROADMAP.md change:** none.
+
+### Autoresearch focus candidates
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 6 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+**No autoresearch action — system stable.** Builder-runtime signals identical to Run #1 (same 3 devpulse + 3 todo-app sessions analyzed; same `maintain_current_flow` × 6 verdict). With the fixed aggregator, the reorder logic would now fire if real waste appeared in any stream — but the Builder system has nothing to flag.
+
+Side-data unchanged: Claude Code `general-purpose` subagent still averages 3.46M tokens/call (above the 2M threshold mentioned in SKILL.md gotchas). This is informational only and not mappable to OPTIMIZE_IDEAS idea 8 (which is about Builder's `code-gen` subagent, a different concern).
+
+**OPTIMIZE_IDEAS.md actions taken:** none — same as Run #1.
+
+### Recommended actions
+
+1. **Audit cadence limitation surfaced.** The token-weighted `top_prompts` cap (200) silently excludes short recent activity. After a successful Run #N, subsequent runs within the same day will see the window dominated by older heavy prompts and the newer (small) prompts disappear. This Run #2 saw +12M tokens of new work but 0 new top_prompts because the window was 16 min and individual prompts were small. Consider a future enhancement: add a `since_run` mode where the collector accepts a prior `INSIGHTS.md` timestamp and emits a "deltas since" section. Not blocking; just a known sharpness limit.
+2. **Run #1's recommended actions #1 and #2 remain open.** Update STATUS.md OR run the devpulse re-verify. The Builder system is genuinely clean — the bottleneck right now is the unblocking action on M1.1, not any inefficiency.
+3. **The skill is now self-correcting.** Run #1 surfaced 3 bugs; this Run #2 confirms all 3 fixed and the system is otherwise stable. Future runs should produce shorter Recommended-actions sections as the framework reaches steady state.
+4. **No OPTIMIZE_IDEAS.md reorder needed.** All three driver streams empty for actionable signals; system stable.
+
+---
+
+## 2026-05-21 — Run #4 (since 7d, 40 Builder-related sessions analyzed)
+
+### Intent vs current focus
+
+- **M1.2 is genuinely in flight for the first time.** The 40-session window now includes 12 sessions under `/tmp/aab-workspaces/128e02f6-...` (scaffold + code-gen for the first devpulse task, completed at ~11:25) and 1 session under `/tmp/aab-workspaces/a3c4511b-...` (a second code-gen task, currently running as task `brae6l70h` at time of this audit). By-project: devpulse=7, source repo=14, tmp-workspaces=13. This is the first run where devpulse + workspace sessions together exceed source-repo sessions — execution has caught up with framework-building.
+- **The brief context7 / automation-recommender detour (09:18–09:32) does not indicate drift.** Recent prompts `"Provide top 4 recommendation which i should definitely implement"` (09:26), `"/claude-code-setup:claude-automation-recommender"` (09:18), `"i cant install mcp, but will install context7 plugin"` (09:28), `"this is managed environment hooks are disabled here"` (09:27) — these 15 minutes of infrastructure exploration preceded the actively running M1.2 dispatch. They did not displace it.
+- **CLAUDE.md placement clarification was M1.2-adjacent work, not drift.** Prompts `"not project local .claude"` (09:39) and `"its the opposite i want project local .claude/CLAUDE..md updated"` (09:39) indicate a brief correction on where generated-app CLAUDE.md should land — directly relevant to the scaffold + builder-init flow being tested in M1.2.
+- **STATUS Evidence Pointers are one task behind.** STATUS records task `128e02f6` as the latest Agent session (done, 11:25). The currently active task `brae6l70h` (board state: pending=3, active=1) is not yet reflected. This is expected during in-flight work, not a lie — but should be updated when the task completes. Evidence: monitor event `11:27:52 board: pending=3 active=1` (task-notification in current session).
+- **User is reading the docs/goal/ framework while monitoring the running agent.** Prompts `"can you read through docs/goal/README.md"` (11:28:07), `"yes please continue, some monitors are already in place and running"` (11:28:38), `"in meantime can you run goal audit skill"` (11:29:38) — this is informed operator oversight while execution proceeds, not redirection away from M1.2.
+
+**Alignment verdict:** **aligned** — first aligned verdict across 4 audit runs. STATUS claims M1.2 in flight; actual sessions confirm M1.2 is executing. Evidence Pointers are slightly stale (expected; task in progress). No structural STATUS or ROADMAP edits needed.
+
+**Suggested STATUS.md change:** After task `brae6l70h` completes, update Evidence Pointers: `Latest agent session id (Claude lane)` → new session ID, board state → post-completion snapshot.
+
+**Suggested ROADMAP.md change:** None.
+
+### Autoresearch focus candidates
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 6 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+**No autoresearch action — system stable.** Builder-runtime evidence unchanged across all 4 audit runs: same 3 devpulse + 3 todo-app session IDs (deduplicated), all reporting `maintain_current_flow`, no avoidable cost flags, no expensive agents. The autoresearch loop cannot fire without a ≥3-session single-item-mapped driver — none exists.
+
+**OPTIMIZE_IDEAS.md actions taken:** none.
+
+### Recommended actions
+
+1. **After task `brae6l70h` completes, update STATUS.md Evidence Pointers.** Run `builder logs analyze --session <new-id> --json` and `builder board show --json` from `/home/gurusharangupta/Builder-Workspace/devpulse`; capture session ID, cost, board state. This closes the one-task lag identified above.
+2. **Run Tier 1 verification as the next gate.** Per EVALUATION.md §1.1: `builder logs analyze --session <id> --json` (cache_ratio > 5x?), `builder metrics show --json --full --limit 8` (chunk_pressure_risk, avoidable_cost_flags, recent_risky_runs). M1.2 cannot be closed without this evidence.
+3. **No OPTIMIZE_IDEAS.md reorder needed.** All three driver streams are empty for actionable signals across all 4 audit runs. Builder system is operating cleanly.
+
+---
+
+## 2026-05-21 — Run #3 (since 7d, 28 Builder-related sessions analyzed; first run with `recent_prompts` as primary intent signal)
+
+### Intent vs current focus
+
+- **STATUS.md was updated by the user between Run #2 and this run** — closing Run #1/#2 Recommended Action #1. Current Position now reads M1.1 closed (all 8 IMPs resolved with regression tests), M1.2 in flight, IMP-010 opened as the M1.2 blocker. `Last Update: 2026-05-21 — M1.1 closed by Claude Sonnet 4.6 session; IMP-010 opened`. The framework lag identified in Runs #1 and #2 is no longer a STATUS-vs-reality gap on the roadmap side; STATUS now reflects what the M1.1 work actually accomplished.
+- **However, recent activity is not on the named in-flight item.** STATUS says `Current Item In Flight = M1.2 first item — fresh devpulse builder init + readiness gate green`. Recent intent (newly visible because `recent_prompts` is now recency-ranked, not token-weighted) shows the past ~90 minutes in this repo focused entirely on goal-audit skill maturation, not on M1.2/IMP-010 work. Evidence from `recent_prompts` (newest first, all in this project):
+  - `08:53` `"what you said in honest finding, then everything will always be clouted by the first planning prompt"` — first-principles critique of the skill itself
+  - `08:44` `"Yes i want you to rerun the audit again, i have a session which has been running for quite some time now"`
+  - `08:35` `"can you first fix teh bugs"`
+  - `08:28` `"shall we test?"`
+  - `08:09` `"sure go ahead"` (api_calls=145 — heaviest recent prompt, driving the bug-fix and self-containment work)
+  - `08:06` `"the skill should be self contained if anything referenced from outside like the session report copy the desired file into the skill itself and tailor it as per your requirement"`
+  - `07:54` `"does it provide any signal that will tell agent to update autoresearch as well?"`
+  - `07:50` `"can you check the docs/goal/README.md and continue"`
+  - `07:47` `"can you first use the /session-report:session-report skill to see how it could be used to tailor the skill"`
+  - `07:45` `"I want to create a skill using skill creator skill which manages my goal folder and autoresearch folder"`
+- **Project attention distribution unchanged.** `by_project` still shows ~14h active in this architecture-review repo (now 14.2h vs Run #2's 13.5h, so +0.7h since Run #2) vs 0.3h on devpulse over the full 7-day window. Devpulse work has not started.
+- **This is the *intended* drift: framework before fieldwork.** The recent_prompts make clear that the work pattern is `build the audit tool that will help validate M1.2` rather than `do M1.2 directly`. That's a deliberate sequencing choice, not unconscious drift. The skill development is infrastructure for the roadmap, not a roadmap item itself — exactly the same pattern as Run #1's verdict on the docs/goal/ framework build.
+- **Run #3 closes the visibility gap that Run #2 raised as Recommended Action #1.** Run #2 noted that `top_prompts` (token-ranked) silently buried short recent prompts. This Run #3 is the first run with `recent_prompts` (recency-ranked) as the primary intent signal, and the past 90 minutes of activity are now visible at the top of the list instead of behind week-old planning prompts. Confirms the fix works.
+
+**Alignment verdict:** **drifting (acknowledged-and-intentional)** — Current Item In Flight per STATUS is M1.2/IMP-010; current actual work is goal-audit skill maturation. The work is justified (better audit tooling helps validate M1.2), but it's not a roadmap item, so STATUS cannot reflect it without adding either (a) a new roadmap milestone for self-auditing infrastructure, or (b) a Recent Decisions line acknowledging the parallel infrastructure thread.
+
+**Suggested STATUS.md change:** Optional. Either add a Recent Decisions line: `"2026-05-21 — goal-audit skill matured (3 audit runs, first-principles cleanup, top_prompts → recent_prompts swap). Audit infrastructure now ready to validate M1.2 reverse-flow."` OR pivot focus to M1.2 / IMP-010 so the skill development thread naturally winds down. Skill leaves this choice to the user (HARD RULE).
+
+**Suggested ROADMAP.md change:** None. Consider whether the meta-framework / audit-infrastructure work deserves an explicit roadmap callout (e.g., as part of M2.x), but this is a strategic question for the user, not an audit action.
+
+### Autoresearch focus candidates
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 3 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+**No autoresearch action — system stable.** Builder-runtime evidence unchanged in substance from Runs #1 and #2: the same devpulse + todo-app sessions analyzed; all report `maintain_current_flow`. The count moved from `{maintain_current_flow: 6}` (Runs #1/#2) to `{maintain_current_flow: 3}` (Run #3) because the cleaned aggregator now deduplicates by session_id across workspaces — the same 3 Builder-runtime session IDs appeared in both `Builder-Workspace/devpulse` and `Workspace/todo-app` probes, and earlier they were double-counted. The verdict is unchanged either way.
+
+**OPTIMIZE_IDEAS.md actions taken:** none — same as Runs #1 and #2.
+
+### Recommended actions
+
+1. **The audit-tool maturation thread can wind down.** Three audit runs (#1, #2, #3) plus first-principles cleanup and self-containment fixes constitute a complete iteration. The skill now produces correct evidence-grounded entries, can detect direction drift visibly, and respects the HARD RULE. Further refinement should be driven by new findings during real use, not pre-emptive polishing.
+2. **The next concrete action per STATUS is M1.2 → IMP-010 fix.** `agent_run_lifecycle.py` `monitor_workspace_diff` not-stopped-on-exception path. Once IMP-010 closes, M1.2 first item (fresh devpulse `builder init` + readiness gate green) can run.
+3. **The cleaned aggregator + recent_prompts changes from this session should be reflected as a goal-audit memory entry.** Per [FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-the-learning-is-durable), the durable learning is: *"prefer recency-ranked intent over token-weighted intent — token weight silently buries recent short prompts behind heavy old ones"*. Suggested memory write: `builder memory add --type pattern --tag goal-audit,intent-extraction ...` from the Builder source repo, not from this architecture-review repo.
+4. **No OPTIMIZE_IDEAS.md reorder needed.** All three driver streams empty for actionable signals; Builder system continues to operate cleanly.
+
+---
+
+## 2026-05-21 — Run #5 (since 7d, 50 Builder-related sessions analyzed)
+
+### Intent vs current focus
+
+- **A strategic-direction lane opened in the most recent sessions that the prior 4 runs didn't see.** The user pulled an external best-practices artifact (`"now can you read the … how-openai-uses-codex.pdf … its codex related but think in general for any agent harness"`, 2026-05-21T15:46:53, session `c281c387`), proposed a new product surface (`"I had been thinking of two feature one is autopilot mode, where in if you turn on the autonpilot the orchestrator agent takes the responsibility of approving and moving the task forward or recover…"`, 2026-05-21T15:22:19, session `c281c387`), and repeatedly asked for harness-level recommendations (`"what is you recommendation which we should implement in our autonomous builder?"` 2026-05-21T15:50:04; `"Give you recommendation , what do you think about it"` T15:25:26). This is intake-and-direction work, not execution.
+- **STATUS.md `Current Item In Flight` still reads `M1.2 first item — devpulse sprint in progress; 2 tasks done, 3 pending`, but session distribution shows the named work has barely started.** Source repo drew 17 sessions / 15.1 active hours / 213 human messages this week; the named devpulse workspace drew 7 sessions / 0.3 active hours / 11 human messages. The Active Workspace got <2% of human attention. Same drift shape as Runs #1–#4 — unchanged.
+- **Generated-app activity is happening on disposable `aab-workspaces-*` paths, not on canonical devpulse.** `ab-workspaces-ced2f6f3` ran feature-verifier scaffolds (T15:32:37, T15:42:28, T15:46:46, session `c281c387`); `ab-workspaces-128e02f6` ran scaffold-agent prompts throughout (T06:22 → T09:49). The STATUS-listed devpulse workspace is not where Builder runs landed this week.
+- **Builder-runtime side is stable across every analyzed session.** `aggregated_drivers.recommended_next_change` is `{maintain_current_flow: 6}` (3 devpulse + 3 todo-app `builder logs analyze` probes); `avoidable_cost_flags` and `agent_names_with_avoidable_tokens` are both empty. Devpulse `cache_ratio = 18,584` — far above the 5× bar. No autoresearch signal to act on.
+- **Cache-breaks this window are operator-workflow, not direction-pivot.** 11 breaks total; surrounding `context` arrays are dominated by `/model`, `/plan`, `/resume-session`, and "check docs/goal/README.md" — not the autopilot or harness-recommendation prompts that are the actual direction signal. The genuine pivot (autopilot) did not itself produce a cache_break, confirming the gotcha that cache-breaks ≠ intent shifts.
+
+**Alignment verdict:** **drifting** — same drift as Runs #1–#4 (STATUS claims M1.2 first item is in flight; it isn't). New nuance this run: a strategic intake lane has opened (OpenAI PDF + autopilot proposal + recommendation requests) that is not in ROADMAP or backlog, and will lose signal without capture.
+
+**Suggested STATUS.md change:** Either (a) update `Current Item In Flight` to reflect that M1.2 first-item execution is paused while strategic intake runs, OR (b) close the intake lane and pick up M1.2 execution on devpulse. The current file says M1.2 is in flight; the data says it isn't. (HARD RULE: skill does not edit.)
+
+**Suggested ROADMAP.md change:** Consider an "Autopilot mode — orchestrator owns approval, recovery, and continuation" item in Epoch 2 or a Future Surfaces bucket. The user has proposed it once explicitly with a concrete description; it is a real direction signal, not a passing remark. (HARD RULE: skill does not edit.)
+
+### Autoresearch focus candidates
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 6 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+**No autoresearch action — system stable.** Same shape as Runs #1–#4. The OpenAI Codex best-practices reading prompted a "what should we implement" question, but the Builder runtime itself flags nothing avoidable. The 7 PDF principles map cleanly onto existing OPTIMIZE_IDEAS items already in the backlog: "environment learning > prompt iteration" ≈ items 6/7/9; "subagent for code-gen" = item 8; "plan→execute" is already enforced by phase model; "persistent context" is already CLAUDE.md/AGENTS.md/`builder knowledge`; "task queue as backlog" is already `project→item→task`. The PDF reinforces existing direction; it does not introduce a new driver. Best-of-N and "after-fix sibling search" are genuinely new but lack runtime evidence to justify promotion.
+
+**OPTIMIZE_IDEAS.md actions taken:** none. `maintain_current_flow` is explicitly excluded from reorder candidates (HARD RULE check). No other stream populated.
+
+### Recommended actions
+
+1. **Capture the autopilot proposal before it drifts back into chat.** Either append a ROADMAP item under Epoch 2 ("Autopilot mode — orchestrator owns approval/recovery/continuation"), OR run `builder backlog item create --type feature --source validation --title "Autopilot mode: orchestrator owns approval, recovery, continuation" --json` from the source repo. This is the only genuinely new direction signal in the 7-day window, and it has zero durable representation right now.
+2. **Do NOT add OpenAI-PDF principles as new framework prose.** Five of the seven principles are already encoded (phase model, CLAUDE.md/AGENTS.md, OPTIMIZE_IDEAS 6/7/8/9, project→item→task backlog). Writing them again as new doctrine would compound the same drift the prior 4 audits flagged: more meta-framework, less M1.2 execution. The two genuinely new principles (Best-of-N, after-fix sibling search) need runtime evidence before promotion.
+3. **The honest answer to "what should we implement?" is: finish M1.2 first.** Empirical priority comes from `aggregated_drivers` (empty) and STATUS (M1.2 named but unstarted). Until devpulse actually ships one feature end-to-end through the lane STATUS claims is active, new OpenAI-derived principles cannot be tested against real data — they would be doctrine without measurement.
+4. **If the user still wants to bias toward an OpenAI-PDF principle now, the highest-fit existing item is OPTIMIZE_IDEAS #6 (cap tool-output reinjection at 2K with builder artifact pointer).** This is "environment learning > prompt iteration" in practical form. It is at position 6 with `Attempts: none`. The user can manually promote it; the data doesn't authorize auto-reorder.
+5. **Add "after-fix sibling search" as OPTIMIZE_IDEAS #11 (new entry)** if the user wants to record it as a hypothesis. Status: `Attempts: none`; SDK basis: bounded `repo-researcher` subagent invoked after `implementation` closes on a bug-fix item. Skill cannot add new ideas; flagging as a user action.
+
+

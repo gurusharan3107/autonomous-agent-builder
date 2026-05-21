@@ -1,0 +1,204 @@
+# Roadmap — From Current State To "Preferred Over Codex CLI And Claude Code"
+
+> **Read [README.md](README.md) and [NORTH-STAR.md](NORTH-STAR.md) first.**
+> **Update [STATUS.md](STATUS.md) when any milestone or item transitions state.**
+
+The product reaches "preferred" through three epochs, each with milestones, each with concrete items. Items are checkbox-tracked. Milestones flip from `pending` → `in_progress` → `done` only when **every** item under them is `[x]` and the relevant tier of [EVALUATION.md](EVALUATION.md) passes with evidence.
+
+This is the spine of all work. Anything that isn't a roadmap item gets added to the right epoch before being started — not done ad-hoc.
+
+---
+
+## Epoch 1 — Stabilize
+
+**Outcome:** The product reliably ships features end-to-end through both runtime lanes against multiple managed-app workspaces. Operator-facing bugs are closed. Performance bars are met. The architecture is decomposed enough that further work is safe.
+
+**Gating tier:** [EVALUATION.md § Tier 1](EVALUATION.md#tier-1--token--ux-bars-every-release) must pass on the primary workspace in both lanes.
+
+### M1.1 — Close the open operator-facing defects
+
+Source of truth: [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md). Each IMP-NNN must be closed with: root cause, SDK-grounded fix, regression test, post-fix evidence, and (if durable) a memory entry.
+
+- [x] **IMP-001** — Agent loses original feature request context after intake follow-up. Fixed in `agent_prompt_builders.py` + `chat_turn_prompting.py` + `routes/agent.py`; regression tests in `test_agent_feature_spec_prompt_contracts.py`.
+- [x] **IMP-002** — Gates-first not enforced: 27-turn run before workspace has ruff/pytest infra. Fixed by scaffold commits 1fae0bd, c1a39c8, a88ee2c.
+- [x] **IMP-003** — `builder metrics show` reports 0 tokens for in-progress runs. Fixed in `dashboard_metrics.py`; regression test `test_metrics_active_run_injects_diagnostic_note`.
+- [x] **IMP-004** — Recover button returns 409 for gate-infrastructure-blocked tasks. Fixed in backend (IMP-002 commits) and frontend (commit 8799f1b).
+- [x] **IMP-006** — Scaffold agent fails to emit sentinel because it uses shell heredoc instead of Write tool. Prompt constraint added to `agents/definitions.py`; regression verified on devpulse.
+- [x] **IMP-008** — `git worktree add` fails on unborn HEAD. Unborn-HEAD guard added to `workspace/manager.py`; regression test `test_workspace_manager_creates_initial_commit_for_unborn_head`.
+- [x] **IMP-007** — Agent dispatches all tasks simultaneously → connection pool exhaustion. Prompt constraint + project-level dispatch lock added; regression tests in `test_dispatch_guards.py`.
+- [x] **IMP-009** — Agent dispatches before scaffold completes. Scaffold HTTP timeout raised to 300 s + pre-dispatch scaffold-running guard; regression test in `test_dispatch_guards.py`.
+- [x] **IMP-010** — SQLAlchemy session rolls back during long scaffold runs. Fixed with try/finally + flush-error structlog in `agent_run_lifecycle.py` and rollback guard in `orchestrator.py`. Monitored via `agent_run_lifecycle_flush_error` events.
+- [x] **IMP-011** — SSE endpoints (`board_stream`, `approval_stream`) hold pool connections for full client lifetime, exhausting QueuePool during long runs. Fixed in `dashboard_api.py` by scoping session to initial snapshot only.
+- [x] **IMP-012** — Dispatch session becomes invalid after ~90s. Fixed by switching `persist_realtime_run_update` to short-lived sessions from `get_session_factory()`. Validated: scaffold completed 5m17s, code-gen 12m, task 128e02f6 reached `done` at 11:25.
+- [x] **IMP-013** — Orphan task branch refuses fast-forward merge (`unrelated histories`). Fixed with rebase-before-integrate in `workspace_integration.py`. Validated: `workspace_rebased_for_integration` + `workspace_integrated_fast_forward` both emitted at 11:25.
+- [x] Re-verify all closures end-to-end against the devpulse workspace in both runtime lanes (M1.2 prerequisite). Evidence: 79/79 regression tests pass (2026-05-21). All IMP-specific tests pass. Live devpulse re-verify surfaced IMP-010 through IMP-013 — all closed in same session.
+
+### M1.2 — Both lanes ship one feature on devpulse end-to-end
+
+Forward-engineering scenario validated against both runtime lanes on the *same* operator wording.
+
+- [x] Fresh devpulse workspace boots successfully via `builder init`; readiness gate green.
+- [x] Claude Agent SDK lane: devpulse sprint 5/5 tasks done, $2.08 total (2026-05-21). Domain model → UI shell → core behavior → persistence → verify. All quality gates passed. 127 tests green.
+- [x] Source-repo gate bugs unblocked Claude lane: (1) `quality_gates/testing.py` removed `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` that killed pytest-asyncio; (2) `feature_acceptance.py` `_TEST_SUFFIXES` added `.py` so Python test files count toward coverage; (3) `run-tests.js` shim pattern added for Python apps with no npm test command.
+- [x] `docs/goal/` framework and `goal-audit` skill created and stabilized: 5 audit runs, 3 skill bugs fixed (driver-shape mismatch, `top_prompts` → `recent_prompts` recency signal, HARD RULE blocking skill from editing STATUS.md). Framework is now agent-resumable and self-correcting.
+- [ ] Codex SDK lane: same operator wording, same outcome. Evidence shows Codex-specific telemetry, app-server events, native user-input request paths.
+- [ ] Both lanes meet all four Tier-1 thresholds (`cache_ratio > 5x` after turn 2, `chunk_pressure_risk: false`, `avoidable_cost_flags: []`, gate-pass rate `1.0`). Run: `builder logs analyze --session <id> --json` + `builder metrics show --json --full --limit 8`.
+- [ ] Session evidence (`builder logs analyze --session <id> --json` for each lane) archived under [STATUS.md § Evidence Pointers](STATUS.md#evidence-pointers).
+
+### M1.3 — God-file decomposition ratchet complete
+
+Source of truth: [docs/quality-gate/complexity.md](../quality-gate/complexity.md) and `complexity-baseline.json`. Active threshold violations must reach zero.
+
+- [ ] Every active file violation in `complexity-baseline.json` has either been split below the 500-line target or registered as a documented historical baseline (not a fresh violation).
+- [ ] `services/voice_operator.py`, `observability/summary.py`, `orchestrator/orchestrator.py`, `embedded/server/routes/agent.py` each below 1,500 measured lines or split into named owner modules.
+- [ ] `builder lint --complexity-report --json` reports `0 violations`.
+- [ ] Constraint: extraction is sequential single-agent; **never** parallel agents (see `.memory/feedback_extraction_constraints.md`).
+
+### M1.4 — Two-workspace validation rotation
+
+Both forward-engineering and reverse-engineering scenarios validated. Both runtime lanes exercised on each.
+
+- [ ] **Forward:** fresh app from scratch in a new workspace (devpulse or equivalent). Both lanes.
+- [ ] **Reverse:** operate on an existing app workspace (todo-app, a checked-out external repo). Both lanes.
+- [ ] Both scenarios produce identical operator-visible behavior across lanes. Lane attribution preserved in run history after a runtime switch.
+- [ ] [docs/PROMPT.md](../PROMPT.md) operator-prompt scripts executed in both lanes; rubric pass for [docs/rubric/sdk-backed-agent-page-agent.md](../rubric/sdk-backed-agent-page-agent.md) and [docs/rubric/realtime-voice-agent-page-agent.md](../rubric/realtime-voice-agent-page-agent.md).
+
+### M1.5 — Realtime Voice (Samantha) parity with Agent page
+
+Voice is a peer operator surface, not a bolt-on.
+
+- [ ] Voice and Agent share the same chat session, same approvals, same pending-question cards.
+- [ ] Voice-initiated feature shipped end to end with browser proof in both lanes.
+- [ ] Realtime auth boundary holds (Realtime uses `OPENAI_API_KEY`; selected runtime auth not leaked into Realtime; Codex subscription runs strip OpenAI credentials).
+- [ ] Voice-initiated delegations rebind correctly to delegated Agent session; no orphan voice transcripts.
+
+---
+
+## Epoch 2 — Differentiate
+
+**Outcome:** The product wins decisively on the differentiator dimensions. Codex CLI and Claude Code cannot match what Builder does because the differentiators are structural, not features.
+
+**Gating tier:** [EVALUATION.md § Tier 2](EVALUATION.md#tier-2--lifecycle-coverage-bars-every-milestone) must pass on every managed app in scope; [Tier 3](EVALUATION.md#tier-3--head-to-head-bars-to-declare-preferred) head-to-head benchmarks begin here.
+
+### M2.1 — Lifecycle completeness proof
+
+Full requirements → design → backlog → implementation → verification → ship → optimize loop, dashboard-visible, resumable, durable.
+
+- [ ] One end-to-end project completed on devpulse with every phase visible in the dashboard, including post-ship optimization recommendation lane.
+- [ ] Resumability: kill the dashboard mid-sprint, restart, confirm exact state restored — no operator data loss, no stale "running" status, no orphaned approvals.
+- [ ] Runtime switch mid-project: switch from `claude` to `codex_sdk` between sprints; historical attribution preserved; future work uses the new lane.
+- [ ] Multi-operator handover: a second operator joining mid-project sees the same Board, Backlog, Inbox, and Agent state as the first.
+
+### M2.2 — Memory and knowledge as decisive differentiators
+
+The product's memory and KB compound across sessions and protect against re-litigating settled questions.
+
+- [ ] Memory retrieval workflow ([docs/workflows/memory-retrieval-guide.md](../workflows/memory-retrieval-guide.md)) is the documented standard step 0 of every non-trivial fix.
+- [ ] Knowledge base freshness gate (`builder knowledge validate --json`) is wired into the documentation refresh gate before PR creation in every shipped sprint.
+- [ ] Memory write-back rate: every closed IMP that has a non-obvious owner boundary, single-control-owner pattern, or recurring trap produces a `builder memory add` entry with the correct type and tag.
+- [ ] Demonstrate compounding: pick a topic where memory and KB exist; show that a fresh session reaches a correct decision faster than the original session did.
+
+### M2.3 — Cost-aware execution surface complete
+
+Token, cache, chunk, and avoidable-cost telemetry is first-class everywhere it matters: dashboard Metrics page, Agent page Session rail, CLI `builder metrics show` and `builder logs analyze`, observability recommendations.
+
+- [ ] `builder metrics show` and the Metrics page agree with raw `builder logs --compact` cost on every run.
+- [ ] Per-turn non-cached-plus-output, raw, and cached tokens visible and accurate in the Agent page Session rail in both lanes.
+- [ ] Observability recommendations distinguish builder-owned optimization candidates from general workflow-state warnings (approval/blocked signals routed to builder state, not optimization).
+- [ ] Optimization-agent only runs when post-ship evidence demonstrates a candidate; never on Builder-owned generated-app residuals.
+
+### M2.4 — Operator UX polish to "no internals leakage"
+
+Every operator-facing surface respects the banned-term contract.
+
+- [ ] Banned-term audit across Agent transcript, Voice transcript, Board, Backlog, Inbox, Metrics, Observability, Settings, and approval cards: zero leakage of `lifecycle`, `scaffold`, `dispatch`, `worktree`, `permission mode`, `SDK`, `MCP`, `recover`, `blocked_reason`, `gate`, `chunk`, `bounded`, `raw/full logs`, `token pressure`, etc., unless the operator typed them first.
+- [ ] All pending questions and approvals render readable operator labels (no `[object Object]`, no internal payload objects).
+- [ ] Inline question/approval controls land in the composer/footer (one control owner), with historical timeline entries as evidence only.
+- [ ] Recover button visible only when blocked-reason is actually recoverable. Otherwise an actionable next-step message.
+
+### M2.6 — Autopilot mode
+
+When enabled, the orchestrator owns approval, recovery, and continuation without operator intervention. Operator opts in; Builder handles the rest.
+
+- [ ] Autopilot toggle in dashboard Settings; persisted per project.
+- [ ] When autopilot is on: orchestrator auto-approves ready tasks, auto-recovers `capability_limit` / `cycle-detected` blocked states, and auto-advances to the next ready task after completion — without waiting for operator input.
+- [ ] Operator can disable autopilot mid-sprint; in-flight work is not interrupted.
+- [ ] All autopilot actions are dashboard-visible (Board + Agent timeline show who approved/recovered: operator or autopilot).
+- [ ] Autopilot does not approve design/plan phases if the operator has not confirmed scope; only implementation-onwards phases are eligible by default.
+
+### M2.5 — Architecture and design language coherence
+
+The dashboard feels like one product.
+
+- [ ] Frontend React architecture rubric ([docs/rubric/frontend-react-architecture.md](../rubric/frontend-react-architecture.md)) passes on all current and future surfaces; no god components.
+- [ ] Backend service architecture rubric ([docs/rubric/backend-service-architecture.md](../rubric/backend-service-architecture.md)) passes; clear ownership boundaries; no second control owners for the same concern.
+- [ ] Design language ([docs/design-docs/design-language.md](../design-docs/design-language.md)) applied consistently; design-system primitives only, no ad-hoc styles.
+
+---
+
+## Epoch 3 — Scale
+
+**Outcome:** The product handles real-world complexity: multi-feature apps, long horizons, multi-operator teams, and head-to-head benchmark wins against Codex CLI and Claude Code on canonical tasks. The "preferred" claim is defensible with evidence.
+
+**Gating tier:** [EVALUATION.md § Tier 3](EVALUATION.md#tier-3--head-to-head-bars-to-declare-preferred) must pass.
+
+### M3.1 — Complex multi-feature app delivery
+
+Builder ships a non-trivial app (15+ features, multiple integrations, real database, real auth, real deployment) end to end in both lanes.
+
+- [ ] Project plan, sprints, backlog, approvals, and shipped evidence persist across the full delivery.
+- [ ] Both lanes reach the same shipped state when given the same operator prompts.
+- [ ] Total tokens, total turns, total wall-clock, total operator interventions tracked per lane and added to STATUS.md evidence.
+
+### M3.2 — Long-horizon session continuity
+
+The product survives 30+ day gaps and multi-machine usage without operator confusion.
+
+- [ ] Operator returns to a project after 30+ days; sees the same Board, Backlog, Inbox, Agent state. No stale "running" markers. Memory and KB still relevant.
+- [ ] Same project resumed from a second machine (operator on laptop and desktop) with consistent state.
+
+### M3.3 — Multi-operator collaboration
+
+Two operators can work on the same project without stepping on each other.
+
+- [ ] Two concurrent Agent sessions on the same project produce consistent state.
+- [ ] Approvals attributable to the operator who granted them.
+- [ ] Memory and KB capture the team's accumulated learning, not just one operator's.
+
+### M3.4 — Head-to-head benchmark wins
+
+The defensible "preferred" claim. Run a canonical task set through Codex CLI, Claude Code, and Builder; measure tokens, turns, wall-clock, success-without-intervention; record results in `docs/goal/benchmarks/` (created as a sub-folder of this one when M3.4 begins).
+
+- [ ] Define the canonical task set (5–10 tasks of varying complexity, agreed up front) and the measurement protocol (same prompt wording, same starting workspace, same model/runtime where comparable).
+- [ ] Build the harness: scripted runs against all three tools; metrics captured uniformly.
+- [ ] Builder wins on tokens-per-feature on majority of canonical tasks in both lanes.
+- [ ] Builder wins on success-without-intervention on majority of canonical tasks in both lanes.
+- [ ] Builder wins on wall-clock for shipped outcome (including the time the operator spends).
+- [ ] Lifecycle-coverage tasks (multi-sprint, durable state, resumability) — Builder is the *only* tool that completes them.
+
+### M3.5 — Optimization loop activation (autoresearch Track B)
+
+Source of truth: [docs/autoresearch/](../autoresearch/). Track B activates only after every prerequisite in [docs/autoresearch/README.md](../autoresearch/README.md) is satisfied (which includes M1.1 IMP closures and M2.3 cost-aware execution).
+
+- [ ] All Track B prerequisites met (IMP-001 to IMP-004 closed, baseline variance measured, gate-pass rate at 1.0, complexity at 0 violations).
+- [ ] Autoresearch loop produces at least one optimization that survives variance gating and ships.
+- [ ] The loop's optimizations are reflected back into runtime policy (`execution_policy.py`) and prompt shape, not just kept in the experiment results TSV.
+- [ ] **After-fix sibling search** — after a bug-fix task closes, a bounded `repo-researcher` subagent scans for sibling files/tests that exhibit the same pattern and flags them before the sprint ends. Add as OPTIMIZE_IDEAS #11; promote when runtime evidence shows recurring same-pattern regressions.
+
+---
+
+## How To Pick The Next Item
+
+1. Read [STATUS.md](STATUS.md). Current epoch and current milestone tell you where to look.
+2. In the current milestone, find the first `[ ]` item that is not blocked by another item.
+3. If multiple items are valid, prefer the one that protects more of [NORTH-STAR.md § Differentiators](NORTH-STAR.md#differentiators-what-codex-cli-and-claude-code-cannot-do).
+4. Mark the item `in_progress` in STATUS.md before starting work.
+5. Close the item by ticking `[x]` only when its acceptance evidence exists and the relevant Tier of [EVALUATION.md](EVALUATION.md) passes.
+6. Update STATUS.md with the new state.
+7. **Commit and push to remote.** Every `[x]` tick — including STATUS.md and any supporting evidence files — must land in a commit on the current branch and be pushed before the item is considered closed. An unpushed `[x]` is not closed.
+
+## How To Propose A New Milestone Or Item
+
+- Open this file, add the milestone/item to the correct epoch.
+- Add a short note in [STATUS.md § Recent Decisions](STATUS.md#recent-decisions) so the next agent knows about the scope change.
+- If the new item changes the success bar, update [EVALUATION.md](EVALUATION.md) in the same change.
