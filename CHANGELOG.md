@@ -7,6 +7,18 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-21 - goal-audit memory write: recency-ranked intent pattern
+
+### Added
+
+- Builder memory entry `patterns/prefer-recency-ranked-intent-over-token-weighted-intent-in-g.md`: pattern documenting that recency-ranked prompts must be used over token-weighted prompts when inferring user intent in audit tools. Evidence: Run #2 surfaced that a 16-minute follow-up window produced 0 entries in the token-weighted list.
+
+### Validation
+
+- `builder memory lint` passes with 0 errors after adding required template sections.
+
+---
+
 ## 2026-05-21 - goal-audit `--since-run` mode + framework governance rules
 
 ### Added
