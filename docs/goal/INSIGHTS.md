@@ -274,7 +274,11 @@ Side-data unchanged: Claude Code `general-purpose` subagent still averages 3.46M
 
 ### Recommended actions
 
-1. **Run the Codex SDK lane on devpulse.** Switch runtime with `builder agent runtime set codex_sdk --json` from the devpulse workspace, use the same operator wording as the Claude lane, dispatch the 5-task sprint, verify all tasks reach `done`. This is the only open product action in M1.2.
-2. **After the Codex lane completes, run Tier-1 verification.** `builder logs analyze --session <id> --json` and `builder metrics show --json --full --limit 8`. Archive session IDs and token evidence in STATUS.md Evidence Pointers. Only tick M1.2 Tier-1 items `[x]` after evidence is archived and commit+pushed (Hard Rule 13).
-3. **Update STATUS.md with the governance decisions from this session** (per Suggested STATUS.md change above). One Recent Decisions line is sufficient.
+ROADMAP.md cross-check results (new rule applied retroactively to this entry):
+
+- Action "Run Codex SDK lane" → already tracked as ROADMAP.md M1.2 `[ ]` item (line 44). No new action needed.
+- Action "Run Tier-1 verification and archive evidence" → already tracked as ROADMAP.md M1.2 `[ ]` items (lines 45-46). No new action needed.
+- Action "Update STATUS.md" → standard protocol in ROADMAP.md § How To Pick The Next Item (steps 6-7). No new action needed.
+
+**No net-new recommended actions this run.** All three candidate actions are already on ROADMAP.md. The framework is self-consistent. The only thing needed is execution: dispatch the Codex SDK lane per the existing M1.2 `[ ]` items.
 
