@@ -245,6 +245,7 @@ Side-data unchanged: Claude Code `general-purpose` subagent still averages 3.46M
 ---
 
 ## 2026-05-21 — Run #6 (since 7d, 51 Builder-related sessions analyzed)
+<!-- collected_at: 2026-05-21T16:27:09.587Z -->
 
 ### Intent vs current focus
 

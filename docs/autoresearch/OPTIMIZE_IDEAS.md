@@ -109,6 +109,17 @@ Order roughly by expected impact / cost — agent reads top-down.
 
 ---
 
+## 11. After-fix sibling search
+
+- **Category**: quality / regression prevention
+- **Hypothesis**: After a bug-fix task closes, a bounded `repo-researcher` subagent scans for sibling files and tests that exhibit the same anti-pattern and flags them before the sprint ends. Should reduce recurring same-pattern regressions across the codebase.
+- **SDK basis**: Claude Agent SDK bounded subagent (`repo-researcher`) returning structured evidence to the parent run; does not own lifecycle state.
+- **Files**: `orchestrator/orchestrator.py`, `agents/definitions.py` (repo-researcher subagent), `services/task_dispatch_policy.py`.
+- **Activation condition**: promote to active loop only when runtime evidence shows ≥2 recurring same-pattern regressions in consecutive sprints.
+- **Attempts**: none.
+
+---
+
 ## How to use this file
 
 - The loop reads top-down and picks the first idea with `attempts: none`.

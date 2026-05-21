@@ -7,6 +7,31 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-21 - goal-audit `--since-run` mode + framework governance rules
+
+### Added
+
+- `--since-run` flag on `goal-audit/scripts/collect.py`: derives `--since` from the `collected_at` timestamp embedded in the last INSIGHTS.md entry, producing a "deltas since last run" view instead of a full re-analysis.
+- `<!-- collected_at: ... -->` comment embedded in each INSIGHTS.md entry header (format spec in SKILL.md Step 5). Enables precise `--since-run` resolution; falls back to midnight of the entry date for older entries.
+- `since_run_mode: true` field in collector JSON output when `--since-run` is active.
+- Hard Rules 13 & 14 in `docs/goal/README.md`: commit+push on `[x]`, update CHANGELOG before committing.
+- goal-audit SKILL.md Section C ROADMAP cross-check rule: scan ROADMAP.md before writing recommended actions; skip already-tracked items, credit closed ones.
+- OPTIMIZE_IDEAS.md entry #11: after-fix sibling search via bounded `repo-researcher` subagent.
+- Two new `[ ]` items in ROADMAP.md M1.2: `--since-run` mode (now closed) and goal-audit memory write.
+- STATUS.md Recent Decisions line for this session's framework governance work.
+
+### Changed
+
+- `.gitignore`: added `MagicMock/`, `*.db-shm`, `*.db-wal`, `session-report-*.html`, `*-runtime-explainer.html`, `.codex/`.
+- SKILL.md Gotchas: added `--since-run` usage guidance and `collected_at` embedding reminder.
+
+### Validation
+
+- `python3 scripts/collect.py --since-run --cwd <repo>` resolves to `2026-05-21T16:27:09.587Z` from the Run #6 embedded comment.
+- `python3 scripts/collect.py --help` shows `--since-run` with correct description.
+
+---
+
 ## 2026-05-21 - M1.1 Closed + M1.2 Claude Lane Complete + docs/goal/ Framework
 
 ### Added

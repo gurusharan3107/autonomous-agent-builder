@@ -72,10 +72,16 @@ External runtime requirements:
 Run the bundled collector. Paths are relative to the skill directory root; the agent runs commands from there.
 
 ```bash
+# Full window (default — use for first run of a session or after a gap)
 python3 scripts/collect.py --since 7d > /tmp/goal-audit-data.json 2>/tmp/goal-audit-errors.log
+
+# Delta since last run (use when re-running within the same day)
+python3 scripts/collect.py --since-run > /tmp/goal-audit-data.json 2>/tmp/goal-audit-errors.log
 ```
 
 `--since` accepts `24h`, `7d`, `30d`, `all`, or an ISO timestamp. Default is 7d. Honor a different range if the user passes one (e.g. "audit the last month" → `--since 30d`).
+
+`--since-run` reads the `<!-- collected_at: ... -->` comment from the last INSIGHTS.md entry and passes it as `--since`. Use this when running a follow-up audit in the same session — it shows only new signal since the last entry rather than re-analyzing the full window. Falls back to `7d` if no prior entry exists. The output JSON includes `"since_run_mode": true` when this flag was active.
 
 The collector must be run from the project root so it can read `docs/goal/*` and `docs/autoresearch/OPTIMIZE_IDEAS.md`. If invoked from elsewhere, prefix with `cd <project-root> && ` or pass `--cwd <project-root>`.
 
@@ -185,6 +191,7 @@ Format (exact structure):
 
 ```markdown
 ## YYYY-MM-DD — Run #N (since X, M Builder-related sessions analyzed)
+<!-- collected_at: {collected_at from the collector JSON} -->
 
 ### Intent vs current focus
 
@@ -341,6 +348,8 @@ These are specific traps the model will fall into without being told. They are t
 - **Do not run the skill more than once per day per project.** Running it multiple times in quick succession produces redundant entries with the same data and dilutes the change-over-time signal in INSIGHTS.
 - **If the user asks to compare to last week's audit, do not write a new entry.** Read the last 2 entries in INSIGHTS.md and diff them in your conversation reply.
 - **`session_report.by_project` is already filtered to Builder projects** by `analyze-sessions.mjs --filter-pattern`. The collector trusts the analyzer; there is no second defensive filter in Python.
+- **Use `--since-run` for same-day follow-up audits; use `--since 7d` for session-opening audits.** `--since-run` only shows new signal since the last entry — if the last entry was hours ago, most of the window is empty and the audit adds little value. Use the full window when starting a new session or after a gap of ≥2 days.
+- **Always embed `<!-- collected_at: ... -->` in new INSIGHTS entries** (the format in Step 5 requires it). Without it, `--since-run` falls back to midnight of the entry's date, which can re-analyze up to 24h of already-seen data.
 - **Do not recommend what is already on ROADMAP.md.** Before writing Section C, scan `goal_snapshot.ROADMAP.md` for each candidate action. A `[ ]` match means it is already tracked — say so and skip. A `[x]` match means it is done — credit it as closed, do not re-recommend. Only actions with no ROADMAP match are genuine gaps worth recommending.
 
 ## Notes

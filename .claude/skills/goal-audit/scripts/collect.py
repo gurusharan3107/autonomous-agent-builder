@@ -17,10 +17,14 @@ INSIGHTS.md and optionally reorders OPTIMIZE_IDEAS.md from this blob.
 
 Usage:
   python3 collect.py --since 7d [--top-sessions 5] [--cwd <path>]
+  python3 collect.py --since-run                   # window = since last INSIGHTS entry
 
 Args:
   --since         Time window for session-report. 24h, 7d, 30d, all, or ISO.
                   Default: 7d.
+  --since-run     Set --since automatically to the collected_at timestamp of the
+                  last INSIGHTS.md entry. Mutually exclusive with --since.
+                  Falls back to 7d if no prior entry is found.
   --top-sessions  Max Builder-runtime sessions to inspect per workspace.
                   Default: 5.
   --cwd           Project root for reading docs/goal/*. Default: $PWD.
@@ -37,6 +41,7 @@ The skill should read both stderr and exit code.
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -323,6 +328,39 @@ def aggregate_drivers(builder_signals):
     }
 
 
+def read_last_insights_timestamp(cwd):
+    """Return the collected_at ISO timestamp from the last INSIGHTS.md entry.
+
+    Each entry written by the skill embeds a HTML comment immediately after the
+    ## header line:
+        <!-- collected_at: 2026-05-21T16:27:09.123456+00:00 -->
+
+    Falls back to parsing the YYYY-MM-DD date from the last ## header if the
+    comment is absent (handles entries written before this feature landed).
+    Returns None if INSIGHTS.md does not exist or has no entries.
+    """
+    insights_path = os.path.join(cwd, "docs", "goal", "INSIGHTS.md")
+    if not os.path.isfile(insights_path):
+        return None
+    try:
+        with open(insights_path, encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return None
+
+    # Prefer the embedded comment (most precise)
+    comment_matches = list(re.finditer(r"<!-- collected_at: ([\d\-T:Z+.]+) -->", content))
+    if comment_matches:
+        return comment_matches[-1].group(1)
+
+    # Fallback: date from last ## 20xx-MM-DD header → midnight UTC of that day
+    date_matches = list(re.finditer(r"^## (20\d\d-\d\d-\d\d)", content, re.MULTILINE))
+    if date_matches:
+        return date_matches[-1].group(1) + "T00:00:00Z"
+
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=(
@@ -348,6 +386,14 @@ def main():
         help="Time window for session-report. Accepts 24h, 7d, 30d, all, or an ISO timestamp. Default: 7d.",
     )
     ap.add_argument(
+        "--since-run", action="store_true",
+        help=(
+            "Derive --since from the collected_at timestamp of the last INSIGHTS.md entry. "
+            "Produces a 'deltas since last run' view instead of a full re-analysis. "
+            "Mutually exclusive with --since; --since-run takes precedence when both given."
+        ),
+    )
+    ap.add_argument(
         "--top-sessions", type=int, default=5,
         help="Max Builder-runtime sessions to inspect per workspace via 'builder logs analyze'. Default: 5.",
     )
@@ -357,10 +403,24 @@ def main():
     )
     args = ap.parse_args()
 
+    # Resolve --since-run before anything else so downstream code always sees args.since
+    since_run_mode = False
+    if args.since_run:
+        ts = read_last_insights_timestamp(args.cwd)
+        if ts:
+            args.since = ts
+            since_run_mode = True
+        else:
+            print(
+                "WARNING: --since-run specified but no prior INSIGHTS entry found; falling back to --since 7d",
+                file=sys.stderr,
+            )
+
     warnings = []
     out = {
         "collected_at": datetime.now(timezone.utc).isoformat(),
         "since": args.since,
+        "since_run_mode": since_run_mode,
         "cwd": args.cwd,
         "warnings": warnings,
     }
