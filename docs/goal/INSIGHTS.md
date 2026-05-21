@@ -242,4 +242,39 @@ Side-data unchanged: Claude Code `general-purpose` subagent still averages 3.46M
 4. **If the user still wants to bias toward an OpenAI-PDF principle now, the highest-fit existing item is OPTIMIZE_IDEAS #6 (cap tool-output reinjection at 2K with builder artifact pointer).** This is "environment learning > prompt iteration" in practical form. It is at position 6 with `Attempts: none`. The user can manually promote it; the data doesn't authorize auto-reorder.
 5. **Add "after-fix sibling search" as OPTIMIZE_IDEAS #11 (new entry)** if the user wants to record it as a hypothesis. Status: `Attempts: none`; SDK basis: bounded `repo-researcher` subagent invoked after `implementation` closes on a bug-fix item. Skill cannot add new ideas; flagging as a user action.
 
+---
+
+## 2026-05-21 — Run #6 (since 7d, 51 Builder-related sessions analyzed)
+
+### Intent vs current focus
+
+- **For the first time across 6 audit runs, STATUS.md accurately reflects reality.** STATUS reads "M1.2 Claude lane complete; Codex SDK lane pending." The data agrees: devpulse had 7 sessions / 0.3 active hours; M1.2 Claude lane is done (5/5 tasks, $2.08). There is no stale "in flight" claim this run.
+- **This session was dedicated to framework governance, not product advancement.** The 16 most recent prompts cluster entirely around: commit-and-push requirement for `[x]` items (Hard Rule 13), CHANGELOG requirement before committing (Hard Rule 14), `.gitignore` for runtime artifacts, `docs/goal/` self-containment audit, and the INSIGHTS→ROADMAP completed-item lifecycle. Evidence: `"When checklist is marked completed, the changes have to be committed and pushed to remote"` (T16:14, session `ab11d3d`), `"can you also update the docs/goal/README.md on updating the CHANGELOG.md before commit"` (T16:26), `"is our docs/goal self contained and properly wired?"` (T16:09). None of these prompts advanced the Codex SDK lane.
+- **Two Run #5 recommended actions were fully executed this session.** (1) Autopilot mode added to ROADMAP.md as M2.6 with 5 concrete items — Run #5 action #1 is done. (2) After-fix sibling search added to ROADMAP.md M3.5 as a `[ ]` item — Run #5 action #5 is done. This is the INSIGHTS→ROADMAP lifecycle working as designed: recommendations from an audit entry became `[x]`-trackable roadmap items.
+- **Source repo attention remains dominant.** 17 sessions / 15.8 active hours in source repo vs 7 sessions / 0.3 active hours in devpulse. This is consistent with a framework-governance session. The framework work is durable and now committed + pushed (per the Hard Rules just established).
+- **M1.2 has two open `[ ]` items that require execution, not governance.** Codex SDK lane (same operator wording, same devpulse workspace) and Tier-1 verification (`cache_ratio > 5x`, `chunk_pressure_risk: false`, `avoidable_cost_flags: []`, gate-pass rate `1.0`). Neither moved this session.
+
+**Alignment verdict:** **aligned** — STATUS is accurate; this session's governance work is consistent with the framework. No stale claims. The open gap is execution-only: run the Codex lane and verify Tier-1 bars.
+
+**Suggested STATUS.md change:** Add a Recent Decisions line: `"2026-05-21 — Framework governance: Hard Rules 13 & 14 (commit+push, CHANGELOG-before-commit) added to README.md; .gitignore updated; docs/goal/ self-containment confirmed; INSIGHTS→ROADMAP lifecycle documented."` The Current Position and Next Action fields are already accurate.
+
+**Suggested ROADMAP.md change:** None. M2.6 (autopilot) and M3.5 after-fix sibling search were already added this session. No new items surfaced in this audit.
+
+### Autoresearch focus candidates
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 6 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+**No autoresearch action — system stable.** Sixth consecutive run with `maintain_current_flow` dominating all Builder-runtime sessions. devpulse `cache_ratio = 18,530` (far above 5× bar); `avoidable_token_estimate = 0` across all analyzed sessions. The Builder runtime is operating cleanly; there is nothing to optimize yet.
+
+**OPTIMIZE_IDEAS.md actions taken:** none.
+
+### Recommended actions
+
+1. **Run the Codex SDK lane on devpulse.** Switch runtime with `builder agent runtime set codex_sdk --json` from the devpulse workspace, use the same operator wording as the Claude lane, dispatch the 5-task sprint, verify all tasks reach `done`. This is the only open product action in M1.2.
+2. **After the Codex lane completes, run Tier-1 verification.** `builder logs analyze --session <id> --json` and `builder metrics show --json --full --limit 8`. Archive session IDs and token evidence in STATUS.md Evidence Pointers. Only tick M1.2 Tier-1 items `[x]` after evidence is archived and commit+pushed (Hard Rule 13).
+3. **Update STATUS.md with the governance decisions from this session** (per Suggested STATUS.md change above). One Recent Decisions line is sufficient.
 
