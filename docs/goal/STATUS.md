@@ -12,17 +12,21 @@ This file is the live state. If it lies, the system is blind. Keep it honest.
 | Field | Value |
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
-| Current Milestone | **M1.2 — Both lanes ship one feature on devpulse end-to-end** |
-| Current Item In Flight | **M1.2 closed (Claude lane)** — devpulse sprint 5/5 tasks done; $2.08 total |
+| Current Milestone | **M1.4 — Two-workspace validation rotation** |
+| Current Item In Flight | **M1.4 pending** — M1.3 all items ✓; M1.4 requires forward + reverse workspace validation in both lanes |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
-| Active Runtime Lane | Claude Agent SDK lane (`claude`) complete; Codex SDK lane (`codex_sdk`) pending |
-| Last Update | 2026-05-21 — M1.2 Claude lane complete; 3 source-repo fixes applied |
+| Active Runtime Lane | Claude Agent SDK lane (`claude`) complete; Codex SDK lane (`codex_sdk`) deferred (M1.2 remaining items) |
+| Last Update | 2026-05-21 — M1.3 closed: voice_operator.py 2306→1471, 0 complexity violations |
 
 ---
 
 ## Last Completed Milestone
 
-**M1.1 — Close the open operator-facing defects** (closed 2026-05-21 by Claude Sonnet 4.6)
+**M1.3 — God-file decomposition ratchet** (closed 2026-05-21 by Claude Sonnet 4.6)
+
+All four key files below 1500 lines: `summary.py` 540, `orchestrator.py` 1345, `routes/agent.py` 1326, `voice_operator.py` 1471. `builder lint --complexity-report --json` reports 0 violations. Six new focused extraction modules created. Sequential single-agent constraint honored throughout.
+
+*(Previously: **M1.1** — 8 IMPs closed; **M1.2 Claude lane** — devpulse sprint 5/5 done, $2.08)*
 
 All 8 IMPs closed with root cause, fix, and regression test:
 - IMP-001: prompt context threading on intake follow-up
@@ -43,10 +47,9 @@ Re-verify evidence: 79/79 regression tests pass (11 pre-existing `TestDispatchPh
 The next agent landing here should:
 
 1. Read [README.md](README.md), [NORTH-STAR.md](NORTH-STAR.md), and this file in order.
-2. **Complete M1.2** — Claude lane done (5/5 tasks, $2.08). Run the same sprint on the `codex_sdk` lane to satisfy the "both lanes" requirement, OR declare M1.2 done for the Claude lane and open M1.3.
-3. Before starting the Codex lane run, verify the server is live at `http://localhost:9876` via `cd /home/gurusharangupta/Builder-Workspace/devpulse && builder server status --port 9876 --json`.
-4. Run `builder metrics show --json --full --limit 8` to collect Tier 1 token evidence.
-5. Follow [FIX-STANDARD.md](FIX-STANDARD.md) for any new regressions.
+2. **Start M1.4** — Two-workspace validation rotation. Forward-engineering scenario on a fresh workspace in both lanes; reverse-engineering on an existing workspace. See [ROADMAP.md § M1.4](ROADMAP.md#m14--two-workspace-validation-rotation).
+3. M1.2 Codex SDK lane (deferred): when ready, run the same devpulse sprint on `codex_sdk` lane and collect Tier-1 evidence. This unblocks M1.2's remaining three items.
+4. Follow [FIX-STANDARD.md](FIX-STANDARD.md) for any regressions.
 
 ---
 
@@ -69,7 +72,7 @@ Use this section to point at the most recent authoritative evidence for the curr
 | Latest token telemetry | Session `5a752c0a`: cost $0.065, 2 turns — `builder logs analyze --session 5a752c0a --json` |
 | Latest metrics snapshot | *TBD — run `builder metrics show --json --full --limit 8` after M1.2 dispatch* |
 | Latest board snapshot | `pending=3 active=0 done=2` — 2026-05-21; `cd /home/gurusharangupta/Builder-Workspace/devpulse && builder board show --json` |
-| Latest complexity report | *TBD — `builder lint --complexity-report --json`* |
+| Latest complexity report | M1.3 closed 2026-05-21 — `builder lint --complexity-report --json`: 0 violations |
 | Latest IMPs status | [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) — IMP-001 through IMP-013 all resolved |
 | Latest sprint detail | [docs/SPRINT-PROGRESS.md](../SPRINT-PROGRESS.md) |
 | Latest changelog entry | [CHANGELOG.md](../../CHANGELOG.md) |
@@ -92,6 +95,8 @@ Last known result of running each Tier of [EVALUATION.md](EVALUATION.md). Update
 
 *Record one short line per decision worth preserving across sessions. Keep this to the most recent 20 — older items move to memory via `builder memory add` if durable, or get deleted if ephemeral.*
 
+- **2026-05-21** — M1.3 closed: `voice_operator.py` 2306→1471 lines via extraction of `HighRiskVoiceActionService`, `VoiceCostLedger`, `build_voice_digest`, `load_voice_board_status` into 4 new modules. `builder lint --complexity-report --json` reports 0 violations. All four key files (summary.py 540, orchestrator.py 1345, routes/agent.py 1326, voice_operator.py 1471) confirmed below 1500 ✓.
+- **2026-05-21** — M1.3 started: extracted `_publish_agent_run_error_result`, `_publish_provider_limit_result`, `_publish_successful_chat_result` → `agent_chat_result_publisher.py`; `_continue_after_delivery_permission_question`, `_complete_persisted_delivery_scope_approval` → `agent_delivery_continuation.py`. `routes/agent.py` reduced 1762→1326 lines (below 1500 ✓). Complexity baseline updated. Codex SDK lane (M1.2) deferred.
 - **2026-05-21** — Framework governance: Hard Rules 13 & 14 (commit+push on `[x]`, CHANGELOG before commit) added to `docs/goal/README.md`; `.gitignore` updated for runtime artifacts; `docs/goal/` self-containment confirmed; INSIGHTS→ROADMAP completed-item lifecycle documented; goal-audit SKILL.md updated with ROADMAP cross-check rule for Section C.
 - **2026-05-21** — M1.2 Claude lane complete: devpulse sprint 5/5 tasks done, $2.08. Three source-repo gate bugs found and fixed: (1) `quality_gates/testing.py` set `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`, blocking pytest-asyncio in generated apps; (2) `embedded/scripts/feature_acceptance.py` `_TEST_SUFFIXES` excluded `.py`, making coverage signal always fail for Python projects; (3) `feature_acceptance.py` only recognized Node.js acceptance test runners — added `run-tests.js` pattern support for Python apps via node shim.
 - **2026-05-21** — Source-repo improvements applied (Claude Opus 4.7 session): `query_timeout_seconds` 90→300; code-gen prompt removes spurious "Design: " prefix when no design context; orchestrator walrus operator replaced with pre-assignment; test suite fixed from 74/75 → 79/79 by wiring `test_db` to `TestDispatchPhases`/`TestPlanningPhase` (IMP-012 short-lived-session pattern required DB tables in tests).

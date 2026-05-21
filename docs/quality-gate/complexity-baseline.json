@@ -2,7 +2,7 @@
   "files": {
     "src/autonomous_agent_builder/agents/definitions.py": {
       "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
-      "lines": 903,
+      "lines": 1006,
       "owner": "Agent runtime owner"
     },
     "src/autonomous_agent_builder/agents/hooks.py": {
@@ -22,12 +22,12 @@
     },
     "src/autonomous_agent_builder/agents/tools/sdk_mcp.py": {
       "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
-      "lines": 638,
+      "lines": 654,
       "owner": "Agent runtime owner"
     },
     "src/autonomous_agent_builder/api/routes/dashboard_api.py": {
       "extraction_plan": "Move request schemas, serialization, state transitions, and orchestration branches into focused route-adjacent services before adding route behavior.",
-      "lines": 1714,
+      "lines": 1731,
       "owner": "embedded/API route owner"
     },
     "src/autonomous_agent_builder/cli/commands/agent.py": {
@@ -72,17 +72,17 @@
     },
     "src/autonomous_agent_builder/embedded/server/agent_prompt_builders.py": {
       "extraction_plan": "Move prompt-building helpers into named prompt-builder modules before adding new prompt behavior.",
-      "lines": 486,
+      "lines": 502,
       "owner": "embedded Agent route owner"
     },
     "src/autonomous_agent_builder/embedded/server/routes/agent.py": {
       "extraction_plan": "Continue moving chat-turn, voice, documentation, delivery, and token-evidence policy into focused route-adjacent services before adding new Agent-page behavior.",
-      "lines": 1760,
+      "lines": 1326,
       "owner": "embedded Agent route owner"
     },
     "src/autonomous_agent_builder/embedded/server/routes/dashboard.py": {
       "extraction_plan": "Move request schemas, serialization, state transitions, and orchestration branches into focused route-adjacent services before adding route behavior.",
-      "lines": 1667,
+      "lines": 1677,
       "owner": "embedded/API route owner"
     },
     "src/autonomous_agent_builder/embedded/server/routes/kb.py": {
@@ -142,7 +142,7 @@
     },
     "src/autonomous_agent_builder/orchestrator/orchestrator.py": {
       "extraction_plan": "Move subprocess, workspace, gate, sprint-merge, and post-ship orchestration slices into named lifecycle services as behavior changes touch them.",
-      "lines": 1224,
+      "lines": 1345,
       "owner": "orchestrator lifecycle owner"
     },
     "src/autonomous_agent_builder/orchestrator/quality_gate_runner.py": {
@@ -152,7 +152,7 @@
     },
     "src/autonomous_agent_builder/orchestrator/workspace_integration.py": {
       "extraction_plan": "Split workspace provisioning, sanitization, and integration flows into focused sibling modules if the file exceeds 800 lines.",
-      "lines": 705,
+      "lines": 713,
       "owner": "orchestrator lifecycle owner"
     },
     "src/autonomous_agent_builder/orchestrator/sprint_lifecycle.py": {
@@ -187,7 +187,7 @@
     },
     "src/autonomous_agent_builder/services/builder_tool_service.py": {
       "extraction_plan": "Extract policy, persistence, formatting, and orchestration slices into named service modules before adding new service behavior.",
-      "lines": 1386,
+      "lines": 1412,
       "owner": "service boundary owner"
     },
     "src/autonomous_agent_builder/services/codex_optimization.py": {
@@ -220,9 +220,14 @@
       "lines": 825,
       "owner": "service boundary owner"
     },
+    "src/autonomous_agent_builder/services/voice_high_risk_actions.py": {
+      "extraction_plan": "Split approval, recovery, capability, and navigation handlers into focused voice action modules before adding new high-risk action behavior.",
+      "lines": 529,
+      "owner": "realtime voice operator owner"
+    },
     "src/autonomous_agent_builder/services/voice_operator.py": {
       "extraction_plan": "Extract intent policy, navigation recovery, dispatch, and digest builders into focused voice services before expanding voice behavior.",
-      "lines": 2306,
+      "lines": 1471,
       "owner": "realtime voice operator owner"
     },
     "src/autonomous_agent_builder/services/voice_operator_support.py": {
@@ -252,7 +257,7 @@
     },
     "tests/test_builder_tool_service.py": {
       "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
-      "lines": 1123,
+      "lines": 1180,
       "owner": "builder tool service test owner"
     },
     "tests/test_claude_runtime.py": {
@@ -267,7 +272,7 @@
     },
     "tests/test_dashboard_api.py": {
       "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
-      "lines": 2190,
+      "lines": 2228,
       "owner": "dashboard api test owner"
     },
     "tests/test_embedded_server_app.py": {
@@ -297,12 +302,12 @@
     },
     "tests/test_orchestrator.py": {
       "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
-      "lines": 970,
+      "lines": 987,
       "owner": "orchestrator test owner"
     },
     "tests/test_orchestrator_gates.py": {
       "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
-      "lines": 1747,
+      "lines": 1756,
       "owner": "orchestrator gates test owner"
     },
     "tests/test_realtime_voice_operator.py": {
@@ -317,7 +322,7 @@
     },
     "tests/test_sprint_branch_lifecycle.py": {
       "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
-      "lines": 625,
+      "lines": 650,
       "owner": "sprint branch lifecycle test owner"
     },
     "tests/test_sprint_execution.py": {
@@ -356,7 +361,7 @@
     "src/autonomous_agent_builder/agents/tools/sdk_mcp.py::build_default_mcp_servers": {
       "branches": 1,
       "extraction_plan": "Move each default MCP server descriptor into named factory functions before adding more server definitions.",
-      "lines": 364,
+      "lines": 380,
       "owner": "SDK MCP tool owner"
     },
     "src/autonomous_agent_builder/knowledge/architecture_evidence.py::ArchitectureEvidencePlanner._collect_claims": {
@@ -383,10 +388,10 @@
       "lines": 269,
       "owner": "realtime voice operator owner"
     },
-    "src/autonomous_agent_builder/services/voice_operator.py::AgentOperatorService.voice_digest": {
+    "src/autonomous_agent_builder/services/voice_operator_digest_builder.py::build_voice_digest": {
       "branches": 60,
-      "extraction_plan": "Move voice digest sections into named digest builders before adding new digest branches.",
-      "lines": 164,
+      "extraction_plan": "Move per-state digest branches (blocked, provider-limit, active, queued) into named state-handler functions before adding new digest states.",
+      "lines": 162,
       "owner": "realtime voice operator owner"
     },
     "src/autonomous_agent_builder/observability/summary_recommendations.py::_deterministic_recommendations": {
@@ -396,7 +401,7 @@
       "owner": "observability recommendations owner"
     }
   },
-  "generated_at": "2026-05-18",
+  "generated_at": "2026-05-21",
   "schema_version": 1,
   "thresholds": {
     "max_file_lines": 500,

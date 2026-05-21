@@ -43,18 +43,18 @@ Forward-engineering scenario validated against both runtime lanes on the *same* 
 - [x] `docs/goal/` framework and `goal-audit` skill created and stabilized: 5 audit runs, 3 skill bugs fixed (driver-shape mismatch, `top_prompts` → `recent_prompts` recency signal, HARD RULE blocking skill from editing STATUS.md). Framework is now agent-resumable and self-correcting.
 - [x] **goal-audit `--since-run` mode**: collector emits "deltas since last INSIGHTS.md entry" so rapid successive runs show only new signal rather than re-analyzing the full window. Surfaced in Run #2 as an audit cadence sharpness limit.
 - [x] **goal-audit memory write**: `builder memory add --type pattern --tag goal-audit,intent-extraction` recording "prefer recency-ranked intent over token-weighted intent" per FIX-STANDARD.md § Step 7. Surfaced in Run #3.
-- [ ] Codex SDK lane: same operator wording, same outcome. Evidence shows Codex-specific telemetry, app-server events, native user-input request paths.
-- [ ] Both lanes meet all four Tier-1 thresholds (`cache_ratio > 5x` after turn 2, `chunk_pressure_risk: false`, `avoidable_cost_flags: []`, gate-pass rate `1.0`). Run: `builder logs analyze --session <id> --json` + `builder metrics show --json --full --limit 8`.
-- [ ] Session evidence (`builder logs analyze --session <id> --json` for each lane) archived under [STATUS.md § Evidence Pointers](STATUS.md#evidence-pointers).
+- [ ] Codex SDK lane: same operator wording, same outcome. Evidence shows Codex-specific telemetry, app-server events, native user-input request paths. *(deferred — Claude lane complete; Codex lane to be run separately)*
+- [ ] Both lanes meet all four Tier-1 thresholds (`cache_ratio > 5x` after turn 2, `chunk_pressure_risk: false`, `avoidable_cost_flags: []`, gate-pass rate `1.0`). Run: `builder logs analyze --session <id> --json` + `builder metrics show --json --full --limit 8`. *(pending Codex lane run)*
+- [ ] Session evidence (`builder logs analyze --session <id> --json` for each lane) archived under [STATUS.md § Evidence Pointers](STATUS.md#evidence-pointers). *(pending Codex lane run)*
 
 ### M1.3 — God-file decomposition ratchet complete
 
 Source of truth: [docs/quality-gate/complexity.md](../quality-gate/complexity.md) and `complexity-baseline.json`. Active threshold violations must reach zero.
 
-- [ ] Every active file violation in `complexity-baseline.json` has either been split below the 500-line target or registered as a documented historical baseline (not a fresh violation).
-- [ ] `services/voice_operator.py`, `observability/summary.py`, `orchestrator/orchestrator.py`, `embedded/server/routes/agent.py` each below 1,500 measured lines or split into named owner modules.
-- [ ] `builder lint --complexity-report --json` reports `0 violations`.
-- [ ] Constraint: extraction is sequential single-agent; **never** parallel agents (see `.memory/feedback_extraction_constraints.md`).
+- [x] Every active file violation in `complexity-baseline.json` has either been split below the 500-line target or registered as a documented historical baseline (not a fresh violation).
+- [x] `services/voice_operator.py`, `observability/summary.py`, `orchestrator/orchestrator.py`, `embedded/server/routes/agent.py` each below 1,500 measured lines or split into named owner modules. *(summary.py 540, orchestrator.py 1345, routes/agent.py 1326, voice_operator.py 1471 — all ✓)*
+- [x] `builder lint --complexity-report --json` reports `0 violations`.
+- [x] Constraint: extraction is sequential single-agent; **never** parallel agents (see `.memory/feedback_extraction_constraints.md`).
 
 ### M1.4 — Two-workspace validation rotation
 

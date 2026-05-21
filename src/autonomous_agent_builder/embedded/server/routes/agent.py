@@ -15,7 +15,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from autonomous_agent_builder.agents.definitions import get_agent_definition
 from autonomous_agent_builder.agents.execution_policy import resolve_agent_runtime_policy
-from autonomous_agent_builder.agents.runner import AgentRunner, RunResult
+from autonomous_agent_builder.agents.runner import AgentRunner
 from autonomous_agent_builder.agents.tool_registry import is_read_only_tool
 from autonomous_agent_builder.config import get_settings
 from autonomous_agent_builder.db.models import (
@@ -73,9 +73,6 @@ from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_chat_event as _append_chat_event,
 )
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
-    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
-)
-from autonomous_agent_builder.embedded.server.agent_chat_events import (
     update_request_event as _update_request_event,
 )
 from autonomous_agent_builder.embedded.server.agent_control_owners import (
@@ -91,16 +88,7 @@ from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
     latest_saved_feature_for_delivery as _latest_saved_feature_for_delivery,
 )
 from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
-    persist_feature_spec as _persist_feature_spec,
-)
-from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
     schedule_task_dispatch as _schedule_task_dispatch,
-)
-from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
-    extract_feature_list_payload as _extract_feature_list_payload,
-)
-from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
-    extract_feature_spec_payload as _extract_feature_spec_payload,
 )
 from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
     session_has_pending_feature_spec as _session_has_pending_feature_spec,
@@ -131,21 +119,6 @@ from autonomous_agent_builder.embedded.server.agent_message_intent import (
 )
 from autonomous_agent_builder.embedded.server.agent_observability_context import (
     observability_context_for_prompt as _observability_context_for_prompt,
-)
-from autonomous_agent_builder.embedded.server.agent_project_context import (
-    apply_chat_answers_to_project_context as _apply_chat_answers_to_project_context,
-)
-from autonomous_agent_builder.embedded.server.agent_project_context import (
-    apply_forward_project_constraints as _apply_forward_project_constraints,
-)
-from autonomous_agent_builder.embedded.server.agent_project_context import (
-    collect_ask_user_question_answers as _collect_ask_user_question_answers,
-)
-from autonomous_agent_builder.embedded.server.agent_project_context import (
-    extract_technical_constraints as _extract_technical_constraints,
-)
-from autonomous_agent_builder.embedded.server.agent_project_context import (
-    inject_feature_list_constraints as _inject_feature_list_constraints,
 )
 from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
     _SPECIALIST_ROUTE_POLICIES as _SPECIALIST_ROUTE_POLICIES,  # noqa: F401
@@ -181,9 +154,6 @@ from autonomous_agent_builder.embedded.server.agent_prompt_builders import (
     _select_specialist_route as _select_specialist_route,
 )
 from autonomous_agent_builder.embedded.server.agent_runtime_status import (
-    chat_run_status_payload as _chat_run_status_payload,
-)
-from autonomous_agent_builder.embedded.server.agent_runtime_status import (
     chat_runtime_metadata as _chat_runtime_metadata,
 )
 from autonomous_agent_builder.embedded.server.agent_runtime_status import (
@@ -191,12 +161,6 @@ from autonomous_agent_builder.embedded.server.agent_runtime_status import (
 )
 from autonomous_agent_builder.embedded.server.agent_runtime_status import (
     runtime_metadata_for_agent as _runtime_metadata_for_agent,
-)
-from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
-    append_persisted_delivery_permission_question_if_needed as _append_persisted_delivery_permission_question_if_needed,
-)
-from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
-    create_delivery_plan_for_approved_features as _create_delivery_plan_for_approved_features,
 )
 from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
     handle_sprint_planning_turn as _handle_sprint_planning_turn,
@@ -225,12 +189,20 @@ from autonomous_agent_builder.embedded.server.agent_tool_policy import (
 from autonomous_agent_builder.embedded.server.agent_tool_policy import (
     tool_summary as _tool_summary,
 )
+from autonomous_agent_builder.embedded.server.agent_chat_result_publisher import (
+    _publish_agent_run_error_result,
+    _publish_provider_limit_result,
+    _publish_successful_chat_result,
+)
+from autonomous_agent_builder.embedded.server.agent_delivery_continuation import (
+    _complete_persisted_delivery_scope_approval,
+    _continue_after_delivery_permission_question,
+)
 from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
 from autonomous_agent_builder.embedded.server.chat_turn_direct_actions import (
     publish_direct_chat_turn_if_handled,
 )
 from autonomous_agent_builder.embedded.server.chat_turn_intent import (
-    ChatRunTotals,
     ChatTurnCallbackState,
     ChatTurnIntent,
     resolve_chat_turn_intent,
@@ -252,17 +224,9 @@ from autonomous_agent_builder.embedded.server.documentation_routing import (
     resolve_documentation_action as _resolve_documentation_action,  # noqa: F401
 )
 from autonomous_agent_builder.logs.diagnostics import summarize_chat_event, summarize_tool_event
-from autonomous_agent_builder.onboarding import (
-    load_onboarding_state,
-    publish_onboarding_snapshot,
-    sync_forward_engineering_feature_backlog,
-    write_feature_list_file,
-)
+from autonomous_agent_builder.onboarding import publish_onboarding_snapshot
 from autonomous_agent_builder.runtime import create_runtime
 from autonomous_agent_builder.services.project_context import request_project_root
-from autonomous_agent_builder.services.readiness import (
-    assess_readiness,
-)
 from autonomous_agent_builder.services.runtime_settings import (
     persist_runtime_settings,
     reconcile_runtime_project_state,
@@ -328,108 +292,6 @@ async def _resolve_chat_turn_intent(
         session_has_pending_sprint_planning=_session_has_pending_sprint_planning(session),
         review_approval_continuation_requested=review_approval_continuation_requested,
     )
-
-
-async def _publish_agent_run_error_result(
-    *,
-    session_id: str,
-    hub: ChatSessionHub,
-    agent_name: str,
-    project_root: Path,
-    active_specialist: ActiveSpecialistRoute | None,
-    publish_specialist_status: Callable[..., Awaitable[None]],
-    result: RunResult,
-    totals: ChatRunTotals,
-    max_turns: int,
-) -> None:
-    if active_specialist is not None:
-        await publish_specialist_status(
-            "blocked",
-            active_specialist.policy.blocked_summary,
-            status="completed",
-        )
-    error_content = f"Error: {result.error}"
-    error_event = await _append_chat_event(
-        session_id,
-        event_type="run_error",
-        payload={"content": error_content},
-        status="completed",
-        mirror_message=("assistant", error_content, 0, 0.0),
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(error_event).model_dump(mode="json"))
-    status_event = await _append_chat_event(
-        session_id,
-        event_type="run_status",
-        payload=_chat_run_status_payload(
-            agent_name=agent_name,
-            project_root=project_root,
-            result=result,
-            totals=totals,
-            max_turns=max_turns,
-            extra={"error": result.error},
-        ),
-        status="completed",
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
-
-
-async def _publish_provider_limit_result(
-    *,
-    session_id: str,
-    hub: ChatSessionHub,
-    agent_name: str,
-    project_root: Path,
-    active_specialist: ActiveSpecialistRoute | None,
-    publish_specialist_status: Callable[..., Awaitable[None]],
-    result: RunResult,
-    totals: ChatRunTotals,
-    max_turns: int,
-) -> None:
-    provider_limit = result.provider_limit or {
-        "code": result.stop_reason or "capability_limit",
-        "reason": result.output_text or "Agent run hit a capability limit.",
-    }
-    if active_specialist is not None:
-        await publish_specialist_status(
-            "blocked",
-            active_specialist.policy.blocked_summary,
-            status="completed",
-        )
-    limit_text = result.output_text or "The selected runtime hit a provider limit."
-    visible_response = f"Provider limit blocked this run: {limit_text}"
-    assistant_event = await _append_chat_event(
-        session_id,
-        event_type="assistant_message",
-        payload={
-            "content": visible_response,
-            "final": True,
-            "provider_limit": provider_limit,
-        },
-        status="blocked",
-        mirror_message=("assistant", visible_response, 0, 0.0),
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
-    await _append_voice_final_summary_if_needed(
-        session_id,
-        assistant_event_id=assistant_event.id,
-        content=visible_response,
-        hub=hub,
-    )
-    status_event = await _append_chat_event(
-        session_id,
-        event_type="run_status",
-        payload=_chat_run_status_payload(
-            agent_name=agent_name,
-            project_root=project_root,
-            result=result,
-            totals=totals,
-            max_turns=max_turns,
-            stop_reason="provider_limit",
-            extra={"provider_limit": provider_limit},
-        ),
-        status="blocked",
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
 
 
 async def _handle_chat_tool_event(
@@ -755,148 +617,6 @@ async def _authorize_chat_tool(
     return _permission_deny(reason or f"User denied {tool_name}.")
 
 
-async def _publish_successful_chat_result(
-    *,
-    session_id: str,
-    user_message: str,
-    hub: ChatSessionHub,
-    agent_name: str,
-    project_root: Path,
-    active_specialist: ActiveSpecialistRoute | None,
-    publish_specialist_status: Callable[..., Awaitable[None]],
-    result: RunResult,
-    run_totals: ChatRunTotals,
-    max_turns: int,
-) -> None:
-    visible_response = result.output_text or "No response from agent"
-    start_sprint_scope_after_response = False
-    if agent_name == "init-project-chat":
-        visible_response, feature_payload = _extract_feature_list_payload(
-            project_root, visible_response
-        )
-        if feature_payload is not None:
-            start_sprint_scope_after_response = True
-            technical_constraints = _extract_technical_constraints(user_message)
-            feature_payload = _inject_feature_list_constraints(
-                feature_payload,
-                technical_constraints,
-            )
-            write_feature_list_file(project_root, feature_payload)
-            session_factory = get_session_factory()
-            async with session_factory() as db:
-                chat_answers = await _collect_ask_user_question_answers(db, session_id)
-                if chat_answers:
-                    _apply_chat_answers_to_project_context(project_root, chat_answers)
-                await _apply_forward_project_constraints(
-                    db,
-                    project_root,
-                    technical_constraints,
-                )
-                if await sync_forward_engineering_feature_backlog(db, project_root):
-                    await db.commit()
-            assess_readiness(
-                project_root,
-                onboarding_state=load_onboarding_state(project_root),
-                write=True,
-            )
-            save_note = (
-                "I captured the delivery scope and prepared Builder's internal plan. "
-                "Next I will ask what to ship first."
-            )
-            visible_response = (
-                f"{visible_response}\n\n{save_note}".strip() if visible_response else save_note
-            )
-    elif agent_name == "chat" and active_specialist is None:
-        visible_response, feature_spec_payload = _extract_feature_spec_payload(visible_response)
-        if feature_spec_payload is not None:
-            session_factory = get_session_factory()
-            async with session_factory() as db:
-                feature = await _persist_feature_spec(db, feature_spec_payload)
-            if feature is not None:
-                save_note = (
-                    f"I captured that improvement as `{feature.title}`. "
-                    "Ready for Builder to start now, or should I hold?"
-                )
-                visible_response = (
-                    f"{visible_response}\n\n{save_note}".strip() if visible_response else save_note
-                )
-    if active_specialist is not None:
-        await publish_specialist_status(
-            "completed",
-            active_specialist.policy.completed_summary,
-            status="completed",
-        )
-
-    session_factory = get_session_factory()
-    async with session_factory() as db:
-        session = await db.get(ChatSession, session_id)
-        if session is not None and result.session_id:
-            session.sdk_session_id = result.session_id
-            session.updated_at = utcnow()
-            await db.commit()
-
-    assistant_event = await _append_chat_event(
-        session_id,
-        event_type="assistant_message",
-        payload={"content": visible_response, "final": True},
-        status="completed",
-        mirror_message=(
-            "assistant",
-            visible_response,
-            run_totals.token_total,
-            run_totals.cost_usd,
-        ),
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
-    permission_question = await _append_persisted_delivery_permission_question_if_needed(
-        session_id,
-        assistant_event_id=assistant_event.id,
-        response_text=visible_response,
-        hub=hub,
-    )
-    if permission_question is None:
-        await _append_voice_final_summary_if_needed(
-            session_id,
-            assistant_event_id=assistant_event.id,
-            content=visible_response,
-            hub=hub,
-        )
-    if start_sprint_scope_after_response:
-        sprint_response = await _handle_sprint_planning_turn(
-            session_id,
-            "sprint planning",
-            project_root,
-            hub,
-        )
-        sprint_event = await _append_chat_event(
-            session_id,
-            event_type="assistant_message",
-            payload={"content": sprint_response, "final": True},
-            status="completed",
-            mirror_message=("assistant", sprint_response, 0, 0.0),
-        )
-        await hub.publish(session_id, agent_chat_transcript.serialize_event(sprint_event).model_dump(mode="json"))
-        await _append_voice_final_summary_if_needed(
-            session_id,
-            assistant_event_id=sprint_event.id,
-            content=sprint_response,
-            hub=hub,
-        )
-    status_event = await _append_chat_event(
-        session_id,
-        event_type="run_status",
-        payload=_chat_run_status_payload(
-            agent_name=agent_name,
-            project_root=project_root,
-            result=result,
-            totals=run_totals,
-            max_turns=max_turns,
-        ),
-        status="completed",
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
-
-
 async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
     project_root = Path(app.state.project_root)
     hub: ChatSessionHub = app.state.chat_hub
@@ -1155,162 +875,6 @@ async def _continue_after_persisted_response(
     if attached:
         return
     task.cancel()
-
-
-async def _continue_after_delivery_permission_question(
-    app: Any,
-    session_id: str,
-    event: ChatEvent,
-    *,
-    answer_value: str,
-) -> None:
-    project_root = Path(app.state.project_root)
-    hub: ChatSessionHub = app.state.chat_hub
-    runtime_payload = _runtime_metadata_for_agent("chat", project_root)
-    running_event = await _append_chat_event(
-        session_id,
-        event_type="run_status",
-        payload={
-            **runtime_payload,
-            "running": True,
-            "current_turn": 0,
-            "max_turns": get_agent_definition("chat").max_turns,
-            "tokens_used": 0,
-            "cost_usd": 0.0,
-        },
-        status="running",
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(running_event).model_dump(mode="json"))
-
-    answer_lower = answer_value.strip().lower()
-    if answer_lower.startswith("hold"):
-        visible_response = "Delivery is on hold. I kept the captured improvement unchanged."
-        stop_reason = "delivery_permission_held"
-    else:
-        session_factory = get_session_factory()
-        async with session_factory() as db:
-            feature = await _feature_for_delivery_permission_question(db, event)
-        if feature is None:
-            visible_response = (
-                "I could not find the captured improvement for this delivery decision. "
-                "Please restate the improvement before starting work."
-            )
-            stop_reason = "delivery_permission_missing_feature"
-        else:
-            visible_response = await _handle_sprint_planning_turn(
-                session_id,
-                feature.title,
-                project_root,
-                hub,
-                selected_feature_ids=[feature.id],
-                skip_scope_approval=True,
-            )
-            stop_reason = "delivery_permission_selected_feature"
-
-    assistant_event = await _append_chat_event(
-        session_id,
-        event_type="assistant_message",
-        payload={"content": visible_response, "final": True},
-        status="completed",
-        mirror_message=("assistant", visible_response, 0, 0.0),
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
-    await _append_voice_final_summary_if_needed(
-        session_id,
-        assistant_event_id=assistant_event.id,
-        content=visible_response,
-        hub=hub,
-    )
-    status_event = await _append_chat_event(
-        session_id,
-        event_type="run_status",
-        payload={
-            **runtime_payload,
-            "running": False,
-            "current_turn": 0,
-            "max_turns": get_agent_definition("chat").max_turns,
-            "tokens_used": 0,
-            "cost_usd": 0.0,
-            "stop_reason": stop_reason,
-        },
-        status="completed",
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
-
-
-async def _complete_persisted_delivery_scope_approval(
-    app: Any,
-    session_id: str,
-    event: ChatEvent,
-    *,
-    decision: str,
-) -> None:
-    project_root = Path(app.state.project_root)
-    hub: ChatSessionHub = app.state.chat_hub
-    runtime_payload = _runtime_metadata_for_agent("chat", project_root)
-    running_event = await _append_chat_event(
-        session_id,
-        event_type="run_status",
-        payload={
-            **runtime_payload,
-            "running": True,
-            "current_turn": 0,
-            "max_turns": get_agent_definition("chat").max_turns,
-            "tokens_used": 0,
-            "cost_usd": 0.0,
-        },
-        status="running",
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(running_event).model_dump(mode="json"))
-
-    if decision == "allow":
-        event_payload = event.payload_json if isinstance(event.payload_json, dict) else {}
-        tool_input = event_payload.get("tool_input") if isinstance(event_payload, dict) else {}
-        tool_input_data = tool_input if isinstance(tool_input, dict) else {}
-        feature_ids = [
-            str(feature_id).strip()
-            for feature_id in tool_input_data.get("feature_ids", [])
-            if str(feature_id).strip()
-        ]
-        visible_response = await _create_delivery_plan_for_approved_features(
-            session_id,
-            project_root,
-            feature_ids,
-        )
-        stop_reason = "delivery_scope_approved_and_dispatched"
-    else:
-        visible_response = "Delivery scope was not approved. I kept the captured improvement unchanged."
-        stop_reason = "delivery_scope_denied"
-
-    assistant_event = await _append_chat_event(
-        session_id,
-        event_type="assistant_message",
-        payload={"content": visible_response, "final": True},
-        status="completed",
-        mirror_message=("assistant", visible_response, 0, 0.0),
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
-    await _append_voice_final_summary_if_needed(
-        session_id,
-        assistant_event_id=assistant_event.id,
-        content=visible_response,
-        hub=hub,
-    )
-    status_event = await _append_chat_event(
-        session_id,
-        event_type="run_status",
-        payload={
-            **runtime_payload,
-            "running": False,
-            "current_turn": 0,
-            "max_turns": get_agent_definition("chat").max_turns,
-            "tokens_used": 0,
-            "cost_usd": 0.0,
-            "stop_reason": stop_reason,
-        },
-        status="completed",
-    )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
 
 
 @router.get("/agent/runtime")

@@ -4,10 +4,22 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
 from autonomous_agent_builder.db.models import (
+    AgentRun,
+    BacklogItemType,
+    Feature,
     FeatureStatus,
+    Task,
     TaskStatus,
 )
+from autonomous_agent_builder.embedded.server.board_scope import (
+    board_response_task_ids,
+    board_status_scope_from_message,
+)
+from autonomous_agent_builder.embedded.server.routes.dashboard import load_board_response
 from autonomous_agent_builder.services.task_dispatch_policy import (
     feature_status_value as _feature_status_value,
 )
@@ -34,6 +46,9 @@ from autonomous_agent_builder.services.voice_operator_interaction import (
 )
 from autonomous_agent_builder.services.voice_operator_interaction import (
     task_is_queued_board_lane as _task_is_queued_board_lane,
+)
+from autonomous_agent_builder.services.voice_operator_interaction import (
+    task_is_review_board_lane as _task_is_review_board_lane,
 )
 
 
@@ -169,3 +184,82 @@ def build_provider_limit_runs(
             }
         )
     return provider_limit_runs
+
+
+async def load_voice_board_status(db: Any, *, status_prompt: str = "") -> dict[str, Any]:
+    """Load and assemble the full board status dict for the voice digest."""
+    board_response = await load_board_response(db)
+    status_scope = board_status_scope_from_message(status_prompt, board_response.current_sprint)
+    visible_task_ids = board_response_task_ids(board_response)
+    scoped_task_ids = set(status_scope.generated_task_ids)
+    result = await db.execute(select(Task).options(selectinload(Task.feature)))
+    tasks = list(result.scalars().all())
+    if visible_task_ids:
+        tasks = [task for task in tasks if task.id in visible_task_ids]
+    if status_scope.is_current_sprint:
+        tasks = [task for task in tasks if task.id in scoped_task_ids]
+    feature_result = await db.execute(select(Feature).order_by(Feature.priority.desc()))
+    backlog_items = list(feature_result.scalars().all())
+    sprint_summaries = [
+        {
+            "id": sprint.sprint_id,
+            "label": sprint.label,
+            "phase": sprint.active_phase,
+            "approved_feature_count": len(sprint.included_items or []),
+            "generated_task_count": len(sprint.generated_task_ids or []),
+            "verification_status": sprint.verification_status,
+        }
+        for sprint in (board_response.sprints or [])
+    ]
+    tasks_by_id = {task.id: task for task in tasks}
+    backlog_status_counts, backlog_type_counts, open_backlog_items = aggregate_backlog_items(
+        backlog_items
+    )
+    status_counts = aggregate_task_status_counts(tasks)
+    run_result = await db.execute(
+        select(AgentRun).order_by(AgentRun.started_at.desc()).limit(50)
+    )
+    latest_runs_by_task: dict[str, AgentRun] = {}
+    for run in run_result.scalars().all():
+        if run.task_id not in latest_runs_by_task:
+            latest_runs_by_task[run.task_id] = run
+
+    blocked_tasks = build_blocked_tasks(tasks)
+    queued_tasks, active_tasks, dispatchable_tasks = build_task_lane_lists(
+        tasks, latest_runs_by_task
+    )
+    provider_limit_runs = build_provider_limit_runs(latest_runs_by_task, tasks_by_id)
+    return {
+        "task_count": len(tasks),
+        "sprint_count": len(sprint_summaries),
+        "sprints": sprint_summaries[:10],
+        "scope": status_scope.scope,
+        "current_sprint_label": status_scope.current_sprint_label,
+        "current_sprint_phase": str(
+            getattr(board_response.current_sprint, "active_phase", "") or ""
+        ).strip(),
+        "status_counts": status_counts,
+        "review_count": sum(1 for task in tasks if _task_is_review_board_lane(task)),
+        "done_count": sum(
+            1 for task in tasks if _task_status_value(task) == TaskStatus.DONE.value
+        ),
+        "blocked_count": len(blocked_tasks),
+        "queued_count": len(queued_tasks),
+        "active_count": len(active_tasks),
+        "blocked_tasks": blocked_tasks[:5],
+        "queued_tasks": queued_tasks[:5],
+        "active_tasks": active_tasks[:5],
+        "dispatchable_count": len(dispatchable_tasks),
+        "dispatchable_tasks": dispatchable_tasks,
+        "provider_limit_count": len(provider_limit_runs),
+        "provider_limit_runs": provider_limit_runs[:5],
+        "backlog_status": {
+            "item_count": len(backlog_items),
+            "feature_count": backlog_type_counts.get(BacklogItemType.FEATURE.value, 0),
+            "done_count": backlog_status_counts.get(FeatureStatus.DONE.value, 0),
+            "open_count": len(open_backlog_items),
+            "status_counts": backlog_status_counts,
+            "type_counts": backlog_type_counts,
+            "open_items": open_backlog_items[:5],
+        },
+    }

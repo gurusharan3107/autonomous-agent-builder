@@ -7,6 +7,22 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-21 - M1.3 god-file decomposition ratchet complete
+
+### Changed
+
+- `services/voice_operator.py`: 2306 → 1471 lines. Extracted `HighRiskVoiceActionService` → `voice_high_risk_actions.py` (529 lines), `VoiceCostLedger` → `voice_cost_ledger.py` (98 lines), `build_voice_digest` → `voice_operator_digest_builder.py` (175 lines), `load_voice_board_status` → `voice_operator_board_status.py` (265 lines). Thin wrapper methods in `AgentOperatorService` delegate to extracted standalone functions.
+- `embedded/server/routes/agent.py`: 1762 → 1326 lines. Extracted `_publish_agent_run_error_result`, `_publish_provider_limit_result`, `_publish_successful_chat_result` → `agent_chat_result_publisher.py`; `_continue_after_delivery_permission_question`, `_complete_persisted_delivery_scope_approval` → `agent_delivery_continuation.py`.
+- `docs/quality-gate/complexity-baseline.json`: updated `voice_operator.py` baseline 2306→1471; added `voice_high_risk_actions.py` (529 lines); added `voice_operator_digest_builder.py::build_voice_digest` (60 branches) to functions baseline; removed stale `voice_digest` function entry.
+
+### Validation
+
+- `builder lint --complexity-report --json`: 0 violations.
+- `python3 -m pytest tests/test_agent_runner.py`: 5/5 passed.
+- Key files: `summary.py` 540, `orchestrator.py` 1345, `routes/agent.py` 1326, `voice_operator.py` 1471 — all ✓ below 1500.
+
+---
+
 ## 2026-05-21 - goal-audit memory write: recency-ranked intent pattern
 
 ### Added

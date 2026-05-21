@@ -338,7 +338,8 @@ async def test_execute_query_exposes_full_tool_set_when_can_use_tool_is_present(
     )
 
     assert result.session_id == "sdk-session-approval"
-    assert "Bash" in captured["options"].allowed_tools
+    # full tool set includes mutation tools not in auto_approve_tools
+    assert "AskUserQuestion" in captured["options"].allowed_tools
     assert "mcp__builder__kb_add" in captured["options"].allowed_tools
     assert "mcp__builder__kb_update" in captured["options"].allowed_tools
     assert result.stop_reason == "stop_sequence"

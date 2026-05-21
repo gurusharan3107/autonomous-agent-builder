@@ -23,7 +23,7 @@ Everything an agent needs to know about *why* it's working, *what* "done" looks 
 11. **Memory is bidirectional.** Read repo precedent before fixing ([FIX-STANDARD.md § Step 0](FIX-STANDARD.md#step-0--load-repo-precedent-first)) AND write back after fixing when the learning is durable ([FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-the-learning-is-durable)). Invalidate stale memory when a fix proves it wrong. All `builder memory` commands run from the Builder source repo, not from managed-app workspaces — scopes are intentionally separate.
 12. **Autoresearch (Track B) is dormant until prerequisites pass.** [`docs/autoresearch/`](../autoresearch/README.md) activates only when the prerequisites in its README are met. Running Track B before Track A optimizes around broken behavior.
 13. **A checklist item is not closed until it is committed and pushed.** Ticking `[x]` in ROADMAP.md, updating STATUS.md, and committing supporting evidence files must land in a pushed commit before the item counts as done. An unpushed `[x]` is not closed.
-14. **Update CHANGELOG.md before committing.** Every commit that closes a checklist item, fixes a defect, or adds a significant capability must have a corresponding entry in `CHANGELOG.md` under the current date before the commit is made. Format: reverse-chronological, evidence-first, using `Added` / `Changed` / `Fixed` / `Validation` sections as needed.
+14. **Commit only when a ROADMAP.md item is ticked `[x]`.** Do not commit after every file edit or framework tweak. The commit trigger is a checklist item closing. When that happens: update CHANGELOG.md first, tick `[x]` in ROADMAP.md, update STATUS.md, then make one commit covering all related changes, then push.
 
 ---
 
