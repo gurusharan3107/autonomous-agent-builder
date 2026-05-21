@@ -36,7 +36,7 @@ from autonomous_agent_builder.db.models import (
     Sprint,
     Task,
 )
-from autonomous_agent_builder.db.session import get_db
+from autonomous_agent_builder.db.session import get_db, get_session_factory
 from autonomous_agent_builder.observability.summary import dashboard_observability_summary
 from autonomous_agent_builder.onboarding import (
     load_feature_list_from_db,
@@ -1654,14 +1654,16 @@ async def command_index_json(db: AsyncSession = Depends(get_db)):
 @router.get("/dashboard/board/stream")
 async def board_stream(
     request: Request,
-    db: AsyncSession = Depends(get_db),
 ):
     """Stream board snapshot updates as SSE."""
     hub = get_dashboard_stream_hub()
     queue = await hub.register_board()
-    initial_snapshot = (await load_board_response(db, request.app.state.project_root)).model_dump(
-        mode="json"
-    )
+    # Use a short-lived session only for the initial snapshot so the pool
+    # connection is released before the long-lived SSE loop begins.
+    async with get_session_factory()() as db:
+        initial_snapshot = (
+            await load_board_response(db, request.app.state.project_root)
+        ).model_dump(mode="json")
 
     async def event_generator():
         try:
@@ -1693,12 +1695,16 @@ async def publish_board_snapshot(db: AsyncSession) -> None:
 async def approval_stream(
     gate_id: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
 ):
     """Stream approval snapshot updates as SSE."""
     hub = get_dashboard_stream_hub()
     queue = await hub.register_approval(gate_id)
-    initial_snapshot = (await load_approval_details_response(gate_id, db)).model_dump(mode="json")
+    # Use a short-lived session only for the initial snapshot so the pool
+    # connection is released before the long-lived SSE loop begins.
+    async with get_session_factory()() as db:
+        initial_snapshot = (await load_approval_details_response(gate_id, db)).model_dump(
+            mode="json"
+        )
 
     async def event_generator():
         try:

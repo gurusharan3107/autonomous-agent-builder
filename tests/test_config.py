@@ -27,7 +27,7 @@ class TestConfig:
         assert settings.agent.kb_retry_model == "claude-haiku-4-5-20251001"
         assert settings.agent.kb_manual_repair_model == "sonnet"
         assert settings.agent.kb_design_review_model == "claude-opus-4-7"
-        assert settings.agent.query_timeout_seconds == 90
+        assert settings.agent.query_timeout_seconds == 300
         assert settings.agent.auth_backend == "auto"
 
     def test_gate_defaults(self):

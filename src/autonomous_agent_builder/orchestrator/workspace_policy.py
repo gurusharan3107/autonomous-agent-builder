@@ -66,7 +66,14 @@ def workspace_copy_excluded(path: Path) -> bool:
 
 def is_fast_forward_divergence(output: str) -> bool:
     lower = output.lower()
-    return "not possible to fast-forward" in lower or "diverging branches" in lower
+    return (
+        "not possible to fast-forward" in lower
+        or "diverging branches" in lower
+        # Orphan task branch created before the sprint was initialized;
+        # treat as divergence so the rebase fallback can rebase onto the
+        # sprint branch and produce a common-ancestor history.
+        or "refusing to merge unrelated histories" in lower
+    )
 
 
 def untracked_overwrite_paths(output: str) -> list[str]:

@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import pytest_asyncio
 
 import autonomous_agent_builder.orchestrator.orchestrator as orchestrator_module
 from autonomous_agent_builder.agents.runner import RunResult
@@ -264,6 +265,11 @@ class TestDispatchBlocked:
 @pytest.mark.asyncio
 class TestDispatchPhases:
     """Each dispatchable status triggers the correct phase handler."""
+
+    @pytest_asyncio.fixture(autouse=True)
+    async def _wire_db(self, test_db):
+        """Wire session module to test DB so persist_realtime_run_update can write."""
+        yield
 
     async def test_pending_runs_planning(self, orchestrator, mock_sdk):
         task = _make_task(TaskStatus.PENDING)
@@ -914,6 +920,11 @@ class TestDispatchErrorHandling:
 @pytest.mark.asyncio
 class TestPlanningPhase:
     """Planning phase creates approval gate on success."""
+
+    @pytest_asyncio.fixture(autouse=True)
+    async def _wire_db(self, test_db):
+        """Wire session module to test DB so persist_realtime_run_update can write."""
+        yield
 
     async def test_planning_creates_approval_gate(
         self, orchestrator, mock_db, mock_sdk

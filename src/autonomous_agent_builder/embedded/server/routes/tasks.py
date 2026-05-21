@@ -32,12 +32,20 @@ from autonomous_agent_builder.services.dispatch_lock import (
     release_dispatch as _release_dispatch,
 )
 from autonomous_agent_builder.services.dispatch_lock import (
+    release_project_dispatch as _release_project_dispatch,
+)
+from autonomous_agent_builder.services.dispatch_lock import (
     reserve_dispatch as _reserve_dispatch,
+)
+from autonomous_agent_builder.services.dispatch_lock import (
+    reserve_project_dispatch as _reserve_project_dispatch,
 )
 from autonomous_agent_builder.services.run_reconciliation import mark_task_running_agent_runs_failed
 from autonomous_agent_builder.services.task_dispatch_policy import (
     backlog_item_not_queued_detail,
     dispatch_already_running_payload,
+    dispatch_project_busy_payload,
+    dispatch_scaffold_pending_payload,
     dispatch_started_payload,
     task_feature_reaches_board,
     task_not_dispatchable_detail,
@@ -122,8 +130,29 @@ async def dispatch_task(
             status_code=409,
             detail=backlog_item_not_queued_detail(task),
         )
+
+    # IMP-009: block dispatch while scaffold agent is still running so the
+    # agent cannot race task execution against workspace setup.
+    scaffold_running = any(
+        r.agent_name == "scaffold" and r.status == "running"
+        for r in task.agent_runs
+    )
+    if scaffold_running:
+        return dispatch_scaffold_pending_payload(task)
+
     if not _reserve_dispatch(task.id):
         return dispatch_already_running_payload(task)
+
+    # IMP-007: enforce at most one concurrent dispatch per project to prevent
+    # connection-pool exhaustion when the agent dispatches all tasks at once.
+    project_id: str | None = (
+        task.feature.project.id
+        if task.feature is not None and task.feature.project is not None
+        else None
+    )
+    if project_id and not _reserve_project_dispatch(project_id):
+        _release_dispatch(task.id)
+        return dispatch_project_busy_payload(task)
 
     background.add_task(_run_dispatch, task.id)
 
@@ -209,6 +238,7 @@ async def _run_dispatch_step(task_id: str, chain_state: DispatchChainState) -> s
     settings = get_settings()
     session_factory = get_session_factory()
     followup_task_id: str | None = None
+    _project_id: str | None = None
 
     try:
         async with session_factory() as db:
@@ -228,6 +258,10 @@ async def _run_dispatch_step(task_id: str, chain_state: DispatchChainState) -> s
                 if not task:
                     log.error("embedded_dispatch_task_not_found", task_id=task_id)
                     return None
+                # Capture project_id early so the finally block can release
+                # the project-level dispatch slot (IMP-007).
+                if task.feature is not None and task.feature.project is not None:
+                    _project_id = task.feature.project.id
                 cycle_reason = mark_repeated_dispatch_state(task, chain_state)
                 if cycle_reason:
                     log.error(
@@ -267,6 +301,8 @@ async def _run_dispatch_step(task_id: str, chain_state: DispatchChainState) -> s
                     await _block_dispatch_chain(task_id, _dispatch_failure_reason(exc))
     finally:
         _release_dispatch(task_id)
+        if _project_id:
+            _release_project_dispatch(_project_id)
     return followup_task_id
 
 

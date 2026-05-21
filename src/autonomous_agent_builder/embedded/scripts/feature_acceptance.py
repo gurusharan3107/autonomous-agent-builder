@@ -32,7 +32,7 @@ _FALLBACK_SCRIPT_PRIORITY = (
     "test",
 )
 _TEST_DIRS = ("tests", "test", "e2e", "playwright", "spec", "specs")
-_TEST_SUFFIXES = (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")
+_TEST_SUFFIXES = (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py")
 
 
 class FeatureAcceptanceScript(Script):

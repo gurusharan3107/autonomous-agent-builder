@@ -28,9 +28,7 @@ DOC_OWNER_PREFIXES = (
 DOC_OWNER_FILES = {
     "docs/cli-validation.md",
     "docs/workflows/autonomous-lifecycle-validation.md",
-    "docs/knowledge-extraction.md",
-    "docs/knowledge-document-format.md",
-    "docs/knowledge-document-linting.md",
+    "docs/knowledge.md",
     "docs/MISSION.md",
     "docs/QUALITY_SCORE.md",
     "docs/claude-agent-sdk-integration.md",

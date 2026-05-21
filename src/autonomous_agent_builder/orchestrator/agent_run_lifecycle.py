@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autonomous_agent_builder.agents.definitions import get_agent_definition
@@ -17,6 +18,7 @@ from autonomous_agent_builder.agents.execution_policy import resolve_agent_runti
 from autonomous_agent_builder.agents.runner import AgentRunner, RunResult, capture_workspace_diff
 from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.db.models import AgentRun, AgentRunEvent, Task
+from autonomous_agent_builder.db.session import get_session_factory
 from autonomous_agent_builder.observability.runtime_optimization import runtime_decision_summary
 from autonomous_agent_builder.runtime import resolve_runtime_config
 from autonomous_agent_builder.services.codex_optimization import (
@@ -203,12 +205,33 @@ async def run_agent_lifecycle(
     last_diff_signature = ""
     db_write_lock = asyncio.Lock()
 
+    _log = structlog.get_logger()
+
     async def persist_realtime_run_update(*objects: object) -> None:
+        # IMP-012: use a short-lived session for each intermediate real-time
+        # update so the long-lived dispatch session remains idle (and valid)
+        # during the multi-minute runtime.run() call. Holding one session open
+        # while doing DB writes every second causes the aiosqlite connection to
+        # become invalid ("Can't reconnect until invalid transaction is rolled
+        # back") on long runs.
         async with db_write_lock:
-            for obj in objects:
-                db.add(obj)
-            await db.flush()
-            await db.commit()
+            try:
+                async with get_session_factory()() as update_db:
+                    for obj in objects:
+                        update_db.add(obj)
+                    # Merge the run object so its latest attribute values
+                    # (output_text, diff_summary, etc.) are persisted.
+                    await update_db.merge(run)
+                    await update_db.flush()
+                    await update_db.commit()
+            except Exception as flush_exc:
+                _log.error(
+                    "agent_run_lifecycle_flush_error",
+                    agent_name=agent_name,
+                    task_id=task.id,
+                    error=str(flush_exc),
+                )
+                raise
             await publish_board_snapshot()
 
     async def record_output_chunk(delta: str) -> None:
@@ -278,20 +301,25 @@ async def run_agent_lifecycle(
             await persist_realtime_run_update()
 
     monitor_task = asyncio.create_task(monitor_workspace_diff()) if workspace_path else None
-    result = await runtime.run(
-        prompt,
-        agent=agent_name,
-        workspace_path=workspace_path,
-        session=resume_session,
-        effort=runtime_policy.effort,
-        on_chunk=record_output_chunk,
-        on_tool_event=record_runtime_event,
-    )
-    stop_monitor.set()
-    if monitor_task is not None:
-        monitor_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await monitor_task
+    try:
+        result = await runtime.run(
+            prompt,
+            agent=agent_name,
+            workspace_path=workspace_path,
+            session=resume_session,
+            effort=runtime_policy.effort,
+            on_chunk=record_output_chunk,
+            on_tool_event=record_runtime_event,
+        )
+    finally:
+        # IMP-010: always stop the monitor task regardless of whether runtime.run()
+        # raised. Without this, the monitor keeps writing to the (possibly
+        # rolled-back) session after the exception propagates upward.
+        stop_monitor.set()
+        if monitor_task is not None:
+            monitor_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await monitor_task
 
     diff_summary = result.diff_summary or capture_workspace_diff(workspace_path)
     observability = _run_observability(

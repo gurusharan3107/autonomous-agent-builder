@@ -157,13 +157,14 @@ async def _api_request(
     project_root: str | None = None,
     params: dict[str, Any] | None = None,
     json_body: dict[str, Any] | None = None,
+    timeout: float = 30.0,
 ) -> Any:
     with _project_scope(project_root):
         base_url = resolve_base_url()
 
     api_path = path if path.startswith("/api") else f"/api{path}"
     try:
-        async with httpx.AsyncClient(base_url=base_url, timeout=30.0) as client:
+        async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
             response = await client.request(method, api_path, params=params, json=json_body)
     except httpx.HTTPError as exc:
         raise BuilderToolServiceError(
@@ -689,12 +690,16 @@ async def builder_workspace_scaffold(
     language is already detectable. Exposed as `mcp__builder__workspace_scaffold`
     so the chat agent can route a setup intent through the lifecycle instead of
     attempting shell or filesystem workarounds.
+
+    Uses a 300 s timeout because the scaffold agent runs a full agent loop
+    that can exceed the default 30 s (IMP-009).
     """
     try:
         data = await _api_request(
             "POST",
             f"/tasks/{task_id}/scaffold",
             project_root=project_root,
+            timeout=300.0,
         )
         return _mcp_text_payload(data)
     except BuilderToolServiceError as exc:

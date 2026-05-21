@@ -118,7 +118,6 @@ class TestingGate(QualityGate):
             cwd=workspace_path,
             env={
                 **os.environ,
-                "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
                 "PYTHONPATH": os.pathsep.join(pythonpath_parts),
             },
             stdout=asyncio.subprocess.PIPE,

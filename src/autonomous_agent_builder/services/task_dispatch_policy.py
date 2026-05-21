@@ -80,6 +80,31 @@ def dispatch_already_running_payload(task: Task) -> dict[str, object]:
     }
 
 
+def dispatch_project_busy_payload(task: Task) -> dict[str, object]:
+    return {
+        "task_id": task.id,
+        "status": "project_busy",
+        "current_status": task_status_value(task),
+        "message": (
+            "Another task in this project is already running. "
+            "Dispatch tasks one at a time — wait for the running task to "
+            "complete before dispatching the next one."
+        ),
+    }
+
+
+def dispatch_scaffold_pending_payload(task: Task) -> dict[str, object]:
+    return {
+        "task_id": task.id,
+        "status": "scaffold_pending",
+        "current_status": task_status_value(task),
+        "message": (
+            "Workspace scaffold is still running for this task. "
+            "Wait for workspace_scaffold to return scaffold_ready before dispatching."
+        ),
+    }
+
+
 def dispatch_started_payload(task: Task) -> dict[str, object]:
     return {
         "task_id": task.id,

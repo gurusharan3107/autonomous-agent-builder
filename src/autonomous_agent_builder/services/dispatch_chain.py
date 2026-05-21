@@ -12,7 +12,7 @@ MAX_DISPATCH_FOLLOWUP_STEPS = 100
 
 @dataclass
 class DispatchChainState:
-    seen_states: set[tuple[str, str]] = field(default_factory=set)
+    seen_states: set[tuple[str, str, int]] = field(default_factory=set)
 
 
 DispatchStep = Callable[[str, DispatchChainState], Awaitable[str | None]]
@@ -43,14 +43,17 @@ async def run_dispatch_followup_chain(
 
 
 def mark_repeated_dispatch_state(task: Task, state: DispatchChainState) -> str | None:
-    current_state = (task.id, _status_value(task.status))
+    # Include retry_count in the state key so gate-failure retries (which
+    # legitimately revisit IMPLEMENTATION) are not flagged as cycles.
+    retry = int(getattr(task, "retry_count", 0) or 0)
+    current_state = (task.id, _status_value(task.status), retry)
     if current_state not in state.seen_states:
         state.seen_states.add(current_state)
         return None
 
     reason = (
         "Dispatch follow-up cycle detected for task "
-        f"{task.id} at status {current_state[1]}."
+        f"{task.id} at status {current_state[1]} (retry {current_state[2]})."
     )
     set_task_status(task, TaskStatus.BLOCKED)
     task.blocked_reason = reason

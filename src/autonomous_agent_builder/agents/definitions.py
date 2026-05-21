@@ -455,7 +455,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "}}\n\n"
             "{tool_context}\n\n"
             "Task: {task_description}\n"
-            "Design: {design_context}\n"
+            "{design_context}"
             "Gate feedback: {gate_feedback}\n"
             "Recovery context: {recovery_context}\n"
             "Workspace: {workspace_path}\n"

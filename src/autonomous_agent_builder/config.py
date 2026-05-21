@@ -72,7 +72,7 @@ class AgentSettings(BaseSettings):
     kb_retry_model: str = "claude-haiku-4-5-20251001"
     kb_manual_repair_model: str = "sonnet"
     kb_design_review_model: str = "claude-opus-4-7"
-    query_timeout_seconds: int = 90
+    query_timeout_seconds: int = 300
     # Claude CLI startup on Windows (especially in corporate environments) can
     # take 25-30s before the first token is emitted. The probe only needs a
     # one-token response but must wait for that cold start.

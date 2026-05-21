@@ -322,6 +322,14 @@ class Orchestrator:
             await handler(task)
         except Exception as e:
             log.error("phase_error", task_id=task.id, phase=handler_name, error=str(e))
+            # IMP-010: if the handler corrupted the session (e.g. a DB flush error
+            # inside run_agent_lifecycle rolled the transaction back), issue an
+            # explicit rollback so the session can accept new operations before we
+            # flush the blocked-reason state.
+            try:
+                await self.db.rollback()
+            except Exception:
+                pass
             set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = str(e)
             await self.db.flush()
@@ -474,12 +482,13 @@ class Orchestrator:
         # the repo root. Do not resume across cwd boundaries; pass compact design
         # context explicitly instead.
         scope_reminder = self._build_active_feature_scope_reminder(task)
+        _design_ctx = phase_context(task, "design_context")
         result = await self._run_agent(
             task,
             "code-gen",
             {
                 "task_description": task.description,
-                "design_context": phase_context(task, "design_context"),
+                "design_context": f"Design: {_design_ctx}\n" if _design_ctx else "",
                 "gate_feedback": await self._quality_gate_feedback_context(task),
                 "recovery_context": self._recovery_context(task),
                 "workspace_path": workspace.path,
@@ -1165,8 +1174,14 @@ class Orchestrator:
             return
         try:
             from autonomous_agent_builder.api.routes.dashboard_api import publish_board_snapshot
+            from autonomous_agent_builder.db.session import get_session_factory
 
-            await publish_board_snapshot(self.db)
+            # IMP-012: use a short-lived read session instead of the dispatch
+            # session so we never start a write transaction on self.db while
+            # short-lived update sessions may be active. The committed data from
+            # those sessions is visible to any new connection immediately.
+            async with get_session_factory()() as read_db:
+                await publish_board_snapshot(read_db)
         except Exception as exc:
             log.debug("dashboard_realtime_publish_failed", error=str(exc))
 

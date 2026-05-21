@@ -421,7 +421,15 @@ async def rebase_task_workspace_for_integration(
             f"{checkout_output.strip()}"
         )
 
-    rebase_code, rebase_output = await run_git("rebase", target_branch)
+    # Detect whether the task branch is an orphan (no common ancestor with
+    # the target). An orphan branch has no parent commit and shares no history
+    # with the target, so a plain `git rebase target` fails; use --root to
+    # rebase all commits (including the orphan root) onto the target.
+    merge_base_code, _ = await run_git("merge-base", "HEAD", target_branch)
+    if merge_base_code != 0:
+        rebase_code, rebase_output = await run_git("rebase", "--onto", target_branch, "--root")
+    else:
+        rebase_code, rebase_output = await run_git("rebase", target_branch)
     attempts = 0
     while rebase_code != 0:
         conflict_code, conflict_output = await run_git(

@@ -66,6 +66,17 @@ class WorkspaceManager:
         )
         await head_check.communicate()
         if head_check.returncode != 0:
+            # Set a fallback identity so `git commit` works in environments
+            # without a global git config (e.g. CI, fresh WSL).
+            for cfg_args in [
+                ["git", "config", "user.email", "builder@local"],
+                ["git", "config", "user.name", "Builder"],
+            ]:
+                cfg = await asyncio.create_subprocess_exec(
+                    *cfg_args, cwd=repo_path,
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                )
+                await cfg.communicate()
             init_commit = await asyncio.create_subprocess_exec(
                 "git", "commit", "--allow-empty", "-m", "init",
                 cwd=repo_path,

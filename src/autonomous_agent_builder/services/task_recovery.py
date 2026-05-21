@@ -62,6 +62,8 @@ def task_is_recoverable(task: Task) -> bool:
             return True
         if "Gate infrastructure error" in blocked_reason:
             return True
+        if blocked_reason.startswith("Dispatch follow-up cycle detected"):
+            return True
     return False
 
 
@@ -189,6 +191,14 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
         # already detectable).
         return task_status, TaskStatus.IMPLEMENTATION
 
+    if task_status == TaskStatus.BLOCKED.value and blocked_reason.startswith(
+        "Dispatch follow-up cycle detected"
+    ):
+        # The dispatch chain saw the same (task_id, status, retry_count) twice,
+        # meaning a phase handler did not advance the task. Reset to PENDING so
+        # the full dispatch chain restarts from scratch with a fresh seen_states.
+        return task_status, TaskStatus.PENDING
+
     if task_status == TaskStatus.BLOCKED.value and (
         "FileNotFoundError" in blocked_reason
         or "Gate infrastructure error" in blocked_reason
@@ -224,7 +234,8 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
             "message": (
                 "Only failed tasks, capability-limit tasks, documentation-gate blocked tasks, "
                 "dispatch-failed blocked tasks, scaffold-failed blocked tasks, "
-                "gate-infrastructure-error blocked tasks, invalid pending verifier tasks, "
+                "gate-infrastructure-error blocked tasks, dispatch-cycle blocked tasks, "
+                "invalid pending verifier tasks, "
                 "or PR change-request blocked tasks can be recovered. "
                 "Dispatchable tasks should be dispatched directly."
             ),
