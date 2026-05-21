@@ -1,10 +1,81 @@
 # Autoresearch for Autonomous Builder
 
-This directory adapts Karpathy's [autoresearch](https://github.com/karpathy/autoresearch) philosophy — *rapid autonomous iteration at small scale beats big runs at slow cadence* — to optimize the Autonomous Builder itself.
+This directory adapts Karpathy's [autoresearch](https://github.com/karpathy/autoresearch) philosophy — *rapid autonomous iteration at small scale beats big runs at slow cadence* — to optimize the Autonomous Builder itself. This README is the single entry point: read it first, then descend into the file matching your task.
 
 ## Status
 
 **DORMANT. DO NOT RUN.** This system activates only after every item in [Prerequisites](#prerequisites) is satisfied.
+
+The framework is now spec-complete and the runner is executable today against the existing Builder CLI commands and `POST /api/agent/chat` / `POST /api/agent/chat/respond` HTTP endpoints. Source-code work that would improve diagnostic resolution is captured in [GAPS.md](GAPS.md).
+
+## Read order
+
+If you are an agent landing here and the loop is active, read in this order:
+
+1. `README.md` (this file) — confirm activation, orient on file map.
+2. [OPTIMIZE.md](OPTIMIZE.md) — the loop contract.
+3. [METRICS.md](METRICS.md) — what you are measuring and where it comes from.
+4. [OPTIMIZE_IDEAS.md](OPTIMIZE_IDEAS.md) — pick the next idea.
+5. [HARNESS.md](HARNESS.md) — invoke the runner.
+6. [COMPARE.md](COMPARE.md) — interpret the result.
+
+If you are an agent on the source-change roadmap item ([docs/goal/ROADMAP.md § M3.5](../goal/ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b)) you also need:
+
+- [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md) — for the OTEL env-var prescription.
+- [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) — for the context-attribution implementation.
+- [GAPS.md](GAPS.md) — for the precise source-change list.
+
+## What's in this folder
+
+| File | Role | Status | Audience |
+| --- | --- | --- | --- |
+| `README.md` (this file) | Folder entry point, activation status, file map, load order. | Stable | Anyone landing here |
+| [OPTIMIZE.md](OPTIMIZE.md) | The loop contract: what an iteration does, hard gates, allowlist, stop condition. The agent's `program.md`. | Stable | Agent running the loop |
+| [OPTIMIZE_IDEAS.md](OPTIMIZE_IDEAS.md) | Living backlog of optimization hypotheses ordered by expected impact. The agent reads top-down. | Living | Agent picking next idea |
+| [METRICS.md](METRICS.md) | Master metrics reference: every measurable signal, its source (Builder CLI / Claude SDK / Codex SDK / OTEL), which TSV column it lands in, and known gaps. | Stable | Agent + harness author |
+| [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md) | Claude Agent SDK and Codex SDK observability surface. Specific env vars to set per run. OTEL configuration that turns the loop from blind to fully observable. | Stable | Harness author |
+| [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) | How to capture *where* prompt context came from. Two paths: ground-truth raw API body capture (Path A, executable today) and source-level instrumentation (Path B, needs code). | Stable | Anyone optimizing prompt shape |
+| [HARNESS.md](HARNESS.md) | Concrete runner contract for `scripts/autoresearch/{run,baseline,compare,loop}.py`. Uses existing Builder CLI and HTTP endpoints. Pseudo-code level — implementation is a roadmap item. | Stable | Harness author |
+| [COMPARE.md](COMPARE.md) | Two-run diff protocol with 2σ statistical test, per-prompt diff, verdict format that the loop consumes for keep/discard decisions. | Stable | Harness author + agent |
+| [GAPS.md](GAPS.md) | Honest list of source-code changes needed to make the loop fully autonomous. Tiered into v1-minimum (must have to run loop at all) and v2-polish (improves the loop). | Stable | Roadmap planning |
+| [fixtures.md](fixtures.md) | Scripted operator prompts (A short / B long / C ambiguous / D vague / E multi-turn). Same prompt every run = comparable runs. | Stable | Agent + harness |
+| [baseline_variance.md](baseline_variance.md) | N=5 baseline run protocol that establishes the 2σ noise floor below which "wins" are sampling jitter. | Stable | Harness author |
+| [baseline_runs.tsv](baseline_runs.tsv) | Header-only. Filled by `scripts/autoresearch/baseline.py`. One row per baseline cycle per fixture. | Empty | Harness output |
+| [optimize_results.tsv](optimize_results.tsv) | Header-only. Filled by `scripts/autoresearch/run.py`. One row per optimization iteration per fixture. | Empty | Harness output |
+| [per_prompt_results.tsv](per_prompt_results.tsv) | Header-only. Filled by `scripts/autoresearch/run.py`. One row per prompt within a session. Includes `context_breakdown_json` for source attribution. | Empty | Harness output |
+
+## How the framework hangs together
+
+```
+fixtures.md ────┐
+                ├──► HARNESS.md (run.py) ──► writes:
+OPTIMIZE.md ────┤                              optimize_results.tsv
+                │                              per_prompt_results.tsv
+                │                              raw_evidence/<run-id>/*
+                │                                ▲
+                │   uses signals defined in ────┤
+                │                              METRICS.md
+                │                                ▲
+                │   sources signals from ────────┤
+                │                          ┌─────┴────────────────┐
+                │                          │ Builder CLI:         │
+                │                          │   builder logs       │
+                │                          │   builder metrics    │
+                │                          │   builder board      │
+                │                          │                      │
+                │                          │ Claude SDK (OTEL):   │
+                │                          │   SDK-OBSERVABILITY  │
+                │                          │                      │
+                │                          │ Per-prompt context:  │
+                │                          │   CONTEXT-LEDGER     │
+                │                          └──────────────────────┘
+                │
+                ▼
+        COMPARE.md ──► keep / discard verdict ──► loop advances or rewinds
+                ▲
+                │
+         baseline_variance.md ──► establishes 2σ floor before any "win" counts
+```
 
 ## What this is
 
@@ -17,16 +88,6 @@ This is **Track B** in our delivery model.
 
 Running Track B before Track A optimizes around broken behavior. Do not do that.
 
-## Files
-
-| File | Purpose |
-|---|---|
-| [`OPTIMIZE.md`](OPTIMIZE.md) | The agent loop contract — analogous to autoresearch's `program.md`. Loop steps, allowlist, constraints, metric, stop condition. |
-| [`OPTIMIZE_IDEAS.md`](OPTIMIZE_IDEAS.md) | Living backlog of optimization hypotheses for the agent to draw from. |
-| [`baseline_variance.md`](baseline_variance.md) | Protocol for measuring run-to-run noise before any optimization is declared a win. |
-| [`fixtures.md`](fixtures.md) | Scripted operator prompts used for every experiment. Same prompt → comparable runs. |
-| [`optimize_results.tsv`](optimize_results.tsv) | Append-only log of every experiment: branch, change, metric, gates, decision. |
-
 ## Prerequisites
 
 This loop **must not run** until all of the following are true:
@@ -38,20 +99,35 @@ This loop **must not run** until all of the following are true:
   - `chunk_pressure_risk: false`
   - `avoidable_cost_flags: []`
   - `gate_pass_rate: 1.0`
-- [ ] Baseline variance measured per [`baseline_variance.md`](baseline_variance.md): N=5 baseline runs with means and σ recorded for each metric.
+- [ ] Baseline variance measured per [baseline_variance.md](baseline_variance.md): N=5 baseline runs with means and σ recorded for each metric.
 - [ ] `builder lint --complexity-report --json` reports `0 violations`.
 
-When all checkboxes are ticked, edit this section to record the date and move the loop to active status in [`OPTIMIZE.md`](OPTIMIZE.md).
+When all checkboxes are ticked, edit this section to record the date and move the loop to active status in [OPTIMIZE.md](OPTIMIZE.md).
+
+## Where execution lives
+
+- **This folder (`docs/autoresearch/`)** owns the contract: what to measure, how to compare, what counts as a win.
+- **`scripts/autoresearch/` (will be added with v1 harness)** owns the runner: Python that drives fixtures, captures evidence, writes TSV rows, runs comparisons.
+- **`.seed/devpulse` (will be added as a one-time snapshot)** owns the immutable starting state for every run.
+- **Builder source** owns the telemetry (already there) and the per-source context ledger (per [CONTEXT-LEDGER.md Path B](CONTEXT-LEDGER.md#path-b--source-level-instrumentation), needs change).
+- **`docs/goal/STATUS.md`** owns the live position on Track B (currently dormant under Epoch 3).
 
 ## Mapping back to autoresearch
 
 | Karpathy autoresearch | Autonomous Builder |
 |---|---|
-| `train.py` (the single mutable file) | The allowlist in [`OPTIMIZE.md`](OPTIMIZE.md) (initially: prompt-shape files only) |
+| `train.py` (the single mutable file) | The allowlist in [OPTIMIZE.md](OPTIMIZE.md) (initially: prompt-shape files only) |
 | `prepare.py` (immutable infrastructure) | `tests/`, `docs/quality-gate/`, readiness gates, devpulse workspace contents |
-| `val_bpb` (the single metric) | Composite metric defined in [`OPTIMIZE.md`](OPTIMIZE.md): `noncached_tokens × operator_turns × wallclock_s` under hard gates |
+| `val_bpb` (the single metric) | Composite metric defined in [OPTIMIZE.md](OPTIMIZE.md): `noncached_tokens × operator_turns × wallclock_s` under hard gates |
 | `evaluate_bpb` (the ground-truth check) | `builder logs analyze` + feature-correctness check (`npm run build && npm run test` on devpulse) |
-| `program.md` (agent instructions) | [`OPTIMIZE.md`](OPTIMIZE.md) |
-| `results.tsv` | [`optimize_results.tsv`](optimize_results.tsv) |
+| `program.md` (agent instructions) | [OPTIMIZE.md](OPTIMIZE.md) |
+| `results.tsv` | [optimize_results.tsv](optimize_results.tsv) |
 | Wall-clock budget (5 min) | Fast proxy: 2–3 min per synthetic-task run. Promotion: full 20-min ship cycle. |
 | "Simpler wins ties" | Same. Smaller diff wins on equal metric. |
+
+## Cross-references
+
+- Activation gate and roadmap position: [docs/goal/ROADMAP.md § M3.5](../goal/ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b)
+- Evaluation tiers the loop must respect: [docs/goal/EVALUATION.md](../goal/EVALUATION.md)
+- Fix standard (memory step 0, evidence step 7): [docs/GOAL.md](../GOAL.md)
+- Karpathy autoresearch original: sibling repo at `/home/gurusharangupta/code/autonomous-agent-builder-codex-architecture-review/autoresearch/`

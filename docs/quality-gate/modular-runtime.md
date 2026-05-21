@@ -25,7 +25,6 @@ expectations:
   - "Codex subscription cost usage renders as subscription metering instead of fabricated dollar cost"
 related_docs:
   - "docs/design-docs/modular-runtime-architecture.md"
-  - "docs/design-docs/modular-runtime-spec.md"
   - "docs/references/runtime-settings.md"
   - "docs/claude-agent-sdk-integration.md"
 ---
@@ -133,6 +132,5 @@ Load this gate before:
 ## Related Docs
 
 - [modular-runtime-architecture.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/design-docs/modular-runtime-architecture.md)
-- [modular-runtime-spec.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/design-docs/modular-runtime-spec.md)
 - [runtime-settings.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/runtime-settings.md)
 - [claude-agent-sdk-integration.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/claude-agent-sdk-integration.md)

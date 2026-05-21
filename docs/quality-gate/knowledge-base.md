@@ -21,9 +21,7 @@ expectations:
   - "retrieval remains separate from validation; use builder knowledge summary/show for reading"
   - "authored knowledge docs stay readable for human operators while builder retrieval surfaces provide the compact agent-facing view"
 related_docs:
-  - "docs/knowledge-extraction.md"
-  - "docs/knowledge-document-format.md"
-  - "docs/knowledge-document-linting.md"
+  - "docs/knowledge.md"
   - "docs/claude-agent-sdk-integration.md"
 ---
 
@@ -169,7 +167,5 @@ Do not use the quality gate as the primary retrieval surface.
 ## Related Docs
 
 - [claude-agent-sdk-integration.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/claude-agent-sdk-integration.md)
-- [knowledge-document-format.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/knowledge-document-format.md)
-- [knowledge-extraction.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/knowledge-extraction.md)
-- [knowledge-document-linting.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/knowledge-document-linting.md)
+- [knowledge.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/knowledge.md)
 - [main-commit-reference.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/main-commit-reference.md)

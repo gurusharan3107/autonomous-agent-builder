@@ -1,73 +1,22 @@
-# Mission
+# MISSION.md — Deprecated, Migrated to docs/goal/NORTH-STAR.md
 
-Autonomous Agent Builder exists to make software delivery work in the agentic era.
+**This file is a redirect.** All content has been migrated into [`docs/goal/NORTH-STAR.md`](goal/NORTH-STAR.md). New agents and new references should not target this file.
 
-The product should become an agent-native environment for building and evolving applications, where the user interacts through a simple chat surface, while the system takes responsibility for orchestrating the real work of the software lifecycle. Instead of making the user manually coordinate tools, context, models, workflows, and documentation, the builder should manage those concerns inside one operating environment.
+## Where each section of the original MISSION.md now lives
 
-## Product Thesis
+| Original MISSION.md section | Where it is now |
+| --- | --- |
+| Mission statement | [`docs/goal/NORTH-STAR.md § Mission`](goal/NORTH-STAR.md#mission). |
+| Product thesis | [`docs/goal/NORTH-STAR.md § What "Preferred" Means`](goal/NORTH-STAR.md#what-preferred-means). |
+| What the product should do | [`docs/goal/NORTH-STAR.md § Differentiators`](goal/NORTH-STAR.md#differentiators-what-codex-cli-and-claude-code-cannot-do). |
+| Core promise | [`docs/goal/NORTH-STAR.md § Mission`](goal/NORTH-STAR.md#mission) plus [§ Bar 1 — Operator UX Win](goal/NORTH-STAR.md#bar-1--operator-ux-win-tier-1-evidence). |
+| Non-goals | [`docs/goal/NORTH-STAR.md § Non-Goals`](goal/NORTH-STAR.md#non-goals). |
+| Design principles | [`docs/goal/NORTH-STAR.md § Design Principles`](goal/NORTH-STAR.md#design-principles-always-on). |
+| End state | [`docs/goal/NORTH-STAR.md § Mission`](goal/NORTH-STAR.md#mission) plus [`docs/goal/ROADMAP.md § Epoch 3 — Scale`](goal/ROADMAP.md#epoch-3--scale). |
 
-In modern software teams, the SDLC is spread across many disconnected systems: backlog tools, documentation tools, code editors, git, CI/CD, and various knowledge sources. Agents can operate across those systems, but most users still need to decide what tool to use, what model to use, how to manage context, when to plan, when to execute, and how to preserve continuity.
+## What to do instead
 
-Autonomous Agent Builder should remove that burden.
+- **New agent landing on the project:** read [`docs/goal/README.md`](goal/README.md) first. It points to [`docs/goal/NORTH-STAR.md`](goal/NORTH-STAR.md) as the mission owner.
+- **External reference still pointing here:** [`docs/goal/NORTH-STAR.md`](goal/NORTH-STAR.md) is the new owner. Update the reference when you next touch the file.
 
-The user experience should stay simple:
-- the user works through a chat interface
-- the system understands the project and its state
-- the system chooses the right workflow, model, tools, and execution strategy
-- the system leaves behind durable state that both users and agents can build on
-
-## What The Product Should Do
-
-Autonomous Agent Builder should:
-
-- Manage the SDLC through explicit agent-driven phases rather than one-shot coding.
-- Keep project state durable and inspectable across backlog, tasks, approvals, quality gates, documentation, knowledge, and memory.
-- Help users who are not deeply technical by taking responsibility for architecture research, tool selection, model routing, and context management.
-- Maintain agent-friendly project documentation and knowledge with progressive disclosure, so both humans and agents can understand the system without loading everything at once.
-- Capture project-specific memory to avoid repeated friction, and promote durable lessons into stronger workflows or controls when needed.
-- Use the right execution mode for the situation, including planning, exploration, implementation, verification, and recovery, without making the user manage those choices manually.
-- Apply cost-aware intelligence by making each specialist effective at its job:
-  right prompt, right tool set, right allowlist and denylist, right context, and
-  right model for the work. The goal is quality with less wasted context and
-  time, not arbitrary token rationing.
-- Use Builder-owned metrics, observability, and logs to detect ineffective
-  agents and improve the product at the responsible control surface.
-- Use proven agent workflows and platform capabilities, such as isolated workspaces, worktrees, reusable procedures, and automated validation, as a built-in product responsibility rather than optional expert behavior.
-
-## Core Promise
-
-For the user, this should feel like one product, not a pile of integrations.
-
-The user should not need to think about:
-- which model to use
-- how to manage context
-- when to switch from planning to execution
-- how to preserve project memory
-- how to structure agent-friendly documentation
-- when to use isolated workspaces or worktrees
-- how to route work across the SDLC
-
-Those are system responsibilities.
-
-## Non-Goals
-
-Autonomous Agent Builder should not become:
-- a thin chat wrapper over existing tools
-- a manual orchestration layer that still depends on expert users to make workflow decisions
-- a generic documentation store with no execution intelligence
-- a loose collection of integrations without a coherent operating model
-
-## Design Principles
-
-- Chat-first for the user, structured execution under the hood.
-- Durable state over ephemeral agent behavior.
-- Retrieval before guesswork.
-- Progressive disclosure over context overload.
-- System-owned workflow decisions over user micromanagement.
-- Cost-efficient execution without lowering quality.
-- Agent-friendly surfaces and CLIs wherever possible.
-- One coherent operating environment for project delivery.
-
-## End State
-
-The end state is a product where an agent can take a software project from understanding, planning, and design through implementation, validation, and iteration inside a single coherent environment, while continuously maintaining the project’s state, knowledge, memory, and delivery flow with minimal user burden.
+This file is kept (rather than deleted) so that existing references in `docs/REFERENCE.md`, `docs/quality-gate/agent-quality.md`, `docs/quality-gate/architecture-boundary.md`, `docs/quality-gate/documentation-agent.md`, `docs/references/claude-agent-sdk-telemetry-observability.md`, `docs/references/documentation-agent.md`, `docs/references/autonomous-delivery-documentation-refresh.md`, and similar locations resolve to a real file that explains where the content moved. Do not add new references to this file.

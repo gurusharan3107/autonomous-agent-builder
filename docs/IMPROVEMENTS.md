@@ -101,13 +101,13 @@ Each entry has: symptom, root cause, solution, status.
 
 **Session:** devpulse workspace, 2026-05-21, session `666f6b7f`. The agent issued 4 consecutive `task_dispatch` calls in the same turn.
 
-**Root cause:** The agent-chat prompt doesn't prevent bulk dispatch. The `mcp__builder__task_dispatch` tool doesn't enforce a single-dispatch-at-a-time constraint. The orchestrator's async DB session handling allows cascading failures when multiple dispatches hit the pool simultaneously.
+**Root cause:** The agent-chat prompt didn't prevent bulk dispatch. The dispatch route had no per-project concurrency limit — only a per-task duplicate check. 4 concurrent agent loops each opening independent DB sessions saturated the pool.
 
 **Solution (two parts):**
-1. **Prompt constraint**: The agent-chat prompt should instruct the model to dispatch one task at a time and wait for confirmation before dispatching the next.
-2. **Backend guard**: The `mcp__builder__task_dispatch` MCP handler should use a task-dispatch queue or lock so concurrent dispatch attempts are serialized, not rejected with a pool error.
+1. **Prompt constraint**: Added "Dispatch ONE task at a time. Never call `mcp__builder__task_dispatch` for multiple tasks in the same turn. Wait for the response before dispatching the next." to both the `continuation_guidance` and `model_backed_delivery_context` branches of `agent_prompt_builders.py`.
+2. **Backend guard**: Added `reserve_project_dispatch` / `release_project_dispatch` to `dispatch_lock.py` (max 1 concurrent dispatch per project). The dispatch route now returns `{"status": "project_busy"}` when a project slot is occupied; releases happen in the `_run_dispatch_step` `finally` block.
 
-**Status:** open
+**Status:** resolved — prompt fix in `agent_prompt_builders.py`; backend guard in `dispatch_lock.py` + `routes/tasks.py`. Regression tests: `test_reserve_project_dispatch_blocks_at_limit`, `test_dispatch_returns_project_busy_when_project_already_dispatching` in `test_dispatch_guards.py`.
 
 ---
 
@@ -129,8 +129,94 @@ Each entry has: symptom, root cause, solution, status.
 
 **Symptom:** In session `666f6b7f`, the agent called `mcp__builder__workspace_scaffold` and then immediately called `mcp__builder__task_dispatch` multiple times in the same turn without waiting for the scaffold run to finish. The scaffold run was still `status=running` when the first task dispatch happened.
 
-**Root cause:** The `mcp__builder__workspace_scaffold` tool returns immediately after queuing the scaffold run — it doesn't block until the run completes. The agent treats the queued-scaffold response as "done" and dispatches implementation tasks, which fail because the workspace has no commits and no gate infrastructure.
+**Root cause (confirmed):** Two compounding issues:
+1. The scaffold HTTP endpoint is synchronous and blocks until the scaffold agent completes, but the `_api_request` HTTP client had a 30 s timeout. When scaffold takes longer, the client raises a timeout error while the server-side scaffold agent continues running. The agent sees an error response and proceeds.
+2. When multiple tool calls appear in the same Claude Agent SDK model turn, they are executed concurrently. If the model output `workspace_scaffold` and `task_dispatch` in the same turn, both fire simultaneously regardless of order.
 
-**Solution:** The scaffold MCP tool response must clearly communicate that the scaffold is still running and that task dispatch must wait. Either (a) the tool should block until scaffold completes (with a timeout), or (b) the response should include a `scaffold_pending: true` flag and the agent-chat prompt must check for it before dispatching. The orchestrator could also enforce this as a pre-dispatch check: if a scaffold run is in `status=running`, reject task dispatch with a clear message.
+**Solution (two parts):**
+1. **Scaffold HTTP timeout**: Increased the `builder_workspace_scaffold` API request timeout from 30 s to 300 s in `builder_tool_service.py` so the client waits for the scaffold agent to complete rather than timing out.
+2. **Backend pre-dispatch guard**: The dispatch route now checks `task.agent_runs` for any `AgentRun` with `agent_name="scaffold"` and `status="running"`. If found, it returns `{"status": "scaffold_pending"}` before allowing dispatch. Added prompt constraint: "If workspace scaffold is in progress, do not call `mcp__builder__task_dispatch` until scaffold completes."
 
-**Status:** open
+**Status:** resolved — timeout fix in `builder_tool_service.py`; pre-dispatch guard in `routes/tasks.py`. Regression test: `test_dispatch_returns_scaffold_pending_when_scaffold_agent_running` in `test_dispatch_guards.py`.
+
+---
+
+## [IMP-010] SQLAlchemy session rolls back during long-running scaffold agent, blocking the task
+
+**Symptom:** On re-verify (2026-05-21), dispatching a recovered task with `force_scaffold=True` in `recovery_context` causes the scaffold Claude agent to start, produce one line of output ("Let me check the existing workspace structure before writing the gate config."), then the `_run_dispatch_step` session rolls back. The task is blocked with: "Dispatch failed: This Session's transaction has been rolled back due to a previous exception during flush." The scaffold agent_run shows `status=failed` with the dispatch failure reason as its error (written by `mark_task_running_agent_runs_failed`).
+
+**Session:** devpulse workspace, 2026-05-21 08:24:24. Task 128e02f6. Scaffold agent_run 84f2ca7f started at 08:24:24, failed at 08:26:57.
+
+**Root cause (hypothesis):** `run_agent_lifecycle` calls `await db.commit()` after creating the `AgentRun` record (line 195 of `agent_run_lifecycle.py`). During the scaffold Claude agent execution, `persist_realtime_run_update` is called from `record_output_chunk` (via `on_chunk` callback in `runtime.run()`). If `db.flush()` inside `persist_realtime_run_update` fails (e.g., SQLite BUSY after the 15 s `busy_timeout`), the session transaction is rolled back. The exception then propagates through `runtime.run()` → `_run_workspace_scaffold_if_needed` → `_phase_implementation` → `orchestrator.dispatch`. The except block in `dispatch` (line 321–327 in orchestrator.py) then tries `await self.db.flush()` on the already-rolled-back session, triggering the "session rolled back" error. Additionally, the `monitor_workspace_diff` background asyncio task is not stopped on exception (lines 290–294 are not in a `finally` block), leaving it running after the exception.
+
+**Contributing factors:**
+- The session is held open for the entire scaffold duration (inside `async with session_factory() as db:` in `_run_dispatch_step`).
+- `busy_timeout=15000` means SQLite will retry writes for 15 s before BUSY error. Concurrent server requests that briefly hold the write lock during the 2.5-minute scaffold run could trigger this.
+- The `monitor_workspace_diff` asyncio task is not cancelled on exception — it continues writing to the session after `runtime.run()` has thrown.
+
+**Solution:** Two parts:
+1. **Stop monitor on exception**: Wrap `monitor_workspace_diff` lifecycle in a `finally` block in `run_agent_lifecycle` to ensure `stop_monitor.set()` and `monitor_task.cancel()` are always called even if `runtime.run()` throws.
+2. **Diagnose the flush failure**: Add structlog error capture for the original flush exception inside `persist_realtime_run_update` before the exception propagates, so the root cause (BUSY, constraint, etc.) is visible in logs.
+
+**Solution applied (2026-05-21):**
+1. **Monitor task always stopped**: Wrapped `result = await runtime.run(...)` in a `try/finally` block in `run_agent_lifecycle` so `stop_monitor.set()` + `monitor_task.cancel()` always fire even if the runtime raises. Prevents the monitor writing to a rolled-back session.
+2. **Flush error logged**: Added structlog `agent_run_lifecycle_flush_error` before re-raising in `persist_realtime_run_update` so the original flush failure (SQLite BUSY, constraint, etc.) is visible in server logs.
+3. **Dispatch rollback guard**: Added `await self.db.rollback()` before the FAILED-state flush in `orchestrator.dispatch`'s except block so a rolled-back session can accept the blocked-reason write.
+
+**Status:** resolved — fixes in `agent_run_lifecycle.py` (try/finally + flush-error log) and `orchestrator.py` (rollback guard). No dedicated regression test added (requires a real long-running agent call to trigger the SQLite BUSY race); monitored via structlog `agent_run_lifecycle_flush_error` events in live runs.
+
+---
+
+## [IMP-011] SSE endpoints hold DB pool connections for their entire client lifetime, exhausting the pool during long scaffold runs
+
+**Symptom:** On re-verify (2026-05-21), task 128e02f6 blocked again with the same session-rollback error after the IMP-010 fix was applied. Server log showed `sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00` immediately before the rollback. The scaffold had been running for ~4 minutes at that point.
+
+**Session:** devpulse workspace, 2026-05-21 09:05:10–09:09:09 (second attempt after IMP-010 fix). Same task and symptom as IMP-010 but different root cause.
+
+**Root cause:** `board_stream` and `approval_stream` SSE endpoints in `dashboard_api.py` inject `db: AsyncSession = Depends(get_db)`. FastAPI's `Depends` context manager stays open for the lifetime of the HTTP request. For SSE endpoints the request lives as long as the client is connected — potentially many minutes. With 2 SSE clients connected during a 4-minute scaffold run, 2 pool connections were held permanently. Combined with the dispatch session (1 connection) and concurrent HTTP requests, the default SQLite `QueuePool(pool_size=5, max_overflow=10)` reached its 15-connection ceiling. After 30 s waiting, callers received `TimeoutError`, which rolled back the dispatch session and triggered the IMP-010 symptom again.
+
+**Contributing factors:**
+- Default `QueuePool` settings (5+10) are appropriate for PostgreSQL but too small for local SQLite dev where long-lived connections accumulate.
+- Both SSE handlers only needed the DB session for the initial snapshot query; subsequent loop iterations read only from an in-memory hub queue.
+
+**Solution:** Remove `db: AsyncSession = Depends(get_db)` from `board_stream` and `approval_stream`. Replace with an explicit `async with get_session_factory()() as db:` block scoped to just the initial snapshot query so the connection is returned to the pool before the long-lived SSE generator loop begins.
+
+**Files changed:** `src/autonomous_agent_builder/api/routes/dashboard_api.py` — `board_stream` (line ~1655) and `approval_stream` (line ~1693).
+
+**Status:** resolved — 2026-05-21. No regression test added (SSE lifetime requires a live server to verify); validated by successful live re-dispatch of task 128e02f6 with `active=1 blocked=0` sustained through the scaffold run.
+
+---
+
+## [IMP-012] Dispatch session connection becomes invalid after ~90s, causing `Can't reconnect until invalid transaction is rolled back`
+
+**Symptom:** After IMP-010 and IMP-011 fixes, task 128e02f6 blocked again ~90s into the scaffold run with "Dispatch failed: ... Original exception was: Can't reconnect until invalid transaction is rolled back." Exit code 143 (SIGTERM) seen in `ProcessError` from the claude subprocess. No `agent_run_lifecycle_flush_error` log — the connection became invalid before any flush was attempted.
+
+**Root cause:** `run_agent_lifecycle` uses the dispatch session (`db`) for ALL DB operations during `runtime.run()`: the `monitor_workspace_diff` task calls `persist_realtime_run_update` every ~1s, each doing `db.flush()` + `db.commit()` on the same session that was opened minutes ago. SQLAlchemy's aiosqlite connection becomes invalid under sustained load — the async worker thread handling becomes unstable after many repeated operations on a long-held connection.
+
+**Solution (IMP-012):** Change `persist_realtime_run_update` to use a SHORT-LIVED session from `get_session_factory()` for each intermediate real-time update, instead of the dispatch session. The dispatch session is left IDLE during the entire `runtime.run()` call. `run.merge()` is used to persist the latest `AgentRun` attribute values in each short-lived session.
+
+**Files changed:**
+- `agent_run_lifecycle.py`: add `from autonomous_agent_builder.db.session import get_session_factory`
+- `agent_run_lifecycle.py`: replace `db`-based `persist_realtime_run_update` with short-lived `async with get_session_factory()() as update_db: ... await update_db.merge(run)`
+
+**Why this works:** Short-lived sessions (opened, flushed, committed, closed in <10ms) are much less likely to encounter connection invalidation issues than a single session held open for 4+ minutes under load. The dispatch session remains idle (no DB operations) during `runtime.run()`, so its connection stays valid for the final update after the run completes.
+
+**Additional fix required:** `_publish_realtime_board_snapshot` in `orchestrator.py` called `publish_board_snapshot(self.db)` which starts `await db.flush()` on the dispatch session inside `db_write_lock`. This write transaction held the SQLite write lock, blocking the short-lived sessions' next INSERT. Fix: changed `_publish_realtime_board_snapshot` to use `async with get_session_factory()() as read_db:` — a fresh read session that has nothing to flush, so no write transaction is started on the dispatch session.
+
+**Status:** resolved — 2026-05-21. Validated live: scaffold completed (5m17s, 8 turns, $0.108), code-gen completed (12m, 26 turns, $0.271), quality gates + integration + build verify all passed. Task 128e02f6 reached `done` at 11:25 — first full M1.2 lifecycle completion.
+
+---
+
+## [IMP-013] Orphan task branch cannot fast-forward into sprint branch — `fatal: refusing to merge unrelated histories`
+
+**Symptom:** After code-gen completed successfully (IMP-012 fixed), quality gates ran and the integration step failed: "Integration failed: could not fast-forward task/128e02f6...: fatal: refusing to merge unrelated histories". Task blocked at 10:02.
+
+**Root cause:** The task workspace's initial commit (`7ceded1 chore: preserve builder runtime guidance`) is an ORPHAN root — it has no parent. The sprint branch was initialized with a SEPARATE root commit (`447031c init`) after the task workspace was created. Two disconnected histories. The `is_fast_forward_divergence()` check in `workspace_policy.py` only matched "not possible to fast-forward" and "diverging branches", so the "refusing to merge unrelated histories" error bypassed the rebase fallback path in `workspace_integration.py`.
+
+**Solution:**
+1. `workspace_policy.py`: add `"refusing to merge unrelated histories"` to `is_fast_forward_divergence()` so the rebase fallback is triggered.
+2. `workspace_integration.py` `rebase_task_workspace_for_integration`: detect orphan branch (no common ancestor via `git merge-base`) and use `git rebase --onto target_branch --root` instead of plain `git rebase target_branch`. Without `--root`, git cannot find a fork point for an orphan branch.
+
+**Files changed:** `workspace_policy.py`, `workspace_integration.py`.
+
+**Status:** resolved — 2026-05-21. Validated: `workspace_rebased_for_integration` + `workspace_integrated_fast_forward` both emitted at 11:25; task reached `done` at 11:25:34.

@@ -59,6 +59,21 @@ workflow --docs-dir docs read REFERENCE
 Do not move Builder runtime responsibilities into `~/.codex`. Do not copy
 Codex-only guidance into `CLAUDE.md`.
 
+## Library Documentation — Retrieval Policy
+
+Never rely on training data for versioned libraries. Run `ctx7 docs <id> "<query>"` before writing code that touches any library surface. These five IDs are the highest-risk areas where training data produces silently wrong code:
+
+| Surface | ctx7 ID |
+|---|---|
+| Claude Agent SDK (Python) | `/anthropics/claude-agent-sdk-python` |
+| Codex SDK / Codex CLI | `/openai/codex` |
+| Pydantic v2 | `/pydantic/pydantic` |
+| SQLAlchemy 2.0 async ORM | `/websites/sqlalchemy_en_20_orm` |
+| FastAPI | `/fastapi/fastapi` |
+
+Full library map (all IDs, surface → library routing, key queries):
+`workflow --docs-dir docs read references/library-retrieval-map`
+
 ## Required Triggers
 
 - Before editing `AGENTS.md`:
