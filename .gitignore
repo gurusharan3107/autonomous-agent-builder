@@ -40,3 +40,11 @@ council-transcript-*.md
 
 # User-specific memory
 .memory/
+
+# Runtime artifacts
+MagicMock/
+*.db-shm
+*.db-wal
+session-report-*.html
+*-runtime-explainer.html
+.codex/
