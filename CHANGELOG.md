@@ -7,6 +7,72 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-21 - M1.1 Closed + M1.2 Claude Lane Complete + docs/goal/ Framework
+
+### Added
+
+- `docs/goal/` framework (11 files): README, NORTH-STAR, STATUS, ROADMAP, EVALUATION,
+  FIX-STANDARD, OPERATOR-LANGUAGE, TUNING, RESUME, INDEX, INSIGHTS. Single entry point
+  for all agent sessions; replaces legacy GOAL.md / PLAN.md / MISSION.md stubs.
+- Hard Rule 13 in `docs/goal/README.md`: a checklist item is not closed until committed
+  and pushed to remote.
+- `goal-audit` skill at `.claude/skills/goal-audit/`: appends direction-audit entries to
+  `docs/goal/INSIGHTS.md`; never edits STATUS/ROADMAP. Includes `collect.py` +
+  `analyze-sessions.mjs` + evals.
+- `docs/autoresearch/` Track B framework: COMPARE, CONTEXT-LEDGER, GAPS, HARNESS,
+  METRICS, SDK-OBSERVABILITY — dormant until M1.1 IMP closures + gate-pass rate 1.0.
+- `services/dispatch_lock.py`: project-level dispatch lock preventing simultaneous task
+  dispatch (IMP-007).
+- `services/task_dispatch_policy.py`: pre-dispatch scaffold-running guard (IMP-009).
+- `tests/test_dispatch_guards.py`: regression tests for IMP-007 and IMP-009.
+
+### Fixed
+
+- **IMP-006**: scaffold agent prompt constraint added in `agents/definitions.py` — agent
+  must use Write tool to emit sentinel, not shell heredoc.
+- **IMP-007**: project-level dispatch lock in `dispatch_lock.py` + prompt constraint in
+  `agent_prompt_builders.py` prevent connection pool exhaustion from simultaneous dispatch.
+- **IMP-008**: unborn HEAD guard in `workspace/manager.py` — creates initial commit before
+  `git worktree add` on repos with no commits.
+- **IMP-009**: scaffold HTTP timeout raised 30s→300s in `builder_tool_service.py`; added
+  scaffold-running pre-dispatch guard in `embedded/server/routes/tasks.py`.
+- **IMP-010**: SQLAlchemy session try/finally + flush-error structlog in
+  `orchestrator/agent_run_lifecycle.py`; rollback guard in `orchestrator.py` prevents
+  session becoming invalid after long scaffold runs.
+- **IMP-011**: `board_stream` and `approval_stream` SSE endpoints in `dashboard_api.py`
+  now scope the DB session to the initial snapshot only, ending pool exhaustion during
+  long runs.
+- **IMP-012**: `persist_realtime_run_update` switched to short-lived sessions from
+  `get_session_factory()` — session no longer invalid after ~90s.
+- **IMP-013**: rebase-before-integrate in `workspace_integration.py` fixes orphan task
+  branch `--unrelated-histories` fast-forward failure.
+- **Source-repo gate bug**: removed `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` from
+  `quality_gates/testing.py` subprocess env — was silently killing pytest-asyncio and
+  all third-party plugins in generated-app test runs.
+- **Source-repo gate bug**: added `.py` to `_TEST_SUFFIXES` in
+  `embedded/scripts/feature_acceptance.py` — Python test files were invisible to the
+  coverage signal scanner.
+
+### Changed
+
+- Legacy strategic docs (`docs/GOAL.md`, `PLAN.md`, `MISSION.md`) converted to
+  deprecation stubs pointing to `docs/goal/`.
+- `docs/IMPROVEMENTS.md` updated with IMP-010 through IMP-013 closures and root causes.
+- `AGENTS.md` updated with current dispatch constraints and routing.
+- Deleted superseded design files: `docs/design-docs/`, `docs/analysis/`,
+  `docs/knowledge-document-*.md`, `docs/knowledge-extraction.md`,
+  `docs/plans/modular-runtime-implementation.md`, `SPRINT-PROGRESS.md`.
+
+### Validation
+
+- 79/79 regression tests pass (2026-05-21). All IMP-specific tests pass.
+- devpulse sprint 5/5 tasks complete, $2.08 total (Claude Agent SDK lane).
+  domain-model → UI shell → core behavior → persistence → verify. All quality gates passed.
+- `run-tests.js` shim committed to devpulse workspace — last-resort test runner for
+  Python apps with no Playwright/npm test command.
+
+---
+
 ## 2026-05-20 - Architecture Ratchet Continuation
 
 ### Added
