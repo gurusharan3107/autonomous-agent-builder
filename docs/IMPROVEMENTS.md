@@ -78,3 +78,59 @@ Each entry has: symptom, root cause, solution, status.
 ---
 
 <!-- entries added during testing -->
+
+---
+
+## [IMP-006] Scaffold agent completes without emitting `SCAFFOLD_RESULT_JSON:` sentinel — all downstream tasks block
+
+**Symptom:** Scaffold agent ran (5 turns, $0.0915, stop_reason=end_turn) but produced no files and no `SCAFFOLD_RESULT_JSON:` sentinel line. Orchestrator treated the run as `scaffold_failed` and blocked the domain-model task. Without the sentinel the orchestrator cannot proceed to dispatch implementation tasks.
+
+**Session:** devpulse workspace, 2026-05-21, session `666f6b7f`. Board: all 5 tasks blocked after a single scaffold run.
+
+**Root cause (confirmed):** The scaffold agent tried to create `pyproject.toml` via shell heredoc (`cat > file << 'EOF'`) instead of the `Write` tool. The workspace boundary enforcement hook blocks shell-based file writes. The agent's final output was: *"Once Write is permitted (or the file is created manually), I can complete scaffolding and emit `SCAFFOLD_RESULT_JSON`."* — then `end_turn` without the sentinel. The prompt said "write the gate config" but didn't say *which tool to use*, so the model chose the shell path which was blocked.
+
+**Solution:** Added explicit prompt constraint: "ALWAYS use the `Write` tool to create files. NEVER use shell heredoc (`cat > file << 'EOF'`) or `echo` redirects — those are blocked by the workspace enforcement hook." Applied to `agents/definitions.py` scaffold `prompt_template`. Regression test: re-run scaffold and verify `pyproject.toml` written + sentinel emitted.
+
+**Status:** resolved — prompt fix applied; `pyproject.toml` written manually to unblock the domain-model task workspace for the current test cycle.
+
+---
+
+## [IMP-007] Agent dispatches all tasks simultaneously → connection pool exhaustion
+
+**Symptom:** After calling `mcp__builder__task_dispatch` for the first task, the agent immediately called it 3 more times without waiting. This saturated the SQLAlchemy `QueuePool limit of size 5 overflow 10`, timing out at 30s. Subsequent tasks show "Session's transaction has been rolled back due to a previous exception during flush."
+
+**Session:** devpulse workspace, 2026-05-21, session `666f6b7f`. The agent issued 4 consecutive `task_dispatch` calls in the same turn.
+
+**Root cause:** The agent-chat prompt doesn't prevent bulk dispatch. The `mcp__builder__task_dispatch` tool doesn't enforce a single-dispatch-at-a-time constraint. The orchestrator's async DB session handling allows cascading failures when multiple dispatches hit the pool simultaneously.
+
+**Solution (two parts):**
+1. **Prompt constraint**: The agent-chat prompt should instruct the model to dispatch one task at a time and wait for confirmation before dispatching the next.
+2. **Backend guard**: The `mcp__builder__task_dispatch` MCP handler should use a task-dispatch queue or lock so concurrent dispatch attempts are serialized, not rejected with a pool error.
+
+**Status:** open
+
+---
+
+## [IMP-008] `git worktree add` fails when workspace has no initial commit (unborn HEAD)
+
+**Symptom:** When operator asks to ship a feature into a fresh workspace that has never had any git commit, the orchestrator attempts `git worktree add` and gets: `warning: HEAD points to an invalid (or orphaned) reference`. All tasks that require a worktree (UI shell, core behavior, persistence, verify) block immediately.
+
+**Session:** devpulse workspace, 2026-05-21. The devpulse workspace has no commits (empty master branch, `git log` returns "does not have any commits yet").
+
+**Root cause:** `git worktree add` requires at least one commit on the current branch. An unborn HEAD is not a valid base ref for worktree creation. Scaffold did not create an initial commit.
+
+**Solution:** Added unborn-HEAD guard to `WorkspaceManager.create_workspace` in `workspace/manager.py`. Before `git worktree prune`, it runs `git rev-parse --verify HEAD`; if HEAD is unborn (returncode != 0), it runs `git commit --allow-empty -m "init"` to create the base ref. Regression test: `test_workspace_manager_creates_initial_commit_for_unborn_head` in `test_sprint_branch_lifecycle.py`.
+
+**Status:** resolved — fix in `workspace/manager.py`, regression test added, 1 passed.
+
+---
+
+## [IMP-009] Agent dispatches implementation tasks before scaffold completes
+
+**Symptom:** In session `666f6b7f`, the agent called `mcp__builder__workspace_scaffold` and then immediately called `mcp__builder__task_dispatch` multiple times in the same turn without waiting for the scaffold run to finish. The scaffold run was still `status=running` when the first task dispatch happened.
+
+**Root cause:** The `mcp__builder__workspace_scaffold` tool returns immediately after queuing the scaffold run — it doesn't block until the run completes. The agent treats the queued-scaffold response as "done" and dispatches implementation tasks, which fail because the workspace has no commits and no gate infrastructure.
+
+**Solution:** The scaffold MCP tool response must clearly communicate that the scaffold is still running and that task dispatch must wait. Either (a) the tool should block until scaffold completes (with a timeout), or (b) the response should include a `scaffold_pending: true` flag and the agent-chat prompt must check for it before dispatching. The orchestrator could also enforce this as a pre-dispatch check: if a scaffold run is in `status=running`, reject task dispatch with a clear message.
+
+**Status:** open

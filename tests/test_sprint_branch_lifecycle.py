@@ -191,6 +191,31 @@ async def test_workspace_manager_recreates_missing_task_worktree_from_existing_b
 
 
 @pytest.mark.asyncio
+async def test_workspace_manager_creates_initial_commit_for_unborn_head(tmp_path):
+    """IMP-008: git worktree add fails on a repo with no commits (unborn HEAD).
+    WorkspaceManager must create an empty initial commit before calling worktree add."""
+    from autonomous_agent_builder.workspace.manager import WorkspaceManager
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    # No initial commit — HEAD is unborn.
+    assert _git(repo, "rev-parse", "--verify", "HEAD").returncode != 0
+
+    workspaces_root = tmp_path / "workspaces"
+    manager = WorkspaceManager(str(workspaces_root))
+
+    info = await manager.create_workspace(str(repo), task_id="task-unborn")
+
+    assert info.is_worktree is True
+    assert (tmp_path / "workspaces" / "task-unborn").exists()
+    # Repo now has the auto-created initial commit.
+    assert _git(repo, "rev-parse", "--verify", "HEAD").returncode == 0
+
+
+@pytest.mark.asyncio
 async def test_untracked_runtime_guidance_does_not_block_task_branch_merge(
     tmp_path, orchestrator
 ):

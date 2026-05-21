@@ -55,6 +55,26 @@ class WorkspaceManager:
                 is_worktree=True,
             )
 
+        # If the repo has no commits yet (unborn HEAD), `git worktree add` will
+        # fail with "HEAD points to an invalid reference". Create an empty initial
+        # commit so worktree operations have a valid base ref.
+        head_check = await asyncio.create_subprocess_exec(
+            "git", "rev-parse", "--verify", "HEAD",
+            cwd=repo_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await head_check.communicate()
+        if head_check.returncode != 0:
+            init_commit = await asyncio.create_subprocess_exec(
+                "git", "commit", "--allow-empty", "-m", "init",
+                cwd=repo_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await init_commit.communicate()
+            log.info("workspace_initial_commit", repo_path=repo_path)
+
         # Temp-backed task worktrees can disappear between runs while git still
         # retains stale admin entries and the task branch itself. Prune first,
         # then reattach the existing branch when present instead of trying to
