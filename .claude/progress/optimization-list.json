@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "done": 0,
+    "pending": 4,
+    "total": 4
+  },
+  "optimizations": [
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Create or extend backlog CLI diagnostics so an agent can turn validation findings into correctly typed items with consistent tags, evidence, source=validation, and next-step hints.",
+      "evidence": "Manual creation of reverse-engineering incidents, improvements, and optimizations required repeated command shaping and category decisions.",
+      "id": "5bd656b7-113f-4fb7-a76d-968487464903",
+      "item_type": "optimization",
+      "priority": 1,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "testing-closeout"
+      ],
+      "title": "Add backlog closeout helper for validation findings",
+      "type": "optimization"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Extend existing backlog nouns with compact diagnostics: task readiness, approval/inbox next action, run duplication evidence, and shipped hygiene hints. Keep the surface under item/task/approval/run, not a new feature noun.",
+      "evidence": "During reverse-engineering validation, agents needed to correlate Backlog, Board, Inbox, runs, gates, and workspace hygiene manually.",
+      "id": "022b55c6-d400-40ce-b667-d4d0e216cf05",
+      "item_type": "optimization",
+      "priority": 2,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "cli"
+      ],
+      "title": "Add lifecycle readiness diagnostics to builder backlog CLI",
+      "type": "optimization"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Standardize run/session identity and retrieval so builder metrics, backlog run list/show, agent sessions, and logs all resolve the same execution records. Remove contradictions where metrics reports runs that backlog run discovery cannot find, and make session_id and run_id stable pivots across the system.",
+      "evidence": "",
+      "id": "93f77c23-1b9a-491a-8b96-aeb45e7179af",
+      "item_type": "optimization",
+      "priority": 1,
+      "severity": "",
+      "source": "agent",
+      "status": "backlog",
+      "tags": [
+        "cli"
+      ],
+      "title": "Unify builder CLI run discovery across metrics, runs, sessions, and logs",
+      "type": "optimization"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Historical optimization request. Verified on 2026-04-26 that the testing closeout trigger is already documented in both AGENTS.md and CLAUDE.md. Keep only until a status-mutation surface exists.",
+      "evidence": "Resolved in current docs: AGENTS.md and CLAUDE.md already instruct agents to create typed validation backlog items and testing-phase memory entries at closeout.",
+      "id": "181c1c18-748f-455c-abed-a30e4638a717",
+      "item_type": "optimization",
+      "priority": 0,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "testing-closeout"
+      ],
+      "title": "Add testing closeout backlog triage trigger",
+      "type": "optimization"
+    }
+  ]
+}

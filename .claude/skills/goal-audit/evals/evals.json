@@ -1,0 +1,51 @@
+{
+  "skill_name": "goal-audit",
+  "notes": [
+    "These test cases test the goal-audit skill's behavior. They use the LIVE session transcript corpus (~/.claude/projects/) and LIVE Builder CLI workspaces at run time — the skill is unusual in that its 'input data' is the user's actual history, which cannot be neatly bottled as static fixtures.",
+    "For each eval, the assertions test PROCESS correctness (was the audit run end-to-end, did INSIGHTS get appended in the right format, did the reorder logic respect its criteria) rather than CONTENT correctness (whether the model's narrative observations are wise). Narrative quality is a human-review concern.",
+    "Run protocol: per the evaluating-skills guide, run each test case both with the skill loaded and without (baseline). Save outputs to <workspace>/iteration-N/<eval-id>/{with_skill,without_skill}/outputs/ and timing/grading JSON."
+  ],
+  "evals": [
+    {
+      "id": "happy-path-clean-system",
+      "prompt": "Run a direction audit and tell me where to focus next.",
+      "expected_output": "A new dated entry is appended to docs/goal/INSIGHTS.md following the format in SKILL.md. The entry has three sections (Intent vs current focus, Autoresearch focus candidates, Recommended actions). Because the current Builder system reports `maintain_current_flow` across recent sessions, the verdict in Section B is 'no autoresearch action — system stable' and no OPTIMIZE_IDEAS.md reorder happens.",
+      "assertions": [
+        "scripts/collect.py runs without error (exit code 0)",
+        "/tmp/goal-audit-data.json is created and is valid JSON",
+        "/tmp/goal-audit-data.json has a non-empty session_report.by_project after Builder filter",
+        "docs/goal/INSIGHTS.md gains exactly one new '## YYYY-MM-DD — Run #N' section after the run",
+        "The new section has three subheadings: 'Intent vs current focus', 'Autoresearch focus candidates', 'Recommended actions'",
+        "Every observation in 'Intent vs current focus' cites at least one prompt or metric with a timestamp or session id",
+        "When aggregated_drivers.recommended_next_change is dominated by 'maintain_current_flow', Section B notes 'system stable' or equivalent",
+        "When no driver appears in >=3 sessions, docs/autoresearch/OPTIMIZE_IDEAS.md is NOT modified (no new reorder comment added)",
+        "The chat reply is under 10 lines and includes the path to the new INSIGHTS entry"
+      ]
+    },
+    {
+      "id": "dry-run-no-writes",
+      "prompt": "Show me a dry-run of the goal audit — preview what you'd write but don't commit changes.",
+      "expected_output": "The skill completes Steps 1-5 (data collection, synthesis, validation) and prints the draft INSIGHTS entry to chat. docs/goal/INSIGHTS.md is NOT modified. docs/autoresearch/OPTIMIZE_IDEAS.md is NOT modified.",
+      "assertions": [
+        "scripts/collect.py runs without error",
+        "docs/goal/INSIGHTS.md last-modified time is UNCHANGED before vs after the run",
+        "docs/autoresearch/OPTIMIZE_IDEAS.md last-modified time is UNCHANGED before vs after the run",
+        "The chat reply contains a preview of the INSIGHTS entry the skill would have written, including all three section headings",
+        "The chat reply explicitly notes 'dry-run' or 'preview only — no files written'"
+      ]
+    },
+    {
+      "id": "reorder-criteria-validation",
+      "prompt": "Audit the autoresearch focus. If one driver dominates the recent metrics, promote the matching OPTIMIZE_IDEAS item to the top.",
+      "expected_output": "If a single driver appeared in >=3 Builder-runtime sessions in scope, maps to a single OPTIMIZE_IDEAS item, that item is not already at position 1, and the item has 'Attempts: none', then docs/autoresearch/OPTIMIZE_IDEAS.md is edited: the target item moves to position 1 with a timestamped reorder comment above it. Otherwise no reorder happens and the INSIGHTS entry explains which criterion failed.",
+      "assertions": [
+        "scripts/collect.py runs without error",
+        "If no reorder happens, the INSIGHTS entry has 'OPTIMIZE_IDEAS.md actions taken: none' and names at least one rejected candidate with the failing criterion",
+        "If a reorder happens, docs/autoresearch/OPTIMIZE_IDEAS.md contains a NEW comment line matching the pattern 'moved to position 1 by goal-audit on YYYY-MM-DD: driver \"<name>\" recurred in N sessions'",
+        "If a reorder happens, the moved item appears textually BEFORE the previous item 1",
+        "No OPTIMIZE_IDEAS item is deleted (file line count is >= pre-run line count + comment lines added)",
+        "The four reorder rules are explicitly checked: single-item mapping, sessions >= 3, not already top, Attempts: none"
+      ]
+    }
+  ]
+}

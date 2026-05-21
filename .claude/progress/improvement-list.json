@@ -1,0 +1,160 @@
+{
+  "improvements": [
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Prevent duplicate phase runs when approval auto-dispatch and manual Board or CLI dispatch target the same task. Use a durable task-scoped lease so duplicate dispatch is rejected across restarts or multiple workers.",
+      "evidence": "Reverse-engineering browser run double-started build-verifier after PR approval auto-dispatched and the Board dispatch button was clicked.",
+      "id": "eeb59dd6-330e-4b48-8293-94e4105f0b74",
+      "item_type": "improvement",
+      "priority": 0,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "dispatch"
+      ],
+      "title": "Add durable per-task dispatch lease",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Integration should produce a concrete artifact state: PR URL, local patch artifact, or explicit transport/auth block. Do not allow Shipped from ambiguous local-only state.",
+      "evidence": "External repo validation reached Shipped even though the disposable repo could not produce a real writable upstream PR artifact.",
+      "id": "40d62b1b-7afe-468c-a220-0c8018e11d52",
+      "item_type": "improvement",
+      "priority": 1,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "integration"
+      ],
+      "title": "Define integration artifact contract before shipped",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Before marking a task done, verify task workspace cleanliness: no unexpected untracked scratch files, implementation changes intentionally staged/committed/exported, and hygiene evidence attached.",
+      "evidence": "Reverse-engineering run left an untracked _verify_test.py scratch file in the task workspace after shipping.",
+      "id": "f39ec5af-6fe5-4880-be8e-e9c46ea2adc4",
+      "item_type": "improvement",
+      "priority": 1,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "workspace-hygiene"
+      ],
+      "title": "Add final workspace hygiene gate",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Make quality gates isolate host pytest plugins and prefer workspace-local src imports. Capture the command and key env decisions in gate evidence.",
+      "evidence": "Quality gates failed from host pytest plugin autoload and then imported installed MarkupSafe instead of the task workspace src package.",
+      "id": "3b7fabab-fac9-4902-a71c-e91cea597a38",
+      "item_type": "improvement",
+      "priority": 1,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "quality-gates"
+      ],
+      "title": "Normalize quality gate test environment",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Wire agent_run_events into the API and CLI so builder backlog run show --full returns a real execution timeline with event type, tool name, timestamp, and compact output preview. This closes the gap between high-level metrics and actionable debugging data.",
+      "evidence": "",
+      "id": "28c8128a-9be5-4ce5-a14a-643f7dc8139f",
+      "item_type": "improvement",
+      "priority": 0,
+      "severity": "",
+      "source": "agent",
+      "status": "backlog",
+      "tags": [
+        "telemetry"
+      ],
+      "title": "Expose agent run event timelines in builder backlog run show --full",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Historical validation improvement. Verified on 2026-04-26 that implementation flow already avoids resuming across cwd boundaries and instead passes compact design context into the workspace run. Keep only until a status-mutation surface exists.",
+      "evidence": "Resolved in current code: src/autonomous_agent_builder/orchestrator/orchestrator.py documents and enforces no resume across cwd boundaries for implementation.",
+      "id": "701d02fe-bcb6-4913-a852-d9bbbb913899",
+      "item_type": "improvement",
+      "priority": 0,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "workspace"
+      ],
+      "title": "Enforce SDK resume workspace cwd contract",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Historical agent-quality improvement. Verified on 2026-04-26 that chat runs already persist tool_result, tool_error, and run_error events, and the logs lane reads them. Keep only until a status-mutation surface exists.",
+      "evidence": "Resolved in current code: embedded/server/routes/agent.py appends tool_result and tool_error chat events, and cli/commands/logs.py includes them in the default log lanes.",
+      "id": "fd107df7-1cb2-43c6-8d70-eabeab7f1445",
+      "item_type": "improvement",
+      "priority": 0,
+      "severity": "",
+      "source": "agent",
+      "status": "backlog",
+      "tags": [
+        "observability"
+      ],
+      "title": "Persist agent tool and error events for chat runs",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Code-gen produced a Vite React scaffold with npm run lint calling eslint, but package dependencies did not include eslint, so lint fails even while tests and tsc pass.",
+      "evidence": "In task worktree /var/folders/d4/n827kdgs5hl0dj940t7t6wm00000gn/T/aab-workspaces/5e633692-c98e-4fbf-8553-872e00b8aae1, npm test -- --run passed 32 tests and npx tsc --noEmit passed, but npm run lint failed with sh: eslint: command not found.",
+      "id": "35ecaf4c-d2ac-4ce9-b648-a8fb93f474a3",
+      "item_type": "improvement",
+      "priority": 1,
+      "severity": "",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [],
+      "title": "Generated React scaffold lint script must include ESLint dependency",
+      "type": "improvement"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "When a user-shaped continuation prompt dispatches background work, the Agent chat history should record a terminal run_status and correlate to the dispatched run so logs analyze does not leave the chat turn looking indefinitely running.",
+      "evidence": "Fixed by recording task_dispatched run_status for auto-dispatch chat turns and surfacing dispatch correlation in builder logs analyze; focused route and CLI regressions pass.",
+      "id": "9d64aae1-7cb5-458a-8bb9-75684b1436c3",
+      "item_type": "improvement",
+      "priority": 1,
+      "severity": "",
+      "source": "validation",
+      "status": "done",
+      "tags": [
+        "observability"
+      ],
+      "title": "Record terminal status for dispatch-only chat turns",
+      "type": "improvement"
+    }
+  ],
+  "metadata": {
+    "done": 1,
+    "pending": 8,
+    "total": 9
+  }
+}

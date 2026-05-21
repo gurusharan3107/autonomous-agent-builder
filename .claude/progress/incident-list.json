@@ -1,0 +1,171 @@
+{
+  "incidents": [
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "The same task entered duplicate phase execution when approval auto-dispatch overlapped with a manual Board dispatch. This created duplicate build-verifier runs and inconsistent operator expectations.",
+      "evidence": "During the MarkupSafe reverse-engineering run, build-verifier started twice for the same task after PR approval and a Board dispatch click.",
+      "id": "921cd88f-d681-461c-b983-16e298329ad9",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "high",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "dispatch"
+      ],
+      "title": "Task could be dispatched twice during integration handoff",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Historical validation incident. Verified on 2026-04-26 that the quality-gate pytest lane now disables host plugin autoload and prefers workspace-local src imports. Keep only until a status-mutation surface exists.",
+      "evidence": "Resolved in current code: src/autonomous_agent_builder/quality_gates/testing.py sets PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 and injects workspace src into PYTHONPATH.",
+      "id": "d10efa51-ed86-46f9-bea5-fd4f6a026300",
+      "item_type": "incident",
+      "priority": 1,
+      "severity": "medium",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "quality-gates"
+      ],
+      "title": "Quality gate runner inherited hostile host test environment",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Historical validation incident. Verified on 2026-04-26 that the documentation refresh gate now validates against project_root, not the isolated task workspace. Keep only until a status-mutation surface exists.",
+      "evidence": "Resolved in current code: src/autonomous_agent_builder/orchestrator/orchestrator.py derives project_root from project.repo_url or workspace_path before KB validation and refresh.",
+      "id": "4425e6ab-756f-4dfc-82e7-bca3f4f05c9b",
+      "item_type": "incident",
+      "priority": 1,
+      "severity": "medium",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "documentation-gate"
+      ],
+      "title": "Documentation gate validated task workspace instead of project root",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Historical validation incident. Verified on 2026-04-26 that the backlog page now receives merged artifact and DB backlog items and treats backlog as a first-class status group. Keep only until a status-mutation surface exists.",
+      "evidence": "Resolved in current code: /api/dashboard/features merges artifact and DB items, and frontend/src/pages/BacklogPage.tsx renders backlog status explicitly.",
+      "id": "9b0b4fa2-5cbc-449c-9806-77cf0de8a921",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "high",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "backlog"
+      ],
+      "title": "Backlog page hid saved feature items",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Validation smoke artifact only. Verified on 2026-04-26 that this item was created purely to prove typed incidents render on the backlog page and does not represent follow-up product work.",
+      "evidence": "Non-actionable smoke entry retained only because the public backlog surface cannot yet mark items cancelled or done.",
+      "id": "d5573925-e1d8-47ca-aa60-756b6a96b398",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "low",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "browser-smoke"
+      ],
+      "title": "Browser smoke typed backlog incident",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Historical validation incident for the JSON/React approval path. Verified on 2026-04-26 that the main dashboard approval details endpoint normalizes naive timestamps. A legacy HTMX route still raw-sorts timestamps, so this remains historical rather than a fully deleted concern.",
+      "evidence": "Partially resolved in current code: api/routes/dashboard_api.py normalizes timestamps for approval details, while dashboard/routes.py legacy thread rendering still sorts raw timestamps.",
+      "id": "473d21cf-44a4-4479-bf95-f6cc19007d2a",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "high",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [
+        "approval"
+      ],
+      "title": "Approval page crashed after approval state change",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "The documentation refresh gate validates project-root system-docs during a forward-engineering task even though generated code lives in a task worktree and the greenfield project has no system-docs yet. The task blocks with non-actionable documentation freshness failure.",
+      "evidence": "In /private/tmp/aab-forward-20260426-171559, task 5e633692-c98e-4fbf-8553-872e00b8aae1 blocked at quality_gates: documentation refresh gate blocked: validation failed without actionable stale maintained docs. builder knowledge validate failed: Knowledge base not found at .agent-builder/knowledge/system-docs. builder knowledge extract --force created only partial docs and failed generator validation.",
+      "id": "da2c68af-4800-4805-95ff-36213268ff79",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "high",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [],
+      "title": "Forward-engineering quality gate blocks greenfield worktree with missing system-docs",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "After retrying onboarding, the browser showed queued KB phases but both Resume onboarding and Retry failed phases were disabled because actionPending was only cleared when ready=true. Fixed frontend pending cleanup in App.tsx.",
+      "evidence": "External clone /tmp/aab-reverse-validate: after retry, repo detect through work item seed passed, KB phases stayed queued, and the snapshot showed Resume onboarding and Retry failed phases disabled. Reload later showed ready state.",
+      "id": "437b2d96-efe8-4dc5-be27-4ba9313d7172",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "medium",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [],
+      "title": "Onboarding UI leaves recovery buttons disabled after partial run",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "The reverse-engineering feature implementation eventually passed target tests, but the Agent run remained live while documentation-agent publishing looped on KB contract and kb_validate safe-lane errors. Runtime should surface this as a blocked documentation closeout instead of leaving the user-facing run live.",
+      "evidence": "External clone /tmp/aab-reverse-validate-fresh, session 1ab83b1c-d156-44a1-b623-81a739e00772: target pytest command passed 8 tests, but builder logs then showed mcp__builder__kb_lint contract failures and mcp__builder__kb_validate permission_denied for absolute kb_dir while agent history still reported running=true.",
+      "id": "1550569a-5650-4f82-bd68-12b26a18d33d",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "high",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [],
+      "title": "Reverse agent run can stay live after tests pass due KB publish contract errors",
+      "type": "incident"
+    },
+    {
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "description": "Fresh reverse-engineering dashboard onboarding failed before repo scan because Claude Agent SDK startup received env=None and raised 'NoneType' object is not a mapping. Fixed in claude_runtime by passing an empty env mapping.",
+      "evidence": "External clone /tmp/aab-reverse-validate: Start onboarding through dashboard produced 'Onboarding disabled: Claude unavailable for KB extraction. backend=sdk. Failed to start Claude Code: NoneType object is not a mapping'. Regression test added in tests/test_claude_runtime.py.",
+      "id": "23b14fd1-6ce3-4b59-b1f5-6eff3d580929",
+      "item_type": "incident",
+      "priority": 0,
+      "severity": "high",
+      "source": "validation",
+      "status": "backlog",
+      "tags": [],
+      "title": "Reverse onboarding SDK env None blocks Claude availability",
+      "type": "incident"
+    }
+  ],
+  "metadata": {
+    "done": 0,
+    "pending": 10,
+    "total": 10
+  }
+}
