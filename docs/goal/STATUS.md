@@ -16,7 +16,7 @@ Live state. If it lies, system is blind.
 | Current Item In Flight | **M1.4 in progress** — per-phase allowlists + preflight probes ✓; forward/reverse workspace validation pending |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-05-22 — G1 Session rail per-turn token visibility wired (stream_usage SSE + AgentPage liveTokens); all M2.3 P0 items complete |
+| Last Update | 2026-05-22 — M3.5 Track B activating: 4 of 5 pre-harness prereqs cleared (IMP closures + devpulse ships + Tier-1 cache/chunk/avoid clear + lint=0); harness work begins next |
 
 ---
 
@@ -81,6 +81,7 @@ Last result of each [EVALUATION.md](EVALUATION.md) tier. Update on milestone clo
 
 One line per durable decision. Keep recent 20; older → `builder memory add` if durable, else delete.
 
+- **2026-05-22** — M3.5 Track B autoresearch loop activation started. Pre-harness prereqs closed: lint=0 (extracted G12 trim hook → `agents/hooks_trim.py`, runner SDK options → `agents/runner_options.py`, subagent registry → `agents/subagent_definitions.py`; ratcheted baselines). Tier-1 metrics re-verified on session `5dc61748` (cache 18019×, chunk_pressure false, avoidable_flags []). In-harness prereqs (`gate_pass_rate=1.0` per-baseline-run, N=5 variance) deferred to baseline.py in Phase D1 — chicken-and-egg with harness existence. autoresearch/README.md flipped DORMANT → ACTIVATING.
 - **2026-05-22** — G1 Session rail wiring complete: `StreamEvent message_start/message_delta` per-turn usage accumulated in `runner.py`; `on_stream_usage` async callback threaded through `ClaudeRuntime` → `run_chat_runtime_loop` → `agent.py`; `publish_stream_usage` on `ChatTurnPublisher` emits `stream_usage` SSE; `AgentPage.tsx` `liveTokens` state overrides `currentTurnTokens` during active runs. 16/16 `test_agent_runner.py` green (1 new: `test_stream_event_invokes_on_stream_usage_callback`).
 - **2026-05-22** — M2.3 P0 Tier B SDK fixes confirmed by live devpulse code-gen run: G2 (`exclude_dynamic_sections`) — latest 10-turn code-gen: 219592 cached / 15 raw input = **56x** per-run (99.99% cache hit); fleet code-gen: 72.4x. G12 — `avoidable_cost_flags=[]`, `chunk_pressure_risk=false`. G7 — strict MCP, no regressions. StopFailure — provider-limit blocked card fires operator copy. All 5 Tier-1 bars confirmed. `recommended_next_change: maintain_current_flow`.
 - **2026-05-22** — ROADMAP SDK-grounded additions (codebase-validated): M2.3 P0 (G1/G2/G7/G12) + StopFailure hook; M2.4 G6 `include_hook_events`; M2.5 G4 file checkpointing + G13 `effort:"xhigh"`; M2.6 G5 `permissionDecision="defer"` + typed-retry refinement; M3.2 G3 `SessionStore` HARD prereq + M3.3 dependency note. INSIGHTS revalidation entry appended: withdrew standalone G8 (`AskUserQuestion` already adopted); narrowed G15 (partial in `runner.py:818-845`); audited 5 closed IMPs as already SDK-covered. Commit `2613dc6`.
