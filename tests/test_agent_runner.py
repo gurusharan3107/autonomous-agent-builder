@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -42,7 +43,7 @@ def test_sdk_api_error_output_with_real_usage_is_left_as_agent_text():
 
 @pytest.mark.asyncio
 async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_path: Path):
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
     monkeypatch.setenv("AAB_CLAUDE_OTEL_ENABLED", "1")
     monkeypatch.setenv("AAB_CLAUDE_OTEL_ENDPOINT", "http://collector.example.com:4318")
     _write_builder_source_env(monkeypatch, tmp_path, "CLAUDE_CODE_OAUTH_TOKEN=builder-token\n")
@@ -162,7 +163,7 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
             self.tools = tools or []
             self.model = model
 
-    fake_sdk = ModuleType("claude_agent_sdk")
+    fake_sdk: Any = ModuleType("claude_agent_sdk")
     fake_sdk.AgentDefinition = FakeSdkAgentDefinition
     fake_sdk.AssistantMessage = FakeAssistantMessage
     fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
@@ -240,7 +241,7 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
 
 @pytest.mark.asyncio
 async def test_execute_query_exposes_full_tool_set_when_can_use_tool_is_present(monkeypatch):
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     class FakeHookMatcher:
         def __init__(self, matcher, hooks, timeout=None):
@@ -317,7 +318,7 @@ async def test_execute_query_exposes_full_tool_set_when_can_use_tool_is_present(
             self.tools = tools or []
             self.model = model
 
-    fake_sdk = ModuleType("claude_agent_sdk")
+    fake_sdk: Any = ModuleType("claude_agent_sdk")
     fake_sdk.AgentDefinition = FakeSdkAgentDefinition
     fake_sdk.AssistantMessage = FakeAssistantMessage
     fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
@@ -347,7 +348,7 @@ async def test_execute_query_exposes_full_tool_set_when_can_use_tool_is_present(
 
 @pytest.mark.asyncio
 async def test_execute_query_registers_documentation_subagent(monkeypatch):
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     class FakeHookMatcher:
         def __init__(self, matcher, hooks, timeout=None):
@@ -427,7 +428,7 @@ async def test_execute_query_registers_documentation_subagent(monkeypatch):
     def fake_create_sdk_mcp_server(name, version="1.0.0", tools=None):
         return {"name": name, "version": version, "tools": tools or []}
 
-    fake_sdk = ModuleType("claude_agent_sdk")
+    fake_sdk: Any = ModuleType("claude_agent_sdk")
     fake_sdk.AgentDefinition = FakeSdkAgentDefinition
     fake_sdk.AssistantMessage = FakeAssistantMessage
     fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
