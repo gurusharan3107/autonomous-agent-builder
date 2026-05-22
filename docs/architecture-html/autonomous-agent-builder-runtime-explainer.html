@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autonomous Agent Builder — Architecture &amp; Lifecycle Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · macrostructure: Workbench + Marquee-narrative · genre: editorial · theme: calm-paper
+ * pre-emit critique: P5 H5 E5 S5 R5 V5
+ * Design DNA: DESIGN.md calm-paper preset — #FCFAF6 bg, Newsreader + Geist, cobalt primary
+ * DRAMS: 4pt base, 32px page margin, named --space-* tokens, consistent vertical rhythm
+ * Tufte: hairline borders, 3–5% category tints, no decorative shadows, row-only table separators */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { overflow-x: clip; }
+
+:root {
+  --bg:            #FCFAF6;
+  --bg-sunk:       #F6F4EF;
+  --surface:       #FFFEFB;
+  --surface-sub:   #FBFAF6;
+  --surface-muted: #F3F2ED;
+  --surface-raised:#FFFFFF;
+  --border:        #E1DDD8;
+  --border-strong: #C7C3BD;
+  --text:          #1E1A15;
+  --text-2:        #47413A;
+  --text-3:        #736E67;
+  --text-muted:    #9C9792;
+  --primary:       #075EA9;
+  --primary-soft:  #E1F0FF;
+  --primary-ink:   #003363;
+  --info:          #008DA7;
+  --info-soft:     #E0F5F8;
+  --success:       #298954;
+  --success-soft:  #E3F5EB;
+  --warning:       #AD7D00;
+  --warning-soft:  #FFF3CC;
+  --danger:        #CB473D;
+  --danger-soft:   #FDEEED;
+  --pending:       #5C79B6;
+  --pending-soft:  #EEF2FB;
+  --shared:        var(--success);
+  --shared-soft:   var(--success-soft);
+  --shared-ink:    #1A6B3F;
+  --claude:        var(--primary);
+  --claude-soft:   var(--primary-soft);
+  --claude-ink:    var(--primary-ink);
+  --codex:         var(--warning);
+  --codex-soft:    var(--warning-soft);
+  --codex-ink:     #7A5800;
+  --converge:      var(--info);
+  --converge-soft: var(--info-soft);
+  --converge-ink:  #005F72;
+  --orch:          var(--pending);
+  --orch-soft:     var(--pending-soft);
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-sans:    'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, monospace;
+  --r:    5px; --r-md: 8px; --r-lg: 10px;
+  --shadow-sm: 0 1px 2px rgba(30,26,21,.05), inset 0 1px 0 rgba(255,255,255,.5);
+  --shadow-md: 0 2px 8px -2px rgba(30,26,21,.08), inset 0 1px 0 rgba(255,255,255,.5);
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms; --dur-med: 220ms; --dur-slow: 420ms;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, .display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.022em; }
+
+/* ── Shell ─────────────────────────────────────── */
+.shell-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 48px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 48px;
+}
+.wordmark { font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; white-space: nowrap; flex-shrink: 0; }
+.wordmark span { color: var(--primary); }
+.header-sub { color: var(--text-muted); font-size: 11px; font-family: var(--font-mono); letter-spacing: 0.06em; flex: 1; }
+.badge { padding: 2px 8px; border-radius: var(--r); font-size: 10px; font-family: var(--font-mono); font-weight: 500; letter-spacing: 0.08em; border: 1px solid var(--border-strong); color: var(--primary); background: var(--primary-soft); }
+.tab-row { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+.tab-row::-webkit-scrollbar { display: none; }
+.tab { padding: 0 16px; height: 38px; cursor: pointer; border: none; background: none; color: var(--text-3); font-size: 12px; font-weight: 500; font-family: var(--font-sans); border-bottom: 2px solid transparent; transition: color var(--dur-fast), border-color var(--dur-fast); white-space: nowrap; flex-shrink: 0; }
+.tab:hover { color: var(--text-2); }
+.tab.active { color: var(--text); border-bottom-color: var(--primary); }
+
+/* ── Main / views ──────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+.view { display: none; padding: 36px 48px 64px; flex: 1; width: 100%; max-width: 1360px; margin: 0 auto; }
+.view.active { display: block; }
+
+/* ── Section heads ─────────────────────────────── */
+.section-head {
+  font-size: 10px; font-weight: 600; font-family: var(--font-mono);
+  letter-spacing: 0.18em; color: var(--text-muted); text-transform: uppercase;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-md); margin-top: var(--space-xl);
+}
+.section-head:first-child { margin-top: 0; }
+
+/* ── Card ──────────────────────────────────────── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--space-md) 20px; }
+.card + .card { margin-top: var(--space-sm); }
+
+/* ── Plane ─────────────────────────────────────── */
+.plane { border-radius: var(--r-lg); padding: 14px 18px; margin-bottom: var(--space-sm); border: 1px solid; }
+.plane-label { font-size: 9px; font-weight: 600; font-family: var(--font-mono); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px; }
+.plane.shared   { background: rgba(41,137,84,.04);   border-color: rgba(41,137,84,.2); }
+.plane.shared   .plane-label { color: var(--shared-ink); }
+.plane.claude   { background: rgba(7,94,169,.03);    border-color: rgba(7,94,169,.18); }
+.plane.claude   .plane-label { color: var(--primary-ink); }
+.plane.codex    { background: rgba(173,125,0,.04);   border-color: rgba(173,125,0,.2); }
+.plane.codex    .plane-label { color: var(--codex-ink); }
+.plane.converge { background: rgba(0,141,167,.04);   border-color: rgba(0,141,167,.2); }
+.plane.converge .plane-label { color: var(--converge-ink); }
+.plane.switch   { background: rgba(173,125,0,.03);   border-color: rgba(173,125,0,.2); }
+.plane.switch   .plane-label { color: var(--warning); }
+.plane.orch     { background: rgba(92,121,182,.04);  border-color: rgba(92,121,182,.2); }
+.plane.orch     .plane-label { color: var(--orch); }
+.plane.neutral  { background: var(--surface-sub);    border-color: var(--border); }
+.plane.neutral  .plane-label { color: var(--text-3); }
+
+/* ── Chips ─────────────────────────────────────── */
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid; cursor: default; user-select: none; transition: opacity var(--dur-fast); position: relative; }
+.chip:hover { opacity: .8; }
+.chip.shared   { background: var(--shared-soft);  border-color: rgba(41,137,84,.3);   color: var(--shared-ink); }
+.chip.claude   { background: var(--claude-soft);  border-color: rgba(7,94,169,.25);   color: var(--claude-ink); }
+.chip.codex    { background: var(--codex-soft);   border-color: rgba(173,125,0,.28);  color: var(--codex-ink); }
+.chip.converge { background: var(--converge-soft);border-color: rgba(0,141,167,.28);  color: var(--converge-ink); }
+.chip.orch     { background: var(--orch-soft);    border-color: rgba(92,121,182,.28); color: var(--orch); }
+.chip.muted    { background: var(--surface-muted);border-color: var(--border-strong); color: var(--text-3); }
+.chip[data-tip] { cursor: help; }
+.chip[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  background: var(--surface-raised); border: 1px solid var(--border-strong); color: var(--text-2);
+  padding: 6px 10px; border-radius: var(--r-md); font-size: 11px; z-index: 100;
+  pointer-events: none; width: max-content; max-width: 280px; white-space: normal; text-align: left;
+}
+
+.connector { display: flex; justify-content: center; align-items: center; height: 18px; color: var(--text-muted); font-size: 14px; margin: -4px 0; position: relative; z-index: 1; }
+
+code, .mono { font-family: var(--font-mono); font-size: 11px; background: var(--surface-muted); border: 1px solid var(--border); padding: 1px 5px; border-radius: 3px; color: var(--text-2); }
+
+/* ── Layout helpers ────────────────────────────── */
+.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.cols-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 12px; }
+
+@media (max-width: 900px) {
+  .cols-2, .cols-3, .cols-auto, .concept-grid { grid-template-columns: 1fr; }
+  .view { padding: 20px 20px 40px; }
+  .shell-header { padding: 0 20px; }
+}
+@media (max-width: 600px) {
+  .view { padding: 16px 16px 32px; }
+  .shell-header { padding: 0 16px; }
+}
+
+/* ──────────────────────────────────────────────────
+   NARRATIVE LEDE — Newsreader callout before a section
+────────────────────────────────────────────────── */
+.narrative-lede {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-2);
+  line-height: 1.7;
+  letter-spacing: -0.012em;
+  max-width: 820px;
+  margin-bottom: var(--space-xl);
+  padding-left: var(--space-md);
+  border-left: 2px solid var(--border-strong);
+}
+.narrative-lede strong { color: var(--text); font-weight: 500; font-style: italic; }
+
+/* ──────────────────────────────────────────────────
+   OVERVIEW — Hero
+────────────────────────────────────────────────── */
+.hero {
+  margin-bottom: 36px;
+}
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.028em;
+  color: var(--text);
+  line-height: 1.18;
+  max-width: 780px;
+  margin-bottom: 16px;
+}
+.hero-headline em { color: var(--primary); font-style: italic; }
+.hero-body {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.7;
+  max-width: 760px;
+  margin-bottom: 20px;
+}
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hero-tag {
+  padding: 3px 10px;
+  border-radius: var(--r);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+}
+
+/* ──────────────────────────────────────────────────
+   PIPELINE DIAGRAM
+────────────────────────────────────────────────── */
+.pipeline-wrap {
+  margin-bottom: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 28px 24px 24px;
+  overflow-x: auto;
+}
+.pipeline-title {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+.pipeline-main {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: max-content;
+}
+.pipe-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.pipe-box {
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid;
+  text-align: center;
+  min-width: 90px;
+}
+.pipe-name {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+.pipe-role {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  margin-top: 2px;
+  opacity: .7;
+  white-space: nowrap;
+}
+.pipe-arrow {
+  font-size: 18px;
+  color: var(--border-strong);
+  padding: 0 6px;
+  flex-shrink: 0;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+
+/* Color variants */
+.pipe-box.you       { background: rgba(7,94,169,.04);   border-color: rgba(7,94,169,.25);   color: var(--primary-ink); }
+.pipe-box.backlog   { background: rgba(92,121,182,.04); border-color: rgba(92,121,182,.25); color: var(--orch); }
+.pipe-box.orch      { background: rgba(92,121,182,.04); border-color: rgba(92,121,182,.25); color: var(--orch); }
+.pipe-box.agents    { background: rgba(41,137,84,.04);  border-color: rgba(41,137,84,.25);  color: var(--shared-ink); }
+.pipe-box.gates     { background: rgba(203,71,61,.04);  border-color: rgba(203,71,61,.22);  color: var(--danger); }
+.pipe-box.pr        { background: rgba(41,137,84,.04);  border-color: rgba(41,137,84,.25);  color: var(--shared-ink); }
+.pipe-box.done      { background: rgba(41,137,84,.07);  border-color: rgba(41,137,84,.35);  color: var(--shared-ink); }
+
+/* Approval callout row below pipeline */
+.pipeline-callouts {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.pipe-callout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+.pipe-callout .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pipe-callout.approve .dot { background: var(--warning); }
+.pipe-callout.auto    .dot { background: var(--danger); }
+.pipe-callout.both    .dot { background: var(--success); }
+
+/* ──────────────────────────────────────────────────
+   OVERVIEW — Concept cards, hierarchy, surfaces
+────────────────────────────────────────────────── */
+.concept-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.concept-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+}
+.concept-card .c-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500; margin-bottom: 6px; }
+.concept-card .c-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.concept-card .c-desc  { font-size: 12px; color: var(--text-3); line-height: 1.6; }
+
+.hierarchy-row { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 14px 0; }
+.hier-node { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.hier-box { padding: 7px 16px; border-radius: var(--r-md); font-size: 12px; font-weight: 600; border: 1px solid; text-align: center; }
+.hier-sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono); }
+.hier-arrow { font-size: 18px; color: var(--border-strong); padding: 0 6px; margin-bottom: 14px; flex-shrink: 0; }
+
+.surface-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px; }
+.surface-card {
+  background: var(--surface-sub); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 10px 14px; cursor: default;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.surface-card:hover { border-color: var(--primary); background: var(--surface); }
+.surface-card .s-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.surface-card .s-desc { font-size: 11px; color: var(--text-3); line-height: 1.4; }
+
+/* ──────────────────────────────────────────────────
+   USER FLOW — Split steps
+────────────────────────────────────────────────── */
+.flow-steps { display: flex; flex-direction: column; gap: 16px; }
+.split-step {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; border: 1.5px solid;
+  flex-shrink: 0; margin-top: 2px;
+}
+.split-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 680px) { .split-body { grid-template-columns: 1fr; } }
+.split-body .s-title {
+  font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text);
+  grid-column: 1 / -1;
+}
+.split-col-label {
+  font-size: 9px; font-family: var(--font-mono); font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.split-col-label.you  { color: var(--primary); }
+.split-col-label.auto { color: var(--success); }
+.split-col { font-size: 12.5px; color: var(--text-2); line-height: 1.65; }
+.split-col ul { padding-left: 14px; }
+.split-col li { margin-bottom: 3px; }
+.split-surface {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  color: var(--primary); background: var(--primary-soft);
+  display: inline-block; padding: 2px 8px; border-radius: var(--r);
+  border: 1px solid rgba(7,94,169,.18); margin-top: 8px;
+  grid-column: 1 / -1;
+}
+.step-connector-line {
+  grid-column: 1; width: 1px; height: 16px;
+  background: var(--border); margin: 0 auto;
+}
+
+/* ──────────────────────────────────────────────────
+   LIFECYCLE
+────────────────────────────────────────────────── */
+.lifecycle-bar { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-bottom: 4px; margin-bottom: 24px; scrollbar-width: none; }
+.lifecycle-bar::-webkit-scrollbar { display: none; }
+.phase-node { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; cursor: pointer; transition: all var(--dur-fast); }
+.phase-pill { padding: 6px 14px; border-radius: var(--r); font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--surface-sub); color: var(--text-3); white-space: nowrap; transition: all var(--dur-med) var(--ease-out); position: relative; }
+.phase-node.active .phase-pill { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-ink); box-shadow: 0 0 0 3px rgba(7,94,169,.1); }
+.phase-node.done .phase-pill { border-color: rgba(41,137,84,.3); background: var(--success-soft); color: var(--shared-ink); opacity: .8; }
+.phase-arrow { color: var(--border-strong); font-size: 14px; align-self: center; padding: 0 3px; flex-shrink: 0; margin-bottom: 20px; }
+.phase-label { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); margin-top: 4px; letter-spacing: 0.08em; }
+.phase-node.active .phase-label { color: var(--primary); }
+.phase-detail { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px 24px; margin-bottom: 20px; min-height: 140px; transition: all var(--dur-med); }
+
+.gate-loop-box { background: var(--danger-soft); border: 1px solid rgba(203,71,61,.2); border-radius: var(--r-lg); padding: 16px 20px; margin-bottom: 16px; }
+.gate-loop-box .gl-title { font-size: 12px; font-weight: 600; color: var(--danger); margin-bottom: 8px; }
+.gate-loop-box .gl-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; }
+.gl-step { padding: 3px 10px; border-radius: var(--r); font-family: var(--font-mono); font-size: 10px; font-weight: 500; }
+.gl-step.gate  { background: var(--surface-muted); border: 1px solid var(--border-strong); color: var(--text-2); }
+.gl-step.agent { background: var(--warning-soft); border: 1px solid rgba(173,125,0,.25); color: var(--codex-ink); }
+.gl-step.pass  { background: var(--success-soft); border: 1px solid rgba(41,137,84,.3); color: var(--shared-ink); }
+.gl-arrow { color: var(--text-muted); font-size: 13px; }
+
+.side-states { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .side-states { grid-template-columns: 1fr; } }
+.side-state { padding: 12px 16px; border-radius: var(--r-md); border: 1px solid; }
+.ss-badge { font-family: var(--font-mono); font-size: 11px; font-weight: 600; display: block; margin-bottom: 6px; }
+.ss-desc { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+
+/* ──────────────────────────────────────────────────
+   ARCHITECTURE
+────────────────────────────────────────────────── */
+.arch-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+.arch-label { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; margin-right: 4px; flex-shrink: 0; }
+.filter-btn { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--surface-sub); color: var(--text-3); cursor: pointer; transition: all var(--dur-fast); }
+.filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+.filter-btn.active { background: var(--primary-soft); border-color: rgba(7,94,169,.35); color: var(--primary-ink); }
+
+/* ──────────────────────────────────────────────────
+   AGENTS TABLE
+────────────────────────────────────────────────── */
+.agent-table {
+  width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: var(--space-md);
+}
+.agent-table th {
+  text-align: left; padding: 6px 12px; color: var(--text-muted);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.agent-table td { padding: 6px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-2); line-height: 1.55; }
+.agent-table tr:last-child td { border-bottom: none; }
+.agent-name { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text); background: var(--surface-muted); border: 1px solid var(--border); padding: 1px 7px; border-radius: var(--r); white-space: nowrap; }
+.model-badge { padding: 1px 8px; border-radius: var(--r); font-size: 10px; font-family: var(--font-mono); font-weight: 500; border: 1px solid; white-space: nowrap; }
+.model-badge.model-opus   { background: rgba(7,94,169,.06); border-color: rgba(7,94,169,.2); color: var(--primary-ink); }
+.model-badge.model-sonnet { background: rgba(92,121,182,.06); border-color: rgba(92,121,182,.2); color: var(--orch); }
+.model-badge.model-haiku  { background: var(--surface-muted); border-color: var(--border-strong); color: var(--text-3); }
+.phase-tag { padding: 2px 7px; border-radius: var(--r); font-size: 9px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.1em; background: var(--surface-muted); border: 1px solid var(--border-strong); color: var(--text-3); white-space: nowrap; }
+
+/* ──────────────────────────────────────────────────
+   RUNTIME DIFF TABLE
+────────────────────────────────────────────────── */
+.diff-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: var(--space-md); }
+.diff-table th { text-align: left; padding: 6px 12px; color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; font-weight: 600; border-bottom: 1px solid var(--border); }
+.diff-table td { padding: 6px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-2); line-height: 1.55; }
+.diff-table td:first-child { font-weight: 500; color: var(--text); white-space: nowrap; width: 180px; }
+.row-shared { background: rgba(41,137,84,.025); }
+.row-claude { background: rgba(7,94,169,.025); }
+.row-codex  { background: rgba(173,125,0,.025); }
+.tag { display: inline-block; padding: 1px 7px; border-radius: var(--r); font-size: 10px; font-family: var(--font-mono); font-weight: 500; margin-right: 4px; }
+.tag.both { background: var(--shared-soft); border: 1px solid rgba(41,137,84,.3); color: var(--shared-ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; padding: 10px 16px; background: var(--surface-sub); border: 1px solid var(--border); border-radius: var(--r-md); }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); }
+.ldot { width: 8px; height: 8px; border-radius: 2px; }
+.ldot.shared { background: var(--success); }
+.ldot.claude { background: var(--primary); }
+.ldot.codex  { background: var(--warning); }
+
+/* ──────────────────────────────────────────────────
+   PROMPT BAR
+────────────────────────────────────────────────── */
+.prompt-bar {
+  background: var(--surface-sub); border-top: 1px solid var(--border);
+  padding: 8px 48px; display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0; min-height: 40px;
+}
+.prompt-label { font-size: 10px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); flex-shrink: 0; }
+.prompt-text { font-size: 11px; color: var(--text-3); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
+.copy-btn { padding: 3px 12px; border-radius: var(--r); font-size: 11px; font-weight: 500; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-2); cursor: pointer; flex-shrink: 0; transition: all var(--dur-fast); }
+.copy-btn:hover { background: var(--primary-soft); border-color: rgba(7,94,169,.3); color: var(--primary-ink); }
+
+</style>
+</head>
+<body>
+
+<div class="shell-header">
+  <div class="header-row">
+    <div class="wordmark">autonomous<span>·</span>agent<span>·</span>builder</div>
+    <div class="header-sub">architecture &amp; lifecycle reference</div>
+    <div class="badge">post M1.4</div>
+  </div>
+  <div class="tab-row">
+    <button class="tab active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab" onclick="switchTab('flow')">User Flow</button>
+    <button class="tab" onclick="switchTab('lifecycle')">Sprint Lifecycle</button>
+    <button class="tab" onclick="switchTab('arch')">Architecture</button>
+    <button class="tab" onclick="switchTab('agents')">Agents</button>
+    <button class="tab" onclick="switchTab('runtime')">Runtime Lanes</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ══════════════════════════════════════════════
+     TAB 1 — OVERVIEW
+══════════════════════════════════════════════ -->
+<div class="view active" id="tab-overview">
+
+  <div class="hero">
+    <h2 class="hero-headline">You describe what to build.<br><em>An AI team plans it, codes it, tests it, and ships it.</em></h2>
+    <p class="hero-body">Autonomous Agent Builder is a structured software development platform. You are the <strong>Operator</strong> — you add features to a backlog, start a sprint, and approve key decisions. A team of specialized AI agents does the rest: planning architecture, writing code in an isolated workspace, running quality checks, and opening a pull request with evidence. Every step is visible on the dashboard, and nothing is committed without your sign-off at the gates that matter.</p>
+    <div class="hero-meta">
+      <span class="hero-tag">13 main agents</span>
+      <span class="hero-tag">6 subagents</span>
+      <span class="hero-tag">2 runtime lanes</span>
+      <span class="hero-tag">6 quality gates</span>
+      <span class="hero-tag">deterministic phase routing</span>
+    </div>
+  </div>
+
+  <!-- Pipeline diagram -->
+  <div class="pipeline-wrap">
+    <div class="pipeline-title">How a task travels from backlog to done</div>
+    <div class="pipeline-main">
+
+      <div class="pipe-node">
+        <div class="pipe-box you">
+          <div class="pipe-name">You</div>
+          <div class="pipe-role">operator</div>
+        </div>
+      </div>
+      <div class="pipe-arrow">›</div>
+
+      <div class="pipe-node">
+        <div class="pipe-box backlog">
+          <div class="pipe-name">Backlog</div>
+          <div class="pipe-role">feature queue</div>
+        </div>
+      </div>
+      <div class="pipe-arrow">›</div>
+
+      <div class="pipe-node">
+        <div class="pipe-box orch">
+          <div class="pipe-name">Orchestrator</div>
+          <div class="pipe-role">phase router</div>
+        </div>
+      </div>
+      <div class="pipe-arrow">›</div>
+
+      <div class="pipe-node">
+        <div class="pipe-box agents">
+          <div class="pipe-name">Agents</div>
+          <div class="pipe-role">plan → design → code</div>
+        </div>
+      </div>
+      <div class="pipe-arrow">›</div>
+
+      <div class="pipe-node">
+        <div class="pipe-box gates">
+          <div class="pipe-name">Quality Gates</div>
+          <div class="pipe-role">lint · test · security</div>
+        </div>
+      </div>
+      <div class="pipe-arrow">›</div>
+
+      <div class="pipe-node">
+        <div class="pipe-box pr">
+          <div class="pipe-name">Pull Request</div>
+          <div class="pipe-role">evidence + review</div>
+        </div>
+      </div>
+      <div class="pipe-arrow">›</div>
+
+      <div class="pipe-node">
+        <div class="pipe-box done">
+          <div class="pipe-name">Done</div>
+          <div class="pipe-role">optimize + learn</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="pipeline-callouts">
+      <div class="pipe-callout approve"><div class="dot"></div>You approve at: Design Review, Quality Gate failures</div>
+      <div class="pipe-callout auto"><div class="dot"></div>Auto-remediation: gate-remediator agent fixes lint/type errors before escalating</div>
+      <div class="pipe-callout both"><div class="dot"></div>Both runtimes (Claude SDK + Codex SDK) follow the same pipeline</div>
+    </div>
+  </div>
+
+  <!-- Three roles -->
+  <div class="section-head">Three Roles in Every Sprint</div>
+  <div class="concept-grid" style="margin-bottom:32px">
+    <div class="concept-card">
+      <div class="c-label" style="color:var(--primary)">Operator</div>
+      <div class="c-title">You</div>
+      <div class="c-desc">You own the product vision. You add features to the backlog, launch sprints, and approve design decisions and quality gate findings. The dashboard is your control surface — the agents work for you, not the other way around.</div>
+    </div>
+    <div class="concept-card">
+      <div class="c-label" style="color:var(--orch)">Orchestrator</div>
+      <div class="c-title">The State Machine</div>
+      <div class="c-desc">A deterministic phase router. It reads <code>TaskStatus</code> from the database, dispatches the correct agent for each phase, handles retries and blocked states, and advances the task. It never improvises — every decision is encoded in phase handlers.</div>
+    </div>
+    <div class="concept-card">
+      <div class="c-label" style="color:var(--success)">Agents</div>
+      <div class="c-title">The Builders</div>
+      <div class="c-desc">Thirteen specialized AI agents — each owns one phase. They execute inside isolated workspace directories, use builder tools (read, edit, run tests, search KB), and produce structured evidence that lives in the database. No agent has access to another agent's state.</div>
+    </div>
+  </div>
+
+  <!-- Data hierarchy -->
+  <div class="section-head">Data Hierarchy — How Work Is Organized</div>
+  <div class="card" style="margin-bottom:32px">
+    <div class="hierarchy-row">
+      <div class="hier-node">
+        <div class="hier-box" style="background:var(--surface-muted);border-color:var(--border-strong);color:var(--text)">Project</div>
+        <div class="hier-sub">git workspace</div>
+      </div>
+      <span class="hier-arrow">›</span>
+      <div class="hier-node">
+        <div class="hier-box" style="background:var(--orch-soft);border-color:rgba(92,121,182,.3);color:var(--orch)">Sprint</div>
+        <div class="hier-sub">time-boxed batch</div>
+      </div>
+      <span class="hier-arrow">›</span>
+      <div class="hier-node">
+        <div class="hier-box" style="background:var(--claude-soft);border-color:rgba(7,94,169,.25);color:var(--claude-ink)">Feature</div>
+        <div class="hier-sub">user-facing capability</div>
+      </div>
+      <span class="hier-arrow">›</span>
+      <div class="hier-node">
+        <div class="hier-box" style="background:var(--success-soft);border-color:rgba(41,137,84,.3);color:var(--shared-ink)">Item</div>
+        <div class="hier-sub">work unit</div>
+      </div>
+      <span class="hier-arrow">›</span>
+      <div class="hier-node">
+        <div class="hier-box" style="background:var(--warning-soft);border-color:rgba(173,125,0,.28);color:var(--codex-ink)">Task</div>
+        <div class="hier-sub">one agent run</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-3);line-height:1.7;padding-top:4px">
+      A <strong style="color:var(--text-2)">Task</strong> is the smallest execution unit — one isolated workspace directory, one agent run per phase. The orchestrator reads <code>TaskStatus</code> and routes the task through all phases until it reaches <code>DONE</code>. Sessions are persisted: if a task resumes after a rate-limit or approval, the same workspace directory and session ID are reused exactly.
+    </div>
+  </div>
+
+  <!-- Dashboard surfaces -->
+  <div class="section-head">Dashboard Surfaces</div>
+  <div class="surface-grid">
+    <div class="surface-card"><div class="s-name">Agent Page</div><div class="s-desc">Live transcript of the active agent run — tool calls, file edits, and streamed reasoning.</div></div>
+    <div class="surface-card"><div class="s-name">Board</div><div class="s-desc">Kanban of sprint tasks by <code>TaskStatus</code>. See phase progress at a glance.</div></div>
+    <div class="surface-card"><div class="s-name">Backlog</div><div class="s-desc">Feature and item queue. Create items, set priorities, assign to sprints.</div></div>
+    <div class="surface-card"><div class="s-name">Approvals</div><div class="s-desc">Gate decisions waiting on you: design reviews, quality gate failures after auto-remediation.</div></div>
+    <div class="surface-card"><div class="s-name">Knowledge</div><div class="s-desc">Living KB of maintained docs extracted from the codebase. Freshness-gated before PR.</div></div>
+    <div class="surface-card"><div class="s-name">Memory</div><div class="s-desc">Reusable decisions, patterns, and corrections that agents reference on future runs.</div></div>
+    <div class="surface-card"><div class="s-name">Metrics</div><div class="s-desc">Token usage, cost, turn counts, and gate pass/fail rates — normalized across both runtimes.</div></div>
+    <div class="surface-card"><div class="s-name">Observability</div><div class="s-desc">Structured logs, OTEL traces, and optimization recommendations from completed runs.</div></div>
+    <div class="surface-card"><div class="s-name">Settings</div><div class="s-desc">Switch runtime (Claude ↔ Codex), configure model policy, manage Day-0 readiness.</div></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 2 — USER FLOW
+══════════════════════════════════════════════ -->
+<div class="view" id="tab-flow">
+
+  <div class="narrative-lede">
+    A sprint is a partnership. You make the decisions that need a human — what to build, whether the design is right, whether a quality failure should block the PR. Everything else is handled automatically, in order, without you having to manage the sequence.
+  </div>
+
+  <div style="max-width:780px">
+  <div class="flow-steps">
+
+    <div class="split-step">
+      <div class="step-num" style="border-color:var(--primary);color:var(--primary);background:var(--primary-soft)">1</div>
+      <div>
+        <div class="split-body">
+          <div class="s-title">Set up the project</div>
+          <div>
+            <div class="split-col-label you">You do</div>
+            <div class="split-col">Run <code>builder init</code> in your app workspace. Choose a runtime — Claude Agent SDK or Codex SDK. Complete the Day-0 readiness checklist (git, auth, workspace path).</div>
+          </div>
+          <div>
+            <div class="split-col-label auto">Happens automatically</div>
+            <div class="split-col">Builder creates the runtime contract file — <code>CLAUDE.md</code> for Claude lane, <code>AGENTS.md</code> for Codex lane. Day-0 gate is computed and stored. No agents can run until the gate passes.</div>
+          </div>
+          <div class="split-surface">Settings → Runtime · builder readiness status</div>
+        </div>
+      </div>
+    </div>
+    <div class="step-connector-line"></div>
+
+    <div class="split-step">
+      <div class="step-num" style="border-color:var(--orch);color:var(--orch);background:var(--orch-soft)">2</div>
+      <div>
+        <div class="split-body">
+          <div class="s-title">Describe what you want built</div>
+          <div>
+            <div class="split-col-label you">You do</div>
+            <div class="split-col">Add a feature to the backlog on the Backlog page. Write a description, acceptance criteria, or have a conversation with the <strong>init-project-chat</strong> agent (opus model) to work through requirements interactively.</div>
+          </div>
+          <div>
+            <div class="split-col-label auto">Happens automatically</div>
+            <div class="split-col">The feature is stored with a unique ID. At sprint time, the planner agent breaks it into tasks with acceptance criteria and a dependency graph.</div>
+          </div>
+          <div class="split-surface">Backlog → New Item</div>
+        </div>
+      </div>
+    </div>
+    <div class="step-connector-line"></div>
+
+    <div class="split-step">
+      <div class="step-num" style="border-color:var(--orch);color:var(--orch);background:var(--orch-soft)">3</div>
+      <div>
+        <div class="split-body">
+          <div class="s-title">Start a sprint</div>
+          <div>
+            <div class="split-col-label you">You do</div>
+            <div class="split-col">Move backlog items into a sprint on the Board. Click Start Sprint (or the equivalent CLI command). That is the last action you take for a while.</div>
+          </div>
+          <div>
+            <div class="split-col-label auto">Happens automatically</div>
+            <div class="split-col">The orchestrator picks up tasks in <code>PENDING</code> state, advances them to <code>PLANNING</code>, and dispatches the planner agent. If sprint-level plan/design artifacts already exist, covered tasks skip separate planning runs.</div>
+          </div>
+          <div class="split-surface">Board → Sprint Planning</div>
+        </div>
+      </div>
+    </div>
+    <div class="step-connector-line"></div>
+
+    <div class="split-step">
+      <div class="step-num" style="border-color:var(--success);color:var(--success);background:var(--success-soft)">4</div>
+      <div>
+        <div class="split-body">
+          <div class="s-title">Watch agents work</div>
+          <div>
+            <div class="split-col-label you">You do</div>
+            <div class="split-col">Open the Agent Page and watch. You can observe every tool call, file edit, and line of reasoning in real time. You don't need to do anything until an approval gate appears.</div>
+          </div>
+          <div>
+            <div class="split-col-label auto">Happens automatically</div>
+            <div class="split-col">Orchestrator runs each phase in order: <strong>planner</strong> (architecture) → <strong>designer</strong> (ADRs + API contracts) → <strong>code-gen</strong> (writes code in isolated workspace, 30 turns). Both runtimes stream output to the same dashboard.</div>
+          </div>
+          <div class="split-surface">Agent Page → Live Transcript</div>
+        </div>
+      </div>
+    </div>
+    <div class="step-connector-line"></div>
+
+    <div class="split-step">
+      <div class="step-num" style="border-color:var(--warning);color:var(--warning);background:var(--warning-soft)">5</div>
+      <div>
+        <div class="split-body">
+          <div class="s-title">Approve the design (and any gate failures)</div>
+          <div>
+            <div class="split-col-label you">You do</div>
+            <div class="split-col">After the designer agent finishes, the task pauses at <code>DESIGN_REVIEW</code>. You review the architecture decision records and API contracts on the Approvals page. Approve to proceed; reject with feedback to re-run the designer.</div>
+          </div>
+          <div>
+            <div class="split-col-label auto">Happens automatically</div>
+            <div class="split-col">If quality gates fail after implementation, the <strong>gate-remediator</strong> agent (sonnet, 16 turns) attempts auto-fix — lint errors, type annotations, import issues. Only if remediation fails after retries does it reach you as a blocked gate.</div>
+          </div>
+          <div class="split-surface">Approvals → Review &amp; Approve</div>
+        </div>
+      </div>
+    </div>
+    <div class="step-connector-line"></div>
+
+    <div class="split-step">
+      <div class="step-num" style="border-color:var(--info);color:var(--info);background:var(--info-soft)">6</div>
+      <div>
+        <div class="split-body">
+          <div class="s-title">PR is created — merge when ready</div>
+          <div>
+            <div class="split-col-label you">You do</div>
+            <div class="split-col">Review the pull request on GitHub. The PR description includes structured evidence: lint results, test output, security scan summary, and diff. Merge when satisfied. The task stays at <code>REVIEW_PENDING</code> until you act.</div>
+          </div>
+          <div>
+            <div class="split-col-label auto">Happens automatically</div>
+            <div class="split-col">Before creating the PR, the <strong>documentation-bridge</strong> validates that the knowledge base is fresh — delegating to a <strong>documentation-agent</strong> subagent if any docs are stale. The <strong>pr-creator</strong> agent then bundles all evidence and opens the PR.</div>
+          </div>
+          <div class="split-surface">Agent Page → PR Link</div>
+        </div>
+      </div>
+    </div>
+    <div class="step-connector-line"></div>
+
+    <div class="split-step">
+      <div class="step-num" style="border-color:var(--success);color:var(--success);background:var(--success-soft)">7</div>
+      <div>
+        <div class="split-body">
+          <div class="s-title">Task is Done — the system learns</div>
+          <div>
+            <div class="split-col-label you">You do</div>
+            <div class="split-col">Nothing. The task reaches <code>DONE</code> automatically after the <strong>build-verifier</strong> confirms the post-merge build is green.</div>
+          </div>
+          <div>
+            <div class="split-col-label auto">Happens automatically</div>
+            <div class="split-col">The <strong>optimization-agent</strong> reviews observability data, telemetry, and builder recommendations. It updates the generated-app runtime guidance (<code>CLAUDE.md</code> / <code>AGENTS.md</code>) and deterministic scripts to make future runs faster and more reliable.</div>
+          </div>
+          <div class="split-surface">Metrics → Observability</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:28px" class="card">
+    <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px">Provider Limit Handling</div>
+    <div style="font-size:12.5px;color:var(--text-2);line-height:1.7">
+      If an agent hits a rate or usage limit mid-run, the task transitions to <code>CAPABILITY_LIMIT</code> — not <code>FAILED</code>. The reset metadata is stored (code, reason, reset time, hint). When the provider resets, the orchestrator resumes the same task at the same phase automatically. No manual database repair, no lost progress.
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 3 — SPRINT LIFECYCLE
+══════════════════════════════════════════════ -->
+<div class="view" id="tab-lifecycle">
+
+  <div class="narrative-lede">
+    A task is a state machine. The orchestrator reads <code>TaskStatus</code> from the database and routes deterministically — no improvisation, no skipped phases. Click any phase below to see what agent runs, what it produces, and what can go wrong.
+  </div>
+
+  <div class="section-head">Task Status Progression — click any phase</div>
+
+  <div class="lifecycle-bar" id="lifecycleBar">
+    <div class="phase-node active" onclick="selectPhase(0)" data-phase="0">
+      <div class="phase-pill">PENDING</div>
+      <div class="phase-label">queued</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(1)" data-phase="1">
+      <div class="phase-pill">PLANNING</div>
+      <div class="phase-label">planner agent</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(2)" data-phase="2">
+      <div class="phase-pill">DESIGN</div>
+      <div class="phase-label">designer agent</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(3)" data-phase="3">
+      <div class="phase-pill">DESIGN_REVIEW</div>
+      <div class="phase-label">approval gate</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(4)" data-phase="4">
+      <div class="phase-pill">IMPLEMENTATION</div>
+      <div class="phase-label">code-gen agent</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(5)" data-phase="5">
+      <div class="phase-pill">QUALITY_GATES</div>
+      <div class="phase-label">gates + remediator</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(6)" data-phase="6">
+      <div class="phase-pill">PR_CREATION</div>
+      <div class="phase-label">pr-creator agent</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(7)" data-phase="7">
+      <div class="phase-pill">REVIEW_PENDING</div>
+      <div class="phase-label">human review</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(8)" data-phase="8">
+      <div class="phase-pill">BUILD_VERIFY</div>
+      <div class="phase-label">build-verifier</div>
+    </div>
+    <span class="phase-arrow">›</span>
+    <div class="phase-node" onclick="selectPhase(9)" data-phase="9">
+      <div class="phase-pill">DONE</div>
+      <div class="phase-label">complete</div>
+    </div>
+  </div>
+
+  <div class="phase-detail" id="phaseDetail"></div>
+
+  <div class="section-head">Quality Gate — Auto-Remediation Loop (M1.4)</div>
+  <div class="gate-loop-box">
+    <div class="gl-title">What happens when quality gates fail at QUALITY_GATES phase:</div>
+    <div class="gl-flow">
+      <span class="gl-step gate">6 Gates Run</span>
+      <span class="gl-arrow">→ FAIL</span>
+      <span class="gl-step agent">remediation_possible?</span>
+      <span class="gl-arrow">→ YES</span>
+      <span class="gl-step agent">gate-remediator agent</span>
+      <span class="gl-arrow">→</span>
+      <span class="gl-step gate">Gates Re-run</span>
+      <span class="gl-arrow">→ PASS</span>
+      <span class="gl-step pass">→ PR_CREATION</span>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text-3);line-height:1.7">
+      The <strong style="color:var(--warning)">gate-remediator</strong> is a targeted, scope-limited agent (sonnet, max_turns=16). It can fix: lint errors, type annotation issues, import resolution, and configuration problems. It is explicitly prohibited from deleting files, changing business logic, or modifying API contracts. If remediation fails after retries, the task moves to <code>BLOCKED</code> and an approval gate appears for you.
+    </div>
+  </div>
+
+  <div class="section-head">Off-Path States — Phase Is Never Lost</div>
+  <div class="side-states">
+    <div class="side-state" style="background:var(--danger-soft);border-color:rgba(203,71,61,.2)">
+      <span class="ss-badge" style="color:var(--danger)">BLOCKED</span>
+      <div class="ss-desc">Waiting on an operator decision or missing prerequisite. Current phase is preserved. Resume from the Approvals page or after resolving the blocker.</div>
+    </div>
+    <div class="side-state" style="background:var(--warning-soft);border-color:rgba(173,125,0,.2)">
+      <span class="ss-badge" style="color:var(--warning)">CAPABILITY_LIMIT</span>
+      <div class="ss-desc">Provider hit a rate or usage limit. Reset metadata is stored (time, hint, source). Orchestrator auto-resumes when the provider window resets — no manual action needed.</div>
+    </div>
+    <div class="side-state" style="background:var(--danger-soft);border-color:rgba(203,71,61,.2)">
+      <span class="ss-badge" style="color:var(--danger)">FAILED</span>
+      <div class="ss-desc">Unrecoverable error. Root cause stored in <code>AgentRun.error</code>. View on the Observability page. Create an incident item in the backlog for follow-up.</div>
+    </div>
+    <div class="side-state" style="background:var(--orch-soft);border-color:rgba(92,121,182,.2)">
+      <span class="ss-badge" style="color:var(--orch)">DESIGN_REVIEW</span>
+      <div class="ss-desc">Special approval state — awaits your sign-off after the designer agent completes. Can be skipped if sprint-level plan/design artifacts already cover the task.</div>
+    </div>
+  </div>
+
+  <div class="section-head">Phase → TaskPhase Mapping</div>
+  <div class="card">
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+      <tr style="border-bottom:1px solid var(--border)">
+        <th style="text-align:left;padding:6px 12px;color:var(--text-muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;font-weight:600">TaskStatus</th>
+        <th style="text-align:left;padding:6px 12px;color:var(--text-muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;font-weight:600">TaskPhase</th>
+        <th style="text-align:left;padding:6px 12px;color:var(--text-muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;font-weight:600">Agent Dispatched</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>PENDING / QUEUED</code></td><td style="padding:5px 12px;color:var(--text-3)">requirements</td><td style="padding:5px 12px;color:var(--text-3)">—</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>PLANNING</code></td><td style="padding:5px 12px;color:var(--text-3)">planning</td><td style="padding:5px 12px"><span class="agent-name">planner</span></td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>DESIGN</code></td><td style="padding:5px 12px;color:var(--text-3)">design</td><td style="padding:5px 12px"><span class="agent-name">designer</span></td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>DESIGN_REVIEW</code></td><td style="padding:5px 12px;color:var(--text-3)">design</td><td style="padding:5px 12px;color:var(--text-muted)">operator approval</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>IMPLEMENTATION</code></td><td style="padding:5px 12px;color:var(--text-3)">implementation</td><td style="padding:5px 12px"><span class="agent-name">code-gen</span></td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>QUALITY_GATES</code></td><td style="padding:5px 12px;color:var(--text-3)">verification</td><td style="padding:5px 12px"><span class="agent-name">gate-remediator</span> (if fail)</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>PR_CREATION</code></td><td style="padding:5px 12px;color:var(--text-3)">integration</td><td style="padding:5px 12px"><span class="agent-name">documentation-bridge</span> → <span class="agent-name">pr-creator</span></td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>REVIEW_PENDING</code></td><td style="padding:5px 12px;color:var(--text-3)">integration</td><td style="padding:5px 12px;color:var(--text-muted)">human review</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 12px;color:var(--text-2)"><code>BUILD_VERIFY</code></td><td style="padding:5px 12px;color:var(--text-3)">integration</td><td style="padding:5px 12px"><span class="agent-name">build-verifier</span></td></tr>
+      <tr><td style="padding:5px 12px;color:var(--success)"><code>DONE</code></td><td style="padding:5px 12px;color:var(--text-3)">complete</td><td style="padding:5px 12px"><span class="agent-name">optimization-agent</span></td></tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 4 — ARCHITECTURE
+══════════════════════════════════════════════ -->
+<div class="view" id="tab-arch">
+
+  <div class="narrative-lede">
+    The architecture is layered by who can see it. The top layer is runtime-agnostic — backlog, approvals, quality gates, the database, and the dashboard work identically regardless of which AI runtime you choose. Below that, the orchestrator manages phase routing. Below that, two parallel runtime lanes (Claude SDK and Codex SDK) both normalize their output into the same <code>RunResult</code> structure that feeds the convergence layer.
+  </div>
+
+  <div class="arch-controls">
+    <span class="arch-label">Highlight:</span>
+    <button class="filter-btn active" onclick="setFilter('all',this)">All Layers</button>
+    <button class="filter-btn" onclick="setFilter('shared',this)">Shared Only</button>
+    <button class="filter-btn" onclick="setFilter('orch',this)">Orchestrator</button>
+    <button class="filter-btn" onclick="setFilter('claude',this)">Claude Lane</button>
+    <button class="filter-btn" onclick="setFilter('codex',this)">Codex Lane</button>
+    <button class="filter-btn" onclick="setFilter('gates',this)">Quality Gates</button>
+    <button class="filter-btn" onclick="setFilter('converge',this)">Convergence</button>
+  </div>
+
+  <!-- Layer 1: Shared Control Plane -->
+  <div class="plane shared" id="layer-shared">
+    <div class="plane-label">Shared Control Plane — runtime-agnostic, always active</div>
+    <div class="chip-row">
+      <span class="chip shared" data-tip="Feature → Item → Task hierarchy. Both runtimes write to the same Task table.">Backlog &amp; Board</span>
+      <span class="chip shared" data-tip="Design reviews, gate approvals — identical for both runtimes. Operator approves via dashboard.">Approvals</span>
+      <span class="chip shared" data-tip="builder quality-gate — deterministic pass/fail. Run before every PR. Shared across runtimes.">Quality Gates</span>
+      <span class="chip shared" data-tip="builder knowledge — KB docs with freshness tracking. Both runtimes search and publish identically.">Knowledge Base</span>
+      <span class="chip shared" data-tip="builder memory — validated patterns, corrections. Written by both runtimes.">Memory</span>
+      <span class="chip shared" data-tip="PostgreSQL / SQLite. AgentRun, Task, Sprint, Feature, Workspace — all shared tables.">Database</span>
+      <span class="chip shared" data-tip="FastAPI + React. Agent page, Board, Backlog, Metrics, Settings — same UI for both runtimes.">Dashboard (FastAPI + React)</span>
+      <span class="chip shared" data-tip="builder CLI — board, backlog, metrics, logs, quality-gate. Identical across runtimes.">Builder CLI</span>
+      <span class="chip shared" data-tip="Workspace dirs isolated per task. Both runtimes get stable cwd — identity is runtime-agnostic.">Workspace Isolation</span>
+    </div>
+  </div>
+  <div class="connector">↓</div>
+
+  <!-- Layer 2: Orchestrator -->
+  <div class="plane orch" id="layer-orch">
+    <div class="plane-label">Orchestrator — deterministic phase routing (orchestrator/orchestrator.py)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--orch);margin-bottom:6px;font-family:var(--font-mono)">Phase Handlers</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:11px;color:var(--text-3)"><code>_phase_planning()</code> → planner agent</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>_phase_design()</code> → designer agent</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>_phase_implementation()</code> → code-gen agent</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>_phase_quality_gates()</code> → gates + remediator loop</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>_phase_pr_creation()</code> → doc-bridge + pr-creator</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>_phase_build_verify()</code> → build-verifier</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--orch);margin-bottom:6px;font-family:var(--font-mono)">Supporting Modules</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:11px;color:var(--text-3)"><code>agent_run_lifecycle.py</code> — execution + retries</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>approval_outcomes.py</code> — apply gate decisions</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>failure_diagnosis.py</code> — diagnose task failures</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>gate_feedback.py</code> — gate results as context</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>operator_decisions.py</code> — parse OPERATOR_DECISION_JSON</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>post_ship_optimization.py</code> — optimization agent</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>documentation_refresh_gate.py</code> — KB freshness</span>
+          <span style="font-size:11px;color:var(--text-3)"><code>workspace_integration.py</code> — workspace + git</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="connector">↓</div>
+
+  <!-- Layer 3: Quality Gates -->
+  <div class="plane neutral" id="layer-gates">
+    <div class="plane-label">Quality Gates — src/autonomous_agent_builder/quality_gates/</div>
+    <div class="chip-row">
+      <span class="chip muted" data-tip="Ruff + black — lint and formatting checks. Pre-integration tier.">Code Quality (Ruff)</span>
+      <span class="chip muted" data-tip="pytest — unit and integration tests. Pre-integration tier.">Testing (pytest)</span>
+      <span class="chip muted" data-tip="Bandit + secrets scan — CVE and permission risk. Pre-integration tier.">Security (Bandit)</span>
+      <span class="chip muted" data-tip="radon cyclomatic complexity. Nightly tier.">Complexity (radon)</span>
+      <span class="chip muted" data-tip="Workspace isolation enforcement — confirms agents stayed in bounds.">Runtime Boundary</span>
+      <span class="chip muted" data-tip="KB freshness + contract validation. Runs before PR creation.">Knowledge Base</span>
+    </div>
+    <div style="margin-top:10px;font-size:11.5px;color:var(--text-3);line-height:1.65">
+      Each gate returns <code>GateResult</code> with <code>remediation_possible: bool</code>. If true, the gate-remediator agent attempts auto-fix before re-running. AND semantics: one FAIL = overall FAIL.
+    </div>
+  </div>
+  <div class="connector">↓</div>
+
+  <!-- Layer 4: Runtime Switch -->
+  <div class="plane switch" id="layer-switch">
+    <div class="plane-label">Runtime Switch — RUNTIME_SDK env → factory.py → create_runtime()</div>
+    <div class="chip-row">
+      <span class="chip codex" data-tip="RUNTIME_SDK=claude in .env → ClaudeSDKClient">claude lane</span>
+      <span class="chip codex" data-tip="RUNTIME_SDK=codex_sdk in .env → CodexAppServerRuntime">codex lane</span>
+      <span class="chip muted" data-tip="Switch via Dashboard Settings or 'builder agent runtime set --sdk &lt;sdk&gt; --json'">runtime selector</span>
+      <span class="chip muted" data-tip="resolve_runtime_config() → create_runtime() — factory pattern">factory.py</span>
+    </div>
+  </div>
+  <div class="connector">↓</div>
+
+  <!-- Layer 5: Runtime Lanes -->
+  <div class="plane" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;background:transparent;border:none;padding:0;margin-bottom:var(--space-sm)" id="layer-lanes">
+    <div class="plane claude">
+      <div class="plane-label">Claude Agent SDK lane (RUNTIME_SDK=claude)</div>
+      <div class="chip-row">
+        <span class="chip claude" data-tip="ClaudeSDKClient — Python SDK loop, not subprocess">ClaudeSDKClient</span>
+        <span class="chip claude" data-tip="5 hook types: PreToolUse, PostToolUse, SessionStart, SubagentStop, Stop">5 hook types</span>
+        <span class="chip claude" data-tip="6 named subagent evidence lanes">6 subagents</span>
+        <span class="chip claude" data-tip="preset: claude_code + project setting_sources loads CLAUDE.md">CLAUDE.md runtime</span>
+        <span class="chip claude" data-tip="Per-phase allowlists enforced at PreToolUse. Preflight probes before dispatch. (M1.4)">per-phase allowlists</span>
+        <span class="chip claude" data-tip="planner/designer=opus, code-gen=sonnet, verifiers=haiku. Controlled by execution_policy.py">per-phase models</span>
+        <span class="chip claude" data-tip="In-process MCP adapters in ClaudeAgentOptions.mcp_servers">MCP adapters</span>
+        <span class="chip claude" data-tip="CLAUDE_CODE_OAUTH_TOKEN. OneCLI proxy when AAB_ONECLI_ENABLED=1">OAuth auth</span>
+      </div>
+    </div>
+    <div class="plane codex">
+      <div class="plane-label">Codex SDK lane (RUNTIME_SDK=codex_sdk)</div>
+      <div class="chip-row">
+        <span class="chip codex" data-tip="CodexAppServerRuntime — JSON-RPC to local codex app-server socket">JSON-RPC transport</span>
+        <span class="chip codex" data-tip="item/tool/requestPermission — Codex asks before tool execution">native permissions</span>
+        <span class="chip codex" data-tip="item/tool/requestUserInput — structured Q&amp;A during a run">native user input</span>
+        <span class="chip codex" data-tip="thread/tokenUsage/updated — live token stream during run">real-time tokens</span>
+        <span class="chip codex" data-tip="codex_optimization.py — cache_ratio, avoidable flags, per-run summaries">codex optimization</span>
+        <span class="chip codex" data-tip="sandboxMode: workspace-write enforced by Codex app-server">native sandbox</span>
+        <span class="chip codex" data-tip="Generated app gets AGENTS.md routing contract">AGENTS.md runtime</span>
+        <span class="chip codex" data-tip="codex login — subscription token in ~/.codex. No API key needed.">subscription auth</span>
+      </div>
+    </div>
+  </div>
+  <div class="connector">↓</div>
+
+  <!-- Layer 6: Shared tooling -->
+  <div class="plane shared" id="layer-tools">
+    <div class="plane-label">Shared Tooling — available to agents in both runtimes</div>
+    <div class="chip-row">
+      <span class="chip shared" data-tip="Read, Edit, Write, Bash, Glob, Grep — enforced differently but available in both lanes">SDK built-ins</span>
+      <span class="chip shared" data-tip="mcp__builder tools: board, task_*, backlog_item_*, kb_*, memory_*, metrics, workspace_scaffold">mcp__builder</span>
+      <span class="chip shared" data-tip="mcp__workspace tools: run_command, run_tests, run_linter, git operations">mcp__workspace</span>
+    </div>
+  </div>
+  <div class="connector">↓</div>
+
+  <!-- Layer 7: Convergence -->
+  <div class="plane converge" id="layer-converge">
+    <div class="plane-label">Convergence — both runtimes produce the same normalized output</div>
+    <div class="chip-row">
+      <span class="chip converge" data-tip="RunResult: status, turns_used, tokens_used, cost_usd, duration_ms, error, observability, provider_limit">RunResult (normalized)</span>
+      <span class="chip converge" data-tip="Same AgentRun, Task, Sprint DB schema for both runtimes">Shared DB schema</span>
+      <span class="chip converge" data-tip="Same Agent Page, Board, Metrics, Observability views for both runtimes">Same dashboard</span>
+      <span class="chip converge" data-tip="{code, reason, reset_at, reset_hint, source} → CAPABILITY_LIMIT state → auto-recovery">provider_limit field</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 5 — AGENTS
+══════════════════════════════════════════════ -->
+<div class="view" id="tab-agents">
+
+  <div class="narrative-lede">
+    Each agent owns exactly one phase. They do not communicate with each other — they read inputs from the database and workspace, write evidence back, and return. The orchestrator decides what runs next. Model selection is policy, not user choice — <code>execution_policy.py</code> resolves the right model for each agent type and phase.
+  </div>
+
+  <div class="section-head">Orchestrator-Dispatched Agents — the main pipeline</div>
+  <table class="agent-table">
+    <thead>
+      <tr><th>Agent</th><th>Phase</th><th>Model</th><th>Turns</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="agent-name">planner</span></td>
+        <td><span class="phase-tag">PLANNING</span></td>
+        <td><span class="model-badge model-opus">opus</span></td>
+        <td style="color:var(--text-3)">20</td>
+        <td>Reads the feature description and sprint context. Produces a structured task tree — subtasks, dependencies, acceptance criteria, complexity estimate. Sprint-level plans can cover multiple tasks (covered tasks skip separate planning runs).</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">designer</span></td>
+        <td><span class="phase-tag">DESIGN</span></td>
+        <td><span class="model-badge model-opus">opus</span></td>
+        <td style="color:var(--text-3)">20</td>
+        <td>Produces architecture decision records (ADRs), API contracts, data model changes, and interface specifications. Searches the knowledge base for existing patterns and memory for prior decisions before proposing anything new.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">scaffold</span></td>
+        <td><span class="phase-tag">IMPLEMENTATION</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">12</td>
+        <td>Sets up workspace structure, generates boilerplate, and prepares the environment before the main code-gen run. Runs before code-gen when scaffolding is needed.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">code-gen</span></td>
+        <td><span class="phase-tag">IMPLEMENTATION</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">30</td>
+        <td>The primary build agent. Reads design artifacts and acceptance criteria, writes code in the isolated workspace, runs tests incrementally using <code>mcp__workspace</code> tools. Session is persisted — if the task resumes after a rate-limit or BLOCKED state, the same workspace and session ID are reused.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">gate-remediator</span></td>
+        <td><span class="phase-tag">QUALITY_GATES</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">16</td>
+        <td>Targeted quality-gate error fixer. Fixes lint errors, type annotations, import issues, and configuration errors. Explicitly prohibited from deleting files or changing business logic. Fires only when <code>remediation_possible=True</code> is returned by a failing gate.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">integration-resolver</span></td>
+        <td><span class="phase-tag">INTEGRATION</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">20</td>
+        <td>Resolves git rebase conflicts before PR creation when the workspace branch has diverged from the target branch.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">pr-creator</span></td>
+        <td><span class="phase-tag">PR_CREATION</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">15</td>
+        <td>Creates a pull request with structured evidence — lint results, test output, security scan, diff summary. Only used for real Git workspaces with a PR target. For Codex workspaces without a Git PR target, <code>change_evidence</code> and <code>build_verify</code> deterministic scripts cover this instead.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">build-verifier</span></td>
+        <td><span class="phase-tag">BUILD_VERIFY</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">10</td>
+        <td>Post-merge build confirmation. Runs the full test suite, checks integration tests, verifies no regressions. Produces structured pass/fail evidence stored in the AgentRun record.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">feature-verifier</span></td>
+        <td><span class="phase-tag">VERIFICATION</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">24</td>
+        <td>Validates features against acceptance criteria. Generates and runs Playwright tests for browser-visible proof when needed.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">documentation-bridge</span></td>
+        <td><span class="phase-tag">PR_CREATION</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">8</td>
+        <td>Validates KB freshness before PR creation. If any docs are stale, delegates to the <strong>documentation-agent</strong> subagent to refresh them. Re-validates before allowing PR creation to proceed.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">optimization-agent</span></td>
+        <td><span class="phase-tag">DONE</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td style="color:var(--text-3)">14</td>
+        <td>Post-ship optimization. Reviews observability recommendations, preflight evidence, telemetry, and logs. Updates generated-app <code>CLAUDE.md</code> / <code>AGENTS.md</code> runtime guidance and project-local deterministic scripts. Any script it creates records which phase should use it and what evidence it replaces.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-head">Interactive / Assistant Agents</div>
+  <table class="agent-table">
+    <thead>
+      <tr><th>Agent</th><th>Model</th><th>Turns</th><th colspan="2">Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="agent-name">chat</span></td>
+        <td><span class="model-badge model-haiku">haiku</span></td>
+        <td style="color:var(--text-3)">15</td>
+        <td colspan="2">General project assistance. Read-only — no Bash or Write tools. Safe for quick Q&amp;A on board state, task details, and KB docs.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">init-project-chat</span></td>
+        <td><span class="model-badge model-opus">opus</span></td>
+        <td style="color:var(--text-3)">20</td>
+        <td colspan="2">Conversational requirements interviewer. Guides the operator through requirements gathering, then creates structured backlog items from the conversation. The best entry point for complex, under-specified features.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-head">Specialist Subagents — Evidence Lanes (Claude SDK only)</div>
+  <div style="font-size:12.5px;color:var(--text-2);line-height:1.7;margin-bottom:16px;max-width:680px">
+    Subagents are bounded evidence lanes. They return structured JSON to the parent agent run. They do not own lifecycle state, approvals, backlog, or board — they exist purely to provide evidence. Each runs with its own model, tool set, and turn budget.
+  </div>
+  <table class="agent-table">
+    <thead>
+      <tr><th>Subagent</th><th>Model</th><th>Evidence Produced</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="agent-name">repo-researcher</span></td>
+        <td><span class="model-badge model-haiku">haiku</span></td>
+        <td>Read-only repository structure, ownership mapping, and codebase analysis. Used by planner and designer for context gathering.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">browser-verifier</span></td>
+        <td><span class="model-badge model-haiku">haiku</span></td>
+        <td>Browser-visible acceptance evidence via Playwright. UI regression summaries and screenshot proof.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">build-verifier</span> <span style="font-size:10px;color:var(--text-muted)">(subagent)</span></td>
+        <td><span class="model-badge model-haiku">haiku</span></td>
+        <td>Deterministic build/lint/test proof. Returns structured pass/fail evidence with full command output.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">security-reviewer</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td>Security and permission-risk analysis on code changes. Returns structured vulnerability findings.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">pr-reviewer</span></td>
+        <td><span class="model-badge model-haiku">haiku</span></td>
+        <td>PR-readiness evidence and risk summaries. Reviews diff, tests, and docs before pr-creator fires.</td>
+      </tr>
+      <tr>
+        <td><span class="agent-name">documentation-agent</span></td>
+        <td><span class="model-badge model-sonnet">sonnet</span></td>
+        <td>KB maintenance — updates feature docs, testing guides, and API references. Invoked by the documentation-bridge parent agent.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card" style="margin-top:8px">
+    <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px">Model Policy — M1.4</div>
+    <div style="font-size:12.5px;color:var(--text-2);line-height:1.7">
+      Model, effort, subagent, and context strategy are builder-owned runtime policy in <code>execution_policy.py</code>. The operator never selects Haiku/Sonnet/Opus manually — the policy resolves the correct model for each agent type and phase. Per-phase tool allowlists (M1.4) control which tools each agent can call within each phase, enforced at PreToolUse. Preflight probes validate workspace readiness before each agent dispatch.
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 6 — RUNTIME LANES
+══════════════════════════════════════════════ -->
+<div class="view" id="tab-runtime">
+
+  <div class="narrative-lede">
+    Two execution engines, one product. You can switch between them in Dashboard Settings — everything else (backlog, approvals, quality gates, dashboard) stays identical. Claude SDK gives you hooks, subagents, MCP, and per-phase model policy. Codex SDK gives you native sandbox isolation, real-time token streaming, and subscription auth.
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="ldot shared"></div> Shared — identical in both runtimes</div>
+    <div class="legend-item"><div class="ldot claude"></div> Claude Agent SDK only</div>
+    <div class="legend-item"><div class="ldot codex"></div> Codex SDK only</div>
+  </div>
+
+  <div class="section-head">Execution &amp; Transport</div>
+  <table class="diff-table">
+    <tr><th>Concern</th><th>Claude Agent SDK</th><th>Codex SDK</th></tr>
+    <tr class="row-shared"><td>Entry point</td><td colspan="2"><span class="tag both">both</span> Same orchestrator, same task dispatch. Same DB read/write.</td></tr>
+    <tr class="row-claude"><td>SDK class</td><td><code>ClaudeSDKClient</code> — Python SDK loop (not a subprocess)</td><td>—</td></tr>
+    <tr class="row-codex"><td>Transport</td><td>—</td><td><code>JSON-RPC</code> to local <code>codex app-server</code> socket</td></tr>
+    <tr class="row-shared"><td>Session resume</td><td colspan="2"><span class="tag both">both</span> <code>session_id</code> (Claude) / <code>thread_id</code> (Codex) — stored in Task.session_id</td></tr>
+    <tr class="row-claude"><td>System prompt</td><td><code>preset: "claude_code"</code> + project setting_sources loads <code>CLAUDE.md</code></td><td>—</td></tr>
+    <tr class="row-claude"><td>Thinking mode</td><td><code>{"type": "adaptive"}</code> for sonnet/opus; none for haiku</td><td>— (Codex native reasoning)</td></tr>
+    <tr class="row-claude"><td>Config file</td><td>Generated app gets <code>CLAUDE.md</code> runtime contract</td><td>—</td></tr>
+    <tr class="row-codex"><td>Config file</td><td>—</td><td>Generated app gets <code>AGENTS.md</code> routing contract</td></tr>
+  </table>
+
+  <div class="section-head">Model Policy</div>
+  <table class="diff-table">
+    <tr><th>Concern</th><th>Claude Agent SDK</th><th>Codex SDK</th></tr>
+    <tr class="row-claude"><td>Per-phase models</td><td>planner/designer → opus; code-gen → sonnet; verifiers → haiku. Controlled by <code>execution_policy.py</code>.</td><td>—</td></tr>
+    <tr class="row-codex"><td>Fixed model</td><td>—</td><td>Single model for all phases (no per-phase policy)</td></tr>
+    <tr class="row-shared"><td>Model resolution</td><td colspan="2"><span class="tag both">both</span> <code>_model_for_agent()</code> returns the correct model per runtime</td></tr>
+    <tr class="row-claude"><td>Per-phase allowlists</td><td>M1.4: each agent/phase gets a scoped tool allowlist enforced at PreToolUse hook</td><td>—</td></tr>
+    <tr class="row-claude"><td>Preflight probes</td><td>M1.4: probes run before agent dispatch to validate workspace readiness</td><td>—</td></tr>
+    <tr class="row-claude"><td>Effort levels</td><td>low / medium / high — controls turn budget and thinking depth</td><td>—</td></tr>
+  </table>
+
+  <div class="section-head">Safety &amp; Permissions</div>
+  <table class="diff-table">
+    <tr><th>Concern</th><th>Claude Agent SDK</th><th>Codex SDK</th></tr>
+    <tr class="row-claude"><td>Hook system</td><td>PreToolUse, PostToolUse, SessionStart, SubagentStop, Stop — registered via <code>HookMatcher</code></td><td>— (no hook system)</td></tr>
+    <tr class="row-claude"><td>Workspace boundary</td><td>Hook: <code>enforce_workspace_boundary</code> blocks reads/writes outside workspace path</td><td>—</td></tr>
+    <tr class="row-codex"><td>Sandbox mode</td><td>—</td><td>Native <code>sandboxMode: workspace-write</code> enforced by Codex app-server</td></tr>
+    <tr class="row-claude"><td>Bash validation</td><td>Hook: <code>validate_bash_argv</code> — rejects pipes, redirects, eval/exec</td><td>—</td></tr>
+    <tr class="row-codex"><td>Native permissions</td><td>—</td><td><code>item/tool/requestPermission</code> — Codex asks before tool execution</td></tr>
+    <tr class="row-claude"><td>CLAUDE.md guard</td><td>Hook: <code>enforce_claude_md_block_ownership</code> — per-section write permissions</td><td>—</td></tr>
+    <tr class="row-shared"><td>Audit logging</td><td colspan="2"><span class="tag both">both</span> Tool calls logged to AgentRunEvent + structlog. PostToolUse hook (Claude) / on_tool_event callback (Codex).</td></tr>
+  </table>
+
+  <div class="section-head">Subagents &amp; Tooling</div>
+  <table class="diff-table">
+    <tr><th>Concern</th><th>Claude Agent SDK</th><th>Codex SDK</th></tr>
+    <tr class="row-claude"><td>Named specialists</td><td>6 subagents: repo-researcher, browser-verifier, build-verifier, security-reviewer, pr-reviewer, documentation-agent</td><td>— (not supported)</td></tr>
+    <tr class="row-claude"><td>MCP delivery</td><td>In-process MCP adapters registered in <code>ClaudeAgentOptions.mcp_servers</code></td><td>—</td></tr>
+    <tr class="row-codex"><td>Native user input</td><td>—</td><td><code>item/tool/requestUserInput</code> — structured Q&amp;A mid-run</td></tr>
+    <tr class="row-shared"><td>SDK built-ins</td><td colspan="2"><span class="tag both">both</span> Read, Edit, Write, Bash, Glob, Grep — enforced differently but available to both</td></tr>
+    <tr class="row-shared"><td>Builder MCP tools</td><td colspan="2"><span class="tag both">both</span> board, task_*, backlog_item_*, kb_*, memory_*, metrics, workspace_scaffold</td></tr>
+  </table>
+
+  <div class="section-head">Observability &amp; Cost</div>
+  <table class="diff-table">
+    <tr><th>Concern</th><th>Claude Agent SDK</th><th>Codex SDK</th></tr>
+    <tr class="row-claude"><td>Cost tracking</td><td><code>cost_usd</code> from API (ResultMessage.total_cost_usd)</td><td>—</td></tr>
+    <tr class="row-codex"><td>Cost model</td><td>—</td><td><code>cost_source: subscription_unmetered</code> — no per-run cost</td></tr>
+    <tr class="row-codex"><td>Real-time tokens</td><td>—</td><td><code>thread/tokenUsage/updated</code> — live token stream during run</td></tr>
+    <tr class="row-claude"><td>Token source</td><td>Batch from ResultMessage.usage dict at run end</td><td>—</td></tr>
+    <tr class="row-codex"><td>Optimization</td><td>—</td><td><code>codex_optimization.py</code> — cache_ratio, avoidable flags, per-run summaries</td></tr>
+    <tr class="row-shared"><td>Normalized output</td><td colspan="2"><span class="tag both">both</span> RunResult.observability → AgentRun DB → builder metrics show --json</td></tr>
+    <tr class="row-shared"><td>provider_limit</td><td colspan="2"><span class="tag both">both</span> Parsed into {code, reason, reset_at, reset_hint, source} → CAPABILITY_LIMIT state → auto-recovery</td></tr>
+  </table>
+
+  <div class="section-head">Auth &amp; Environment</div>
+  <table class="diff-table">
+    <tr><th>Concern</th><th>Claude Agent SDK</th><th>Codex SDK</th></tr>
+    <tr class="row-claude"><td>Auth source</td><td><code>CLAUDE_CODE_OAUTH_TOKEN</code> (OAuth). OneCLI proxy when <code>AAB_ONECLI_ENABLED=1</code>.</td><td>—</td></tr>
+    <tr class="row-codex"><td>Auth source</td><td>—</td><td><code>codex login</code> — subscription token cached in <code>~/.codex</code>. No API key needed.</td></tr>
+    <tr class="row-codex"><td>Env scrubbing</td><td>—</td><td><code>codex_subscription_env()</code> strips OPENAI_API_KEY before Codex child launch</td></tr>
+    <tr class="row-shared"><td>Runtime selector</td><td colspan="2"><span class="tag both">both</span> <code>RUNTIME_SDK</code> in .env → <code>resolve_runtime_config()</code> → <code>create_runtime()</code>. Default: claude.</td></tr>
+    <tr class="row-shared"><td>Runtime switch</td><td colspan="2"><span class="tag both">both</span> Dashboard Settings page or <code>builder agent runtime set --sdk &lt;sdk&gt; --json</code></td></tr>
+  </table>
+
+</div>
+
+</div><!-- .main -->
+
+<!-- ── Context / prompt bar ───────────────────── -->
+<div class="prompt-bar">
+  <span class="prompt-label">Context</span>
+  <span class="prompt-text" id="promptText">Architecture Guide</span>
+  <button class="copy-btn" id="copyBtn" onclick="copyContext()">Copy</button>
+</div>
+
+<script>
+const TABS = ['overview','flow','lifecycle','arch','agents','runtime'];
+let activeTab = 'overview';
+
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab')[TABS.indexOf(name)].classList.add('active');
+  updateContext();
+}
+
+// Architecture layer filter
+const LAYER_MAP = {
+  shared:   ['layer-shared','layer-tools'],
+  orch:     ['layer-orch'],
+  claude:   ['layer-lanes'],
+  codex:    ['layer-lanes'],
+  gates:    ['layer-gates'],
+  converge: ['layer-converge'],
+  switch:   ['layer-switch'],
+};
+const ALL_LAYERS = ['layer-shared','layer-orch','layer-gates','layer-switch','layer-lanes','layer-tools','layer-converge'];
+
+function setFilter(f, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (f === 'all') {
+    ALL_LAYERS.forEach(id => { const el = document.getElementById(id); if(el){el.style.opacity='1';el.style.filter='none';el.style.transform='';} });
+    return;
+  }
+  const active = LAYER_MAP[f] || [];
+  ALL_LAYERS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (active.includes(id)) { el.style.opacity='1'; el.style.filter='none'; el.style.transform='scale(1.002)'; el.style.transition='all .22s'; }
+    else { el.style.opacity='0.2'; el.style.filter='grayscale(0.5)'; el.style.transform='scale(1)'; }
+  });
+  updateContext();
+}
+
+// Lifecycle phase data
+const PHASES = [
+  {
+    label:'PENDING / QUEUED',
+    badge:'PENDING',
+    badgeBg:'var(--surface-muted)', badgeColor:'var(--text-3)',
+    agent:'— (no agent dispatched)',
+    desc:'Task is in the backlog or waiting to be dispatched. The orchestrator reads Task.status from the database. When the sprint starts and resources are available, status advances to QUEUED then PLANNING automatically. No agent runs at this phase.',
+    outputs:['Task record','Sprint assignment'],
+  },
+  {
+    label:'PLANNING',
+    badge:'PLANNING',
+    badgeBg:'var(--orch-soft)', badgeColor:'var(--orch)',
+    agent:'planner agent — model: opus, max_turns: 20',
+    desc:'The planner reads the feature description and sprint context. It produces a structured task tree: subtasks, dependencies, acceptance criteria, and estimated complexity. Sprint-level plans can cover multiple tasks — those tasks skip separate planning runs and go straight to DESIGN.',
+    outputs:['Task tree','Acceptance criteria','Dependency graph'],
+  },
+  {
+    label:'DESIGN',
+    badge:'DESIGN',
+    badgeBg:'var(--orch-soft)', badgeColor:'var(--orch)',
+    agent:'designer agent — model: opus, max_turns: 20',
+    desc:'The designer produces architecture decision records (ADRs), API contracts, data model changes, and interface specifications. It searches the knowledge base for existing patterns and memory for prior decisions before proposing any new structure. Output is stored in the workspace and referenced by code-gen.',
+    outputs:['ADRs','API contracts','Design documents','Interface specs'],
+  },
+  {
+    label:'DESIGN_REVIEW',
+    badge:'DESIGN_REVIEW',
+    badgeBg:'var(--warning-soft)', badgeColor:'var(--warning)',
+    agent:'Operator approval required — orchestrator waits',
+    desc:'The orchestrator pauses and creates an approval gate. The operator reviews design artifacts on the Approvals page. On approval, the task advances to IMPLEMENTATION. On rejection, the designer is re-dispatched with operator feedback (parsed from OPERATOR_DECISION_JSON). This gate can be bypassed if sprint-level design artifacts already cover the task.',
+    outputs:['Operator decision','Approval record'],
+  },
+  {
+    label:'IMPLEMENTATION',
+    badge:'IMPLEMENTATION',
+    badgeBg:'var(--claude-soft)', badgeColor:'var(--claude-ink)',
+    agent:'code-gen agent — model: sonnet, max_turns: 30',
+    desc:'The primary build agent. Reads design artifacts and acceptance criteria, writes code in the isolated workspace, runs tests incrementally using mcp__workspace tools. Session is persisted — if the task resumes after a CAPABILITY_LIMIT or BLOCKED state, the same workspace directory and session ID are reused exactly.',
+    outputs:['Code changes','Test results','Workspace diff'],
+  },
+  {
+    label:'QUALITY_GATES',
+    badge:'QUALITY_GATES',
+    badgeBg:'var(--danger-soft)', badgeColor:'var(--danger)',
+    agent:'Deterministic gates (6) + gate-remediator agent (sonnet, max_turns: 16) if any gate fails with remediation_possible=True',
+    desc:'Six quality gates run: code quality (Ruff), testing (pytest), security (Bandit), complexity (radon), runtime boundary enforcement, and knowledge base freshness. Gates with remediation_possible=True trigger the gate-remediator agent for auto-fix. AND semantics — one FAIL = overall FAIL. If remediation fails after retries, task moves to BLOCKED for operator review.',
+    outputs:['GateResult per gate','AggregateGateResult','Remediation evidence'],
+  },
+  {
+    label:'PR_CREATION',
+    badge:'PR_CREATION',
+    badgeBg:'var(--success-soft)', badgeColor:'var(--success)',
+    agent:'documentation-bridge → pr-creator agent (sonnet, max_turns: 15)',
+    desc:'First, documentation-bridge validates KB freshness, delegating to the documentation-agent subagent if any docs are stale. Re-validates before allowing pr-creator to fire. The pr-creator opens a PR with structured evidence: lint output, test results, security scan, and diff summary. For Codex workspaces without a real Git PR target, deterministic scripts (change_evidence, build_verify) provide the evidence instead.',
+    outputs:['Pull request','Evidence bundle','KB updates'],
+  },
+  {
+    label:'REVIEW_PENDING',
+    badge:'REVIEW_PENDING',
+    badgeBg:'var(--warning-soft)', badgeColor:'var(--warning)',
+    agent:'Human reviewer (GitHub / PR platform)',
+    desc:'The PR is open and waiting for human code review. The orchestrator holds the task at REVIEW_PENDING. After the reviewer merges or requests changes, the operator advances the task through the product UI or CLI.',
+    outputs:['Review comments','Merge decision'],
+  },
+  {
+    label:'BUILD_VERIFY',
+    badge:'BUILD_VERIFY',
+    badgeBg:'var(--success-soft)', badgeColor:'var(--success)',
+    agent:'build-verifier agent — model: sonnet, max_turns: 10',
+    desc:'After PR merge, build-verifier confirms the post-merge build is green — runs the full test suite, checks integration tests, and verifies no regressions were introduced. Produces structured pass/fail evidence stored in the AgentRun record.',
+    outputs:['Post-merge test results','Build proof','Integration evidence'],
+  },
+  {
+    label:'DONE',
+    badge:'DONE',
+    badgeBg:'var(--success-soft)', badgeColor:'var(--success)',
+    agent:'optimization-agent — model: sonnet, max_turns: 14',
+    desc:'Task is complete. The optimization-agent reviews observability recommendations, preflight evidence, telemetry, and logs from this run. It updates generated-app CLAUDE.md / AGENTS.md runtime guidance and project-local deterministic scripts. Any script it creates records which builder phase should use it and what evidence it replaces — improving future runs.',
+    outputs:['Updated runtime guidance','Optimization record','Session closed'],
+  },
+];
+
+let activePhase = 0;
+
+function selectPhase(idx) {
+  activePhase = idx;
+  document.querySelectorAll('.phase-node').forEach((n,i) => {
+    n.classList.remove('active','done');
+    if (i < idx) n.classList.add('done');
+    else if (i === idx) n.classList.add('active');
+  });
+  renderPhaseDetail();
+  updateContext();
+}
+
+function renderPhaseDetail() {
+  const p = PHASES[activePhase];
+  const d = document.getElementById('phaseDetail');
+  d.innerHTML = `
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+      ${p.label}
+      <span style="background:${p.badgeBg};color:${p.badgeColor};font-family:var(--font-mono);font-size:9px;letter-spacing:0.14em;padding:3px 8px;border-radius:var(--r);font-weight:500">${p.badge}</span>
+    </h3>
+    <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:10px">${p.agent}</div>
+    <div style="font-size:12.5px;color:var(--text-2);line-height:1.7;margin-bottom:14px">${p.desc}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${p.outputs.map(o=>`<span style="background:var(--surface-muted);border:1px solid var(--border-strong);border-radius:var(--r);padding:2px 8px;font-size:10px;font-family:var(--font-mono);color:var(--text-3)">${o}</span>`).join('')}
+    </div>
+  `;
+}
+renderPhaseDetail();
+
+// Context prompts
+const CONTEXTS = {
+  overview: 'Autonomous Agent Builder: AI-powered SDLC platform. Three roles: Operator (you), Orchestrator (deterministic state machine), Agents (13 specialized AI builders). Pipeline: You → Backlog → Orchestrator → Agents (plan→design→code) → Quality Gates → PR → Done. Data hierarchy: Project → Sprint → Feature → Item → Task. Task is the execution unit with stable workspace cwd. Dashboard: Agent Page, Board, Backlog, Approvals, Knowledge, Memory, Metrics, Observability, Settings.',
+  flow: 'User Flow (7 steps): (1) builder init + runtime setup — Day-0 gate; (2) describe features in Backlog or via init-project-chat agent; (3) start sprint on Board — orchestrator picks up PENDING tasks; (4) watch agents on Agent Page — planner→designer→code-gen runs automatically; (5) approve design review and any quality gate failures that exceed auto-remediation; (6) PR created by pr-creator with evidence — merge when ready; (7) DONE — build-verifier confirms green build, optimization-agent updates runtime guidance. Provider limits auto-recover as CAPABILITY_LIMIT.',
+  lifecycle: () => `Lifecycle tab — Phase ${activePhase+1} of 10 (${PHASES[activePhase].label}): ${PHASES[activePhase].desc} Gate-remediator loop: QUALITY_GATES fail → if remediation_possible → gate-remediator (sonnet, 16 turns) → re-run gates → if pass → PR_CREATION. Off-path: BLOCKED (operator needed), CAPABILITY_LIMIT (provider reset, auto-recover), FAILED (unrecoverable).`,
+  arch: 'Architecture (7 layers): (1) Shared Control Plane — backlog, board, approvals, quality gates, KB, memory, DB, dashboard, CLI, workspace isolation. (2) Orchestrator — 6 phase handlers + 8 supporting modules. (3) Quality Gates — Ruff, pytest, Bandit, radon, runtime boundary, KB freshness. (4) Runtime Switch — RUNTIME_SDK env → factory.py → create_runtime(). (5) Claude lane (ClaudeSDKClient, hooks, subagents, MCP, CLAUDE.md) + Codex lane (JSON-RPC, native sandbox, AGENTS.md). (6) Shared tooling — SDK built-ins + mcp__builder + mcp__workspace. (7) Convergence — RunResult → same DB → same dashboard.',
+  agents: 'Agents: 11 orchestrator-dispatched (planner/designer=opus 20t; scaffold/code-gen/gate-remediator/integration-resolver/pr-creator/build-verifier/feature-verifier/documentation-bridge/optimization-agent=sonnet), 2 interactive (chat=haiku 15t, init-project-chat=opus 20t), 6 subagents Claude-only (repo-researcher/browser-verifier/build-verifier/pr-reviewer=haiku; security-reviewer/documentation-agent=sonnet). Model policy: execution_policy.py. M1.4: per-phase tool allowlists + preflight probes.',
+  runtime: 'Runtime Lanes: Claude SDK (ClaudeSDKClient, 5 hooks, 6 subagents, in-process MCP, per-phase models opus/sonnet/haiku, CLAUDE_CODE_OAUTH_TOKEN auth, CLAUDE.md) vs Codex SDK (JSON-RPC to app-server, native requestPermission, real-time tokens, subscription auth, native sandbox, AGENTS.md). Both: same orchestrator, same DB schema, same dashboard. RunResult convergence. RUNTIME_SDK env or Dashboard Settings to switch.',
+};
+
+function updateContext() {
+  const c = CONTEXTS[activeTab];
+  document.getElementById('promptText').textContent = typeof c === 'function' ? c() : c;
+}
+updateContext();
+
+function copyContext() {
+  const text = document.getElementById('promptText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  }).catch(() => {});
+}
+</script>
+</body>
+</html>

@@ -46,5 +46,4 @@ MagicMock/
 *.db-shm
 *.db-wal
 session-report-*.html
-*-runtime-explainer.html
 .codex/
