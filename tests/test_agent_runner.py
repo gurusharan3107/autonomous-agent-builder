@@ -534,7 +534,7 @@ def test_preflight_skips_git_check_for_chat_phase(tmp_path):
 
 def test_trim_tool_output_hook_constants():
     """G12 + G7: curated trim-tool set and threshold match plan decisions."""
-    from autonomous_agent_builder.agents.hooks import _OUTPUT_TRIM_CHARS, _OUTPUT_TRIM_TOOLS
+    from autonomous_agent_builder.agents.hooks_trim import _OUTPUT_TRIM_CHARS, _OUTPUT_TRIM_TOOLS
 
     assert "Bash" in _OUTPUT_TRIM_TOOLS
     assert "Read" in _OUTPUT_TRIM_TOOLS
@@ -546,7 +546,7 @@ def test_trim_tool_output_hook_constants():
 @pytest.mark.asyncio
 async def test_post_tool_hook_truncates_large_bash_stdout():
     """G12: trim_tool_output_for_context truncates large Bash stdout."""
-    from autonomous_agent_builder.agents.hooks import trim_tool_output_for_context
+    from autonomous_agent_builder.agents.hooks_trim import trim_tool_output_for_context
 
     large_stdout = "x" * 20_000
     tool_input = {
@@ -567,7 +567,7 @@ async def test_post_tool_hook_truncates_large_bash_stdout():
 @pytest.mark.asyncio
 async def test_post_tool_hook_passes_through_small_bash_stdout():
     """G12: trim_tool_output_for_context is a no-op when output is small."""
-    from autonomous_agent_builder.agents.hooks import trim_tool_output_for_context
+    from autonomous_agent_builder.agents.hooks_trim import trim_tool_output_for_context
 
     tool_input = {
         "tool_name": "Bash",
@@ -580,7 +580,7 @@ async def test_post_tool_hook_passes_through_small_bash_stdout():
 @pytest.mark.asyncio
 async def test_post_tool_hook_truncates_mcp_run_tests():
     """G12: trim_tool_output_for_context truncates MCP run_tests output."""
-    from autonomous_agent_builder.agents.hooks import trim_tool_output_for_context
+    from autonomous_agent_builder.agents.hooks_trim import trim_tool_output_for_context
 
     large_text = "FAILED " * 3000
     tool_input = {

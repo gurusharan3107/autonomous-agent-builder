@@ -697,9 +697,9 @@ class AgentRunner:
             keep_tool_stream_open,
             make_enforce_claude_md_block_ownership,
             session_start_context_policy,
-            trim_tool_output_for_context,
             validate_bash_argv,
         )
+        from autonomous_agent_builder.agents.hooks_trim import trim_tool_output_for_context
 
         claude_md_block_hook = make_enforce_claude_md_block_ownership(agent_def.name)
 
