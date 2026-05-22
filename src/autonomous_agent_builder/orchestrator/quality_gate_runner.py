@@ -166,8 +166,7 @@ async def run_feature_acceptance_gate(
     if feature is None:
         return False, "feature_acceptance_failed: feature record not found"
 
-    test_success, existing_result = await run_record_feature_acceptance_tests(
-        orchestrator,
+    test_success, existing_result = await orchestrator._record_feature_acceptance_tests(
         task,
         workspace_path,
         feature,
@@ -198,8 +197,7 @@ async def run_feature_acceptance_gate(
     if verifier_failure := feature_verifier_failure(result.output_text):
         return False, verifier_failure
 
-    test_success, test_output = await run_record_feature_acceptance_tests(
-        orchestrator,
+    test_success, test_output = await orchestrator._record_feature_acceptance_tests(
         task,
         workspace_path,
         feature,

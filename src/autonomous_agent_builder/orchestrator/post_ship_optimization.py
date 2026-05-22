@@ -69,13 +69,11 @@ async def _run_post_ship_optimization_agent(
 
     from autonomous_agent_builder.orchestrator.post_ship_runtime_guidance import (  # noqa: PLC0415
         _compact_optimization_payload,
-        _post_ship_observability_payload,
         _run_app_runtime_guidance_optimization,
-        _run_deterministic_post_ship_optimization,
     )
 
     project_root = Path(str(getattr(task.feature.project, "repo_url", "") or "")).expanduser()
-    observability_payload = _post_ship_observability_payload(orchestrator)
+    observability_payload = orchestrator._post_ship_observability_payload()
     recommendations = observability_payload.get("observability_coverage", {}).get(
         "deterministic_recommendations", []
     )
@@ -99,8 +97,7 @@ async def _run_post_ship_optimization_agent(
         sprint.verification_evidence = evidence
         return
 
-    deterministic_preflight = await _run_deterministic_post_ship_optimization(
-        orchestrator,
+    deterministic_preflight = await orchestrator._run_deterministic_post_ship_optimization(
         task,
         project_root,
         recommendations,
