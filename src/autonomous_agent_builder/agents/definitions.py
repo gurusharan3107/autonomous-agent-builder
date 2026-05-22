@@ -451,22 +451,28 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Gate: {gate_name}\n"
             "Error code: {error_code}\n"
             "Build output:\n{gate_output}\n\n"
-            "Workflow (max 6 turns total):\n"
+            "Workflow (max 8 turns total):\n"
             "1. Read only the config/build files referenced in the error output.\n"
             "2. Apply the minimal targeted fix: config changes, missing type "
             "   declarations, import path corrections, package.json script fixes.\n"
-            "3. Run the failing build/lint command to confirm the fix works.\n"
+            "3. Verify the fix by running the failing command using "
+            "   mcp__workspace__run_command.\n"
             "4. Emit GATE_FIX_RESULT_JSON (see below) and stop.\n\n"
-            "If you cannot fix it in 4 turns, emit GATE_FIX_RESULT_JSON with "
+            "If you cannot fix it in 6 turns, emit GATE_FIX_RESULT_JSON with "
             "fixed=false immediately — do not keep trying.\n\n"
+            "CRITICAL — how to run commands:\n"
+            "- Use mcp__workspace__run_command with argv as an array of strings.\n"
+            "- Example to run build: {{\"argv\": [\"npm\", \"run\", \"build\"]}}\n"
+            "- Example to check TypeScript: {{\"argv\": [\"npx\", \"tsc\", \"--noEmit\"]}}\n"
+            "- Do NOT use the Bash tool — it is not available in this context.\n"
+            "- Do NOT use shell metacharacters (pipes |, redirects >, &&).\n\n"
             "Scope boundary:\n"
             "- Only write inside {workspace_path}.\n"
             "- Never touch CLAUDE.md, AGENTS.md, or .claude/.\n\n"
             "Output discipline:\n"
             "- Do not narrate progress while working.\n"
-            "- Keep command output bounded; inspect only the last 80 lines.\n"
-            "- Finish with exactly one JSON object on its own line, no other "
-            "  trailing text.\n\n"
+            "- Inspect only the last 80 lines of command output.\n"
+            "- Finish with exactly one JSON object on its own line.\n\n"
             "On success:\n"
             "GATE_FIX_RESULT_JSON: {{\"fixed\": true, "
             "\"files_changed\": [\"<path>\", ...], "
@@ -501,8 +507,8 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "mcp__workspace__read_file",
         ),
         model="sonnet",
-        max_turns=8,
-        max_budget_usd=0.75,
+        max_turns=12,
+        max_budget_usd=1.25,
     ),
     "code-gen": AgentDefinition(
         name="code-gen",

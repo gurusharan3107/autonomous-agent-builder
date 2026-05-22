@@ -107,6 +107,14 @@ _AGENT_POLICY: dict[str, tuple[str, str, tuple[str, ...], str, str, str]] = {
         "workspace_boundary_bash_argv_tool_audit",
         "scaffold_efficiency",
     ),
+    "gate-remediator": (
+        "medium",
+        "bounded_default",
+        (),
+        "workspace_write_with_argv_shell",
+        "workspace_boundary_bash_argv_tool_audit",
+        "gate_fix_targeted",
+    ),
     "code-gen": (
         "high",
         "scripted_repeatable_work",
