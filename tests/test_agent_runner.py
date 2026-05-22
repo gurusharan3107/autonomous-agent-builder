@@ -75,6 +75,8 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
             thinking=None,
             settings=None,
             extra_args=None,
+            include_partial_messages=None,
+            strict_mcp_config=None,
             **kwargs,
         ):
             self.allowed_tools = allowed_tools
@@ -95,6 +97,8 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
             self.settings = settings
             self.has_task_budget = "task_budget" in kwargs
             self.extra_args = extra_args
+            self.include_partial_messages = include_partial_messages
+            self.strict_mcp_config = strict_mcp_config
             self.hooks = None
 
     class FakeSystemMessage:
@@ -164,13 +168,21 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
             self.model = model
             self.max_turns = kwargs.get("maxTurns")
 
+    class FakeRateLimitEvent:
+        pass
+
+    class FakeStreamEvent:
+        pass
+
     fake_sdk: Any = ModuleType("claude_agent_sdk")
     fake_sdk.AgentDefinition = FakeSdkAgentDefinition
     fake_sdk.AssistantMessage = FakeAssistantMessage
     fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
     fake_sdk.ClaudeSDKClient = FakeClaudeSDKClient
     fake_sdk.HookMatcher = FakeHookMatcher
+    fake_sdk.RateLimitEvent = FakeRateLimitEvent
     fake_sdk.ResultMessage = FakeResultMessage
+    fake_sdk.StreamEvent = FakeStreamEvent
     fake_sdk.SystemMessage = FakeSystemMessage
     fake_sdk.create_sdk_mcp_server = fake_create_sdk_mcp_server
     fake_sdk.tool = fake_tool
@@ -203,16 +215,19 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
     )
     assert workspace_tool_names == set()
     assert captured["options"].can_use_tool is not None
-    assert captured["options"].system_prompt == {"type": "preset", "preset": "claude_code"}
+    assert captured["options"].system_prompt == {
+        "type": "preset",
+        "preset": "claude_code",
+        "exclude_dynamic_sections": True,
+    }
     assert captured["options"].setting_sources == ["project"]
     assert captured["options"].effort == "medium"
     assert captured["options"].thinking is None  # chat agent uses haiku → no adaptive thinking
     assert captured["options"].settings is None  # chat agent not in autocompact strategies
     assert captured["options"].has_task_budget is False
-    assert captured["options"].extra_args == {
-        "disable-slash-commands": None,
-        "strict-mcp-config": None,
-    }
+    assert captured["options"].extra_args == {"disable-slash-commands": None}
+    assert captured["options"].include_partial_messages is True  # G1
+    assert captured["options"].strict_mcp_config is True  # G7
     assert captured["options"].continue_conversation is False
     assert captured["options"].resume == "resume-abc"
     assert captured["options"].env["CLAUDE_CODE_OAUTH_TOKEN"] == "builder-token"
@@ -326,7 +341,9 @@ async def test_execute_query_exposes_full_tool_set_when_can_use_tool_is_present(
     fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
     fake_sdk.ClaudeSDKClient = FakeClaudeSDKClient
     fake_sdk.HookMatcher = FakeHookMatcher
+    fake_sdk.RateLimitEvent = type("FakeRateLimitEvent", (), {})
     fake_sdk.ResultMessage = FakeResultMessage
+    fake_sdk.StreamEvent = type("FakeStreamEvent", (), {})
     fake_sdk.SystemMessage = FakeSystemMessage
     fake_sdk.create_sdk_mcp_server = fake_create_sdk_mcp_server
     fake_sdk.tool = fake_tool
@@ -437,7 +454,9 @@ async def test_execute_query_registers_documentation_subagent(monkeypatch):
     fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
     fake_sdk.ClaudeSDKClient = FakeClaudeSDKClient
     fake_sdk.HookMatcher = FakeHookMatcher
+    fake_sdk.RateLimitEvent = type("FakeRateLimitEvent", (), {})
     fake_sdk.ResultMessage = FakeResultMessage
+    fake_sdk.StreamEvent = type("FakeStreamEvent", (), {})
     fake_sdk.SystemMessage = FakeSystemMessage
     fake_sdk.create_sdk_mcp_server = fake_create_sdk_mcp_server
     fake_sdk.tool = fake_tool
@@ -506,3 +525,174 @@ def test_preflight_skips_git_check_for_chat_phase(tmp_path):
     runner = AgentRunner(get_settings())
     result = runner._preflight_workspace("chat", str(tmp_path))
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Tier B (M2.3 P0) — G1 / G2 / G7 / G12 / StopFailure
+# ---------------------------------------------------------------------------
+
+
+def test_trim_tool_output_hook_constants():
+    """G12 + G7: curated trim-tool set and threshold match plan decisions."""
+    from autonomous_agent_builder.agents.hooks import _OUTPUT_TRIM_CHARS, _OUTPUT_TRIM_TOOLS
+
+    assert "Bash" in _OUTPUT_TRIM_TOOLS
+    assert "Read" in _OUTPUT_TRIM_TOOLS
+    assert "mcp__workspace__run_tests" in _OUTPUT_TRIM_TOOLS
+    assert "mcp__workspace__run_linter" in _OUTPUT_TRIM_TOOLS
+    assert _OUTPUT_TRIM_CHARS == 8_000
+
+
+@pytest.mark.asyncio
+async def test_post_tool_hook_truncates_large_bash_stdout():
+    """G12: trim_tool_output_for_context truncates large Bash stdout."""
+    from autonomous_agent_builder.agents.hooks import trim_tool_output_for_context
+
+    large_stdout = "x" * 20_000
+    tool_input = {
+        "tool_name": "Bash",
+        "tool_response": {"stdout": large_stdout, "stderr": "", "interrupted": False},
+    }
+    result = await trim_tool_output_for_context(tool_input, None, {})
+
+    hook_out = result.get("hookSpecificOutput", {})
+    assert hook_out.get("hookEventName") == "PostToolUse"
+    updated = hook_out.get("updatedToolOutput", {})
+    assert isinstance(updated, dict)
+    assert len(updated["stdout"]) < len(large_stdout)
+    assert "trimmed" in updated["stdout"].lower() or "..." in updated["stdout"]
+    assert updated["interrupted"] is False
+
+
+@pytest.mark.asyncio
+async def test_post_tool_hook_passes_through_small_bash_stdout():
+    """G12: trim_tool_output_for_context is a no-op when output is small."""
+    from autonomous_agent_builder.agents.hooks import trim_tool_output_for_context
+
+    tool_input = {
+        "tool_name": "Bash",
+        "tool_response": {"stdout": "ok", "stderr": "", "interrupted": False},
+    }
+    result = await trim_tool_output_for_context(tool_input, None, {})
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_post_tool_hook_truncates_mcp_run_tests():
+    """G12: trim_tool_output_for_context truncates MCP run_tests output."""
+    from autonomous_agent_builder.agents.hooks import trim_tool_output_for_context
+
+    large_text = "FAILED " * 3000
+    tool_input = {
+        "tool_name": "mcp__workspace__run_tests",
+        "tool_response": {"content": [{"type": "text", "text": large_text}]},
+    }
+    result = await trim_tool_output_for_context(tool_input, None, {})
+
+    hook_out = result.get("hookSpecificOutput", {})
+    assert hook_out.get("hookEventName") == "PostToolUse"
+    updated = hook_out.get("updatedMCPToolOutput", {})
+    text_items = [i for i in updated.get("content", []) if i.get("type") == "text"]
+    assert text_items
+    assert len(text_items[0]["text"]) < len(large_text)
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_event_sets_provider_limit_stop_reason(monkeypatch):
+    """StopFailure: RateLimitEvent(rejected) → RunResult.stop_reason=provider_limit
+    with SDK-sourced reset_at / rate_limit_type / utilization."""
+    import sys
+    from types import ModuleType
+
+    # ---- fake types that the runner isinstance-checks against ----
+
+    class FakeRateLimitInfo:
+        status = "rejected"
+        resets_at = 1_700_000_000_000  # unix-ms
+        rate_limit_type = "five_hour"
+        utilization = 0.99
+
+    class FakeRateLimitEvent:
+        rate_limit_info = FakeRateLimitInfo()
+        session_id = "rl-session"
+        uuid = "u1"
+
+    class FakeResultMessage:
+        session_id = "rl-session"
+        usage: dict = {}
+        total_cost_usd = 0.0
+        num_turns = 1
+        duration_ms = 0
+        stop_reason = "end_turn"
+
+    class FakeSystemMessage:
+        def __init__(self, sid: str):
+            self.subtype = "init"
+            self.data = {"session_id": sid}
+
+    class FakeAssistantMessage:
+        content: list = []
+
+    class FakeStreamEvent:
+        pass
+
+    class _Opts:
+        def __init__(self, **kw):
+            pass
+
+        def __setattr__(self, k, v):
+            object.__setattr__(self, k, v)
+
+    class _Client:
+        def __init__(self, options):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return False
+
+        async def query(self, *_a, **_kw):
+            pass
+
+        async def receive_response(self):
+            yield FakeSystemMessage("rl-session")
+            yield FakeRateLimitEvent()
+            yield FakeResultMessage()
+
+    fake = ModuleType("claude_agent_sdk")
+    fake.ClaudeAgentOptions = _Opts  # type: ignore[attr-defined]
+    fake.ClaudeSDKClient = _Client  # type: ignore[attr-defined]
+    fake.HookMatcher = type("HM", (), {"__init__": lambda s, **kw: None})  # type: ignore[attr-defined]
+    fake.RateLimitEvent = FakeRateLimitEvent  # type: ignore[attr-defined]
+    fake.ResultMessage = FakeResultMessage  # type: ignore[attr-defined]
+    fake.StreamEvent = FakeStreamEvent  # type: ignore[attr-defined]
+    fake.SystemMessage = FakeSystemMessage  # type: ignore[attr-defined]
+    fake.AssistantMessage = FakeAssistantMessage  # type: ignore[attr-defined]
+    fake.AgentDefinition = type("AD", (), {})  # type: ignore[attr-defined]
+
+    def _tool(n, d, s, annotations=None):
+        def dec(f):
+            f._sdk_tool_name = n
+            return f
+
+        return dec
+
+    fake.tool = _tool  # type: ignore[attr-defined]
+    fake.create_sdk_mcp_server = lambda name, version="1.0.0", tools=None: {  # type: ignore[attr-defined]
+        "name": name,
+        "tools": tools or [],
+    }
+
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake)
+
+    runner = AgentRunner(get_settings())
+    result = await runner.run_phase(agent_name="chat", prompt="hi", workspace_path=".")
+
+    assert result.stop_reason == "provider_limit", f"got {result.stop_reason}"
+    assert result.provider_limit is not None
+    assert result.provider_limit["reason"] == "rate_limit_event"
+    assert result.provider_limit["rate_limit_type"] == "five_hour"
+    assert result.provider_limit["utilization"] == 0.99
+    assert result.provider_limit["reset_at"] is not None

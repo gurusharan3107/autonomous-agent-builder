@@ -7,6 +7,21 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-22 - M2.3 P0 Tier B: SDK cost + telemetry cluster (G1/G2/G7/G12/StopFailure)
+
+### Changed
+
+- **G2** — `system_prompt` preset now includes `exclude_dynamic_sections=True` in `agents/runner.py`, `claude_runtime.py`, `onboarding.py`. Eliminates dynamic cwd/memory/git sections from every turn; directly unblocks Tier-1 `cache_ratio > 5x` bar.
+- **G1** — `include_partial_messages=True` added to all three `ClaudeAgentOptions` sites. Enables per-turn `StreamEvent` telemetry; `StreamEvent` handled in `runner.py` message loop (per-turn usage extraction wired in follow-up sprint).
+- **G7** — `strict_mcp_config=True` set as native `ClaudeAgentOptions` parameter in `agents/runner.py`; `"strict-mcp-config": None` CLI flag removed from `extra_args`. Only explicitly-registered MCP tools (`mcp__builder`, `mcp__workspace`) visible per phase.
+- **G12** — `trim_tool_output_for_context()` PostToolUse hook added to `agents/hooks.py`. Targets curated set (Bash, Read, `mcp__workspace__run_tests`, `mcp__workspace__run_linter`); 8 000-char ceiling; returns `updatedToolOutput` / `updatedMCPToolOutput`. Registered in `runner.py` as second PostToolUse `HookMatcher` after audit hook.
+- **StopFailure** — `RateLimitEvent` now handled in `runner.py` message loop. `status="rejected"` captures `rate_limit_info` (`resets_at`, `rate_limit_type`, `utilization`); `RunResult` built with `stop_reason="provider_limit"` and SDK-sourced `provider_limit` dict, superseding text-parsed metadata. `_is_empty_sdk_result` short-circuits on `stop_reason="provider_limit"`; `run_phase` provider-limit block prefers pre-set `result.provider_limit` over rebuilt metadata.
+
+### Validation
+
+- `pytest tests/test_agent_runner.py`: 15/15 green (5 new: trim constants, Bash truncation, Bash no-op, MCP truncation, RateLimitEvent payload).
+- `builder lint --complexity-report --json`: 0 violations. All changed files within complexity baseline.
+
 ## 2026-05-21 - M1.3 god-file decomposition ratchet complete
 
 ### Changed

@@ -1358,13 +1358,18 @@ async def _run_builder_kb_extract_via_agent(
 
         options = ClaudeAgentOptions(
             model=get_settings().agent.implementation_model,
-            system_prompt={"type": "preset", "preset": "claude_code"},
+            system_prompt={
+                "type": "preset",
+                "preset": "claude_code",
+                "exclude_dynamic_sections": True,
+            },
             setting_sources=["project"],
             cwd=project_root,
             allowed_tools=["Bash"],
             max_turns=3,
             permission_mode=get_settings().agent.permission_mode,
             can_use_tool=_auto_approve,
+            include_partial_messages=True,
         )
         options.hooks = {
             "PreToolUse": [

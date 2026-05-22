@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -465,7 +466,9 @@ class AgentRunner:
                         observability=result.observability,
                     )
             if self._is_provider_limit_result(result):
-                provider_limit = self._provider_limit_metadata(result)
+                # Prefer SDK-sourced provider_limit already set by _execute_query
+                # (e.g. from RateLimitEvent); fall back to text-parsed metadata.
+                provider_limit = result.provider_limit or self._provider_limit_metadata(result)
                 return RunResult(
                     session_id=result.session_id,
                     output_text=result.output_text,
@@ -504,6 +507,8 @@ class AgentRunner:
 
     def _is_empty_sdk_result(self, result: RunResult) -> bool:
         if result.error:
+            return False
+        if result.stop_reason == "provider_limit":
             return False
         return (
             not str(result.output_text or "").strip()
@@ -580,7 +585,9 @@ class AgentRunner:
                 ClaudeAgentOptions,
                 ClaudeSDKClient,
                 HookMatcher,
+                RateLimitEvent,
                 ResultMessage,
+                StreamEvent,
                 SystemMessage,
             )
         except ImportError as exc:
@@ -637,7 +644,11 @@ class AgentRunner:
 
         options_kwargs: dict[str, Any] = {
             "allowed_tools": allowed_tools,
-            "system_prompt": {"type": "preset", "preset": "claude_code"},
+            "system_prompt": {
+                "type": "preset",
+                "preset": "claude_code",
+                "exclude_dynamic_sections": True,  # G2: skip cwd/memory/git sections to maximise cache ratio
+            },
             "setting_sources": ["project"],
             "settings": '{"autoCompactEnabled": true}'
             if runtime_policy.autocompact_enabled
@@ -652,9 +663,10 @@ class AgentRunner:
             "agents": sdk_subagents,
             "effort": runtime_policy.effort,
             "thinking": runtime_policy.thinking,
+            "include_partial_messages": True,  # G1: enables per-turn StreamEvent usage telemetry
+            "strict_mcp_config": True,  # G7: only explicitly registered MCP tools are visible
             "extra_args": {
                 "disable-slash-commands": None,
-                "strict-mcp-config": None,
             },
         }
         options = ClaudeAgentOptions(**options_kwargs)
@@ -680,6 +692,7 @@ class AgentRunner:
             keep_tool_stream_open,
             make_enforce_claude_md_block_ownership,
             session_start_context_policy,
+            trim_tool_output_for_context,
             validate_bash_argv,
         )
 
@@ -738,6 +751,11 @@ class AgentRunner:
                     hooks=[_post_tool_audit],
                     timeout=30.0,
                 ),
+                HookMatcher(
+                    matcher="Bash|Read|mcp__workspace__run_tests|mcp__workspace__run_linter",
+                    hooks=[trim_tool_output_for_context],
+                    timeout=30.0,
+                ),
             ],
             "SubagentStop": [
                 HookMatcher(
@@ -763,12 +781,27 @@ class AgentRunner:
                 "parent_tool_use_id": None,
             }
 
+        rate_limit_info_captured = None
+
         try:
             async with ClaudeSDKClient(options=options) as client:
                 await client.query(_prompt_stream())
                 async for message in client.receive_response():
                     if isinstance(message, SystemMessage) and message.subtype == "init":
                         session_id = message.data.get("session_id")
+
+                    elif isinstance(message, RateLimitEvent):
+                        if message.rate_limit_info.status == "rejected":
+                            rate_limit_info_captured = message.rate_limit_info
+                            log.warning(
+                                "sdk_rate_limit_rejected",
+                                rate_limit_type=message.rate_limit_info.rate_limit_type,
+                                resets_at=message.rate_limit_info.resets_at,
+                                utilization=message.rate_limit_info.utilization,
+                            )
+
+                    elif isinstance(message, StreamEvent):
+                        pass  # per-turn events enabled by include_partial_messages; usage extraction wired in M2.3 follow-up
 
                     elif isinstance(message, AssistantMessage):
                         for block in message.content:
@@ -788,7 +821,7 @@ class AgentRunner:
                         if stop_reason not in ("max_turns", "budget_exceeded"):
                             confidence = parse_confidence_from_text(output_text)
                         diff_summary = capture_workspace_diff(workspace_path)
-                        return RunResult(
+                        base_result_kwargs: dict[str, Any] = dict(
                             session_id=getattr(message, "session_id", None) or session_id,
                             cost_usd=getattr(message, "total_cost_usd", 0.0),
                             tokens_input=usage.get("input_tokens", 0),
@@ -796,7 +829,6 @@ class AgentRunner:
                             tokens_cached=usage.get("cache_read_input_tokens", 0),
                             num_turns=getattr(message, "num_turns", 0),
                             duration_ms=getattr(message, "duration_ms", 0),
-                            stop_reason=stop_reason,
                             output_text=output_text,
                             confidence=confidence,
                             diff_summary=diff_summary,
@@ -805,6 +837,27 @@ class AgentRunner:
                                 "runtime_policy": runtime_policy.to_payload(),
                             },
                         )
+                        if rate_limit_info_captured is not None:
+                            # SDK-sourced rate limit data supersedes text-parsed metadata
+                            info = rate_limit_info_captured
+                            resets_at_iso = (
+                                datetime.fromtimestamp(info.resets_at / 1000, UTC).isoformat()
+                                if info.resets_at
+                                else None
+                            )
+                            return RunResult(
+                                **base_result_kwargs,
+                                stop_reason="provider_limit",
+                                provider_limit={
+                                    "code": "provider_limit",
+                                    "reason": "rate_limit_event",
+                                    "reset_at": resets_at_iso,
+                                    "rate_limit_type": info.rate_limit_type,
+                                    "utilization": info.utilization,
+                                    "source": "claude_agent_sdk",
+                                },
+                            )
+                        return RunResult(**base_result_kwargs, stop_reason=stop_reason)
 
         except Exception as e:
             # Map SDK errors to our error types

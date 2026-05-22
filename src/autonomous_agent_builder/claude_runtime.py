@@ -244,7 +244,11 @@ async def _run_claude_sdk_prompt(
     merged_env = scrub_provider_env(merged_env)
     options = ClaudeAgentOptions(
         model=model,
-        system_prompt={"type": "preset", "preset": "claude_code"},
+        system_prompt={
+            "type": "preset",
+            "preset": "claude_code",
+            "exclude_dynamic_sections": True,
+        },
         setting_sources=["project"],
         cwd=workspace_path,
         max_turns=5,
@@ -252,6 +256,7 @@ async def _run_claude_sdk_prompt(
         permission_mode=permission_mode or get_settings().agent.permission_mode,
         env=merged_env,
         can_use_tool=_auto_approve,
+        include_partial_messages=True,
     )
 
     output_parts: list[str] = []
