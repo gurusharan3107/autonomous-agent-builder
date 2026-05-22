@@ -75,11 +75,20 @@ from autonomous_agent_builder.embedded.server.agent_chat_events import (
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
     update_request_event as _update_request_event,
 )
+from autonomous_agent_builder.embedded.server.agent_chat_result_publisher import (
+    _publish_agent_run_error_result,
+    _publish_provider_limit_result,
+    _publish_successful_chat_result,
+)
 from autonomous_agent_builder.embedded.server.agent_control_owners import (
     reconcile_session_control_owners,
 )
 from autonomous_agent_builder.embedded.server.agent_delivery_closeout import (
     append_delivery_closeout_if_ready as _append_delivery_closeout_if_ready,
+)
+from autonomous_agent_builder.embedded.server.agent_delivery_continuation import (
+    _complete_persisted_delivery_scope_approval,
+    _continue_after_delivery_permission_question,
 )
 from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
     feature_for_delivery_permission_question as _feature_for_delivery_permission_question,
@@ -188,15 +197,6 @@ from autonomous_agent_builder.embedded.server.agent_tool_policy import (
 )
 from autonomous_agent_builder.embedded.server.agent_tool_policy import (
     tool_summary as _tool_summary,
-)
-from autonomous_agent_builder.embedded.server.agent_chat_result_publisher import (
-    _publish_agent_run_error_result,
-    _publish_provider_limit_result,
-    _publish_successful_chat_result,
-)
-from autonomous_agent_builder.embedded.server.agent_delivery_continuation import (
-    _complete_persisted_delivery_scope_approval,
-    _continue_after_delivery_permission_question,
 )
 from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
 from autonomous_agent_builder.embedded.server.chat_turn_direct_actions import (
@@ -725,6 +725,9 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
             return
         await turn_publisher.publish_stream_delta(text)
 
+    async def on_stream_usage(input_tokens: int, cached_tokens: int, output_tokens: int) -> None:
+        await turn_publisher.publish_stream_usage(input_tokens, cached_tokens, output_tokens)
+
     async def on_tool_event(event_data: dict[str, Any] | None = None, **event_kwargs: Any) -> None:
         await _handle_chat_tool_event(
             callback_state,
@@ -806,6 +809,7 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
             feature_spec_requested=feature_spec_requested,
             active_specialist=active_specialist,
             on_stream=on_stream,
+            on_stream_usage=on_stream_usage,
             can_use_tool=can_use_tool,
             on_tool_event=on_tool_event,
             max_requirements_continuations=_INIT_PROJECT_MAX_REQUIREMENTS_CONTINUATIONS,

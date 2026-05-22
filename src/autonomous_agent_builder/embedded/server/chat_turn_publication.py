@@ -61,6 +61,27 @@ class ChatTurnPublisher:
             },
         )
 
+    async def publish_stream_usage(
+        self,
+        input_tokens: int,
+        cached_tokens: int,
+        output_tokens: int,
+    ) -> None:
+        await self.hub.publish(
+            self.session_id,
+            {
+                "id": f"usage:{self.session_id}",
+                "type": "stream_usage",
+                "status": "streaming",
+                "timestamp": utcnow().isoformat(),
+                "payload": {
+                    "tokens_input": input_tokens,
+                    "tokens_cached": cached_tokens,
+                    "tokens_output": output_tokens,
+                },
+            },
+        )
+
     async def publish_terminal_assistant_response(
         self,
         content: str,

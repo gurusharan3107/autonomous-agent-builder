@@ -21,6 +21,7 @@ async def run_chat_runtime_loop(
     feature_spec_requested: bool,
     active_specialist: Any | None,
     on_stream: Callable[[str], Awaitable[None]],
+    on_stream_usage: Callable[..., Awaitable[None]] | None,
     can_use_tool: Callable[[str, dict[str, Any], Any], Awaitable[Any]],
     on_tool_event: Callable[..., Awaitable[None]],
     max_requirements_continuations: int,
@@ -47,6 +48,7 @@ async def run_chat_runtime_loop(
             ),
             subagents=(active_specialist.name,) if active_specialist is not None else None,
             on_chunk=on_stream,
+            on_stream_usage=on_stream_usage,
             can_use_tool=can_use_tool,
             on_tool_event=on_tool_event,
         )

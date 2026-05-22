@@ -696,3 +696,104 @@ async def test_rate_limit_event_sets_provider_limit_stop_reason(monkeypatch):
     assert result.provider_limit["rate_limit_type"] == "five_hour"
     assert result.provider_limit["utilization"] == 0.99
     assert result.provider_limit["reset_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_stream_event_invokes_on_stream_usage_callback(monkeypatch):
+    """G1: StreamEvent message_start + message_delta accumulate and invoke on_stream_usage."""
+    import sys
+    from types import ModuleType
+
+    class FakeSystemMessage:
+        def __init__(self, sid: str):
+            self.subtype = "init"
+            self.data = {"session_id": sid}
+
+    class FakeAssistantMessage:
+        def __init__(self):
+            self.content = [SimpleNamespace(text="done")]
+
+    class FakeResultMessage:
+        session_id = "usage-session"
+        usage: dict = {}
+        total_cost_usd = 0.0
+        num_turns = 1
+        duration_ms = 0
+        stop_reason = "end_turn"
+
+    class FakeStreamEvent:
+        def __init__(self, event_dict: dict):
+            self.event = event_dict
+
+    class _Opts:
+        def __init__(self, **kw):
+            for k, v in kw.items():
+                setattr(self, k, v)
+
+    class _Client:
+        def __init__(self, options):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return False
+
+        async def query(self, *_a, **_kw):
+            pass
+
+        async def receive_response(self):
+            yield FakeSystemMessage("usage-session")
+            yield FakeStreamEvent(
+                {
+                    "type": "message_start",
+                    "message": {
+                        "usage": {
+                            "input_tokens": 100,
+                            "cache_read_input_tokens": 80,
+                            "cache_creation_input_tokens": 10,
+                        }
+                    },
+                }
+            )
+            yield FakeStreamEvent({"type": "message_delta", "usage": {"output_tokens": 25}})
+            yield FakeAssistantMessage()
+            yield FakeResultMessage()
+
+    fake = ModuleType("claude_agent_sdk")
+    fake.ClaudeAgentOptions = _Opts  # type: ignore[attr-defined]
+    fake.ClaudeSDKClient = _Client  # type: ignore[attr-defined]
+    fake.HookMatcher = type("HM", (), {"__init__": lambda s, **kw: None})  # type: ignore[attr-defined]
+    fake.RateLimitEvent = type("RLE", (), {})  # type: ignore[attr-defined]
+    fake.ResultMessage = FakeResultMessage  # type: ignore[attr-defined]
+    fake.StreamEvent = FakeStreamEvent  # type: ignore[attr-defined]
+    fake.SystemMessage = FakeSystemMessage  # type: ignore[attr-defined]
+    fake.AssistantMessage = FakeAssistantMessage  # type: ignore[attr-defined]
+    fake.AgentDefinition = type("AD", (), {})  # type: ignore[attr-defined]
+    fake.tool = lambda n, d, s, annotations=None: (lambda f: f)  # type: ignore[attr-defined]
+    fake.create_sdk_mcp_server = lambda name, version="1.0.0", tools=None: {  # type: ignore[attr-defined]
+        "name": name,
+        "tools": tools or [],
+    }
+
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake)
+
+    usage_calls: list[tuple[int, int, int]] = []
+
+    async def on_stream_usage(inp: int, cached: int, out: int) -> None:
+        usage_calls.append((inp, cached, out))
+
+    runner = AgentRunner(get_settings())
+    await runner.run_phase(
+        agent_name="chat",
+        prompt="hi",
+        workspace_path=".",
+        on_stream_usage=on_stream_usage,
+    )
+
+    assert len(usage_calls) == 1
+    inp, cached, out = usage_calls[0]
+    assert inp == 100
+    assert cached == 90  # cache_read(80) + cache_creation(10)
+    assert out == 25

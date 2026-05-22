@@ -16,7 +16,7 @@ Live state. If it lies, system is blind.
 | Current Item In Flight | **M1.4 in progress** — per-phase allowlists + preflight probes ✓; forward/reverse workspace validation pending |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-05-22 — M2.3 P0 Tier B SDK fixes landed (G1/G2/G7/G12/StopFailure); M1.4 validation pending |
+| Last Update | 2026-05-22 — G1 Session rail per-turn token visibility wired (stream_usage SSE + AgentPage liveTokens); all M2.3 P0 items complete |
 
 ---
 
@@ -71,7 +71,7 @@ Last result of each [EVALUATION.md](EVALUATION.md) tier. Update on milestone clo
 
 | Tier | Last Run | Status | Notes |
 | --- | --- | --- | --- |
-| Tier 1 — Token + UX | 2026-05-22 (M2.3 P0 live run) | **All 5 bars confirmed** — code-gen cache 56x (run) / 72.4x (fleet); `avoidable_cost_flags=[]`; `chunk_pressure_risk=false`; provider-limit operator copy fires; G1 telemetry captured at run level | G1 per-turn Session-rail wiring → M2.4 |
+| Tier 1 — Token + UX | 2026-05-22 (M2.3 P0 live run) | **All 5 bars confirmed** — code-gen cache 56x (run) / 72.4x (fleet); `avoidable_cost_flags=[]`; `chunk_pressure_risk=false`; provider-limit operator copy fires; G1 per-turn Session rail live ✓ | — |
 | Tier 2 — Lifecycle Coverage | Not yet run | Pending | Runs at M2.1 |
 | Tier 3 — Head-to-Head | Not yet run | Pending | Runs at M3.4 |
 
@@ -81,7 +81,8 @@ Last result of each [EVALUATION.md](EVALUATION.md) tier. Update on milestone clo
 
 One line per durable decision. Keep recent 20; older → `builder memory add` if durable, else delete.
 
-- **2026-05-22** — M2.3 P0 Tier B SDK fixes confirmed by live devpulse code-gen run: G2 (`exclude_dynamic_sections`) — latest 10-turn code-gen: 219592 cached / 15 raw input = **56x** per-run (99.99% cache hit); fleet code-gen: 72.4x. G12 — `avoidable_cost_flags=[]`, `chunk_pressure_risk=false`. G1 — run-level telemetry captured (per-turn StreamEvent UI wiring is M2.4 follow-up). G7 — strict MCP, no regressions. StopFailure — provider-limit blocked card fires operator copy. All 5 Tier-1 bars confirmed. `recommended_next_change: maintain_current_flow`.
+- **2026-05-22** — G1 Session rail wiring complete: `StreamEvent message_start/message_delta` per-turn usage accumulated in `runner.py`; `on_stream_usage` async callback threaded through `ClaudeRuntime` → `run_chat_runtime_loop` → `agent.py`; `publish_stream_usage` on `ChatTurnPublisher` emits `stream_usage` SSE; `AgentPage.tsx` `liveTokens` state overrides `currentTurnTokens` during active runs. 16/16 `test_agent_runner.py` green (1 new: `test_stream_event_invokes_on_stream_usage_callback`).
+- **2026-05-22** — M2.3 P0 Tier B SDK fixes confirmed by live devpulse code-gen run: G2 (`exclude_dynamic_sections`) — latest 10-turn code-gen: 219592 cached / 15 raw input = **56x** per-run (99.99% cache hit); fleet code-gen: 72.4x. G12 — `avoidable_cost_flags=[]`, `chunk_pressure_risk=false`. G7 — strict MCP, no regressions. StopFailure — provider-limit blocked card fires operator copy. All 5 Tier-1 bars confirmed. `recommended_next_change: maintain_current_flow`.
 - **2026-05-22** — ROADMAP SDK-grounded additions (codebase-validated): M2.3 P0 (G1/G2/G7/G12) + StopFailure hook; M2.4 G6 `include_hook_events`; M2.5 G4 file checkpointing + G13 `effort:"xhigh"`; M2.6 G5 `permissionDecision="defer"` + typed-retry refinement; M3.2 G3 `SessionStore` HARD prereq + M3.3 dependency note. INSIGHTS revalidation entry appended: withdrew standalone G8 (`AskUserQuestion` already adopted); narrowed G15 (partial in `runner.py:818-845`); audited 5 closed IMPs as already SDK-covered. Commit `2613dc6`.
 - **2026-05-22** — M1.4 per-phase allowlists + preflight probes: scaffold `Glob`/`Grep` removed; gate-remediator `Glob` removed; scaffold `auto_approve_tools` AskUserQuestion bug fixed; `SubagentDefinition.max_turns` added (→ SDK `maxTurns`); `AgentRunner._preflight_workspace` added; SDK 0.2.85; `test_all_agents_defined` includes gate-remediator. 9 new tests, 88 green.
 - **2026-05-22** — 10 prevention items added to ROADMAP across M1.4/M1.5/M2.1/M2.3/M2.5/M2.6 from INSIGHTS Run #7 (IMP-001..013 + recent gate-remediator → SDK levers: `can_use_tool`, `ClaudeSDKClient`, per-phase `allowed_tools`, `include_partial_messages`, `RateLimitEvent`, typed `AssistantMessageError`, `AgentDefinition.maxTurns`). Two M2.6 items = autopilot preconditions. SDK doctrine → `docs/references/coding-agent-prevention.md`.

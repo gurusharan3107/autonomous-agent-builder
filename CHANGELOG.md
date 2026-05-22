@@ -7,6 +7,21 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-22 - G1 Session rail: per-turn token visibility via stream_usage SSE
+
+### Changed
+
+- **`agents/runner.py`** — `StreamEvent message_start` accumulates `input_tokens + cache_read + cache_creation`; `message_delta` accumulates `output_tokens`; fires `on_stream_usage(input, cached, output)` async callback after each delta. `run_phase` / `_execute_query` signatures extended with `on_stream_usage` parameter.
+- **`runtime/claude_runtime.py`** — `run()` signature extended with `on_stream_usage`; forwarded to both `run_phase()` calls.
+- **`embedded/server/chat_turn_runtime.py`** — `run_chat_runtime_loop()` extended with `on_stream_usage`; forwarded to `runtime.run()`.
+- **`embedded/server/chat_turn_publication.py`** — `publish_stream_usage(input, cached, output)` method added to `ChatTurnPublisher`; emits `stream_usage` hub event (no DB persistence, matches `publish_stream_delta` pattern).
+- **`embedded/server/routes/agent.py`** — `on_stream_usage` closure registered after `on_stream`; calls `turn_publisher.publish_stream_usage()`.
+- **`frontend/src/pages/AgentPage.tsx`** — `liveTokens` state accumulates `stream_usage` SSE payloads; `currentTurnTokens` overrides `statusTokenAccounting` during active runs; cleared on session load.
+
+### Validation
+
+- `pytest tests/test_agent_runner.py`: 16/16 green (1 new: `test_stream_event_invokes_on_stream_usage_callback` — verifies `message_start` + `message_delta` accumulation fires `on_stream_usage` with correct `(100, 90, 25)` tuple).
+
 ## 2026-05-22 - M2.3 P0 Tier B: SDK cost + telemetry cluster (G1/G2/G7/G12/StopFailure)
 
 ### Changed

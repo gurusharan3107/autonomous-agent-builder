@@ -89,6 +89,7 @@ export default function AgentPage() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [latestResumeSessionId, setLatestResumeSessionId] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState("");
+  const [liveTokens, setLiveTokens] = useState<{ tokens_input: number; tokens_cached: number; tokens_output: number } | null>(null);
   const [questionDrafts, setQuestionDrafts] = useState<Record<string, QuestionDraft>>({});
   const [approvalDrafts, setApprovalDrafts] = useState<Record<string, ApprovalDraft>>({});
   const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
@@ -577,6 +578,7 @@ export default function AgentPage() {
       setProviderName(payload.provider ?? payload.status?.provider ?? null);
       setStatus(payload.status ?? null);
       setStreamingText("");
+      setLiveTokens(null);
       setLoading(historyStillLoading(payload));
     });
 
@@ -587,6 +589,11 @@ export default function AgentPage() {
       if (payload.type === "assistant_stream_delta") {
         setStreamingText((current) => current + String(payload.payload.content ?? ""));
         setLoading(true);
+        return;
+      }
+
+      if (payload.type === "stream_usage") {
+        setLiveTokens(payload.payload as { tokens_input: number; tokens_cached: number; tokens_output: number });
         return;
       }
 
@@ -1111,7 +1118,16 @@ export default function AgentPage() {
   );
   const taskRunLogItems = useMemo(() => buildTaskRunLogItems(selectedTraceEvents), [selectedTraceEvents]);
   const taskRunDiff = selectedTraceRun?.diff_summary ?? null;
-  const currentTurnTokens = statusTokenAccounting(status);
+  const currentTurnTokens = liveTokens != null
+    ? {
+        rawTotal: liveTokens.tokens_input + liveTokens.tokens_output,
+        noncachedPlusOutput: Math.max(liveTokens.tokens_input - liveTokens.tokens_cached, 0) + liveTokens.tokens_output,
+        cached: liveTokens.tokens_cached,
+        input: liveTokens.tokens_input,
+        output: liveTokens.tokens_output,
+        cacheRatio: liveTokens.tokens_input > 0 ? liveTokens.tokens_cached / liveTokens.tokens_input : 0,
+      }
+    : statusTokenAccounting(status);
   const traceSelectorRail = (
     <AgentTraceRail
       activeSprintId={activeSprintId}

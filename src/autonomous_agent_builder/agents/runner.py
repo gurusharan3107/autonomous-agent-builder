@@ -364,6 +364,7 @@ class AgentRunner:
         subagents: tuple[str, ...] | None = None,
         custom_tools: dict[str, Any] | None = None,
         on_stream: Any | None = None,
+        on_stream_usage: Any | None = None,
         can_use_tool: Any | None = None,
         on_tool_event: Any | None = None,
     ) -> RunResult:
@@ -376,6 +377,7 @@ class AgentRunner:
             resume_session: session_id from a prior phase for context chaining.
             custom_tools: Dict of custom tool name -> callable.
             on_stream: Async callback for streaming output to dashboard.
+            on_stream_usage: Async callback(input, cached, output) for live token telemetry.
 
         Returns:
             RunResult with cost, session_id, and output.
@@ -428,6 +430,7 @@ class AgentRunner:
                 runtime_policy=runtime_policy,
                 subagents=subagents,
                 on_stream=on_stream,
+                on_stream_usage=on_stream_usage,
                 can_use_tool=can_use_tool,
                 on_tool_event=on_tool_event,
             )
@@ -453,6 +456,7 @@ class AgentRunner:
                         ),
                         subagents=subagents,
                         on_stream=on_stream,
+                        on_stream_usage=on_stream_usage,
                         can_use_tool=can_use_tool,
                         on_tool_event=on_tool_event,
                     )
@@ -567,6 +571,7 @@ class AgentRunner:
         runtime_policy: AgentRuntimePolicy,
         subagents: tuple[str, ...] | None,
         on_stream: Any | None,
+        on_stream_usage: Any | None,
         can_use_tool: Any | None,
         on_tool_event: Any | None,
     ) -> RunResult:
@@ -782,6 +787,10 @@ class AgentRunner:
             }
 
         rate_limit_info_captured = None
+        # Running totals for G1 per-turn StreamEvent usage (reset per _execute_query call)
+        _live_input = 0
+        _live_cached = 0
+        _live_output = 0
 
         try:
             async with ClaudeSDKClient(options=options) as client:
@@ -801,7 +810,19 @@ class AgentRunner:
                             )
 
                     elif isinstance(message, StreamEvent):
-                        pass  # per-turn events enabled by include_partial_messages; usage extraction wired in M2.3 follow-up
+                        ev = message.event or {}
+                        ev_type = ev.get("type", "")
+                        if ev_type == "message_start":
+                            u = ev.get("message", {}).get("usage", {})
+                            _live_input += u.get("input_tokens", 0)
+                            _live_cached += u.get("cache_read_input_tokens", 0) + u.get(
+                                "cache_creation_input_tokens", 0
+                            )
+                        elif ev_type == "message_delta":
+                            u = ev.get("usage", {})
+                            _live_output += u.get("output_tokens", 0)
+                            if on_stream_usage:
+                                await on_stream_usage(_live_input, _live_cached, _live_output)
 
                     elif isinstance(message, AssistantMessage):
                         for block in message.content:

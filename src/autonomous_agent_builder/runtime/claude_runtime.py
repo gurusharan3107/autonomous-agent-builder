@@ -79,6 +79,7 @@ class ClaudeRuntime(AgentRuntime):
         effort: str | None = None,
         approval_policy: str | None = None,
         on_chunk: Callable[[str], Any] | None = None,
+        on_stream_usage: Callable[..., Any] | None = None,
         subagents: tuple[str, ...] | None = None,
         can_use_tool: Callable[..., Any] | None = None,
         on_tool_event: Callable[..., Any] | None = None,
@@ -103,6 +104,7 @@ class ClaudeRuntime(AgentRuntime):
                 resume_session=session,
                 subagents=subagents,
                 on_stream=on_chunk,
+                on_stream_usage=on_stream_usage,
                 can_use_tool=can_use_tool,
                 on_tool_event=on_tool_event,
             )
@@ -117,6 +119,7 @@ class ClaudeRuntime(AgentRuntime):
                         resume_session=None,
                         subagents=subagents,
                         on_stream=on_chunk,
+                        on_stream_usage=on_stream_usage,
                         can_use_tool=can_use_tool,
                         on_tool_event=on_tool_event,
                     )
