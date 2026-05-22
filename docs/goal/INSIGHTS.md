@@ -95,3 +95,127 @@ Builder-runtime evidence across all six runs: `maintain_current_flow` dominated;
 2. **Commit the uncommitted M1.4 changes before claiming `[x]` items.** `post_ship_optimization.py` and `quality_gate_runner.py` are modified but unstaged. Per Hard Rule 14, CHANGELOG update + commit must land before any M1.4 item is ticked `[x]`. *Already tracked as M1.4 `[ ]` items — no new ROADMAP item; confirming execution is in progress, not yet closeable.*
 3. **No new ROADMAP items needed this audit.** M1.4 forward/reverse workspace validation (`[ ]` items) is the concrete next execution step. M2.2 already tracks KB freshness as a `[ ]` item. Nothing from this session falls outside existing roadmap coverage.
 
+---
+
+## 2026-05-22 — Architecture review against Claude Agent SDK rubric (ad-hoc, runtime-explainer-driven)
+<!-- collected_at: 2026-05-22 (manual entry; not from goal-audit collector) -->
+
+Source: review of [`autonomous-agent-builder-runtime-explainer.html`](../../autonomous-agent-builder-runtime-explainer.html) cross-referenced against KB article `2026-05-22-claude-agent-sdk-rubric` (SDK `0.2.85`). Manual entry — written outside `goal-audit` skill. Run #7 already mapped lifecycle/retry/max_turns/allowlists/`can_use_tool` to ROADMAP; this pass surfaces the **next layer**: cost telemetry, durable session, output normalization, deferred permissions.
+
+### Gaps already covered by ROADMAP (no action)
+
+| SDK lever | Roadmap item |
+| --- | --- |
+| `async with ClaudeSDKClient` context manager | M1.5 |
+| `receive_response()` early-`break` drain audit | M2.1 |
+| `can_use_tool` callback (block parallel/wrong-tool/precondition) | M2.6 |
+| Typed retry (`AssistantMessageError`, `api_error_status`, `RateLimitEvent`) | M2.6 + M2.3 |
+| `AgentDefinition.maxTurns` per subagent | M1.4 ✓ / M2.5 |
+| Per-phase `allowed_tools` allowlists (never union) | M1.4 ✓ |
+| Preflight probes before dispatch | M1.4 ✓ |
+
+### New gaps not yet on ROADMAP
+
+| # | SDK lever | Current state | Payoff |
+| --- | --- | --- | --- |
+| G1 | `include_partial_messages=True` → `StreamEvent` per-turn telemetry | Claude lane batches usage from `ResultMessage` at run end (explainer § Observability) | Closes Claude-vs-Codex parity on Agent Page Session rail; M2.3 prerequisite |
+| G2 | `exclude_dynamic_sections=True` on `SystemPromptPreset` | Uses `preset:"claude_code"` + project setting_sources; dynamic cwd/memory/git in system prompt | Direct unlock for Tier-1 `cache_ratio > 5x` bar (pending) |
+| G3 | `SessionStore` adapter (Python parity 0.1.64) + conformance harness | Local JSONL + `Task.session_id`; resume requires same `cwd` | Prerequisite for M3.2 (30+ day resume) and M3.3 (multi-operator) |
+| G4 | File checkpointing (`/agent-sdk/file-checkpointing`) | Workspace isolation + git rebase only; `gate-remediator` "never delete files" enforced by prompt | Replaces prompt rule with SDK guarantee; cheaper auto-recovery |
+| G5 | `permissionDecision="defer"` + `DeferredToolUse` | BLOCKED state halts whole task | Cleaner mid-run approval gates; pairs with M2.6 autopilot |
+| G6 | `include_hook_events=True` → `HookEventMessage` stream | Hook events (workspace boundary, bash validation) logged out-of-band | Operator-visible block reasons in Agent Page; M2.4 contributor |
+| G7 | `strict_mcp_config=True` | In-process `mcp__builder` + `mcp__workspace` registered without floor | Hardens M1.4 per-phase allowlist boundary against MCP drift |
+| G8 | Claude lane `AskUserQuestion` adoption audit | Explainer lists Codex `item/tool/requestUserInput` but not Claude `AskUserQuestion` — asymmetric | Verify both lanes use native structured Q&A |
+| G9/G10 | `skills` option + `disable_mode` | Prompt-shaped scaffolding instead of loadable skills | Compounding-knowledge story (M2.2); cuts skill description token cost |
+| G11 | `thinking_display` per-phase | Adaptive thinking set; display control unclear | Agent Page UX polish |
+| G12 | `PostToolUseHookSpecificOutput.updatedToolOutput` (replace tool output before model sees it) | PostToolUse logs only; noisy pytest/ruff/diff output reaches model in full | **Highest cost ROI**; feeds Tier-1 `avoidable_cost_flags: []` |
+| G13 | `effort:"xhigh"` (Opus 4.7 deep reasoning) | `execution_policy.py` resolves low/medium/high | Carve-out for planner/designer on high-complexity items |
+| G14 | Per-tool MCP permission policy (TS only) | N/A on Claude lane today | Track for TS port |
+| G15 | Typed SDK error catch (`CLINotFoundError`/`ProcessError`/`CLIJSONDecodeError`) | `failure_diagnosis.py` exists; typed catch surface unclear | Tighter `FAILED` vs `CAPABILITY_LIMIT` discrimination |
+| G16 | Bash permission hardening audit (SDK 0.2.85) | `validate_bash_argv` hook present | Re-audit allow rules against recent SDK tightening |
+
+### Recommended actions (priority)
+
+**P0 — Insert into Epoch 1 (M1.4 / M2.3 scope; low risk, immediate measurable payoff):**
+
+1. **G2 — `exclude_dynamic_sections=True`**: single config flip; verifiable via `builder logs analyze` cache_ratio delta. Add as M2.3 item.
+2. **G12 — `updatedToolOutput` truncation/normalization** for noisy tools (pytest, ruff, git diff). Highest cost ROI for Tier-1 `avoidable_cost_flags: []`. Add as M2.3 item.
+3. **G1 — `include_partial_messages=True`** on Claude lane. Direct unblock of M2.3 "per-turn tokens visible in Agent page Session rail in both lanes" (currently Claude-lane-blocked).
+4. **G7 — `strict_mcp_config=True`** alongside M1.4 per-phase allowlists. Same boundary; deterministic MCP set per phase.
+
+**Proposed grouping:** new sub-milestone **M2.3.1 — SDK-native cost & telemetry levers** to hold G1/G2/G7/G12 together so they ride with cost-aware-execution work rather than waiting.
+
+**P1 — Epoch 2 differentiators (front-load before M3.2/M3.3 attempts):**
+
+5. **G3 — `SessionStore` adapter (Postgres-backed)** with conformance harness validation. **Hard prerequisite** for M3.2 and M3.3; resume-by-cwd brittleness blocks both today.
+6. **G4 — File checkpointing** for `gate-remediator` and other scope-limited agents. Replaces prompt rule from `project_gate_remediator.md` memory with SDK guarantee.
+7. **G5 — `permissionDecision="defer"` + `DeferredToolUse`** for risky mid-run actions. M2.6 autopilot precondition for security-flagged calls.
+8. **G6 — `include_hook_events=True`** streaming on Agent Page. M2.4 "no internals leakage" contributor.
+
+**P2 — Polish / capacity (Epoch 2-3):**
+
+9. **G9/G10 — `skills` + `disable_mode`** for generated-app per-project skills; optimization-agent can encode reusable patterns as loadable skills.
+10. **G8 — Audit Claude lane `AskUserQuestion` adoption** for parity with Codex `requestUserInput`. Update explainer table.
+11. **G13 — `effort:"xhigh"`** policy carve-out in `execution_policy.py` for planner/designer on high-complexity items.
+12. **G15 — Typed SDK error catch surface** in `failure_diagnosis.py`.
+13. **G11 — `thinking_display`** per-phase policy.
+14. **G16 — Bash permission hardening audit** against SDK 0.2.85.
+
+### Verification gate
+
+Before implementing any of G1–G16: `ctx7 docs /anthropics/claude-agent-sdk-python "<feature>"` against pinned SDK `0.2.85` — signatures move between minor releases.
+
+### Suggested ROADMAP.md change
+
+Add **M2.3.1 — SDK-native cost & telemetry levers** (or fold G1/G2/G7/G12 as four `[ ]` items under existing M2.3). Add **G3 SessionStore adapter** as an explicit `[ ]` prerequisite under M3.2 to prevent that milestone from being attempted on local-JSONL resume. HARD RULE: this skill does not edit ROADMAP.
+
+---
+
+## 2026-05-22 — Codebase-grounded revalidation of the ad-hoc rubric pass
+<!-- collected_at: 2026-05-22 (manual entry; codebase-grounded follow-up to the ad-hoc rubric review above) -->
+
+Source: `workflow knowledge read 2026-05-22-claude-agent-sdk-rubric` cross-referenced against `grep -rn <lever> src/`. Closes the verification gap in the prior ad-hoc entry: G1–G16 were mapped from the runtime-explainer + rubric only, without confirming codebase state. This pass validates each candidate before ROADMAP commitment.
+
+### Validation table
+
+| Gap | Codebase state | Action |
+|---|---|---|
+| G1 `include_partial_messages` | absent | Added to M2.3 (P0) — commit prior |
+| G2 `exclude_dynamic_sections` | absent; `claude_runtime.py:247-248` confirms `preset:"claude_code"` + `setting_sources=["project"]` without the flag | Added to M2.3 (P0) — commit prior |
+| G3 `SessionStore` adapter | absent; resume is local-JSONL + cwd-bound | Added as **HARD prerequisite** under M3.2 + dependency note on M3.3 |
+| G4 file checkpointing | absent; gate-remediator relies on `.memory/project_gate_remediator.md` prompt rule | Added to M2.5 architecture rubric |
+| G5 `permissionDecision="defer"` + `DeferredToolUse` | absent | Added to M2.6 |
+| G6 `include_hook_events` → `HookEventMessage` | absent | Added to M2.4 |
+| G7 `strict_mcp_config` | absent | Added to M2.3 (P0) — commit prior |
+| G8 `AskUserQuestion` Claude-lane audit | **already adopted**: extensive use across `agent_tool_policy.py`, `agents/definitions.py` (7+ instructional sites + `allowed_tools` entries) | **No ROADMAP action**; prior recommendation withdrawn |
+| G9/G10 `skills` + `disable_mode` | not searched this pass | Defer — P2 |
+| G11 `thinking_display` | not searched this pass | Defer — P2 |
+| G12 `updatedToolOutput` | absent | Added to M2.3 (P0) — commit prior |
+| G13 `effort:"xhigh"` | `effort` plumbed via `execution_policy.py` and `orchestrator/agent_run_lifecycle.py:192,310` but only `low/medium/high/none` resolved; `xhigh` absent | Added to M2.5 with a complexity-threshold gate |
+| G14 per-tool MCP permission (TS) | N/A on Python lane | No action |
+| G15 typed SDK error catch | **partial**: `agents/runner.py:818-845` catches `CLINotFoundError`/`ProcessError`/`CLIJSONDecodeError`; `AssistantMessageError` literal + `api_error_status` absent | Narrowed scope of existing M2.6 typed-retry item to reference the gap explicitly; no new bullet |
+| G16 bash permission hardening | `validate_bash_argv` hook present; re-audit deferred | Defer — P2 |
+| `StopFailure` hook (rubric § Hooks) | mentioned only in a docstring in `services/provider_limits.py`; no hook registration | Augmented existing M2.3 `RateLimitEvent` item to require the hook |
+| `can_use_tool` / `PermissionResultDeny` | absent | Already correctly listed `[ ]` in M2.6 |
+| `async with ClaudeSDKClient` | `ClaudeSDKClient` referenced across runtime + agents; full `async with`-as-context-manager pattern needs follow-up grep | Already correctly listed `[ ]` in M1.5 |
+
+### Completed-item SDK-debt audit (no new ROADMAP entries needed)
+
+The following closed IMPs would be cleaner under SDK-native levers, but each is already covered by a pending ROADMAP item — no new entries required:
+
+| Closed item | Current implementation | SDK-native version | Covered by |
+|---|---|---|---|
+| IMP-003 | `dashboard_metrics.py` diagnostic note for zero tokens | `include_partial_messages=True` → `StreamEvent` token deltas | M2.3 § G1 |
+| IMP-006 | Prompt constraint in `agents/definitions.py` against Bash heredoc | `can_use_tool` callback returning `PermissionResultDeny` | M2.6 `can_use_tool` item |
+| IMP-007 | `dispatch_lock.py` backend guard | `can_use_tool` callback at SDK boundary | M2.6 `can_use_tool` item |
+| IMP-009 | HTTP timeout + pre-dispatch scaffold-running guard | `can_use_tool` precondition deny | M2.6 `can_use_tool` item |
+| IMP-010 | `try/finally` + flush-error structlog in `agent_run_lifecycle.py` | `async with ClaudeSDKClient` `__aexit__` | M1.5 `ClaudeSDKClient` migration item |
+
+### Verdict
+
+Codebase validation **reduced** the open SDK-lever surface from 14 candidates (G1–G14 net of TS-only) to ~10 net additions (G1, G2, G3, G4, G5, G6, G7, G12, G13, `StopFailure` hook), and **withdrew** the standalone G8 recommendation. No completed work needs to be re-opened.
+
+### Suggested ROADMAP.md change
+
+All validated additions landed in ROADMAP this session (M2.3 × 4 P0 + StopFailure augmentation, M2.4 × 1, M2.5 × 2, M2.6 × 1 + typed-retry refinement, M3.2 × 1 + M3.3 dependency note). No further ROADMAP changes pending from this revalidation. HARD RULE: this entry is manual; no skill ran.
+

@@ -113,7 +113,11 @@ Token / cache / chunk / avoidable-cost telemetry is first-class: Metrics page, A
 - [ ] Per-turn non-cached-plus-output, raw, and cached tokens visible and accurate in the Agent page Session rail in both lanes.
 - [ ] Observability recommendations distinguish builder-owned optimization candidates from general workflow-state warnings (approval/blocked signals routed to builder state, not optimization).
 - [ ] Optimization-agent only runs when post-ship evidence demonstrates a candidate; never on Builder-owned generated-app residuals.
-- [ ] **First-class `RateLimitEvent` surface in dashboard.** Provider-limit blocked states map to `RateLimitEvent.status` (`allowed_warning | rejected`) + `resets_at` + `utilization` + `rate_limit_type`, not to stale gate failures. Operator sees "limit resets in 2h", not "gate failed". *(INSIGHTS Run #7 § P1-4; aligns with CLAUDE.md provider-limit rule.)*
+- [ ] **First-class `RateLimitEvent` surface in dashboard, driven by `StopFailure` hook.** Provider-limit blocked states map to `RateLimitEvent.status` (`allowed_warning | rejected`) + `resets_at` + `utilization` + `rate_limit_type`, not to stale gate failures. Wire a `StopFailure` hook (article `2026-05-08-stopfailure-hook-for-provider-limit-state-management`) so the SDK signals provider-limit blocking deterministically — `services/provider_limits.py` currently mentions StopFailure only in a docstring with no hook registration. Operator sees "limit resets in 2h", not "gate failed". *(INSIGHTS Run #7 § P1-4; aligns with CLAUDE.md provider-limit rule; SDK rubric § Hooks.)*
+- [ ] **G2 — `exclude_dynamic_sections=True` on `SystemPromptPreset`.** Single config flip on the `preset:"claude_code"` + `project_setting_sources` path; eliminates dynamic cwd/memory/git sections from the system prompt on every turn. Verify via `builder logs analyze` cache_ratio delta — directly unlocks the pending Tier-1 `cache_ratio > 5x` bar. Pre-requisite: `ctx7 docs /anthropics/claude-agent-sdk-python "exclude_dynamic_sections SystemPromptPreset"` against pinned SDK 0.2.85. *(INSIGHTS ad-hoc § G2, P0.)*
+- [ ] **G12 — `PostToolUseHookSpecificOutput.updatedToolOutput` truncation/normalization.** Intercept noisy tool outputs (pytest, ruff, git diff) in the PostToolUse hook and replace with a trimmed summary before the model sees them. Verify by confirming `avoidable_cost_flags: []` in `builder logs analyze` after a gate-heavy run. Highest cost ROI of all P0 items. Pre-requisite: `ctx7 docs /anthropics/claude-agent-sdk-python "PostToolUseHookSpecificOutput updatedToolOutput"` against SDK 0.2.85. *(INSIGHTS ad-hoc § G12, P0.)*
+- [ ] **G1 — `include_partial_messages=True` on Claude lane `ClaudeSDKClient`.** Enables per-turn `StreamEvent` usage telemetry instead of batching from `ResultMessage` at run end. Direct unblock for "per-turn tokens visible in Agent page Session rail in both lanes" (currently Claude-lane-blocked). Pre-requisite: `ctx7 docs /anthropics/claude-agent-sdk-python "include_partial_messages StreamEvent"` against SDK 0.2.85. *(INSIGHTS ad-hoc § G1, P0.)*
+- [ ] **G7 — `strict_mcp_config=True` on `ClaudeSDKClient`.** Enforces that only the explicitly registered in-process MCP tools (`mcp__builder`, `mcp__workspace`) are visible per phase. Pairs with M1.4 per-phase `allowed_tools` allowlists to harden against MCP drift at the SDK boundary. Pre-requisite: `ctx7 docs /anthropics/claude-agent-sdk-python "strict_mcp_config"` against SDK 0.2.85. *(INSIGHTS ad-hoc § G7, P0.)*
 
 ### M2.4 — Operator UX polish to "no internals leakage"
 
@@ -123,6 +127,7 @@ Every operator-facing surface respects [OPERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.
 - [ ] All pending questions and approvals render readable operator labels (no `[object Object]`, no internal payload objects).
 - [ ] Inline question/approval controls land in the composer/footer (one control owner), with historical timeline entries as evidence only.
 - [ ] Recover button visible only when blocked-reason is actually recoverable. Otherwise an actionable next-step message.
+- [ ] **G6 — `include_hook_events=True` → `HookEventMessage` stream surfaced on Agent page.** Today PreToolUse/PostToolUse outcomes (workspace boundary, bash validation, dispatch lock) are logged out-of-band; operators see opaque "blocked" cards. Streaming `HookEventMessage` lets the Agent timeline render the actual block reason in operator language. Verified absent in `src/`. *(SDK rubric § Hooks; INSIGHTS ad-hoc § G6, P1.)*
 
 ### M2.6 — Autopilot mode
 
@@ -134,7 +139,8 @@ When enabled: orchestrator owns approval, recovery, continuation — no operator
 - [ ] All autopilot actions are dashboard-visible (Board + Agent timeline show who approved/recovered: operator or autopilot).
 - [ ] Autopilot does not approve design/plan phases if the operator has not confirmed scope; only implementation-onwards phases are eligible by default.
 - [ ] **`can_use_tool` callback enforces subagent phase boundaries (autopilot precondition).** Without operator oversight, prompt-only tool guidance is insufficient — return `PermissionResultDeny(message="...", interrupt=False)` to block parallel dispatches (IMP-007 class), wrong-tool selection (IMP-006 class), or precondition-violating calls (IMP-009 class) at the SDK boundary, one layer earlier than the existing `dispatch_lock.py` backend guard. *(INSIGHTS Run #7 § Section C Action 2, P0-1.)*
-- [ ] **Retry/cycle state machine fed from typed SDK error signals (autopilot precondition).** Use `ResultMessage.is_error`, `ResultMessage.errors`, `ResultMessage.api_error_status`, `AssistantMessageError` literal (`"rate_limit" | "max_output_tokens" | "server_error" | ...`), and `RateLimitEvent`. Increment cycle-detection counter on the transition itself; never on the next (commit `1153ec6` lesson). Synthetic-state test for every retry path before autopilot ships unattended. *(INSIGHTS Run #7 § P2-5.)*
+- [ ] **Retry/cycle state machine fed from typed SDK error signals (autopilot precondition).** Use `ResultMessage.is_error`, `ResultMessage.errors`, `ResultMessage.api_error_status`, `AssistantMessageError` literal (`"rate_limit" | "max_output_tokens" | "server_error" | ...`), and `RateLimitEvent`. Increment cycle-detection counter on the transition itself; never on the next (commit `1153ec6` lesson). Synthetic-state test for every retry path before autopilot ships unattended. *(INSIGHTS Run #7 § P2-5. `agents/runner.py:818-845` already catches `CLINotFoundError`/`ProcessError`/`CLIJSONDecodeError`; extend to `AssistantMessageError`/`api_error_status`.)*
+- [ ] **G5 — `permissionDecision="defer"` + `DeferredToolUse` for mid-run approval gates.** Today high-risk tool calls during unattended runs collapse the task to BLOCKED state; with autopilot on, this is a dead end. Returning `permissionDecision="defer"` from a `PreToolUseHookSpecificOutput` queues a `DeferredToolUse` the operator (or autopilot policy) can resolve later without halting the surrounding plan. Verified absent in `src/`. Pre-requisite: `ctx7 docs /anthropics/claude-agent-sdk-python "permissionDecision defer DeferredToolUse"` against SDK 0.2.85. *(SDK rubric § Permissions; INSIGHTS ad-hoc § G5, P1.)*
 
 ### M2.5 — Architecture and design language coherence
 
@@ -146,6 +152,8 @@ The dashboard feels like one product.
 - [ ] **Codify the short-lived-session pattern in the backend rubric.** Dispatch session stays idle during `runtime.run()`; intermediate DB writes from `on_chunk`/`receive_response` use `async with get_session_factory()() as db:` per chunk (IMP-012 pattern); SSE endpoints never `Depends(get_db)` past the initial snapshot (IMP-011 pattern). *(INSIGHTS Run #7 § P0-2.)*
 - [ ] **Empty-response envelope convention in the backend rubric.** Every aggregation endpoint that can return empty/zero returns a `state` field (`"running" | "no_data" | "scope_mismatch"`) plus a `note` string (IMP-003 `active_runs_note` pattern, IMP-005 `memory_root` pattern). *(INSIGHTS Run #7 § P1-4.)*
 - [ ] **`AgentDefinition.maxTurns` set per subagent** in the subagent definition rubric. Caps runaway loops at the SDK boundary. *(INSIGHTS Run #7 § P0-1.)*
+- [ ] **G4 — File checkpointing for scope-limited subagents (gate-remediator, integration-resolver, build-verifier).** Replace the current "never delete files" prompt rule (`.memory/project_gate_remediator.md`) with an SDK-guaranteed checkpoint/revert boundary. Subagent runs in a checkpoint; on policy violation or hook denial, revert. Codify in the subagent definition rubric so the prompt rule becomes belt-and-braces, not the primary defense. Verified absent in `src/`. *(SDK rubric § Session lifecycle; INSIGHTS ad-hoc § G4, P1.)*
+- [ ] **G13 — `effort:"xhigh"` carve-out for planner/designer on high-complexity items in `execution_policy.py`.** Today `execution_policy.py` plumbs `effort` as `low/medium/high/none` only (Opus 4.7 supports `"xhigh"` for deep reasoning). Carve-out only fires when item complexity score crosses a documented threshold so the cost ceiling is bounded. *(SDK rubric § Configuration; INSIGHTS ad-hoc § G13, P2.)*
 
 ---
 
@@ -167,6 +175,7 @@ Non-trivial app (15+ features, integrations, real DB / auth / deployment), end-t
 
 Survives 30+ day gaps and multi-machine usage with no operator confusion.
 
+- [ ] **G3 — `SessionStore` adapter (Postgres-backed) with conformance harness validation. HARD PREREQUISITE for the items below.** Today resume relies on local JSONL + `Task.session_id` keyed by workspace `cwd` (`.memory` confirms cwd-bound resume); a 30-day gap or second machine breaks this contract. SDK adds `SessionStore` parity in Python `0.1.64` with a conformance harness — implement, validate, then ship M3.2 items. Verified absent in `src/`. Pre-requisite: `ctx7 docs /anthropics/claude-agent-sdk-python "SessionStore conformance"` against SDK 0.2.85. *(SDK rubric § Session lifecycle; INSIGHTS ad-hoc § G3, P1; article `2026-04-24-python-agent-sdk-adds-sessionstore-parity-and-a-conformance-`.)*
 - [ ] Operator returns to a project after 30+ days; sees the same Board, Backlog, Inbox, Agent state. No stale "running" markers. Memory and KB still relevant.
 - [ ] Same project resumed from a second machine (operator on laptop and desktop) with consistent state.
 
@@ -174,7 +183,7 @@ Survives 30+ day gaps and multi-machine usage with no operator confusion.
 
 Two operators on the same project, no stepping on each other.
 
-- [ ] Two concurrent Agent sessions on the same project produce consistent state.
+- [ ] Two concurrent Agent sessions on the same project produce consistent state. **Depends on G3 `SessionStore` adapter (M3.2).**
 - [ ] Approvals attributable to the operator who granted them.
 - [ ] Memory and KB capture the team's accumulated learning, not just one operator's.
 
