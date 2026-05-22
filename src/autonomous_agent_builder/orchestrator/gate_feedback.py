@@ -1,17 +1,25 @@
-"""Gate feedback loop — FAIL -> autofix -> retry -> CAPABILITY_LIMIT.
+"""Gate feedback loop — FAIL -> autofix -> agent-remediator -> retry -> CAPABILITY_LIMIT.
 
 Flow:
   Gate FAIL → remediation_possible?
-    YES → semgrep --autofix --dryrun → apply → re-run gate
+    YES → deterministic autofix (ruff --fix / eslint --fix) → re-run gate
       PASS → continue
-      FAIL → agent-assisted fix
-    NO → agent-assisted fix
+      FAIL → gate-remediator agent (targeted intelligent fix)
+        PASS → continue
+        FAIL → agent-assisted code-gen retry
+    NO → gate-remediator agent (targeted intelligent fix)
+      PASS → continue
+      FAIL → agent-assisted code-gen retry
 
-  agent-assisted fix:
+  gate-remediator agent:
+    Receives exact gate output, workspace path, error code.
+    Has Read/Write/Edit/run_command tools — workspace-scoped only.
+    Bounded to 8 turns, $0.75 budget.
+    Emits GATE_FIX_RESULT_JSON: {"fixed": true/false, ...}.
+
+  agent-assisted code-gen retry:
     retry_count < MAX_RETRIES (2)?
       YES → dispatch code-gen with gate feedback
-        same error? → CAPABILITY_LIMIT
-        different error? → retry loop
       NO → CAPABILITY_LIMIT
 
   CAPABILITY_LIMIT:
@@ -22,6 +30,8 @@ Flow:
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, datetime
 
 import structlog
@@ -32,6 +42,7 @@ from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.db.models import GateResult as GateResultModel
 from autonomous_agent_builder.db.models import Task, TaskStatus, set_task_status
 from autonomous_agent_builder.quality_gates.base import AggregateGateResult
+
 
 log = structlog.get_logger()
 
@@ -84,10 +95,14 @@ async def quality_gate_feedback_context(db: AsyncSession, task: Task) -> str:
 class GateFeedbackHandler:
     """Handles gate failures with retry logic and capability limits."""
 
-    def __init__(self, settings: Settings, db: AsyncSession):
+    def __init__(self, settings: Settings, db: AsyncSession, run_agent=None):
         self.settings = settings
         self.db = db
         self.max_retries = settings.gate.max_retries
+        # Callable with signature (task, agent_name, template_vars) -> RunResult.
+        # Injected by the Orchestrator so gate_feedback doesn't need to
+        # reconstruct create_runtime / publish_board_snapshot dependencies.
+        self._run_agent = run_agent
 
     async def handle_gate_failure(self, task: Task, gate_result: AggregateGateResult) -> None:
         """Process a gate failure — attempt remediation, retry, or escalate."""
@@ -100,7 +115,7 @@ class GateFeedbackHandler:
             retry_count=task.retry_count,
         )
 
-        # Step 1: Try auto-remediation for gates that support it
+        # Step 1: Deterministic auto-remediation (ruff --fix, eslint --fix)
         remediable = gate_result.remediable_gates
         if remediable:
             remediated = await self._attempt_remediation(task, remediable)
@@ -111,14 +126,25 @@ class GateFeedbackHandler:
                 set_task_status(task, TaskStatus.QUALITY_GATES)
                 return
 
-        # Step 2: Check retry budget
+        # Step 2: Gate-remediator agent — bounded intelligent fix for errors
+        # that deterministic tools cannot resolve (TypeScript errors, broken
+        # imports, missing config). Cheaper and more targeted than a full
+        # code-gen re-run; fires before consuming the retry budget.
+        if self._run_agent is not None:
+            fixed = await self._attempt_agent_remediation(task, gate_result)
+            if fixed:
+                task.retry_count += 1
+                set_task_status(task, TaskStatus.QUALITY_GATES)
+                return
+
+        # Step 3: Check retry budget before full code-gen re-run
         if task.retry_count >= self.max_retries:
             await self._escalate_to_capability_limit(task, gate_result)
             return
 
-        # Step 3: Agent-assisted fix
+        # Step 4: Full agent-assisted fix — re-dispatch to code-gen with feedback
         task.retry_count += 1
-        set_task_status(task, TaskStatus.IMPLEMENTATION)  # Re-dispatch to code-gen with feedback
+        set_task_status(task, TaskStatus.IMPLEMENTATION)
         task.blocked_reason = self._format_gate_feedback(gate_result)
 
         log.info(
@@ -129,6 +155,92 @@ class GateFeedbackHandler:
         )
 
         await self.db.flush()
+
+    async def _attempt_agent_remediation(
+        self, task: Task, gate_result: AggregateGateResult
+    ) -> bool:
+        """Run the gate-remediator agent for intelligent targeted fixes."""
+        if self._run_agent is None:
+            return False
+        workspace_path = task.workspace.path if task.workspace else ""
+        if not workspace_path:
+            return False
+
+        language = str(
+            getattr(getattr(getattr(task, "feature", None), "project", None), "language", None)
+            or "python"
+        )
+        task_title = str(task.title or "")
+
+        for failed in gate_result.failed_gates:
+            gate_output = self._extract_gate_output(failed)
+            template_vars: dict[str, str] = {
+                "workspace_path": workspace_path,
+                "gate_name": failed.gate_name,
+                "error_code": str(failed.error_code or ""),
+                "gate_output": gate_output[:3000],
+                "task_title": task_title,
+                "language": language,
+            }
+
+            log.info(
+                "gate_remediator_start",
+                task_id=task.id,
+                gate=failed.gate_name,
+                error_code=failed.error_code,
+            )
+
+            try:
+                result = await self._run_agent(task, "gate-remediator", template_vars)
+                output = result.output if hasattr(result, "output") else ""
+                fixed = self._parse_gate_fix_result(output)
+                log.info(
+                    "gate_remediator_complete",
+                    task_id=task.id,
+                    gate=failed.gate_name,
+                    fixed=fixed,
+                )
+                if fixed:
+                    return True
+            except Exception as e:
+                log.warning(
+                    "gate_remediator_error",
+                    task_id=task.id,
+                    gate=failed.gate_name,
+                    error=str(e),
+                )
+
+        return False
+
+    def _extract_gate_output(self, gate_result) -> str:
+        """Extract a compact, actionable error string from a gate result."""
+        parts: list[str] = []
+        evidence = gate_result.evidence if isinstance(gate_result.evidence, dict) else {}
+        checks = evidence.get("checks", [])
+        if isinstance(checks, list):
+            for check in checks:
+                if not isinstance(check, dict):
+                    continue
+                cmd = str(check.get("command", "") or "")
+                rc = check.get("exit_code", "")
+                out = str(check.get("output", "") or "").strip()
+                if out:
+                    parts.append(f"$ {cmd}  (exit {rc})\n{out[:2000]}")
+        raw = str(evidence.get("output", "") or "").strip()
+        if raw:
+            parts.append(raw[:2000])
+        return "\n---\n".join(parts) if parts else str(gate_result.error_code or "")
+
+    def _parse_gate_fix_result(self, output: str) -> bool:
+        """Return True if the agent emitted GATE_FIX_RESULT_JSON with fixed=true."""
+        match = re.search(r"GATE_FIX_RESULT_JSON:\s*(\{.*\})", output or "")
+        if not match:
+            return False
+        try:
+            data = json.loads(match.group(1))
+            return bool(data.get("fixed"))
+        except (json.JSONDecodeError, AttributeError):
+            return False
 
     async def _attempt_remediation(self, task: Task, gates: list) -> bool:
         """Attempt auto-remediation for failed gates."""

@@ -432,6 +432,68 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         max_turns=12,
         max_budget_usd=1.50,
     ),
+    "gate-remediator": AgentDefinition(
+        name="gate-remediator",
+        description=(
+            "Targeted quality-gate fixer. Triggered automatically when a gate "
+            "fails with an error that deterministic auto-fix cannot resolve "
+            "(e.g. TypeScript build errors, missing config, broken imports). "
+            "Receives the exact gate failure output, inspects only the relevant "
+            "workspace files, and applies a minimal targeted fix. "
+            "Does NOT re-implement features or change business logic."
+        ),
+        prompt_template=(
+            "You are the gate-remediator agent. A quality gate failed in the "
+            "workspace at {workspace_path}. Your ONLY job is to fix the specific "
+            "error reported below — nothing else.\n\n"
+            "Gate: {gate_name}\n"
+            "Error code: {error_code}\n"
+            "Build output:\n{gate_output}\n\n"
+            "Rules:\n"
+            "- Read only the files referenced in the error output.\n"
+            "- Apply the minimal fix: config changes, missing type declarations, "
+            "  import corrections, package.json script fixes.\n"
+            "- NEVER change business logic, component behavior, or test assertions.\n"
+            "- NEVER add new features or refactor working code.\n"
+            "- Only write inside {workspace_path}. Never touch CLAUDE.md, "
+            "  AGENTS.md, or .claude/.\n"
+            "- After applying the fix, run the failing command to verify it passes.\n"
+            "- Do not spend more than 6 turns. If you cannot fix it in 6 turns, "
+            "  emit GATE_FIX_RESULT_JSON with fixed=false immediately.\n\n"
+            "On success, emit exactly this JSON on its own line:\n"
+            "GATE_FIX_RESULT_JSON: {{\"fixed\": true, "
+            "\"files_changed\": [\"<relative path>\", ...], "
+            "\"fix_summary\": \"<one sentence>\"}}\n\n"
+            "If you cannot fix it, emit:\n"
+            "GATE_FIX_RESULT_JSON: {{\"fixed\": false, "
+            "\"reason\": \"<why it cannot be auto-fixed>\"}}\n\n"
+            "Task context: {task_title}\n"
+            "Language: {language}\n"
+        ),
+        tools=(
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep",
+            "mcp__workspace__run_command",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+        ),
+        auto_approve_tools=(
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep",
+            "mcp__workspace__run_command",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+        ),
+        model="sonnet",
+        max_turns=8,
+        max_budget_usd=0.75,
+    ),
     "code-gen": AgentDefinition(
         name="code-gen",
         description="Implement features in isolated workspace",

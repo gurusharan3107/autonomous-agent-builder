@@ -294,7 +294,7 @@ class Orchestrator:
         self.settings = settings
         self.db = db
         self.runner = AgentRunner(settings)
-        self.gate_handler = GateFeedbackHandler(settings, db)
+        self.gate_handler = GateFeedbackHandler(settings, db, run_agent=self._run_agent)
 
     async def dispatch(self, task: Task) -> None:
         """Dispatch a task to its next phase based on current status."""

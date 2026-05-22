@@ -188,7 +188,8 @@ class CodeQualityGate(QualityGate):
                     findings_count=1,
                     error_code="BUILD_FAILED",
                     evidence={"tool": "npm", "package_dir": str(package_dir), "checks": checks},
-                    remediation_possible=True,
+                    # TypeScript/build errors need agent-assisted fix, not auto lint-fix.
+                    remediation_possible=False,
                 )
         elif (package_dir / "tsconfig.json").exists():
             type_code, type_output = await self._run_command(
@@ -208,7 +209,8 @@ class CodeQualityGate(QualityGate):
                     findings_count=1,
                     error_code="TYPECHECK_FAILED",
                     evidence={"tool": "npm", "package_dir": str(package_dir), "checks": checks},
-                    remediation_possible=True,
+                    # TypeScript type errors need agent-assisted fix, not auto lint-fix.
+                    remediation_possible=False,
                 )
 
         return GateResult(
