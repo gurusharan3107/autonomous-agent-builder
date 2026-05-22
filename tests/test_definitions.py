@@ -7,6 +7,7 @@ import pytest
 from autonomous_agent_builder.agents.definitions import (
     AGENT_DEFINITIONS,
     SUBAGENT_DEFINITIONS,
+    SubagentDefinition,
     get_agent_definition,
     get_subagent_definition,
 )
@@ -20,6 +21,7 @@ class TestAgentDefinitions:
             "planner",
             "designer",
             "scaffold",
+            "gate-remediator",
             "code-gen",
             "pr-creator",
             "build-verifier",
@@ -136,6 +138,11 @@ class TestAgentDefinitions:
         assert "Write" in scaffold.tools
         assert "Edit" in scaffold.tools
         assert "mcp__workspace__run_command" in scaffold.tools
+        # Glob and Grep are not needed — scaffold writes config, not text searches.
+        assert "Glob" not in scaffold.tools
+        assert "Grep" not in scaffold.tools
+        assert "Glob" not in (scaffold.auto_approve_tools or ())
+        assert "Grep" not in (scaffold.auto_approve_tools or ())
         # Stack ambiguity is resolved via AskUserQuestion, not freeform prose.
         assert "AskUserQuestion" in scaffold.tools
         # No backlog/board mutation — scaffold cannot touch lifecycle state.
@@ -284,3 +291,42 @@ class TestAgentDefinitions:
         for name, defn in AGENT_DEFINITIONS.items():
             assert defn.max_budget_usd > 0, f"{name} has no budget"
             assert defn.max_turns > 0, f"{name} has no turn limit"
+
+    def test_gate_remediator_runtime_contract(self):
+        gate = get_agent_definition("gate-remediator")
+        # Must be able to read, create, and edit workspace files.
+        assert "Read" in gate.tools
+        assert "Write" in gate.tools
+        assert "Edit" in gate.tools
+        assert "Grep" in gate.tools
+        # Glob excluded — gate-remediator works from error output, not file globs.
+        assert "Glob" not in gate.tools
+        assert "Glob" not in (gate.auto_approve_tools or ())
+        # Uses workspace MCP for running commands, not Bash.
+        assert "mcp__workspace__run_command" in gate.tools
+        assert "Bash" not in gate.tools
+        # Capped to avoid runaway loops.
+        assert gate.max_turns <= 16
+        # Prompt encodes GATE_FIX_RESULT_JSON sentinel and scope boundary.
+        assert "GATE_FIX_RESULT_JSON" in gate.prompt_template
+        assert "Never delete any existing file" in gate.prompt_template
+
+    def test_subagent_definition_supports_max_turns(self):
+        # SubagentDefinition.max_turns is forwarded to the SDK as maxTurns.
+        defn = SubagentDefinition(
+            name="test",
+            description="test",
+            prompt="test",
+            tools=("Read",),
+            max_turns=8,
+        )
+        assert defn.max_turns == 8
+
+    def test_subagent_definition_max_turns_defaults_none(self):
+        defn = SubagentDefinition(
+            name="test",
+            description="test",
+            prompt="test",
+            tools=("Read",),
+        )
+        assert defn.max_turns is None

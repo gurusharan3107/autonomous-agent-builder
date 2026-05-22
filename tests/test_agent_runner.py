@@ -157,11 +157,12 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
         }
 
     class FakeSdkAgentDefinition:
-        def __init__(self, description, prompt, tools=None, model=None):
+        def __init__(self, description, prompt, tools=None, model=None, **kwargs):
             self.description = description
             self.prompt = prompt
             self.tools = tools or []
             self.model = model
+            self.max_turns = kwargs.get("maxTurns")
 
     fake_sdk: Any = ModuleType("claude_agent_sdk")
     fake_sdk.AgentDefinition = FakeSdkAgentDefinition
@@ -312,11 +313,12 @@ async def test_execute_query_exposes_full_tool_set_when_can_use_tool_is_present(
         return {"name": name, "version": version, "tools": tools or []}
 
     class FakeSdkAgentDefinition:
-        def __init__(self, description, prompt, tools=None, model=None):
+        def __init__(self, description, prompt, tools=None, model=None, **kwargs):
             self.description = description
             self.prompt = prompt
             self.tools = tools or []
             self.model = model
+            self.max_turns = kwargs.get("maxTurns")
 
     fake_sdk: Any = ModuleType("claude_agent_sdk")
     fake_sdk.AgentDefinition = FakeSdkAgentDefinition
@@ -410,11 +412,12 @@ async def test_execute_query_registers_documentation_subagent(monkeypatch):
             yield FakeResultMessage()
 
     class FakeSdkAgentDefinition:
-        def __init__(self, description, prompt, tools=None, model=None):
+        def __init__(self, description, prompt, tools=None, model=None, **kwargs):
             self.description = description
             self.prompt = prompt
             self.tools = tools or []
             self.model = model
+            self.max_turns = kwargs.get("maxTurns")
 
     def fake_tool(name, description, input_schema, annotations=None):
         def decorator(func):
@@ -454,3 +457,52 @@ async def test_execute_query_registers_documentation_subagent(monkeypatch):
     doc_agent = captured["options"].agents["documentation-agent"]
     assert "mcp__builder__kb_extract" in doc_agent.tools
     assert "mcp__builder__kb_validate" in doc_agent.tools
+
+
+def test_preflight_fails_for_git_required_phase_with_unborn_head(tmp_path):
+    import subprocess
+
+    # Init a git repo but make NO commit — HEAD is unborn
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    runner = AgentRunner(get_settings())
+    result = runner._preflight_workspace("code-gen", str(tmp_path))
+    assert result is not None
+    assert result.stop_reason == "preflight_failed"
+    assert "preflight" in (result.error or "")
+    assert "unborn HEAD" in (result.error or "")
+
+
+def test_preflight_passes_for_git_required_phase_with_valid_head(tmp_path):
+    import subprocess
+
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", "init"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        env={**__import__("os").environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
+    )
+    runner = AgentRunner(get_settings())
+    result = runner._preflight_workspace("code-gen", str(tmp_path))
+    assert result is None
+
+
+def test_preflight_warns_not_fails_for_non_git_workspace(tmp_path):
+    runner = AgentRunner(get_settings())
+    # No .git directory — not a git repo yet. Should warn, not fail.
+    result = runner._preflight_workspace("code-gen", str(tmp_path))
+    assert result is None
+
+
+def test_preflight_skips_git_check_for_non_git_required_phase(tmp_path):
+    runner = AgentRunner(get_settings())
+    # scaffold is not in _PHASES_REQUIRE_GIT_HEAD — no git check at all
+    result = runner._preflight_workspace("scaffold", str(tmp_path))
+    assert result is None
+
+
+def test_preflight_skips_git_check_for_chat_phase(tmp_path):
+    runner = AgentRunner(get_settings())
+    result = runner._preflight_workspace("chat", str(tmp_path))
+    assert result is None

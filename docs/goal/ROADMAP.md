@@ -64,6 +64,8 @@ Both forward-engineering and reverse-engineering scenarios validated. Both runti
 - [ ] **Reverse:** operate on an existing app workspace (todo-app, a checked-out external repo). Both lanes.
 - [ ] Both scenarios produce identical operator-visible behavior across lanes. Lane attribution preserved in run history after a runtime switch.
 - [ ] [docs/PROMPT.md](../PROMPT.md) operator-prompt scripts executed in both lanes; rubric pass for [docs/rubric/sdk-backed-agent-page-agent.md](../rubric/sdk-backed-agent-page-agent.md) and [docs/rubric/realtime-voice-agent-page-agent.md](../rubric/realtime-voice-agent-page-agent.md).
+- [x] **Per-phase `allowed_tools` allowlists for subagents** matched to verified workspace capability. Scaffold: removed `Glob`, `Grep` (unnecessary search tools); gate-remediator: removed `Glob`. `SubagentDefinition.max_turns` added; forwarded to SDK as `maxTurns`. *(INSIGHTS Run #7 § P0-1, P1-3.)*
+- [x] **Deterministic CLI preflight probes** before `client.query()` — `git rev-parse HEAD` (hard fail for git-required phases: code-gen, gate-remediator, integration-resolver, pr-creator, build-verifier, feature-verifier, optimization-agent); `shutil.which("ruff")` and `pyproject.toml` existence logged as soft warnings for Python-gate phases. *(INSIGHTS Run #7 § P1-3.)*
 
 ### M1.5 — Realtime Voice (Samantha) parity with Agent page
 
@@ -73,6 +75,7 @@ Voice is a peer operator surface, not a bolt-on.
 - [ ] Voice-initiated feature shipped end to end with browser proof in both lanes.
 - [ ] Realtime auth boundary holds (Realtime uses `OPENAI_API_KEY`; selected runtime auth not leaked into Realtime; Codex subscription runs strip OpenAI credentials).
 - [ ] Voice-initiated delegations rebind correctly to delegated Agent session; no orphan voice transcripts.
+- [ ] **Migrate multi-turn agent flows from `query()` to `ClaudeSDKClient` async context manager.** Long-lived voice streams are the first surface that breaks if `query()` is held across minutes; `__aexit__` cancels background monitor tasks deterministically. Replaces the manual `try/finally + stop_monitor.set()` discipline that IMP-010 fixed by hand. *(INSIGHTS Run #7 § Section C Action 1, P0-2.)*
 
 ---
 
@@ -90,6 +93,7 @@ Full requirements → design → backlog → implementation → verification →
 - [ ] Resumability: kill the dashboard mid-sprint, restart, confirm exact state restored — no operator data loss, no stale "running" status, no orphaned approvals.
 - [ ] Runtime switch mid-project: switch from `claude` to `codex_sdk` between sprints; historical attribution preserved; future work uses the new lane.
 - [ ] Multi-operator handover: a second operator joining mid-project sees the same Board, Backlog, Inbox, and Agent state as the first.
+- [ ] **Audit every `async for message in client.receive_response():` site for early `break`.** The Claude Agent SDK Python reference explicitly warns this causes asyncio cleanup issues. Replace with a flag + drain pattern so resumability and mid-sprint kill/restart never strand monitor tasks or rolled-back sessions. *(INSIGHTS Run #7 § P0-2.)*
 
 ### M2.2 — Memory and knowledge as decisive differentiators
 
@@ -108,6 +112,7 @@ Token, cache, chunk, and avoidable-cost telemetry is first-class everywhere it m
 - [ ] Per-turn non-cached-plus-output, raw, and cached tokens visible and accurate in the Agent page Session rail in both lanes.
 - [ ] Observability recommendations distinguish builder-owned optimization candidates from general workflow-state warnings (approval/blocked signals routed to builder state, not optimization).
 - [ ] Optimization-agent only runs when post-ship evidence demonstrates a candidate; never on Builder-owned generated-app residuals.
+- [ ] **First-class `RateLimitEvent` surface in dashboard.** Provider-limit blocked states map to `RateLimitEvent.status` (`allowed_warning | rejected`) + `resets_at` + `utilization` + `rate_limit_type`, not to stale gate failures. Operator sees "limit resets in 2h", not "gate failed". *(INSIGHTS Run #7 § P1-4; aligns with CLAUDE.md provider-limit rule.)*
 
 ### M2.4 — Operator UX polish to "no internals leakage"
 
@@ -127,6 +132,8 @@ When enabled, the orchestrator owns approval, recovery, and continuation without
 - [ ] Operator can disable autopilot mid-sprint; in-flight work is not interrupted.
 - [ ] All autopilot actions are dashboard-visible (Board + Agent timeline show who approved/recovered: operator or autopilot).
 - [ ] Autopilot does not approve design/plan phases if the operator has not confirmed scope; only implementation-onwards phases are eligible by default.
+- [ ] **`can_use_tool` callback enforces subagent phase boundaries (autopilot precondition).** Without operator oversight, prompt-only tool guidance is insufficient — return `PermissionResultDeny(message="...", interrupt=False)` to block parallel dispatches (IMP-007 class), wrong-tool selection (IMP-006 class), or precondition-violating calls (IMP-009 class) at the SDK boundary, one layer earlier than the existing `dispatch_lock.py` backend guard. *(INSIGHTS Run #7 § Section C Action 2, P0-1.)*
+- [ ] **Retry/cycle state machine fed from typed SDK error signals (autopilot precondition).** Use `ResultMessage.is_error`, `ResultMessage.errors`, `ResultMessage.api_error_status`, `AssistantMessageError` literal (`"rate_limit" | "max_output_tokens" | "server_error" | ...`), and `RateLimitEvent`. Increment cycle-detection counter on the transition itself; never on the next (commit `1153ec6` lesson). Synthetic-state test for every retry path before autopilot ships unattended. *(INSIGHTS Run #7 § P2-5.)*
 
 ### M2.5 — Architecture and design language coherence
 
@@ -135,6 +142,9 @@ The dashboard feels like one product.
 - [ ] Frontend React architecture rubric ([docs/rubric/frontend-react-architecture.md](../rubric/frontend-react-architecture.md)) passes on all current and future surfaces; no god components.
 - [ ] Backend service architecture rubric ([docs/rubric/backend-service-architecture.md](../rubric/backend-service-architecture.md)) passes; clear ownership boundaries; no second control owners for the same concern.
 - [ ] Design language ([docs/design-docs/design-language.md](../design-docs/design-language.md)) applied consistently; design-system primitives only, no ad-hoc styles.
+- [ ] **Codify the short-lived-session pattern in the backend rubric.** Dispatch session stays idle during `runtime.run()`; intermediate DB writes from `on_chunk`/`receive_response` use `async with get_session_factory()() as db:` per chunk (IMP-012 pattern); SSE endpoints never `Depends(get_db)` past the initial snapshot (IMP-011 pattern). *(INSIGHTS Run #7 § P0-2.)*
+- [ ] **Empty-response envelope convention in the backend rubric.** Every aggregation endpoint that can return empty/zero returns a `state` field (`"running" | "no_data" | "scope_mismatch"`) plus a `note` string (IMP-003 `active_runs_note` pattern, IMP-005 `memory_root` pattern). *(INSIGHTS Run #7 § P1-4.)*
+- [ ] **`AgentDefinition.maxTurns` set per subagent** in the subagent definition rubric. Caps runaway loops at the SDK boundary. *(INSIGHTS Run #7 § P0-1.)*
 
 ---
 

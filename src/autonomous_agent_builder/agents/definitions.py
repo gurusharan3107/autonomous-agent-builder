@@ -39,6 +39,7 @@ class SubagentDefinition:
     prompt: str
     tools: tuple[str, ...]
     model: str = "sonnet"
+    max_turns: int | None = None
 
 
 DOCUMENTATION_AGENT_TOOLS: tuple[str, ...] = (
@@ -406,8 +407,6 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Read",
             "Edit",
             "Write",
-            "Glob",
-            "Grep",
             "mcp__workspace__get_project_info",
             "mcp__workspace__list_directory",
             "mcp__workspace__read_file",
@@ -419,14 +418,11 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Read",
             "Write",
             "Edit",
-            "Glob",
-            "Grep",
             "mcp__workspace__get_project_info",
             "mcp__workspace__list_directory",
             "mcp__workspace__read_file",
             "mcp__workspace__run_command",
             "mcp__builder__memory_search",
-            "AskUserQuestion",
         ),
         model="sonnet",
         max_turns=12,
@@ -497,7 +493,6 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Read",
             "Write",
             "Edit",
-            "Glob",
             "Grep",
             "mcp__workspace__run_command",
             "mcp__workspace__list_directory",
@@ -507,7 +502,6 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Read",
             "Write",
             "Edit",
-            "Glob",
             "Grep",
             "mcp__workspace__run_command",
             "mcp__workspace__list_directory",

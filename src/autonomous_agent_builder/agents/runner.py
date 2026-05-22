@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 from dataclasses import replace
 from pathlib import Path
@@ -40,6 +41,24 @@ from autonomous_agent_builder.services.provider_limits import (
 )
 
 log = structlog.get_logger()
+
+# Phases where a valid git HEAD is a precondition for dispatch.
+_PHASES_REQUIRE_GIT_HEAD: frozenset[str] = frozenset(
+    {
+        "code-gen",
+        "gate-remediator",
+        "integration-resolver",
+        "pr-creator",
+        "build-verifier",
+        "feature-verifier",
+        "optimization-agent",
+    }
+)
+
+# Phases where Python tooling (ruff, pyproject.toml) is expected.
+_PYTHON_GATE_PHASES: frozenset[str] = frozenset(
+    {"code-gen", "gate-remediator", "feature-verifier"}
+)
 
 _SDK_ERROR_OUTPUT_PREFIXES = (
     "API Error:",
@@ -287,6 +306,54 @@ class AgentRunner:
     def __init__(self, settings: Settings):
         self.settings = settings
 
+    def _preflight_workspace(self, agent_name: str, workspace_path: str) -> RunResult | None:
+        """Check critical workspace preconditions before dispatching.
+
+        Returns a failed RunResult if a hard precondition is not met, else None.
+        Logs informational warnings for soft preconditions (missing ruff, pyproject.toml).
+
+        Git HEAD check is only a hard failure when the workspace IS a git repo but
+        HEAD is invalid (unborn HEAD, like IMP-008 class). A workspace that isn't
+        git-initialized yet is only warned, not failed — the workspace manager
+        owns git initialization before this phase runs.
+        """
+        if agent_name in _PHASES_REQUIRE_GIT_HEAD:
+            workspace = Path(workspace_path)
+            is_git_dir = (workspace / ".git").exists()
+            is_worktree = _run_git(workspace_path, "rev-parse", "--is-inside-work-tree")
+            if is_git_dir or is_worktree:
+                head = _run_git(workspace_path, "rev-parse", "HEAD")
+                if head is None:
+                    return RunResult(
+                        error=(
+                            f"preflight: git HEAD is invalid in {workspace_path} — "
+                            "workspace has unborn HEAD (workspace manager must create "
+                            "an initial commit before dispatching this phase)"
+                        ),
+                        stop_reason="preflight_failed",
+                    )
+            else:
+                log.info(
+                    "preflight_no_git_repo",
+                    agent=agent_name,
+                    workspace=workspace_path,
+                )
+        if agent_name in _PYTHON_GATE_PHASES:
+            workspace = Path(workspace_path)
+            if not (workspace / "pyproject.toml").exists():
+                log.info(
+                    "preflight_missing_pyproject",
+                    agent=agent_name,
+                    workspace=workspace_path,
+                )
+            if shutil.which("ruff") is None:
+                log.info(
+                    "preflight_ruff_not_found",
+                    agent=agent_name,
+                    workspace=workspace_path,
+                )
+        return None
+
     async def run_phase(
         self,
         agent_name: str,
@@ -325,6 +392,15 @@ class AgentRunner:
             allowed_tool_names=allowed_tool_names,
             custom_tools=custom_tools,
         )
+
+        preflight_error = self._preflight_workspace(agent_name, workspace_path)
+        if preflight_error is not None:
+            log.warning(
+                "agent_preflight_failed",
+                agent=agent_name,
+                error=preflight_error.error,
+            )
+            return preflight_error
 
         log.info(
             "agent_phase_start",
@@ -527,12 +603,15 @@ class AgentRunner:
             sdk_subagents = {}
             for subagent_name in subagents:
                 subagent_def = get_subagent_definition(subagent_name)
-                sdk_subagents[subagent_name] = SDKSubagentDefinition(
-                    description=subagent_def.description,
-                    prompt=subagent_def.prompt,
-                    tools=list(subagent_def.tools),
-                    model=resolve_subagent_model(subagent_def),
-                )
+                sdk_subagent_kwargs: dict[str, Any] = {
+                    "description": subagent_def.description,
+                    "prompt": subagent_def.prompt,
+                    "tools": list(subagent_def.tools),
+                    "model": resolve_subagent_model(subagent_def),
+                }
+                if subagent_def.max_turns is not None:
+                    sdk_subagent_kwargs["maxTurns"] = subagent_def.max_turns
+                sdk_subagents[subagent_name] = SDKSubagentDefinition(**sdk_subagent_kwargs)
 
         source_env = builder_source_env()
         observability = resolve_claude_observability(source_env)

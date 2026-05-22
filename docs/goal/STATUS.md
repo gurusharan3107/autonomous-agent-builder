@@ -13,10 +13,10 @@ This file is the live state. If it lies, the system is blind. Keep it honest.
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
 | Current Milestone | **M1.4 — Two-workspace validation rotation** |
-| Current Item In Flight | **M1.4 pending** — M1.3 all items ✓; M1.4 requires forward + reverse workspace validation in both lanes |
+| Current Item In Flight | **M1.4 in progress** — per-phase allowlists + preflight probes ✓; forward/reverse workspace validation pending |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude Agent SDK lane (`claude`) complete; Codex SDK lane (`codex_sdk`) deferred (M1.2 remaining items) |
-| Last Update | 2026-05-21 — M1.3 closed: voice_operator.py 2306→1471, 0 complexity violations |
+| Last Update | 2026-05-22 — M1.4 in progress: per-phase allowlists + preflight probes implemented |
 
 ---
 
@@ -47,7 +47,7 @@ Re-verify evidence: 79/79 regression tests pass (11 pre-existing `TestDispatchPh
 The next agent landing here should:
 
 1. Read [README.md](README.md), [NORTH-STAR.md](NORTH-STAR.md), and this file in order.
-2. **Start M1.4** — Two-workspace validation rotation. Forward-engineering scenario on a fresh workspace in both lanes; reverse-engineering on an existing workspace. See [ROADMAP.md § M1.4](ROADMAP.md#m14--two-workspace-validation-rotation).
+2. **Continue M1.4** — two remaining items open: (a) forward-engineering scenario on a fresh workspace (Claude lane); (b) reverse-engineering on an existing workspace. See [ROADMAP.md § M1.4](ROADMAP.md#m14--two-workspace-validation-rotation).
 3. M1.2 Codex SDK lane (deferred): when ready, run the same devpulse sprint on `codex_sdk` lane and collect Tier-1 evidence. This unblocks M1.2's remaining three items.
 4. Follow [FIX-STANDARD.md](FIX-STANDARD.md) for any regressions.
 
@@ -95,6 +95,8 @@ Last known result of running each Tier of [EVALUATION.md](EVALUATION.md). Update
 
 *Record one short line per decision worth preserving across sessions. Keep this to the most recent 20 — older items move to memory via `builder memory add` if durable, or get deleted if ephemeral.*
 
+- **2026-05-22** — M1.4 per-phase allowlists + preflight probes implemented: scaffold `Glob`/`Grep` removed; gate-remediator `Glob` removed; scaffold `auto_approve_tools` AskUserQuestion bug fixed; `SubagentDefinition.max_turns` added (forwarded to SDK `maxTurns`); `AgentRunner._preflight_workspace` added (hard git HEAD check for 7 phases; soft ruff/pyproject.toml warnings for Python-gate phases); SDK upgraded to 0.2.85; `test_all_agents_defined` fixed to include gate-remediator. 9 new tests, 88 tests green, 1 pre-existing click format failure unrelated.
+- **2026-05-22** — 10 prevention items added to ROADMAP across M1.4/M1.5/M2.1/M2.3/M2.5/M2.6 from INSIGHTS Run #7 retrospective (IMP-001..IMP-013 + recent gate-remediator fixes mapped to SDK-grounded levers: `can_use_tool`, `ClaudeSDKClient`, per-phase `allowed_tools`, `include_partial_messages`, `RateLimitEvent`, typed `AssistantMessageError`, `AgentDefinition.maxTurns`). Two M2.6 items flagged as autopilot preconditions. INSIGHTS Run #7 Section C closed; Section D retained as durable coding-agent reference.
 - **2026-05-21** — M1.3 closed: `voice_operator.py` 2306→1471 lines via extraction of `HighRiskVoiceActionService`, `VoiceCostLedger`, `build_voice_digest`, `load_voice_board_status` into 4 new modules. `builder lint --complexity-report --json` reports 0 violations. All four key files (summary.py 540, orchestrator.py 1345, routes/agent.py 1326, voice_operator.py 1471) confirmed below 1500 ✓.
 - **2026-05-21** — M1.3 started: extracted `_publish_agent_run_error_result`, `_publish_provider_limit_result`, `_publish_successful_chat_result` → `agent_chat_result_publisher.py`; `_continue_after_delivery_permission_question`, `_complete_persisted_delivery_scope_approval` → `agent_delivery_continuation.py`. `routes/agent.py` reduced 1762→1326 lines (below 1500 ✓). Complexity baseline updated. Codex SDK lane (M1.2) deferred.
 - **2026-05-21** — Framework governance: Hard Rules 13 & 14 (commit+push on `[x]`, CHANGELOG before commit) added to `docs/goal/README.md`; `.gitignore` updated for runtime artifacts; `docs/goal/` self-containment confirmed; INSIGHTS→ROADMAP completed-item lifecycle documented; goal-audit SKILL.md updated with ROADMAP cross-check rule for Section C.
