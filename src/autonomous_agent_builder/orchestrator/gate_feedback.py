@@ -105,7 +105,9 @@ class GateFeedbackHandler:
         if remediable:
             remediated = await self._attempt_remediation(task, remediable)
             if remediated:
-                # Re-run gates after remediation
+                # Increment retry_count so the dispatch-chain cycle detector
+                # sees a new (task_id, status, retry) tuple and allows re-run.
+                task.retry_count += 1
                 set_task_status(task, TaskStatus.QUALITY_GATES)
                 return
 
