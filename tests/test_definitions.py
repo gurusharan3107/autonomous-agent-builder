@@ -6,11 +6,11 @@ import pytest
 
 from autonomous_agent_builder.agents.definitions import (
     AGENT_DEFINITIONS,
-    SUBAGENT_DEFINITIONS,
     SubagentDefinition,
     get_agent_definition,
     get_subagent_definition,
 )
+from autonomous_agent_builder.agents.subagent_definitions import SUBAGENT_DEFINITIONS
 
 
 class TestAgentDefinitions:

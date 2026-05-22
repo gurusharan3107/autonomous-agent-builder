@@ -2,7 +2,7 @@
   "files": {
     "src/autonomous_agent_builder/agents/definitions.py": {
       "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
-      "lines": 1006,
+      "lines": 909,
       "owner": "Agent runtime owner"
     },
     "src/autonomous_agent_builder/agents/hooks.py": {
@@ -12,7 +12,7 @@
     },
     "src/autonomous_agent_builder/agents/runner.py": {
       "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
-      "lines": 801,
+      "lines": 791,
       "owner": "Agent runtime owner"
     },
     "src/autonomous_agent_builder/agents/tool_registry.py": {

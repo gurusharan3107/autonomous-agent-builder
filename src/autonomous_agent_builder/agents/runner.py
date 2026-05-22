@@ -15,7 +15,6 @@ import re
 import shutil
 import subprocess
 from dataclasses import replace
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,18 +23,24 @@ import structlog
 from autonomous_agent_builder.agents.definitions import (
     AgentDefinition,
     get_agent_definition,
-    get_subagent_definition,
 )
 from autonomous_agent_builder.agents.execution_policy import (
     AgentRuntimePolicy,
     resolve_agent_runtime_policy,
-    resolve_subagent_model,
+)
+from autonomous_agent_builder.agents.runner_options import (
+    build_hooks_dict,
+    build_options_kwargs,
+    build_run_result_from_result_message,
+    map_sdk_exception_to_result,
+    merge_child_env,
+    resolve_allowed_tools,
+    resolve_sdk_subagents,
 )
 from autonomous_agent_builder.agents.tool_registry import ToolRegistry
 from autonomous_agent_builder.builder_env import builder_source_env
 from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.observability.runtime import resolve_claude_observability
-from autonomous_agent_builder.onecli_runtime import scrub_provider_env
 from autonomous_agent_builder.services.provider_limits import (
     is_provider_limit_text,
     parse_reset_hint,
@@ -602,36 +607,14 @@ class AgentRunner:
 
         session_id = None
         output_parts: list[str] = []
-        selected_tools = (
-            agent_def.tools
-            if can_use_tool is not None
-            else (agent_def.auto_approve_tools or agent_def.tools)
-        )
-        allowed_tools = list(selected_tools)
-        if subagents and "Agent" not in allowed_tools:
-            allowed_tools.append("Agent")
-        sdk_subagents = None
-        if subagents:
-            sdk_subagents = {}
-            for subagent_name in subagents:
-                subagent_def = get_subagent_definition(subagent_name)
-                sdk_subagent_kwargs: dict[str, Any] = {
-                    "description": subagent_def.description,
-                    "prompt": subagent_def.prompt,
-                    "tools": list(subagent_def.tools),
-                    "model": resolve_subagent_model(subagent_def),
-                }
-                if subagent_def.max_turns is not None:
-                    sdk_subagent_kwargs["maxTurns"] = subagent_def.max_turns
-                sdk_subagents[subagent_name] = SDKSubagentDefinition(**sdk_subagent_kwargs)
+        allowed_tools = resolve_allowed_tools(agent_def, can_use_tool, subagents)
+        sdk_subagents = resolve_sdk_subagents(subagents, SDKSubagentDefinition)
 
         source_env = builder_source_env()
         observability = resolve_claude_observability(source_env)
 
         # Always wire can_use_tool — omitting it leaves the subprocess permission
         # callback channel closed, causing the SDK to hang after SystemMessage init.
-        # For non-interactive runs, auto-approve within the already-restricted
-        # allowed_tools surface is safe.
         try:
             from claude_agent_sdk.types import PermissionResultAllow
         except ImportError:
@@ -647,61 +630,24 @@ class AgentRunner:
 
         effective_can_use_tool = can_use_tool if can_use_tool is not None else _auto_approve
 
-        options_kwargs: dict[str, Any] = {
-            "allowed_tools": allowed_tools,
-            "system_prompt": {
-                "type": "preset",
-                "preset": "claude_code",
-                "exclude_dynamic_sections": True,  # G2: skip cwd/memory/git sections to maximise cache ratio
-            },
-            "setting_sources": ["project"],
-            "settings": '{"autoCompactEnabled": true}'
-            if runtime_policy.autocompact_enabled
-            else None,
-            "mcp_servers": self._build_mcp_servers(workspace_path, allowed_tools),
-            "permission_mode": self.settings.agent.permission_mode,
-            "model": runtime_policy.model,
-            "cwd": workspace_path or None,
-            "max_turns": agent_def.max_turns,
-            "max_budget_usd": agent_def.max_budget_usd,
-            "can_use_tool": effective_can_use_tool,
-            "agents": sdk_subagents,
-            "effort": runtime_policy.effort,
-            "thinking": runtime_policy.thinking,
-            "include_partial_messages": True,  # G1: enables per-turn StreamEvent usage telemetry
-            "strict_mcp_config": True,  # G7: only explicitly registered MCP tools are visible
-            "extra_args": {
-                "disable-slash-commands": None,
-            },
-        }
-        options = ClaudeAgentOptions(**options_kwargs)
-        child_env = {**observability.env}
-        if source_env.get("CLAUDE_CODE_OAUTH_TOKEN"):
-            child_env["CLAUDE_CODE_OAUTH_TOKEN"] = source_env["CLAUDE_CODE_OAUTH_TOKEN"]
-        merged_child_env = scrub_provider_env(child_env)
-        if merged_child_env:
-            options.env = {**getattr(options, "env", {}), **merged_child_env}
+        options = ClaudeAgentOptions(
+            **build_options_kwargs(
+                agent_def=agent_def,
+                runtime_policy=runtime_policy,
+                allowed_tools=allowed_tools,
+                workspace_path=workspace_path,
+                mcp_servers=self._build_mcp_servers(workspace_path, allowed_tools),
+                permission_mode=self.settings.agent.permission_mode,
+                sdk_subagents=sdk_subagents,
+                effective_can_use_tool=effective_can_use_tool,
+            )
+        )
+        merge_child_env(options, observability, source_env)
 
         if resume_session:
-            # For an HTTP chat lane that needs a specific past conversation,
-            # follow the SDK contract directly: persist the SDK session id and
-            # pass it back via `resume` on the next call.
             options.resume = resume_session
 
-        # Wire safety and audit hooks with SDK signatures
-        from autonomous_agent_builder.agents.hooks import (
-            audit_log_tool_use,
-            audit_subagent_stop,
-            enforce_completion_evidence,
-            enforce_workspace_boundary,
-            keep_tool_stream_open,
-            make_enforce_claude_md_block_ownership,
-            session_start_context_policy,
-            validate_bash_argv,
-        )
-        from autonomous_agent_builder.agents.hooks_trim import trim_tool_output_for_context
-
-        claude_md_block_hook = make_enforce_claude_md_block_ownership(agent_def.name)
+        from autonomous_agent_builder.agents.hooks import audit_log_tool_use
 
         async def _post_tool_audit(
             input: dict[str, Any],
@@ -720,63 +666,11 @@ class AgentRunner:
                 )
             return {}
 
-        options.hooks = {
-            "SessionStart": [
-                HookMatcher(
-                    matcher=".*",
-                    hooks=[session_start_context_policy],
-                    timeout=30.0,
-                ),
-            ],
-            "PreToolUse": [
-                HookMatcher(
-                    matcher=".*",
-                    hooks=[keep_tool_stream_open],
-                    timeout=30.0,
-                ),
-                HookMatcher(
-                    matcher="Read|Edit|Write|Glob|Grep",
-                    hooks=[enforce_workspace_boundary],
-                    timeout=30.0,
-                ),
-                HookMatcher(
-                    matcher="Edit|Write",
-                    hooks=[claude_md_block_hook],
-                    timeout=30.0,
-                ),
-                HookMatcher(
-                    matcher="Bash",
-                    hooks=[validate_bash_argv],
-                    timeout=30.0,
-                ),
-            ],
-            "PostToolUse": [
-                HookMatcher(
-                    matcher=".*",
-                    hooks=[_post_tool_audit],
-                    timeout=30.0,
-                ),
-                HookMatcher(
-                    matcher="Bash|Read|mcp__workspace__run_tests|mcp__workspace__run_linter",
-                    hooks=[trim_tool_output_for_context],
-                    timeout=30.0,
-                ),
-            ],
-            "SubagentStop": [
-                HookMatcher(
-                    matcher=".*",
-                    hooks=[audit_subagent_stop],
-                    timeout=30.0,
-                ),
-            ],
-            "Stop": [
-                HookMatcher(
-                    matcher=".*",
-                    hooks=[enforce_completion_evidence],
-                    timeout=30.0,
-                ),
-            ],
-        }
+        options.hooks = build_hooks_dict(
+            agent_name=agent_def.name,
+            hook_matcher_cls=HookMatcher,
+            post_tool_audit=_post_tool_audit,
+        )
 
         async def _prompt_stream():
             yield {
@@ -832,93 +726,36 @@ class AgentRunner:
                                     await on_stream(block.text)
 
                     elif isinstance(message, ResultMessage):
-                        usage = message.usage or {}
-                        output_text = "\n".join(output_parts)
-                        stop_reason = getattr(message, "stop_reason", None)
-                        # Per SDK-verifier: only trust confidence on clean runs.
-                        # Capability-limited runs get null confidence regardless
-                        # of what the final message claims.
-                        confidence: float | None = None
-                        if stop_reason not in ("max_turns", "budget_exceeded"):
-                            confidence = parse_confidence_from_text(output_text)
-                        diff_summary = capture_workspace_diff(workspace_path)
-                        base_result_kwargs: dict[str, Any] = dict(
-                            session_id=getattr(message, "session_id", None) or session_id,
-                            cost_usd=getattr(message, "total_cost_usd", 0.0),
-                            tokens_input=usage.get("input_tokens", 0),
-                            tokens_output=usage.get("output_tokens", 0),
-                            tokens_cached=usage.get("cache_read_input_tokens", 0),
-                            num_turns=getattr(message, "num_turns", 0),
-                            duration_ms=getattr(message, "duration_ms", 0),
-                            output_text=output_text,
-                            confidence=confidence,
-                            diff_summary=diff_summary,
-                            observability={
-                                **observability.summary,
-                                "runtime_policy": runtime_policy.to_payload(),
-                            },
+                        return build_run_result_from_result_message(
+                            run_result_cls=RunResult,
+                            message=message,
+                            output_parts=output_parts,
+                            session_id=session_id,
+                            workspace_path=workspace_path,
+                            observability=observability,
+                            runtime_policy=runtime_policy,
+                            rate_limit_info_captured=rate_limit_info_captured,
+                            parse_confidence=parse_confidence_from_text,
+                            capture_diff=capture_workspace_diff,
                         )
-                        if rate_limit_info_captured is not None:
-                            # SDK-sourced rate limit data supersedes text-parsed metadata
-                            info = rate_limit_info_captured
-                            resets_at_iso = (
-                                datetime.fromtimestamp(info.resets_at / 1000, UTC).isoformat()
-                                if info.resets_at
-                                else None
-                            )
-                            return RunResult(
-                                **base_result_kwargs,
-                                stop_reason="provider_limit",
-                                provider_limit={
-                                    "code": "provider_limit",
-                                    "reason": "rate_limit_event",
-                                    "reset_at": resets_at_iso,
-                                    "rate_limit_type": info.rate_limit_type,
-                                    "utilization": info.utilization,
-                                    "source": "claude_agent_sdk",
-                                },
-                            )
-                        return RunResult(**base_result_kwargs, stop_reason=stop_reason)
 
         except Exception as e:
-            # Map SDK errors to our error types
-            error_type = type(e).__name__
             log.error(
                 "sdk_query_error",
-                error_type=error_type,
+                error_type=type(e).__name__,
                 error=str(e),
                 cause=str(e.__cause__) if e.__cause__ else None,
             )
-            if error_type == "CLINotFoundError":
-                raise ConfigurationError("Claude Code CLI not installed") from e
-            elif error_type == "CLIConnectionError":
-                return RunResult(error=f"{e} (cause: {e.__cause__})")
-            elif error_type == "ProcessError":
-                exit_code = getattr(e, "exit_code", -1)
-                if is_provider_limit_text(str(e)):
-                    reset_at, reset_hint = parse_reset_hint(str(e))
-                    return RunResult(
-                        output_text=str(e),
-                        stop_reason="provider_limit",
-                        provider_limit={
-                            "code": "provider_limit",
-                            "reason": "process_error",
-                            "reset_at": reset_at.isoformat() if reset_at else None,
-                            "reset_hint": reset_hint,
-                            "source": "claude_agent_sdk",
-                        },
-                        observability={
-                            **observability.summary,
-                            "runtime_policy": runtime_policy.to_payload(),
-                        },
-                    )
-                if exit_code in (1, 2):
-                    raise TransientError(f"Process error (exit {exit_code}): {e}") from e
-                else:
-                    return RunResult(error=str(e), stop_reason="process_error")
-            elif error_type == "CLIJSONDecodeError":
-                raise TransientError(f"Malformed SDK output: {e}") from e
-            raise
+            return map_sdk_exception_to_result(
+                run_result_cls=RunResult,
+                exc=e,
+                observability=observability,
+                runtime_policy=runtime_policy,
+                configuration_error_cls=ConfigurationError,
+                transient_error_cls=TransientError,
+                is_provider_limit=is_provider_limit_text,
+                parse_reset=parse_reset_hint,
+            )
 
         # If we get here without a ResultMessage, something went wrong
         return RunResult(
