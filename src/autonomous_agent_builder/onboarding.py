@@ -1351,18 +1351,12 @@ async def _run_builder_kb_extract_via_agent(
                 "parent_tool_use_id": None,
             }
 
-        async def _auto_approve(
-            tool_name: str, input_data: object, context: object
-        ) -> PermissionResultAllow:
+        async def _auto_approve(tool_name: str, input_data: object, context: object) -> PermissionResultAllow:
             return PermissionResultAllow(updated_input=input_data)  # type: ignore[arg-type]
 
         options = ClaudeAgentOptions(
             model=get_settings().agent.implementation_model,
-            system_prompt={
-                "type": "preset",
-                "preset": "claude_code",
-                "exclude_dynamic_sections": True,
-            },
+            system_prompt={"type": "preset", "preset": "claude_code", "exclude_dynamic_sections": True},
             setting_sources=["project"],
             cwd=project_root,
             allowed_tools=["Bash"],

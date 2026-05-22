@@ -721,12 +721,8 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
     )
 
     async def on_stream(text: str) -> None:
-        if not stream_user_visible:
-            return
-        await turn_publisher.publish_stream_delta(text)
-
-    async def on_stream_usage(input_tokens: int, cached_tokens: int, output_tokens: int) -> None:
-        await turn_publisher.publish_stream_usage(input_tokens, cached_tokens, output_tokens)
+        if stream_user_visible:
+            await turn_publisher.publish_stream_delta(text)
 
     async def on_tool_event(event_data: dict[str, Any] | None = None, **event_kwargs: Any) -> None:
         await _handle_chat_tool_event(
@@ -809,7 +805,7 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
             feature_spec_requested=feature_spec_requested,
             active_specialist=active_specialist,
             on_stream=on_stream,
-            on_stream_usage=on_stream_usage,
+            on_stream_usage=turn_publisher.publish_stream_usage,
             can_use_tool=can_use_tool,
             on_tool_event=on_tool_event,
             max_requirements_continuations=_INIT_PROJECT_MAX_REQUIREMENTS_CONTINUATIONS,

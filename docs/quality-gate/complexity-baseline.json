@@ -137,7 +137,7 @@
     },
     "src/autonomous_agent_builder/onboarding.py": {
       "extraction_plan": "Split cohesive responsibilities into named owner modules before adding behavior.",
-      "lines": 1932,
+      "lines": 1931,
       "owner": "module owner"
     },
     "src/autonomous_agent_builder/orchestrator/orchestrator.py": {
@@ -239,6 +239,11 @@
       "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
       "lines": 525,
       "owner": "pipeline test owner"
+    },
+    "tests/test_agent_runner.py": {
+      "extraction_plan": "Split scenario groups (SDK options assembly, hooks, StreamEvent telemetry, RateLimitEvent) into focused test modules before adding more coverage here.",
+      "lines": 799,
+      "owner": "Agent runtime test owner"
     },
     "tests/test_api_routes.py": {
       "extraction_plan": "Split scenario groups into focused test modules before adding more coverage here; keep shared fixtures only when they reduce duplication.",
