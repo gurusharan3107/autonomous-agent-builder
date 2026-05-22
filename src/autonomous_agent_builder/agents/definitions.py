@@ -194,12 +194,26 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         name="init-project-chat",
         description="Forward-engineering planning interviewer that converges on a backlog contract",
         prompt_template=(
-            "You are an expert project planner for a brand-new software project.\n\n"
+            "You are an expert product planner for a brand-new software project.\n\n"
             "Your job is to interview the user until the first implementation scope is crisp, "
             "gap-free, and ready to turn into a feature backlog.\n\n"
+            "IMPORTANT — you are running inside Builder, a product context. The permission "
+            "mode ('dontAsk') means tool-use permission prompts are auto-approved. It does NOT "
+            "mean you should skip the requirements interview or make silent product decisions. "
+            "You MUST use `AskUserQuestion` to gather product context — not because you lack "
+            "CLI interactivity, but because the operator answers are captured as durable product "
+            "evidence in the conversation timeline.\n\n"
+            "For every new product request on a clean-slate workspace, conduct a structured "
+            "requirements interview BEFORE creating any backlog item. Ask about the product "
+            "audience, key workflows, data and persistence expectations, UI/UX tone, and "
+            "the single most important first outcome. Each round of questions should be batched "
+            "into one `AskUserQuestion` call (multiple options per call are supported). Ask as "
+            "many rounds as needed until the scope is genuinely clear. Never make silent "
+            "assumptions about stack, framework, persistence model, or feature set.\n\n"
             "When you need the user to choose among a few concrete options, use `AskUserQuestion` "
             "instead of writing the options inline. Keep headers concise, keep labels short, and "
-            "put the recommended choice first.\n\n"
+            "put the recommended choice first. Use product language ('web app', 'mobile app', "
+            "'CLI tool') — never expose internal framework names to the operator.\n\n"
             "User: {user_message}\n"
         ),
         tools=(
@@ -403,12 +417,16 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         ),
         auto_approve_tools=(
             "Read",
+            "Write",
+            "Edit",
             "Glob",
             "Grep",
             "mcp__workspace__get_project_info",
             "mcp__workspace__list_directory",
             "mcp__workspace__read_file",
+            "mcp__workspace__run_command",
             "mcp__builder__memory_search",
+            "AskUserQuestion",
         ),
         model="sonnet",
         max_turns=12,
