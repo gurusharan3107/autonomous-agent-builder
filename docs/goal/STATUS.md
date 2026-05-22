@@ -71,7 +71,7 @@ Last result of each [EVALUATION.md](EVALUATION.md) tier. Update on milestone clo
 
 | Tier | Last Run | Status | Notes |
 | --- | --- | --- | --- |
-| Tier 1 — Token + UX | 2026-05-21 (M1.2 in flight) | Partial — 79/79 tests; devpulse done=2; full bars pending 3 remaining tasks | Re-run after remaining M1.2 tasks |
+| Tier 1 — Token + UX | 2026-05-22 (M2.3 P0 batch) | Partial — `avoidable_cost_flags=[]` ✓; `chunk_pressure_risk=false` ✓; code-gen cache 71.8x ✓; provider-limit operator copy ✓; per-session G2 delta + G1 StreamEvent deferred (quota resets Jun 1) | Re-run Jun 1 on fresh code-gen session |
 | Tier 2 — Lifecycle Coverage | Not yet run | Pending | Runs at M2.1 |
 | Tier 3 — Head-to-Head | Not yet run | Pending | Runs at M3.4 |
 
@@ -81,7 +81,7 @@ Last result of each [EVALUATION.md](EVALUATION.md) tier. Update on milestone clo
 
 One line per durable decision. Keep recent 20; older → `builder memory add` if durable, else delete.
 
-- **2026-05-22** — M2.3 P0 Tier B SDK fixes landed: `exclude_dynamic_sections=True` (G2), `include_partial_messages=True` (G1), `strict_mcp_config=True` native (G7), `PostToolUse` output-trim hook for Bash/Read/MCP (G12), `RateLimitEvent` stream-message capture → structured provider-limit payload (StopFailure). 5 ROADMAP M2.3 P0 items [x]; 5 new tests + 88 green. Live evidence (devpulse) pending.
+- **2026-05-22** — M2.3 P0 Tier B SDK fixes landed: `exclude_dynamic_sections=True` (G2), `include_partial_messages=True` (G1), `strict_mcp_config=True` native (G7), `PostToolUse` output-trim hook for Bash/Read/MCP (G12), `RateLimitEvent` stream-message capture → structured provider-limit payload (StopFailure). 5 ROADMAP M2.3 P0 items [x]; 5 new tests + 88 green. Evidence rerun: `avoidable_cost_flags=[]` ✓; `chunk_pressure_risk=false` ✓; code-gen cache ratio 71.8x ✓; provider-limit blocked card fires operator copy ✓. Per-session G2 delta + G1 StreamEvent capture deferred to June 1 (provider quota reset).
 - **2026-05-22** — ROADMAP SDK-grounded additions (codebase-validated): M2.3 P0 (G1/G2/G7/G12) + StopFailure hook; M2.4 G6 `include_hook_events`; M2.5 G4 file checkpointing + G13 `effort:"xhigh"`; M2.6 G5 `permissionDecision="defer"` + typed-retry refinement; M3.2 G3 `SessionStore` HARD prereq + M3.3 dependency note. INSIGHTS revalidation entry appended: withdrew standalone G8 (`AskUserQuestion` already adopted); narrowed G15 (partial in `runner.py:818-845`); audited 5 closed IMPs as already SDK-covered. Commit `2613dc6`.
 - **2026-05-22** — M1.4 per-phase allowlists + preflight probes: scaffold `Glob`/`Grep` removed; gate-remediator `Glob` removed; scaffold `auto_approve_tools` AskUserQuestion bug fixed; `SubagentDefinition.max_turns` added (→ SDK `maxTurns`); `AgentRunner._preflight_workspace` added; SDK 0.2.85; `test_all_agents_defined` includes gate-remediator. 9 new tests, 88 green.
 - **2026-05-22** — 10 prevention items added to ROADMAP across M1.4/M1.5/M2.1/M2.3/M2.5/M2.6 from INSIGHTS Run #7 (IMP-001..013 + recent gate-remediator → SDK levers: `can_use_tool`, `ClaudeSDKClient`, per-phase `allowed_tools`, `include_partial_messages`, `RateLimitEvent`, typed `AssistantMessageError`, `AgentDefinition.maxTurns`). Two M2.6 items = autopilot preconditions. SDK doctrine → `docs/references/coding-agent-prevention.md`.
