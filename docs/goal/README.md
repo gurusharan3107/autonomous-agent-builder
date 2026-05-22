@@ -1,76 +1,96 @@
-# docs/goal/ — Agent Entry Point
+# docs/goal/ — Operating Guide
 
-**You are here because the user pointed you at this folder. Read this file in full before doing anything else. It takes under two minutes.**
-
-This folder is the single authoritative entry point for any agent (Claude Agent SDK lane or Codex SDK lane) working on the Autonomous Agent Builder. It owns the product north star, the roadmap to "preferred over Codex CLI and Claude Code", the tiered evaluation criteria, the live status, and the protocol for resuming after a session drop.
-
-Everything an agent needs to know about *why* it's working, *what* "done" looks like, *where* it is on the journey, and *how* to pick up where the last session left off lives in this folder.
+The single authoritative entry point for any agent working on the Autonomous Agent Builder. Read this file first on every session. Two minutes.
 
 ---
 
-## Hard Rules (non-negotiable for every agent in every session)
+## Read order (every session)
 
-1. **Read in this order on every session:** `README.md` (this file) → `NORTH-STAR.md` → `STATUS.md` → the file that matches what you're about to do (`ROADMAP.md`, `EVALUATION.md`, `FIX-STANDARD.md`, `OPERATOR-LANGUAGE.md`, `TUNING.md`, `RESUME.md`, or `INDEX.md`).
-2. **STATUS.md is the live state.** Update it whenever a roadmap milestone moves between states (`pending` → `in_progress`, `in_progress` → `done`, or `in_progress` → `blocked`). Never let STATUS.md lie about what is currently in flight.
-3. **ROADMAP.md is the spine.** Every meaningful piece of work must map to a roadmap item. Items that don't fit get added to the right epoch, not done ad-hoc.
-4. **EVALUATION.md is the bar.** A milestone is not "done" until the tier of evaluation it claims to satisfy actually passes with evidence.
-5. **INDEX.md is the owner map.** Before creating, editing, or duplicating any doc anywhere in the repo, consult INDEX.md to find the existing owner.
-6. **Both runtime lanes are first-class.** Anything claimed for the product must hold in both the Claude Agent SDK lane (`claude`) and the Codex SDK lane (`codex_sdk`). If it only holds in one, mark it explicitly per-lane.
-7. **Operator language is mandatory in operator-facing surfaces.** The banned-term contract, good/bad operator prompts, and operator scenarios (F/E/R) live in [OPTERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.md). Banned terms are allowed in *this* folder because the audience is the agent, not the operator.
-8. **The model decides tool calls; deterministic prompt routing is forbidden.** User prompts must always be processed by the model. The model infers intent and decides which tools to call. Deterministic routing on exact wording is a hard violation — the rule that the model owns prompt interpretation is what keeps the product operator-agnostic.
-9. **Ground every solution in documentation and best practices.** Fix root causes, not symptoms. SDK-grounded fixes only; never workarounds. The full procedure is [FIX-STANDARD.md](FIX-STANDARD.md) — apply it for every non-trivial fix.
-10. **Inspect all neighbouring surfaces when testing.** Agent, Voice, Board, Backlog, Metrics, Observability — efficiency, performance, and UX all matter. A change verified only on the surface it touched is unverified.
-11. **Memory is bidirectional.** Read repo precedent before fixing ([FIX-STANDARD.md § Step 0](FIX-STANDARD.md#step-0--load-repo-precedent-first)) AND write back after fixing when the learning is durable ([FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-the-learning-is-durable)). Invalidate stale memory when a fix proves it wrong. All `builder memory` commands run from the Builder source repo, not from managed-app workspaces — scopes are intentionally separate.
-12. **Autoresearch (Track B) is dormant until prerequisites pass.** [`docs/autoresearch/`](../autoresearch/README.md) activates only when the prerequisites in its README are met. Running Track B before Track A optimizes around broken behavior.
-13. **A checklist item is not closed until it is committed and pushed.** Ticking `[x]` in ROADMAP.md, updating STATUS.md, and committing supporting evidence files must land in a pushed commit before the item counts as done. An unpushed `[x]` is not closed.
-14. **Commit only when a ROADMAP.md item is ticked `[x]`.** Do not commit after every file edit or framework tweak. The commit trigger is a checklist item closing. When that happens: update CHANGELOG.md first, tick `[x]` in ROADMAP.md, update STATUS.md, then make one commit covering all related changes, then push.
+1. **README.md** (this file) — operating rules + file map.
+2. **NORTH-STAR.md** — *why*. Mission, three-fold success bar, differentiators vs Codex CLI / Claude Code.
+3. **STATUS.md** — *where you are*. Current epoch, current milestone, in-flight item, next action, blockers, evidence pointers.
+4. **The file matching your next move** — ROADMAP / EVALUATION / FIX-STANDARD / OPERATOR-LANGUAGE / TUNING / RESUME / INDEX / INSIGHTS.
+
+If STATUS is stale or ambiguous, open **RESUME.md** before doing any new work.
 
 ---
 
-## File Map
+## File map
 
-| File | Purpose | When you must read it |
+| File | Owns | Touch it when |
 | --- | --- | --- |
-| `README.md` | This file. Bootstrap rules and file map. | Every session, first. |
-| `NORTH-STAR.md` | The mission, the three-fold success bar (operator UX + developer economics + lifecycle completeness), and the differentiators vs Codex CLI and Claude Code. | Every session, second. Anchors *why*. |
-| `STATUS.md` | Live state: current epoch, current milestone, last action, next action, blockers, evidence pointers. Agent-updated per milestone transition. | Every session, third. Tells you *where you are*. |
-| `ROADMAP.md` | Three epochs (Stabilize → Differentiate → Scale), each with milestones and concrete items. The spine of all work. | When picking the next item, opening a new milestone, or proposing scope. |
-| `EVALUATION.md` | Tiered scorecard (Tier 1 token+UX bars / Tier 2 lifecycle coverage / Tier 3 head-to-head benchmarks). Verification commands per tier. | Before claiming a milestone or item is "done"; before declaring an epoch complete. |
-| `FIX-STANDARD.md` | The 7-step procedure every non-trivial fix must follow (load memory → explore → triggers → SDK grounding → correct layer → verify → record → write memory). | Before starting any defect closure, roadmap bug item, or quality-gate failure investigation. |
-| `OPERATOR-LANGUAGE.md` | Banned operator-facing terms, good/bad operator prompt shapes, and the F1-F10 / E1-E9 / R1-R3 operator scenarios used to validate every change. | Before testing any operator-facing surface; before writing any operator-facing copy. |
-| `TUNING.md` | Continuous CLI monitoring streams + per-prompt tuning loop for refining agent tools, allowlists, prompts, and boundaries based on live evidence. | When testing a live agent run; when investigating an operator-UX regression the rubrics didn't catch. |
-| `RESUME.md` | Protocol for picking up after a session drop, context compaction, or fresh agent handover. | First time you join a session that already has STATUS.md content; whenever you are uncertain about continuity. |
-| `INDEX.md` | Owner map: which concern lives in which file, in this folder *and* across the rest of the repo (rubrics, gates, workflows, memory, knowledge). References, does not duplicate. | Before creating any new doc; whenever you need to find the authoritative source for a topic. |
-| `INSIGHTS.md` | Append-only log of direction audits produced by the `goal-audit` skill. Each entry compares user intent (from recent session transcripts) against framework state and surfaces autoresearch focus candidates. | When you want to know what the last audit found, or after invoking the `goal-audit` skill. The skill writes here; you read here. |
+| `README.md` | Operating rules + read order. | Operating rules change. |
+| `NORTH-STAR.md` | Mission, success bar, differentiators. | The goal itself changes. |
+| `STATUS.md` | Live state: current position, next action, blockers, evidence pointers, recent decisions. | A milestone/item transitions state, a blocker opens/closes, or a durable decision lands. |
+| `ROADMAP.md` | Three epochs × milestones × concrete `[ ]`/`[x]` items. The spine of all work. | Picking an item, opening a milestone, proposing scope. Tick `[x]` only when evidence passes. |
+| `EVALUATION.md` | Tiered bars (Tier 1 token+UX / Tier 2 lifecycle / Tier 3 head-to-head) + verification commands. | Claiming an item/milestone/epoch is done. |
+| `FIX-STANDARD.md` | The 7-step fix procedure: memory → explore → triggers → SDK grounding → correct layer → verify → record → write memory. | Starting any non-trivial defect closure. |
+| `OPERATOR-LANGUAGE.md` | Banned operator-facing terms, good/bad prompt shapes, F1-F10 / E1-E9 / R1-R3 scenarios. | Touching any operator-visible surface or copy. |
+| `TUNING.md` | Continuous CLI monitoring + per-prompt tuning loop. | Watching a live agent run or investigating an operator-UX regression. |
+| `RESUME.md` | Session-handover protocol. | Joining a session with existing STATUS content or when continuity is uncertain. |
+| `INDEX.md` | Owner map (this folder + rest of repo). | Before creating or duplicating any doc. |
+| `INSIGHTS.md` | Append-only log of `goal-audit` runs. | The skill writes here; you read here. |
 
 ---
 
-## Bootstrap Sequence For A Fresh Session
+## Hard rules (non-negotiable)
 
-1. Read `README.md` (here).
-2. Read `NORTH-STAR.md`. Internalize the three-fold success bar and the differentiator vision.
-3. Read `STATUS.md`. Note the current epoch, current milestone, last action, and next action.
-4. If `STATUS.md` shows in-flight work and you are uncertain about continuity, read `RESUME.md` and follow its protocol.
-5. Open the file that matches your next move: `ROADMAP.md` to pick an item, `EVALUATION.md` to verify a claim, `INDEX.md` to find an existing owner.
-6. Do the work, then update `STATUS.md` per the cadence rule (per milestone transition).
-
----
-
-## What This Folder Does *Not* Own
-
-- **Active bug list (operator-visible defects).** Owned by `docs/IMPROVEMENTS.md`. Roadmap items in `ROADMAP.md` may reference IMP-NNN entries; they don't duplicate them.
-- **Per-sprint checklist.** Owned by `docs/SPRINT-PROGRESS.md` for the current cycle. Roadmap is longer-arc; sprint is shorter-arc.
-- **Historical evidence archive.** Owned by `docs/PROGRESS.md` and `CHANGELOG.md`. Those record what happened; this folder records what should happen and where we are.
-- **Runtime contracts, agent capability rubrics, quality gates, workflows.** Owned by their existing surfaces under `docs/references/`, `docs/rubric/`, `docs/quality-gate/`, `docs/workflows/`. `INDEX.md` maps to them; nothing here is duplicated from them.
-- **Operator prompts.** Owned by `docs/PROMPT.md`. `EVALUATION.md` references PROMPT.md when prescribing test scripts.
-- **Memory and knowledge.** Owned by `.memory/` (via `builder memory`) and the repo KB (via `builder knowledge`). Read precedent before fixing; write back when learning is durable.
-- **Autoresearch optimization loop (Track B).** Owned by [`docs/autoresearch/`](../autoresearch/README.md) as a sister framework. This folder governs *what* the product must become; `docs/autoresearch/` governs *how* the agent measures, optimizes, and re-tests its own prompt shape, context size, agent use, and runtime policy once the product is stable enough to optimize. Activation gate is [ROADMAP.md § M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b); the loop must not run before Track A bug fixes close. When [STATUS.md](STATUS.md) shows the current milestone is M3.5, descend into [`docs/autoresearch/README.md`](../autoresearch/README.md) and follow its read order.
+1. **STATUS.md must not lie.** Update it on every state transition (milestone, item, blocker, decision). A wrong STATUS is a Tier 1 resumability failure.
+2. **Everything maps to ROADMAP.** No ad-hoc work. New work goes on the roadmap in the right epoch first.
+3. **EVALUATION is the bar.** A milestone is done only when its claimed tier passes with evidence.
+4. **INDEX is the owner map.** Before creating or editing any doc, check INDEX for the existing owner. One owner per concern.
+5. **Both runtime lanes are first-class.** Anything claimed for the product must hold in both `claude` and `codex_sdk`. If only one lane, mark per-lane.
+6. **Operator-language is mandatory on operator surfaces.** Banned terms allowed *only* here (this folder is for agents, not operators).
+7. **The model owns prompt interpretation.** Deterministic routing on exact wording is a hard violation.
+8. **Fix root causes.** SDK-grounded fixes only, per [FIX-STANDARD.md](FIX-STANDARD.md). No workarounds.
+9. **Inspect neighbouring surfaces when testing.** Agent, Voice, Board, Backlog, Metrics, Observability. A change verified only on the touched surface is unverified.
+10. **Memory is bidirectional.** Read repo precedent before fixing; write back when the learning is durable. Invalidate stale memory. `builder memory` runs from the Builder source repo only.
+11. **Autoresearch (Track B) is dormant** until [ROADMAP M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b) prerequisites pass. Don't run it on broken behavior.
+12. **A `[x]` isn't closed until pushed.** Tick `[x]` + update STATUS + push the commit. An unpushed `[x]` does not count.
+13. **Commit only on `[x]` close.** Trigger order: update CHANGELOG → tick `[x]` in ROADMAP → update STATUS → one commit covering all related changes → push.
 
 ---
 
-## How To Use This Framework If You Are A Human
+## Operating loop
 
-- To redirect the agent: edit `STATUS.md` and add a `Manual override` line under *Next Action*. The agent picks it up next session.
-- To change the goal itself: edit `NORTH-STAR.md`. Roadmap and evaluation should follow.
-- To add a new milestone or item: edit `ROADMAP.md`, then write a short note in `STATUS.md` so the next agent knows about it.
-- To add a new evaluation bar: edit `EVALUATION.md` and link the bar to the roadmap milestone it gates.
+When picking up work:
+
+1. Read **STATUS.md**'s Current Position. Note current milestone + in-flight item.
+2. Open **ROADMAP.md** at that milestone. Pick the next `[ ]` item (or the one already in flight).
+3. If it's a fix, follow **FIX-STANDARD.md**. If it's a feature, work it.
+4. Verify against **EVALUATION.md** at the relevant tier.
+5. When the item is done with evidence: CHANGELOG → tick `[x]` → STATUS → commit → push.
+6. If you found a recurring trap or non-obvious decision: write to `builder memory` from the source repo.
+
+When discovering new work mid-session: add it to ROADMAP under the right epoch *before* starting it.
+
+When STATUS and reality disagree: **fix STATUS first**, then continue.
+
+---
+
+## What this folder does NOT own
+
+See [INDEX.md § External Owner Map](INDEX.md#external-owner-map-the-rest-of-the-repo) — single source for every concern owned outside `docs/goal/` (IMPs, sprint state, history, rubrics, quality gates, workflows, references, prompts, memory, KB, autoresearch).
+
+---
+
+## Maintaining this folder
+
+1. **Docs cost tokens** — on write and every future read. Write tight, cut explanation, sacrifice grammar for brevity. Prefer tables / bullets / pointers over prose.
+2. **Before adding content, check ownership.** [INDEX.md](INDEX.md) lists every owner. New concern → either fits an existing owner here, fits an external owner (link it), or needs a new owner (add a row to INDEX before writing).
+3. **Compression triggers per file:**
+   - **STATUS.md** > 120 lines → compress / archive / delete.
+   - **INSIGHTS.md** — `goal-audit` auto-trims prior-run closed actions; older runs may be collapsed to summary rows at milestone close.
+   - **ROADMAP.md** — closed milestones stay; closed `[x]` items stay (audit trail). Don't compress the spine.
+   - **Other files** — when a section's prose explains *what* instead of stating it, cut.
+4. **Cross-file propagation chain.** ROADMAP item closes → CHANGELOG entry → tick `[x]` in ROADMAP → update STATUS → one commit → push. Don't break the chain (Hard Rules 12, 13).
+5. **One owner per concern.** If you're about to duplicate content from another `goal/` file or an external owner, link instead. Drift between duplicates is the failure mode.
+
+---
+
+## Human overrides
+
+- **Redirect the agent:** edit `STATUS.md` and add a `Manual override` line under *Next Action*. The agent picks it up next session.
+- **Change the goal itself:** edit `NORTH-STAR.md`. Roadmap and evaluation should follow.
+- **Add a milestone or item:** edit `ROADMAP.md`, then note it in `STATUS.md`.
+- **Add an evaluation bar:** edit `EVALUATION.md` and link it to the gating milestone.

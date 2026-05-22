@@ -1,13 +1,13 @@
 # Index — Owner Map
 
-> **Read [README.md](README.md) first.**
+> Read [README.md](README.md) first.
 
-This file is the routing layer between `docs/goal/` and the rest of the repository. It answers two questions:
+Routing layer between `docs/goal/` and the rest of the repo. Answers:
 
-1. **In `docs/goal/`, which file owns which concern?** (Internal map.)
-2. **Outside `docs/goal/`, which surface owns which concern?** (External map — references existing owners; does not duplicate them.)
+1. Inside `docs/goal/` — which file owns which concern? (Internal map.)
+2. Outside `docs/goal/` — which surface? (External map — references, doesn't duplicate.)
 
-If you are about to create a new doc anywhere in the repo, check this file first. The rule from [docs/REFERENCE.md § Control Owner Rule](../REFERENCE.md#control-owner-rule) applies: **at most one control owner per concern**.
+Before creating any new doc, check here. Per [docs/REFERENCE.md § Control Owner Rule](../REFERENCE.md#control-owner-rule): **one control owner per concern**.
 
 ---
 
@@ -31,7 +31,7 @@ If you are about to create a new doc anywhere in the repo, check this file first
 
 ## External Owner Map (the rest of the repo)
 
-This map references the existing surfaces. It does *not* duplicate their content. The existing owner map in [docs/REFERENCE.md](../REFERENCE.md) is the authoritative routing for doc concerns; this section selects the most-used owners and binds them to `docs/goal/` use cases.
+References existing surfaces; doesn't duplicate. [docs/REFERENCE.md](../REFERENCE.md) is authoritative for doc concerns; this section binds most-used owners to `docs/goal/` use cases.
 
 ### Legacy strategic docs (still authoritative for their narrow concerns)
 
@@ -154,9 +154,9 @@ Track B activation is itself a roadmap milestone: [ROADMAP § M3.5](ROADMAP.md#m
 
 ## When To Update This File
 
-- A new file is added to `docs/goal/` → add a row to the [Internal Map](#internal-map-within-docsgoal).
-- A new rubric, quality gate, workflow, or reference is added to the repo → add a row to the relevant [External Owner Map](#external-owner-map-the-rest-of-the-repo) section.
-- A legacy doc is retired or absorbed → update its row to say so; do not delete the row (history matters for migration audit).
-- An ownership boundary moves (a concern moves from one file to another) → update both rows.
+- New file in `docs/goal/` → row in [Internal Map](#internal-map-within-docsgoal).
+- New rubric / gate / workflow / reference → row in relevant [External Owner Map](#external-owner-map-the-rest-of-the-repo) section.
+- Legacy doc retired/absorbed → update its row; don't delete (history matters).
+- Ownership boundary moves → update both rows.
 
-If you are adding a new concern that doesn't fit any existing row, also update [docs/REFERENCE.md](../REFERENCE.md) — that is the repo-wide owner map and this file inherits from it.
+New concern not fitting any row → also update [docs/REFERENCE.md](../REFERENCE.md) (repo-wide owner map; this inherits).

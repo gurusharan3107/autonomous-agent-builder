@@ -1,9 +1,9 @@
 # Status — Live Project State
 
-> **Read [README.md](README.md) and [NORTH-STAR.md](NORTH-STAR.md) first.**
-> **Agent: update this file whenever a [ROADMAP.md](ROADMAP.md) milestone or item transitions state.** See [Update Protocol](#update-protocol) at the bottom.
+> Read [README.md](README.md) and [NORTH-STAR.md](NORTH-STAR.md) first.
+> Update this file whenever a [ROADMAP.md](ROADMAP.md) milestone/item transitions. See [Update Protocol](#update-protocol).
 
-This file is the live state. If it lies, the system is blind. Keep it honest.
+Live state. If it lies, system is blind.
 
 ---
 
@@ -15,7 +15,7 @@ This file is the live state. If it lies, the system is blind. Keep it honest.
 | Current Milestone | **M1.4 — Two-workspace validation rotation** |
 | Current Item In Flight | **M1.4 in progress** — per-phase allowlists + preflight probes ✓; forward/reverse workspace validation pending |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
-| Active Runtime Lane | Claude Agent SDK lane (`claude`) complete; Codex SDK lane (`codex_sdk`) deferred (M1.2 remaining items) |
+| Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
 | Last Update | 2026-05-22 — M1.4 in progress: per-phase allowlists + preflight probes implemented |
 
 ---
@@ -24,32 +24,18 @@ This file is the live state. If it lies, the system is blind. Keep it honest.
 
 **M1.3 — God-file decomposition ratchet** (closed 2026-05-21 by Claude Sonnet 4.6)
 
-All four key files below 1500 lines: `summary.py` 540, `orchestrator.py` 1345, `routes/agent.py` 1326, `voice_operator.py` 1471. `builder lint --complexity-report --json` reports 0 violations. Six new focused extraction modules created. Sequential single-agent constraint honored throughout.
+Key files <1500: `summary.py` 540, `orchestrator.py` 1345, `routes/agent.py` 1326, `voice_operator.py` 1471. `builder lint --complexity-report --json`: 0 violations. 6 extraction modules. Sequential single-agent throughout.
 
-*(Previously: **M1.1** — 8 IMPs closed; **M1.2 Claude lane** — devpulse sprint 5/5 done, $2.08)*
-
-All 8 IMPs closed with root cause, fix, and regression test:
-- IMP-001: prompt context threading on intake follow-up
-- IMP-002: gates-first enforcement before code-gen dispatch
-- IMP-003: metrics showing 0 tokens for in-progress runs
-- IMP-004: Recover button returning 409 for gate-infra errors
-- IMP-006: scaffold agent using shell heredoc instead of Write tool
-- IMP-007: agent dispatching all tasks simultaneously (connection pool exhaustion)
-- IMP-008: `git worktree add` failing on unborn HEAD
-- IMP-009: agent dispatching before scaffold completes
-
-Re-verify evidence: 79/79 regression tests pass (11 pre-existing `TestDispatchPhases` / `TestPlanningPhase` failures also fixed this session via `_wire_db` autouse fixture). All IMP-specific tests pass.
+Prior: **M1.1** — 8 IMPs closed (full list + IMP-010..013 in [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md)); **M1.2 Claude lane** — devpulse 5/5, $2.08. Re-verify: 79/79 regression tests pass.
 
 ---
 
 ## Next Action
 
-The next agent landing here should:
-
-1. Read [README.md](README.md), [NORTH-STAR.md](NORTH-STAR.md), and this file in order.
-2. **Continue M1.4** — two remaining items open: (a) forward-engineering scenario on a fresh workspace (Claude lane); (b) reverse-engineering on an existing workspace. See [ROADMAP.md § M1.4](ROADMAP.md#m14--two-workspace-validation-rotation).
-3. M1.2 Codex SDK lane (deferred): when ready, run the same devpulse sprint on `codex_sdk` lane and collect Tier-1 evidence. This unblocks M1.2's remaining three items.
-4. Follow [FIX-STANDARD.md](FIX-STANDARD.md) for any regressions.
+1. Read [README.md](README.md), [NORTH-STAR.md](NORTH-STAR.md), this file.
+2. **Continue M1.4** — two `[ ]` items: (a) forward-engineering on fresh workspace (Claude lane); (b) reverse-engineering on existing workspace. See [ROADMAP § M1.4](ROADMAP.md#m14--two-workspace-validation-rotation).
+3. M1.2 Codex SDK lane (deferred): same devpulse sprint on `codex_sdk` + Tier-1 evidence → unblocks M1.2's 3 remaining items.
+4. Regressions → [FIX-STANDARD.md](FIX-STANDARD.md).
 
 ---
 
@@ -57,23 +43,23 @@ The next agent landing here should:
 
 | Discovered | Blocked Item | Description | Unblock Condition |
 | --- | --- | --- | --- |
-*No active blockers.*
+*None.*
 
 ---
 
 ## Evidence Pointers
 
-Use this section to point at the most recent authoritative evidence for the current milestone. Replace prior entries when the milestone advances; archive prior pointers to `docs/PROGRESS.md` if they're durable history.
+Latest authoritative evidence for the current milestone. Replace on milestone advance; durable history → [docs/PROGRESS.md](../PROGRESS.md).
 
-| Concern | Where the latest evidence lives |
+| Concern | Latest evidence |
 | --- | --- |
-| Latest agent session id (Claude lane) | Task `128e02f6` **done** 11:25 — scaffold (5m17s, $0.108) + code-gen (12m, $0.271) + gates + integration + build verify. IMP-010/011/012/013 all resolved. |
-| Latest agent session id (Codex lane) | *TBD — not yet exercised in M1.2* |
-| Latest token telemetry | Session `5a752c0a`: cost $0.065, 2 turns — `builder logs analyze --session 5a752c0a --json` |
+| Latest agent session id (Claude lane) | Task `128e02f6` done 11:25 — scaffold (5m17s, $0.108) + code-gen (12m, $0.271) + gates + integration + build verify. IMP-010..013 resolved. |
+| Latest agent session id (Codex lane) | *TBD — M1.2 not yet exercised* |
+| Latest token telemetry | Session `5a752c0a`: $0.065, 2 turns — `builder logs analyze --session 5a752c0a --json` |
 | Latest metrics snapshot | *TBD — run `builder metrics show --json --full --limit 8` after M1.2 dispatch* |
-| Latest board snapshot | `pending=3 active=0 done=2` — 2026-05-21; `cd /home/gurusharangupta/Builder-Workspace/devpulse && builder board show --json` |
-| Latest complexity report | M1.3 closed 2026-05-21 — `builder lint --complexity-report --json`: 0 violations |
-| Latest IMPs status | [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) — IMP-001 through IMP-013 all resolved |
+| Latest board snapshot | `pending=3 active=0 done=2` (2026-05-21) — `cd /home/gurusharangupta/Builder-Workspace/devpulse && builder board show --json` |
+| Latest complexity report | M1.3 closed 2026-05-21 — 0 violations |
+| Latest IMPs status | [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) — IMP-001..013 resolved |
 | Latest sprint detail | [docs/SPRINT-PROGRESS.md](../SPRINT-PROGRESS.md) |
 | Latest changelog entry | [CHANGELOG.md](../../CHANGELOG.md) |
 
@@ -81,11 +67,11 @@ Use this section to point at the most recent authoritative evidence for the curr
 
 ## Tier Snapshot
 
-Last known result of running each Tier of [EVALUATION.md](EVALUATION.md). Update on each milestone closeout.
+Last result of each [EVALUATION.md](EVALUATION.md) tier. Update on milestone closeout.
 
 | Tier | Last Run | Status | Notes |
 | --- | --- | --- | --- |
-| Tier 1 — Token + UX | 2026-05-21 (M1.2 in flight) | Partial — regression tests 79/79; devpulse done=2 (domain model + UI shell); Tier 1 full bars (cache_ratio, chunk_pressure, avoidable_cost) pending 3 remaining tasks | Re-run after remaining 3 M1.2 tasks complete |
+| Tier 1 — Token + UX | 2026-05-21 (M1.2 in flight) | Partial — 79/79 tests; devpulse done=2; full bars pending 3 remaining tasks | Re-run after remaining M1.2 tasks |
 | Tier 2 — Lifecycle Coverage | Not yet run | Pending | Runs at M2.1 |
 | Tier 3 — Head-to-Head | Not yet run | Pending | Runs at M3.4 |
 
@@ -93,58 +79,51 @@ Last known result of running each Tier of [EVALUATION.md](EVALUATION.md). Update
 
 ## Recent Decisions
 
-*Record one short line per decision worth preserving across sessions. Keep this to the most recent 20 — older items move to memory via `builder memory add` if durable, or get deleted if ephemeral.*
+One line per durable decision. Keep recent 20; older → `builder memory add` if durable, else delete.
 
-- **2026-05-22** — M1.4 per-phase allowlists + preflight probes implemented: scaffold `Glob`/`Grep` removed; gate-remediator `Glob` removed; scaffold `auto_approve_tools` AskUserQuestion bug fixed; `SubagentDefinition.max_turns` added (forwarded to SDK `maxTurns`); `AgentRunner._preflight_workspace` added (hard git HEAD check for 7 phases; soft ruff/pyproject.toml warnings for Python-gate phases); SDK upgraded to 0.2.85; `test_all_agents_defined` fixed to include gate-remediator. 9 new tests, 88 tests green, 1 pre-existing click format failure unrelated.
-- **2026-05-22** — 10 prevention items added to ROADMAP across M1.4/M1.5/M2.1/M2.3/M2.5/M2.6 from INSIGHTS Run #7 retrospective (IMP-001..IMP-013 + recent gate-remediator fixes mapped to SDK-grounded levers: `can_use_tool`, `ClaudeSDKClient`, per-phase `allowed_tools`, `include_partial_messages`, `RateLimitEvent`, typed `AssistantMessageError`, `AgentDefinition.maxTurns`). Two M2.6 items flagged as autopilot preconditions. INSIGHTS Run #7 Section C closed; Section D retained as durable coding-agent reference.
-- **2026-05-21** — M1.3 closed: `voice_operator.py` 2306→1471 lines via extraction of `HighRiskVoiceActionService`, `VoiceCostLedger`, `build_voice_digest`, `load_voice_board_status` into 4 new modules. `builder lint --complexity-report --json` reports 0 violations. All four key files (summary.py 540, orchestrator.py 1345, routes/agent.py 1326, voice_operator.py 1471) confirmed below 1500 ✓.
-- **2026-05-21** — M1.3 started: extracted `_publish_agent_run_error_result`, `_publish_provider_limit_result`, `_publish_successful_chat_result` → `agent_chat_result_publisher.py`; `_continue_after_delivery_permission_question`, `_complete_persisted_delivery_scope_approval` → `agent_delivery_continuation.py`. `routes/agent.py` reduced 1762→1326 lines (below 1500 ✓). Complexity baseline updated. Codex SDK lane (M1.2) deferred.
-- **2026-05-21** — Framework governance: Hard Rules 13 & 14 (commit+push on `[x]`, CHANGELOG before commit) added to `docs/goal/README.md`; `.gitignore` updated for runtime artifacts; `docs/goal/` self-containment confirmed; INSIGHTS→ROADMAP completed-item lifecycle documented; goal-audit SKILL.md updated with ROADMAP cross-check rule for Section C.
-- **2026-05-21** — M1.2 Claude lane complete: devpulse sprint 5/5 tasks done, $2.08. Three source-repo gate bugs found and fixed: (1) `quality_gates/testing.py` set `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`, blocking pytest-asyncio in generated apps; (2) `embedded/scripts/feature_acceptance.py` `_TEST_SUFFIXES` excluded `.py`, making coverage signal always fail for Python projects; (3) `feature_acceptance.py` only recognized Node.js acceptance test runners — added `run-tests.js` pattern support for Python apps via node shim.
-- **2026-05-21** — Source-repo improvements applied (Claude Opus 4.7 session): `query_timeout_seconds` 90→300; code-gen prompt removes spurious "Design: " prefix when no design context; orchestrator walrus operator replaced with pre-assignment; test suite fixed from 74/75 → 79/79 by wiring `test_db` to `TestDispatchPhases`/`TestPlanningPhase` (IMP-012 short-lived-session pattern required DB tables in tests).
-- **2026-05-21** — M1.1 closed. All 8 IMPs resolved; 74/75 regression tests pass. IMP-010 found and closed: monitor-task not-stopped-on-exception + rollback guard + flush-error structlog. IMP-011 found and closed same session: `board_stream`/`approval_stream` SSE endpoints holding pool connections for their full client lifetime, exhausting SQLite QueuePool during 4-min scaffold runs; fixed by scoping `get_session_factory()` to initial snapshot only.
-- **2026-05-21** — IMP-007 closed: project-level dispatch guard in `dispatch_lock.py` + prompt constraint in `agent_prompt_builders.py`. IMP-009 closed: scaffold timeout 30s→300s in `builder_tool_service.py` + scaffold-running pre-dispatch guard in `routes/tasks.py`.
-- **2026-05-21** — Migration of legacy strategic docs completed. `PLAN.md`, `GOAL.md`, `MISSION.md` replaced with deprecation stubs pointing to `docs/goal/`. New goal/ files created: [FIX-STANDARD.md](FIX-STANDARD.md), [OPERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.md), [TUNING.md](TUNING.md). Hard Rules in [README.md](README.md) expanded from 7 to 12. Agent Working Principles added to [NORTH-STAR.md](NORTH-STAR.md). Working / historical docs (`PROGRESS.md`, `IMPROVEMENTS.md`, `SPRINT-PROGRESS.md`, `PROMPT.md`, `QUALITY_SCORE.md`, `REFERENCE.md`, `CHANGELOG.md`) stay as-is, referenced from goal/.
-- **2026-05-21** — `docs/goal/` framework initial creation. Migration target chosen; durable strategic content migrated into `docs/goal/` files; legacy files referenced (not duplicated) via [INDEX.md](INDEX.md).
-- **2026-05-21** — Success bar finalized as three-fold: operator UX + developer economics + lifecycle completeness. Both lanes (`claude` and `codex_sdk`) first-class.
-- **2026-05-21** — Roadmap epochs adopted: Stabilize → Differentiate → Scale. M1.1 (close 4 IMPs) is the current entry point because Track A blocks Track B autoresearch.
+- **2026-05-22** — M1.4 per-phase allowlists + preflight probes: scaffold `Glob`/`Grep` removed; gate-remediator `Glob` removed; scaffold `auto_approve_tools` AskUserQuestion bug fixed; `SubagentDefinition.max_turns` added (→ SDK `maxTurns`); `AgentRunner._preflight_workspace` added; SDK 0.2.85; `test_all_agents_defined` includes gate-remediator. 9 new tests, 88 green.
+- **2026-05-22** — 10 prevention items added to ROADMAP across M1.4/M1.5/M2.1/M2.3/M2.5/M2.6 from INSIGHTS Run #7 (IMP-001..013 + recent gate-remediator → SDK levers: `can_use_tool`, `ClaudeSDKClient`, per-phase `allowed_tools`, `include_partial_messages`, `RateLimitEvent`, typed `AssistantMessageError`, `AgentDefinition.maxTurns`). Two M2.6 items = autopilot preconditions. SDK doctrine → `docs/references/coding-agent-prevention.md`.
+- **2026-05-21** — M1.3 closed: `voice_operator.py` 2306→1471 via extracting `HighRiskVoiceActionService` / `VoiceCostLedger` / `build_voice_digest` / `load_voice_board_status` into 4 modules. 0 complexity violations. All 4 key files <1500 ✓.
+- **2026-05-21** — M1.3 started: extracted `_publish_agent_run_*` → `agent_chat_result_publisher.py`; `_continue_after_delivery_permission_question` / `_complete_persisted_delivery_scope_approval` → `agent_delivery_continuation.py`. `routes/agent.py` 1762→1326 (<1500 ✓). M1.2 Codex lane deferred.
+- **2026-05-21** — Framework governance: Hard Rules 13/14 (commit+push on `[x]`, CHANGELOG before commit) in README; `.gitignore` updated; goal/ self-containment confirmed; INSIGHTS→ROADMAP lifecycle documented; goal-audit ROADMAP cross-check added.
+- **2026-05-21** — M1.2 Claude lane: devpulse 5/5, $2.08. Three source-repo gate bugs fixed: `quality_gates/testing.py` `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` removed; `feature_acceptance.py` `_TEST_SUFFIXES` added `.py`; `run-tests.js` shim pattern for Python apps.
+- **2026-05-21** — Source-repo improvements (Claude Opus 4.7): `query_timeout_seconds` 90→300; code-gen "Design: " prefix fix; orchestrator walrus → pre-assignment; tests 74/75→79/79 via `_wire_db` autouse on `TestDispatchPhases`/`TestPlanningPhase`.
+- **2026-05-21** — M1.1 closed. 8 IMPs resolved. IMP-010 closed: monitor-task not-stopped-on-exception + rollback guard + flush-error structlog. IMP-011 closed: SSE endpoints holding pool connections; fixed by scoping `get_session_factory()` to initial snapshot.
+- **2026-05-21** — IMP-007 closed: project-level dispatch guard + prompt constraint. IMP-009 closed: scaffold timeout 30→300s + scaffold-running pre-dispatch guard.
+- **2026-05-21** — Legacy strategic docs migrated: `PLAN.md`/`GOAL.md`/`MISSION.md` → deprecation stubs. New goal/ files: FIX-STANDARD, OPERATOR-LANGUAGE, TUNING. Hard Rules 7→12 in README. Working docs (PROGRESS, IMPROVEMENTS, SPRINT-PROGRESS, PROMPT, QUALITY_SCORE, REFERENCE, CHANGELOG) stay, referenced from goal/.
+- **2026-05-21** — `docs/goal/` framework initial creation. Durable strategic content migrated; legacy referenced via [INDEX.md](INDEX.md).
+- **2026-05-21** — Three-fold success bar finalized: operator UX + developer economics + lifecycle completeness. Both lanes first-class.
+- **2026-05-21** — Epochs adopted: Stabilize → Differentiate → Scale. M1.1 = current entry (Track A blocks Track B).
 
 ---
 
 ## Cross-Session Continuity Hints
 
-When you land here and the [Current Position](#current-position) reads stale or ambiguous, do not start a new line of work. Instead:
+[Current Position](#current-position) stale or ambiguous → don't start new work:
 
-1. Open [RESUME.md](RESUME.md) and follow the protocol.
-2. Cross-check the dashboard (`builder map`, `builder board show --json`, `builder server status --port 9876 --json`) against this file.
-3. If reality differs from this file, **fix this file first** before doing any new work. A wrong STATUS.md is a Tier 1 failure for resumability — it must be corrected, not patched around.
+1. Open [RESUME.md](RESUME.md), follow protocol.
+2. Cross-check dashboard (`builder map`, `builder board show --json`, `builder server status --port 9876 --json`) against this file.
+3. Reality differs → **fix this file first**. Wrong STATUS = Tier 1 resumability failure.
 
 ---
 
 ## Update Protocol
 
-**When to update:**
+**When:** item `[ ]`→`in_progress`→`[x]`; milestone/epoch transition; blocker discovered/cleared; durable decision; Tier of [EVALUATION.md](EVALUATION.md) run.
 
-- A [ROADMAP.md](ROADMAP.md) item transitions `[ ]` → `in_progress` → `[x]`.
-- A milestone transitions `pending` → `in_progress` → `done`.
-- An epoch transitions or a new epoch becomes current.
-- A blocker is discovered or cleared.
-- A decision worth preserving across sessions is made.
-- A Tier of [EVALUATION.md](EVALUATION.md) is run; record the outcome.
+**How:**
 
-**How to update:**
+1. Edit [Current Position](#current-position).
+2. Move closed milestones → [Last Completed Milestone](#last-completed-milestone).
+3. Replace [Next Action](#next-action).
+4. Append one-liner to [Recent Decisions](#recent-decisions) if durable.
+5. Update [Tier Snapshot](#tier-snapshot) on tier run.
+6. Update [Evidence Pointers](#evidence-pointers) on source change.
+7. Set `Last Update` to today + author.
 
-1. Edit the [Current Position](#current-position) table to reflect the new state.
-2. Move closed milestones into [Last Completed Milestone](#last-completed-milestone).
-3. Replace [Next Action](#next-action) with the new concrete next step.
-4. Append a one-liner to [Recent Decisions](#recent-decisions) when the change is durable.
-5. Update [Tier Snapshot](#tier-snapshot) when an evaluation tier was run.
-6. Update [Evidence Pointers](#evidence-pointers) when the latest evidence sources change.
-7. Set `Last Update` in [Current Position](#current-position) to today's date and the agent that made the change.
+**Don't:**
 
-**What not to do:**
-
-- Do not write running history here — that belongs in [docs/PROGRESS.md](../PROGRESS.md).
-- Do not write bug detail here — that belongs in [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md).
-- Do not write per-sprint task lists here — that belongs in [docs/SPRINT-PROGRESS.md](../SPRINT-PROGRESS.md).
-- Do not let this file grow past ~120 lines. Compress, archive, or delete old entries.
+- Write running history (→ [docs/PROGRESS.md](../PROGRESS.md)).
+- Write bug detail (→ [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md)).
+- Write per-sprint task lists (→ [docs/SPRINT-PROGRESS.md](../SPRINT-PROGRESS.md)).
+- Let this file exceed ~120 lines. Compress, archive, delete.

@@ -1,23 +1,23 @@
 # Roadmap — From Current State To "Preferred Over Codex CLI And Claude Code"
 
-> **Read [README.md](README.md) and [NORTH-STAR.md](NORTH-STAR.md) first.**
-> **Update [STATUS.md](STATUS.md) when any milestone or item transitions state.**
+> Read [README.md](README.md) and [NORTH-STAR.md](NORTH-STAR.md) first.
+> Update [STATUS.md](STATUS.md) on any milestone/item transition.
 
-The product reaches "preferred" through three epochs, each with milestones, each with concrete items. Items are checkbox-tracked. Milestones flip from `pending` → `in_progress` → `done` only when **every** item under them is `[x]` and the relevant tier of [EVALUATION.md](EVALUATION.md) passes with evidence.
+Three epochs × milestones × items. Items checkbox-tracked. Milestone `pending`→`in_progress`→`done` only when every item `[x]` AND relevant tier of [EVALUATION.md](EVALUATION.md) passes with evidence.
 
-This is the spine of all work. Anything that isn't a roadmap item gets added to the right epoch before being started — not done ad-hoc.
+Spine of all work. Non-roadmap work → add to the right epoch first; no ad-hoc.
 
 ---
 
 ## Epoch 1 — Stabilize
 
-**Outcome:** The product reliably ships features end-to-end through both runtime lanes against multiple managed-app workspaces. Operator-facing bugs are closed. Performance bars are met. The architecture is decomposed enough that further work is safe.
+**Outcome:** Ships features end-to-end on both lanes across multiple managed-app workspaces. Operator-facing bugs closed. Performance bars met. Architecture decomposed enough for safe further work.
 
-**Gating tier:** [EVALUATION.md § Tier 1](EVALUATION.md#tier-1--token--ux-bars-every-release) must pass on the primary workspace in both lanes.
+**Gating tier:** [EVALUATION.md § Tier 1](EVALUATION.md#tier-1--token--ux-bars-every-release) on primary workspace, both lanes.
 
 ### M1.1 — Close the open operator-facing defects
 
-Source of truth: [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md). Each IMP-NNN must be closed with: root cause, SDK-grounded fix, regression test, post-fix evidence, and (if durable) a memory entry.
+Source: [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md). Each IMP closed with: root cause, SDK-grounded fix, regression test, post-fix evidence, durable memory entry if applicable.
 
 - [x] **IMP-001** — Agent loses original feature request context after intake follow-up. Fixed in `agent_prompt_builders.py` + `chat_turn_prompting.py` + `routes/agent.py`; regression tests in `test_agent_feature_spec_prompt_contracts.py`.
 - [x] **IMP-002** — Gates-first not enforced: 27-turn run before workspace has ruff/pytest infra. Fixed by scaffold commits 1fae0bd, c1a39c8, a88ee2c.
@@ -35,7 +35,7 @@ Source of truth: [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md). Each IMP-NNN must b
 
 ### M1.2 — Both lanes ship one feature on devpulse end-to-end
 
-Forward-engineering scenario validated against both runtime lanes on the *same* operator wording.
+Forward-engineering scenario, both lanes, same operator wording.
 
 - [x] Fresh devpulse workspace boots successfully via `builder init`; readiness gate green.
 - [x] Claude Agent SDK lane: devpulse sprint 5/5 tasks done, $2.08 total (2026-05-21). Domain model → UI shell → core behavior → persistence → verify. All quality gates passed. 127 tests green.
@@ -49,7 +49,7 @@ Forward-engineering scenario validated against both runtime lanes on the *same* 
 
 ### M1.3 — God-file decomposition ratchet complete
 
-Source of truth: [docs/quality-gate/complexity.md](../quality-gate/complexity.md) and `complexity-baseline.json`. Active threshold violations must reach zero.
+Source: [docs/quality-gate/complexity.md](../quality-gate/complexity.md) + `complexity-baseline.json`. Active violations → zero.
 
 - [x] Every active file violation in `complexity-baseline.json` has either been split below the 500-line target or registered as a documented historical baseline (not a fresh violation).
 - [x] `services/voice_operator.py`, `observability/summary.py`, `orchestrator/orchestrator.py`, `embedded/server/routes/agent.py` each below 1,500 measured lines or split into named owner modules. *(summary.py 540, orchestrator.py 1345, routes/agent.py 1326, voice_operator.py 1471 — all ✓)*
@@ -58,7 +58,7 @@ Source of truth: [docs/quality-gate/complexity.md](../quality-gate/complexity.md
 
 ### M1.4 — Two-workspace validation rotation
 
-Both forward-engineering and reverse-engineering scenarios validated. Both runtime lanes exercised on each.
+Forward + reverse scenarios validated. Both lanes per scenario.
 
 - [ ] **Forward:** fresh app from scratch in a new workspace (devpulse or equivalent). Both lanes.
 - [ ] **Reverse:** operate on an existing app workspace (todo-app, a checked-out external repo). Both lanes.
@@ -71,6 +71,7 @@ Both forward-engineering and reverse-engineering scenarios validated. Both runti
 
 Voice is a peer operator surface, not a bolt-on.
 
+
 - [ ] Voice and Agent share the same chat session, same approvals, same pending-question cards.
 - [ ] Voice-initiated feature shipped end to end with browser proof in both lanes.
 - [ ] Realtime auth boundary holds (Realtime uses `OPENAI_API_KEY`; selected runtime auth not leaked into Realtime; Codex subscription runs strip OpenAI credentials).
@@ -81,13 +82,13 @@ Voice is a peer operator surface, not a bolt-on.
 
 ## Epoch 2 — Differentiate
 
-**Outcome:** The product wins decisively on the differentiator dimensions. Codex CLI and Claude Code cannot match what Builder does because the differentiators are structural, not features.
+**Outcome:** Wins decisively on differentiators. Codex CLI / Claude Code can't match — differentiators are structural, not features.
 
-**Gating tier:** [EVALUATION.md § Tier 2](EVALUATION.md#tier-2--lifecycle-coverage-bars-every-milestone) must pass on every managed app in scope; [Tier 3](EVALUATION.md#tier-3--head-to-head-bars-to-declare-preferred) head-to-head benchmarks begin here.
+**Gating tier:** [Tier 2](EVALUATION.md#tier-2--lifecycle-coverage-bars-every-milestone) on every managed app in scope; [Tier 3](EVALUATION.md#tier-3--head-to-head-bars-to-declare-preferred) head-to-head begins here.
 
 ### M2.1 — Lifecycle completeness proof
 
-Full requirements → design → backlog → implementation → verification → ship → optimize loop, dashboard-visible, resumable, durable.
+Full requirements → design → backlog → implementation → verification → ship → optimize loop. Dashboard-visible, resumable, durable.
 
 - [ ] One end-to-end project completed on devpulse with every phase visible in the dashboard, including post-ship optimization recommendation lane.
 - [ ] Resumability: kill the dashboard mid-sprint, restart, confirm exact state restored — no operator data loss, no stale "running" status, no orphaned approvals.
@@ -97,7 +98,7 @@ Full requirements → design → backlog → implementation → verification →
 
 ### M2.2 — Memory and knowledge as decisive differentiators
 
-The product's memory and KB compound across sessions and protect against re-litigating settled questions.
+Memory + KB compound across sessions; prevent re-litigating settled questions.
 
 - [ ] Memory retrieval workflow ([docs/workflows/memory-retrieval-guide.md](../workflows/memory-retrieval-guide.md)) is the documented standard step 0 of every non-trivial fix.
 - [ ] Knowledge base freshness gate (`builder knowledge validate --json`) is wired into the documentation refresh gate before PR creation in every shipped sprint.
@@ -106,7 +107,7 @@ The product's memory and KB compound across sessions and protect against re-liti
 
 ### M2.3 — Cost-aware execution surface complete
 
-Token, cache, chunk, and avoidable-cost telemetry is first-class everywhere it matters: dashboard Metrics page, Agent page Session rail, CLI `builder metrics show` and `builder logs analyze`, observability recommendations.
+Token / cache / chunk / avoidable-cost telemetry is first-class: Metrics page, Agent page Session rail, `builder metrics show`, `builder logs analyze`, observability recs.
 
 - [ ] `builder metrics show` and the Metrics page agree with raw `builder logs --compact` cost on every run.
 - [ ] Per-turn non-cached-plus-output, raw, and cached tokens visible and accurate in the Agent page Session rail in both lanes.
@@ -116,7 +117,7 @@ Token, cache, chunk, and avoidable-cost telemetry is first-class everywhere it m
 
 ### M2.4 — Operator UX polish to "no internals leakage"
 
-Every operator-facing surface respects the banned-term contract.
+Every operator-facing surface respects [OPERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.md) banned-term contract.
 
 - [ ] Banned-term audit across Agent transcript, Voice transcript, Board, Backlog, Inbox, Metrics, Observability, Settings, and approval cards: zero leakage of `lifecycle`, `scaffold`, `dispatch`, `worktree`, `permission mode`, `SDK`, `MCP`, `recover`, `blocked_reason`, `gate`, `chunk`, `bounded`, `raw/full logs`, `token pressure`, etc., unless the operator typed them first.
 - [ ] All pending questions and approvals render readable operator labels (no `[object Object]`, no internal payload objects).
@@ -125,7 +126,7 @@ Every operator-facing surface respects the banned-term contract.
 
 ### M2.6 — Autopilot mode
 
-When enabled, the orchestrator owns approval, recovery, and continuation without operator intervention. Operator opts in; Builder handles the rest.
+When enabled: orchestrator owns approval, recovery, continuation — no operator intervention. Operator opts in; Builder handles the rest.
 
 - [ ] Autopilot toggle in dashboard Settings; persisted per project.
 - [ ] When autopilot is on: orchestrator auto-approves ready tasks, auto-recovers `capability_limit` / `cycle-detected` blocked states, and auto-advances to the next ready task after completion — without waiting for operator input.
@@ -150,13 +151,13 @@ The dashboard feels like one product.
 
 ## Epoch 3 — Scale
 
-**Outcome:** The product handles real-world complexity: multi-feature apps, long horizons, multi-operator teams, and head-to-head benchmark wins against Codex CLI and Claude Code on canonical tasks. The "preferred" claim is defensible with evidence.
+**Outcome:** Handles real-world complexity — multi-feature apps, long horizons, multi-operator teams, head-to-head wins on canonical tasks. "Preferred" claim defensible with evidence.
 
-**Gating tier:** [EVALUATION.md § Tier 3](EVALUATION.md#tier-3--head-to-head-bars-to-declare-preferred) must pass.
+**Gating tier:** [Tier 3](EVALUATION.md#tier-3--head-to-head-bars-to-declare-preferred).
 
 ### M3.1 — Complex multi-feature app delivery
 
-Builder ships a non-trivial app (15+ features, multiple integrations, real database, real auth, real deployment) end to end in both lanes.
+Non-trivial app (15+ features, integrations, real DB / auth / deployment), end-to-end, both lanes.
 
 - [ ] Project plan, sprints, backlog, approvals, and shipped evidence persist across the full delivery.
 - [ ] Both lanes reach the same shipped state when given the same operator prompts.
@@ -164,14 +165,14 @@ Builder ships a non-trivial app (15+ features, multiple integrations, real datab
 
 ### M3.2 — Long-horizon session continuity
 
-The product survives 30+ day gaps and multi-machine usage without operator confusion.
+Survives 30+ day gaps and multi-machine usage with no operator confusion.
 
 - [ ] Operator returns to a project after 30+ days; sees the same Board, Backlog, Inbox, Agent state. No stale "running" markers. Memory and KB still relevant.
 - [ ] Same project resumed from a second machine (operator on laptop and desktop) with consistent state.
 
 ### M3.3 — Multi-operator collaboration
 
-Two operators can work on the same project without stepping on each other.
+Two operators on the same project, no stepping on each other.
 
 - [ ] Two concurrent Agent sessions on the same project produce consistent state.
 - [ ] Approvals attributable to the operator who granted them.
@@ -179,7 +180,7 @@ Two operators can work on the same project without stepping on each other.
 
 ### M3.4 — Head-to-head benchmark wins
 
-The defensible "preferred" claim. Run a canonical task set through Codex CLI, Claude Code, and Builder; measure tokens, turns, wall-clock, success-without-intervention; record results in `docs/goal/benchmarks/` (created as a sub-folder of this one when M3.4 begins).
+Defensible "preferred" claim. Canonical task set through Codex CLI, Claude Code, Builder. Measure tokens / turns / wall-clock / success-without-intervention. Record in `docs/goal/benchmarks/` (created when M3.4 starts).
 
 - [ ] Define the canonical task set (5–10 tasks of varying complexity, agreed up front) and the measurement protocol (same prompt wording, same starting workspace, same model/runtime where comparable).
 - [ ] Build the harness: scripted runs against all three tools; metrics captured uniformly.
@@ -190,7 +191,7 @@ The defensible "preferred" claim. Run a canonical task set through Codex CLI, Cl
 
 ### M3.5 — Optimization loop activation (autoresearch Track B)
 
-Source of truth: [docs/autoresearch/](../autoresearch/). Track B activates only after every prerequisite in [docs/autoresearch/README.md](../autoresearch/README.md) is satisfied (which includes M1.1 IMP closures and M2.3 cost-aware execution).
+Source: [docs/autoresearch/](../autoresearch/). Activates only after [autoresearch/README.md](../autoresearch/README.md) prerequisites pass (incl. M1.1 IMP closures + M2.3 cost-aware execution).
 
 - [ ] All Track B prerequisites met (IMP-001 to IMP-004 closed, baseline variance measured, gate-pass rate at 1.0, complexity at 0 violations).
 - [ ] Autoresearch loop produces at least one optimization that survives variance gating and ships.
@@ -201,16 +202,16 @@ Source of truth: [docs/autoresearch/](../autoresearch/). Track B activates only 
 
 ## How To Pick The Next Item
 
-1. Read [STATUS.md](STATUS.md). Current epoch and current milestone tell you where to look.
-2. In the current milestone, find the first `[ ]` item that is not blocked by another item.
-3. If multiple items are valid, prefer the one that protects more of [NORTH-STAR.md § Differentiators](NORTH-STAR.md#differentiators-what-codex-cli-and-claude-code-cannot-do).
-4. Mark the item `in_progress` in STATUS.md before starting work.
-5. Close the item by ticking `[x]` only when its acceptance evidence exists and the relevant Tier of [EVALUATION.md](EVALUATION.md) passes.
-6. Update STATUS.md with the new state.
-7. **Commit and push to remote.** Every `[x]` tick — including STATUS.md and any supporting evidence files — must land in a commit on the current branch and be pushed before the item is considered closed. An unpushed `[x]` is not closed.
+1. Read [STATUS.md](STATUS.md) → current epoch + milestone.
+2. First `[ ]` in current milestone not blocked by another.
+3. Multiple valid → prefer one protecting more [NORTH-STAR § Differentiators](NORTH-STAR.md#differentiators).
+4. Mark `in_progress` in STATUS before starting.
+5. Tick `[x]` only when acceptance evidence exists + relevant [EVALUATION.md](EVALUATION.md) tier passes.
+6. Update STATUS.
+7. **Commit + push.** `[x]` tick + STATUS + evidence files in one commit, pushed. Unpushed `[x]` = not closed.
 
 ## How To Propose A New Milestone Or Item
 
-- Open this file, add the milestone/item to the correct epoch.
-- Add a short note in [STATUS.md § Recent Decisions](STATUS.md#recent-decisions) so the next agent knows about the scope change.
-- If the new item changes the success bar, update [EVALUATION.md](EVALUATION.md) in the same change.
+- Add milestone/item to the correct epoch here.
+- Note in [STATUS.md § Recent Decisions](STATUS.md#recent-decisions).
+- Changes success bar → update [EVALUATION.md](EVALUATION.md) in same change.

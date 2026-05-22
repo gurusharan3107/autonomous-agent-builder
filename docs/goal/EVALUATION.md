@@ -1,8 +1,8 @@
 # Evaluation — Tiered Scorecard
 
-> **Read [README.md](README.md) and [NORTH-STAR.md](NORTH-STAR.md) first.**
+> Read [README.md](README.md) and [NORTH-STAR.md](NORTH-STAR.md) first.
 
-Three tiers gate the work in [ROADMAP.md](ROADMAP.md). A milestone is *not* `done` until the tier of evaluation it claims to satisfy passes with cited evidence. A roadmap item is *not* `[x]` until its underlying evaluation rule passes.
+Three tiers gate [ROADMAP.md](ROADMAP.md). No `done` / `[x]` without the claimed tier passing with cited evidence.
 
 | Tier | Cadence | Question it answers | Gates which roadmap content |
 | --- | --- | --- | --- |
@@ -10,13 +10,13 @@ Three tiers gate the work in [ROADMAP.md](ROADMAP.md). A milestone is *not* `don
 | **Tier 2 — Lifecycle Coverage** | Every milestone closeout | "Does the product own the full SDLC the way no other tool does?" | Every Epoch 2 milestone; all of Epoch 3. |
 | **Tier 3 — Head-to-Head** | Once before declaring "preferred"; revalidate quarterly | "Does Builder demonstrably win against Codex CLI and Claude Code on the same task?" | Epoch 3 only. |
 
-Every tier is enforced through Builder-owned CLI evidence, dashboard-visible state, and (where stated) browser-visible proof. Assistant-summary text is never accepted as evidence.
+Evidence: Builder CLI, dashboard, browser (where stated). Assistant-summary text is never evidence.
 
 ---
 
 ## Tier 1 — Token + UX Bars (every release)
 
-This tier is the floor. The product cannot regress below these bars in any release, on either runtime lane.
+Floor. No release below these bars on either lane.
 
 ### 1.1 — Token efficiency bars (per session, per shipped feature)
 
@@ -29,7 +29,7 @@ This tier is the floor. The product cannot regress below these bars in any relea
 | Recommended next change | `maintain_current_flow` on clean active evidence | `builder metrics show --json --full` |
 | CLI / UI surface parity | `builder metrics show` and the Metrics page agree with `builder logs --compact` raw cost data | Cross-check command output against dashboard |
 
-A `false` for any bar is a Tier 1 failure. Root-cause it; do not paper over.
+Any `false` = Tier 1 failure. Root-cause; no papering over.
 
 ### 1.2 — Operator UX bars (per session)
 
@@ -44,7 +44,7 @@ A `false` for any bar is a Tier 1 failure. Root-cause it; do not paper over.
 
 ### 1.3 — Both-lane parity bar
 
-Every Tier 1.1 and 1.2 bar must hold on **both** runtimes for the **same operator wording** on the **same workspace**. Lane-asymmetric wins are tracked as gaps in [STATUS.md](STATUS.md), not silently accepted.
+Every 1.1 / 1.2 bar holds on both runtimes, same operator wording, same workspace. Lane-asymmetric wins → gaps in [STATUS.md](STATUS.md), never silent.
 
 Verification command per lane:
 
@@ -75,11 +75,11 @@ builder metrics show --json --full
 
 ## Tier 2 — Lifecycle Coverage Bars (every milestone)
 
-This tier proves the product owns the full SDLC the way no other tool does. Tier 2 always runs after Tier 1 passes.
+Proves Builder owns the full SDLC. Runs only after Tier 1 passes.
 
 ### 2.1 — Full SDLC dashboard visibility
 
-For the milestone's chosen scenario, every lifecycle phase produces visible product evidence:
+Milestone scenario produces visible evidence at every phase:
 
 - Requirements: intake transcript captured; clarification questions answered inline.
 - Design: design document persisted in the design phase drawer.
@@ -90,7 +90,7 @@ For the milestone's chosen scenario, every lifecycle phase produces visible prod
 - Ship: Board card moves to `shipped`; closeout event in Agent timeline; final token totals.
 - Optimization: post-ship recommendations visible in the Metrics page Observability lane.
 
-Missing any phase evidence = Tier 2 failure for the milestone.
+Missing phase evidence = Tier 2 fail.
 
 ### 2.2 — Resumability bars
 
@@ -103,27 +103,27 @@ Missing any phase evidence = Tier 2 failure for the milestone.
 
 ### 2.3 — Workspace rotation bar
 
-Tier 2 requires both:
+Both required:
 
 | Scenario | Both lanes? | Evidence |
 | --- | --- | --- |
-| Forward-engineering: fresh app from scratch | Yes | Fresh workspace boot → intake → ship → browser-visible feature |
-| Reverse-engineering: operate on existing app | Yes | Existing workspace (todo-app / external clone) → "Add a search box" or "Fix this button" → ship → browser-visible delta |
+| Forward: fresh app from scratch | Yes | Fresh workspace boot → intake → ship → browser-visible feature |
+| Reverse: operate on existing app | Yes | Existing workspace (todo-app / external clone) → "Add a search box" / "Fix this button" → ship → browser-visible delta |
 
-Rotating workspaces every milestone is the contract. Don't always test on the same workspace. See [ROADMAP § M1.4](ROADMAP.md#m14--two-workspace-validation-rotation).
+Rotate workspaces per milestone. See [ROADMAP § M1.4](ROADMAP.md#m14--two-workspace-validation-rotation).
 
 ### 2.4 — Memory and knowledge compounding bar
 
-For the milestone's chosen topic, prove that the system's memory/KB makes a *future* session faster or more correct than the *original* session:
+Prove memory/KB makes a future session faster or more correct than the original:
 
-- Identify the topic and the relevant memory entries (`builder memory search "<topic>"`).
-- Run a fresh session that hits the same class of decision.
-- Verify the fresh session retrieves precedent and reaches the right call without re-litigation.
-- If not, the memory entry is wrong or the retrieval workflow is broken — fix and retry.
+- Find topic + memory entries (`builder memory search "<topic>"`).
+- Run a fresh session hitting the same decision class.
+- Verify precedent retrieved, right call reached without re-litigation.
+- Else: memory entry wrong or retrieval broken — fix, retry.
 
 ### 2.5 — Rubric / quality-gate pass bar
 
-Every milestone in scope must pass its owning rubrics and quality gates listed in [INDEX.md § External Owner Map](INDEX.md#external-owner-map). The full active set today:
+Milestone passes its owning rubrics + gates per [INDEX.md § External Owner Map](INDEX.md#external-owner-map). Active set:
 
 - `docs/rubric/sdk-backed-agent-page-agent.md`
 - `docs/rubric/realtime-voice-agent-page-agent.md`
@@ -149,21 +149,21 @@ Every milestone in scope must pass its owning rubrics and quality gates listed i
 
 ## Tier 3 — Head-to-Head Bars (to declare "preferred")
 
-This tier exists to make the "preferred" claim defensible against scrutiny. Tier 3 only runs at the start of Epoch 3 and at quarterly cadence thereafter.
+Makes the "preferred" claim defensible. Runs at Epoch 3 start, quarterly after.
 
 ### 3.1 — Canonical task set
 
-Defined at the start of Epoch 3 (see [ROADMAP § M3.4](ROADMAP.md#m34--head-to-head-benchmark-wins)). The set must include:
+Defined at Epoch 3 start ([ROADMAP § M3.4](ROADMAP.md#m34--head-to-head-benchmark-wins)). Must include:
 
-- A simple forward-engineering task (one feature in a fresh app).
-- A non-trivial forward-engineering task (multi-feature project with persistence and UI).
-- A reverse-engineering bug fix in an existing repo.
-- A reverse-engineering feature addition in an existing repo.
-- A lifecycle-coverage task: ship → 30-day gap → resume → add a second feature on the same project. *This task is the structural test — Codex CLI and Claude Code cannot complete it because they lack durable lifecycle state.*
+- Simple forward: one feature in fresh app.
+- Non-trivial forward: multi-feature project, persistence + UI.
+- Reverse: bug fix in existing repo.
+- Reverse: feature addition in existing repo.
+- Lifecycle-coverage: ship → 30-day gap → resume → add a second feature. *Structural test — Codex CLI / Claude Code can't complete (no durable lifecycle state).*
 
 ### 3.2 — Measurement protocol
 
-For each task and each tool (Codex CLI, Claude Code, Builder `claude` lane, Builder `codex_sdk` lane):
+Per task × per tool (Codex CLI, Claude Code, Builder `claude`, Builder `codex_sdk`):
 
 | Metric | Captured by |
 | --- | --- |
@@ -176,27 +176,25 @@ For each task and each tool (Codex CLI, Claude Code, Builder `claude` lane, Buil
 
 ### 3.3 — Win bars
 
-To declare "preferred over Codex CLI and Claude Code":
+To declare "preferred":
 
-- Builder wins on **tokens-per-shipped-feature** on a majority of canonical tasks in both lanes.
-- Builder wins on **success-without-intervention** on a majority of canonical tasks in both lanes.
-- Builder wins on **wall-clock-to-shipped** (including operator time) on a majority of canonical tasks in both lanes.
-- Builder is the **sole completer** of the lifecycle-coverage task.
+- Builder wins **tokens-per-shipped-feature** majority of canonical tasks, both lanes.
+- Builder wins **success-without-intervention** majority, both lanes.
+- Builder wins **wall-clock-to-shipped** (incl. operator time) majority, both lanes.
+- Builder is **sole completer** of the lifecycle-coverage task.
 
-A single tie or single loss is acceptable per metric; a majority loss on any metric blocks the claim.
+Single tie/loss per metric: OK. Majority loss on any metric: blocks claim.
 
 ### 3.4 — Evidence archive
 
-All Tier 3 measurement runs persist under `docs/goal/benchmarks/` (subfolder created when Tier 3 is first run). Each run records: tool, lane (if applicable), task ID, prompt verbatim, token/turn/wall-clock evidence, operator-intervention log, and final state.
+All runs persist under `docs/goal/benchmarks/` (created on first Tier 3 run). Record per run: tool, lane, task ID, prompt verbatim, token/turn/wall-clock, intervention log, final state.
 
 ### 3.5 — Relationship to autoresearch (Track B)
 
-Tier 3 and the autoresearch loop in [`docs/autoresearch/`](../autoresearch/README.md) are tightly coupled:
-
-- **Autoresearch produces Tier 3 evidence.** Each `keep`-status row in `docs/autoresearch/optimize_results.tsv` is an attested composite-metric improvement, gate-passing, in both runtime lanes. That is exactly the per-task evidence Tier 3 needs.
-- **Tier 3 raises the bar autoresearch optimizes for.** The canonical task set in [§ 3.1](#31--canonical-task-set) becomes the long-form fixture set for the autoresearch loop once short fixtures (A–E in [`docs/autoresearch/fixtures.md`](../autoresearch/fixtures.md)) plateau.
-- **Promotion path.** An optimization the autoresearch loop kept against fixtures A–E becomes a Tier 3 candidate only after it ships against the canonical task set with all hard gates still passing.
-- **Activation order is fixed.** Tier 3 head-to-head benchmarks run only after [ROADMAP.md § M3.4](ROADMAP.md#m34--head-to-head-benchmark-wins) starts; autoresearch activates only at [ROADMAP.md § M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b). M3.4 informs M3.5 (what to optimize for); M3.5 supplies M3.4 (with proven wins).
+- **Autoresearch produces Tier 3 evidence.** Each `keep` row in `docs/autoresearch/optimize_results.tsv` = attested composite-metric improvement, gate-passing, both lanes.
+- **Tier 3 raises autoresearch's bar.** Canonical task set ([§ 3.1](#31--canonical-task-set)) becomes long-form fixtures once short fixtures (A–E in [`docs/autoresearch/fixtures.md`](../autoresearch/fixtures.md)) plateau.
+- **Promotion path.** A `keep` against A–E → Tier 3 candidate only after it ships against canonical with all hard gates passing.
+- **Activation order fixed.** Tier 3 runs only after [M3.4](ROADMAP.md#m34--head-to-head-benchmark-wins); autoresearch activates only at [M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b). M3.4 informs M3.5; M3.5 supplies M3.4.
 
 ---
 
@@ -231,4 +229,4 @@ builder memory lint --json
 
 ## When This File Changes
 
-`EVALUATION.md` changes when a bar is added, tightened, loosened, or retired. Every change must be paired with a justification in [STATUS.md § Recent Decisions](STATUS.md#recent-decisions) and (where it affects the roadmap) a roadmap update in the same change.
+Bar added / tightened / loosened / retired. Pair with [STATUS.md § Recent Decisions](STATUS.md#recent-decisions) entry + roadmap update if applicable.

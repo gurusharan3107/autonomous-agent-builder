@@ -1,149 +1,116 @@
 # Fix Standard — The Seven Steps
 
-> **Read [README.md](README.md) first.**
+> Read [README.md](README.md) first.
 
-This is the operational doctrine every non-trivial fix must follow. It exists because shortcuts past these steps consistently produce regressions, re-litigated decisions, and wasted memory writes. The steps are ordered — skipping or reordering them is the root cause of most repeat failures.
+Doctrine for every non-trivial fix. Steps are ordered; skipping/reordering produces regressions and re-litigated decisions.
 
-When something fails: diagnose from first principles, start from the visible symptom, inspect builder-owned logs / metrics / session evidence, identify the true owning layer, and fix the durable product or runtime cause.
+Diagnose from symptom → builder logs/metrics/session evidence → true owning layer → durable fix.
 
 ## The Seven Steps
 
-### Step 0 — Load repo precedent first
-
-Before exploring code for any non-trivial fix, retrieve repo memory:
+### Step 0 — Load repo precedent
 
 ```bash
-builder memory search "<topic>" --tag <relevant-tags>
-builder memory show <slug>     # for each hit
+builder memory search "<topic>" --tag <tags>
+builder memory show <slug>
 ```
 
-Run these commands **from the Builder source repo**, not from a managed app workspace. The 90+ active memories under `.memory/` (corrections, decisions, patterns) encode prior decisions that must shape the fix. Skipping this step risks re-litigating settled questions or violating a single-owner pattern (e.g., `blocked-recovery-has-one-builder-owner`, `keep-agent-page-intent-model-backed-while-optimizing-token`).
-
-Why this is Step 0 and not Step 7: a fix grounded in stale or absent memory creates patches that fight existing patterns. Loading memory first means the fix conforms to repo precedent from the start, not retroactively.
+Run from Builder source repo, not managed app. 90+ memories under `.memory/` encode prior decisions; skipping = re-litigation or pattern violation. Memory first so the fix conforms from the start, not retroactively.
 
 ### Step 1 — Explore the codebase
 
-Find the exact owning module, route, or runtime path before proposing a fix. Use the Explore agent or `grep` / `find` to locate the real owner. Do not guess based on filenames.
+Find the actual owning module before proposing a fix. Use Explore / `grep` / `find`. Don't guess by filename.
 
-Common traps:
-- File name suggests one owner; actual logic lives in a sibling module imported by it.
-- Multiple modules look like the owner; only one has the canonical state mutation.
-- An adapter or facade wraps the real owner; patching the adapter only paints over.
+Traps:
+- Filename suggests owner; actual logic in sibling module.
+- Multiple candidates; only one mutates canonical state.
+- Adapter wraps real owner; patching adapter just paints over.
 
-### Step 2 — Load required AGENTS.md / CLAUDE.md triggers
+### Step 2 — Load required triggers
 
-Before editing any file with a required trigger (`CLAUDE.md`, `AGENTS.md`, runtime, CLI, quality gates), run the prescribed quality-gate or workflow first:
+Before touching a file with a required trigger (`CLAUDE.md`, `AGENTS.md`, runtime, CLI, gates):
 
 ```bash
 builder quality-gate <surface> --json
 workflow summary <name>
 ```
 
-`AGENTS.md` and `CLAUDE.md` list the triggers — follow them. Examples:
+Examples: `CLAUDE.md` → `builder quality-gate claude-md`; Claude SDK runtime → `builder quality-gate claude-agent-sdk`; CLI → `workflow quality-gate cli-for-agents`; phase boundaries → `workflow summary phase-model`; workspaces → `workflow summary task-workspace-isolation`.
 
-- Before editing `CLAUDE.md`: `builder quality-gate claude-md --json`.
-- Before editing Claude SDK runtime: `builder quality-gate claude-agent-sdk --json`.
-- Before editing Builder CLI: `workflow quality-gate cli-for-agents`.
-- Before changing phase boundaries: `workflow summary phase-model`.
-- Before changing task workspaces: `workflow summary task-workspace-isolation`.
+### Step 3 — Ground the fix in SDK docs
 
-### Step 3 — Ground the fix in SDK documentation and best practices
-
-Not workarounds. Cite the SDK feature being used:
+No workarounds. Cite the SDK feature:
 
 - **Claude Agent SDK:** permissions, hooks, subagents, `AskUserQuestion`, compaction, cache control, session resume/fork, `max_turns`, `effort`, `thinking` budget.
-- **Codex SDK:** app-server events, native `request_user_input` mapping, MCP elicitations, request permissions, token usage stream evidence, large-output artifact storage.
+- **Codex SDK:** app-server events, `request_user_input`, MCP elicitations, request permissions, token stream, large-output artifacts.
 
-If the fix relies on a feature the SDK does not natively provide, the fix is probably at the wrong layer. Re-evaluate.
+If the fix needs something the SDK doesn't provide, it's at the wrong layer.
 
 ### Step 4 — Apply at the correct layer
 
-Not patched at the surface. Owner layers, top to bottom:
+Owner layers (top→bottom):
 
-- **Orchestrator** owns phase routing, retries, blocked-state handling, progression, and follow-up work selection after explicit product events.
-- **Route layer** (embedded server) owns HTTP contract, SSE publication, event persistence, and request routing.
-- **Runtime adapter** (Claude SDK / Codex SDK) owns session, tool execution, hook policy, permission callbacks, telemetry capture.
-- **Frontend** owns visible state, design-system primitives, inline controls, control ownership reconciliation.
+- **Orchestrator** — phase routing, retries, blocked states, progression, follow-up selection.
+- **Route layer** — HTTP contract, SSE, event persistence, request routing.
+- **Runtime adapter** — sessions, tool execution, hooks, permission callbacks, telemetry.
+- **Frontend** — visible state, design-system primitives, inline controls.
 
-Rule: **do not patch the UI if the backend state is wrong.** Do not patch the route if the orchestrator owns the transition. Do not patch the orchestrator if the runtime adapter is the true owner.
+Rule: don't patch UI if backend is wrong. Don't patch route if orchestrator owns the transition. Don't patch orchestrator if runtime adapter is the true owner.
 
-### Step 5 — Verify with builder quality-gate and focused regression tests
+### Step 5 — Verify with gates + regression test
 
-Add a **deterministic regression test** for the exact failure. The test must reproduce the symptom without the fix, and pass with it.
+Deterministic regression test for the exact failure: reproduces without fix, passes with fix.
 
 ```bash
-# Targeted regression run
 PYTHONPATH=src .venv/bin/python -m pytest tests/test_<area>.py::test_<specific> -q
-
-# Touched-surface gates
 builder quality-gate <surface> --json
 builder lint --complexity-report --json
 ```
 
-The regression test is the durable artifact; the fix without it will silently regress in three sprints.
+The test is the durable artifact. Without it the fix silently regresses.
 
 ### Step 6 — Record in `docs/IMPROVEMENTS.md`
 
-Each entry: symptom, root cause, SDK-grounded solution, evidence (session id, command output, board state), status. See existing IMP-001 to IMP-005 entries for the canonical format.
+Entry: symptom, root cause, SDK-grounded solution, evidence (session id, command output, board state), status. Follow IMP-001..IMP-005 format.
 
-### Step 7 — Write memory back if the learning is durable
+### Step 7 — Write memory back if durable
 
-After the fix lands, ask: would a future agent doing similar work benefit from knowing this? If yes, run:
-
-```bash
-# From the Builder source repo, not a managed app workspace
-builder memory add --type correction|pattern|decision --tag <relevant-tags>
-```
-
-**Memory is for:**
-- Non-obvious owner boundaries.
-- Single-control-owner patterns (e.g., `blocked-recovery-has-one-builder-owner`).
-- Recurring traps (e.g., memory scope confusion in IMP-005).
-- SDK-specific gotchas.
-- Reasoning that wasn't obvious from code alone.
-
-**Memory is NOT for:**
-- The symptom itself (that lives in IMPROVEMENTS.md).
-- One-off bug details.
-- Anything the next agent could derive by reading current code.
-
-**Invalidate stale memory.** If the fix proved an existing memory wrong, run:
+Ask: would a future agent benefit? If yes:
 
 ```bash
-builder memory invalidate <slug> --reason <one-line>
+builder memory add --type correction|pattern|decision --tag <tags>
 ```
 
-## Memory is bidirectional
+**Memory is for:** non-obvious owner boundaries; single-owner patterns; recurring traps; SDK gotchas; reasoning not derivable from code.
 
-This is the single rule that compounds: the 90+ memories in `.memory/` exist because past agents wrote them after fixes. Future agents read them in Step 0. Skipping either side breaks the loop:
+**Memory is NOT for:** the symptom itself (→ IMPROVEMENTS.md); one-off bug detail; anything derivable from current code.
 
-- Skip Step 0 (read) → re-litigate settled decisions, violate patterns.
-- Skip Step 7 (write) → next agent has nothing to load.
+Invalidate stale memory: `builder memory invalidate <slug> --reason <one-line>`.
 
-A fix that loads precedent in Step 0 and writes back in Step 7 makes the next similar fix faster. A fix that does neither makes the system worse over time even if the immediate change is correct.
+Bidirectional: skip Step 0 → re-litigation. Skip Step 7 → next agent has nothing.
 
-## What this standard explicitly forbids
+## Explicitly forbidden
 
-- **Symptom-level patches.** If the UI shows a wrong number, do not fix the UI rendering — fix the backend that produced the wrong number. If the message is wrong, fix the producer, not the renderer.
-- **Workarounds in lieu of SDK grounding.** "It works if I retry three times" is a workaround. The SDK has retry primitives; use them.
-- **Bypassing visible product surfaces.** Do not use raw API, database writes, or CLI mutations to "make the test pass" or "fix the state." If the dashboard can't do it, the dashboard is wrong; fix the dashboard.
-- **Generated-app hand-patches.** Do not patch generated apps by hand to satisfy Builder validation. The Builder produced the bad output; fix the Builder.
-- **Memory write without learning.** Don't write a memory entry just to mark a step done. Write it only when there is durable, non-obvious learning.
+- **Symptom-level patches.** Wrong number in UI → fix the backend producer, not the renderer.
+- **Workarounds in lieu of SDK grounding.** "Works if I retry three times" = workaround. SDK has retry primitives; use them.
+- **Bypassing visible surfaces.** No raw API / DB writes / CLI mutations to "make tests pass" or "fix state." Dashboard can't do it → fix dashboard.
+- **Generated-app hand-patches.** Builder produced bad output → fix Builder.
+- **Memory writes without learning.** Don't write to mark a step done.
 
-## When to invoke this standard
+## When to invoke
 
-- Any defect closure (IMP-NNN in IMPROVEMENTS.md).
-- Any roadmap item in [ROADMAP.md](ROADMAP.md) marked `bug` or `defect`.
+- Any defect closure (IMP-NNN).
+- Any roadmap item marked `bug` / `defect`.
 - Any quality-gate failure investigation.
-- Any operator-reported issue that requires investigation beyond a one-line cosmetic fix.
+- Any operator-reported issue beyond a cosmetic one-liner.
 
-For purely cosmetic / typo / format fixes, the standard is overkill — use judgment.
+Cosmetic / typo / format fixes: overkill — use judgment.
 
 ## Related
 
-- [README.md § Hard Rules](README.md#hard-rules-non-negotiable-for-every-agent-in-every-session) — the procedural rule that this standard applies to every non-trivial fix.
-- [RESUME.md](RESUME.md) — the resume protocol uses this standard once an item is identified.
-- [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) — where Step 6 evidence lives.
-- [docs/workflows/memory-retrieval-guide.md](../workflows/memory-retrieval-guide.md) — Step 0 procedural detail.
-- [docs/workflows/system-improvement-loop.md](../workflows/system-improvement-loop.md) — broader debugging workflow that wraps this standard.
-- `.memory/` (via `builder memory`) — the corpus that Step 0 reads and Step 7 writes.
+- [README.md § Hard Rules](README.md#hard-rules-non-negotiable) — rule layer.
+- [RESUME.md](RESUME.md) — uses this once item identified.
+- [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) — Step 6 evidence.
+- [docs/workflows/memory-retrieval-guide.md](../workflows/memory-retrieval-guide.md) — Step 0 detail.
+- [docs/workflows/system-improvement-loop.md](../workflows/system-improvement-loop.md) — broader debugging.
+- `.memory/` — corpus Step 0 reads, Step 7 writes.

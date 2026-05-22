@@ -89,7 +89,7 @@ If the script exits non-zero, read `/tmp/goal-audit-errors.log` and report the b
 
 ### Dry-run mode (preview without writing)
 
-If the user says "dry run", "preview", "show me what you would write", or invokes with `--dry-run` semantics: complete Steps 1-5 (collect, read, synthesize, validate), but in Step 5+ **print the draft INSIGHTS entry to chat instead of using Edit on the file**, and skip Step 6 (OPTIMIZE_IDEAS reorder) entirely. The user reviews the dry-run output and re-invokes without `--dry-run` if they want to commit.
+If the user says "dry run", "preview", "show me what you would write", or invokes with `--dry-run` semantics: complete Steps 1-5 (collect, read, synthesize, validate), but in Step 5+ **print the draft INSIGHTS entry to chat instead of using Edit on the file**, and skip Steps 6 (OPTIMIZE_IDEAS reorder) and 6.5 (prior-entry trim) entirely. The user reviews the dry-run output and re-invokes without `--dry-run` if they want to commit.
 
 ### Step 2 — Read the data
 
@@ -259,12 +259,43 @@ Never delete an idea. Only reorder. The user can revert by inspecting the commen
 
 If no candidates survive validation, this step is a no-op — record "no OPTIMIZE_IDEAS reorder applied" in INSIGHTS.
 
+### Step 6.5 — Trim closed actions on the prior entry
+
+After the new entry is written and OPTIMIZE_IDEAS reorder (if any) lands, perform a narrow cleanup on the **immediately-prior** INSIGHTS entry (not older ones). This keeps the file from bloating with stale `Recommended Actions` lists.
+
+**Scope (hard limits — do not exceed):**
+
+- Only touch the entry written by the previous run. Never touch entries two-or-more runs back.
+- Only edit the `### Recommended actions` section of that entry. Never touch its `### Intent vs current focus`, `### Autoresearch focus candidates`, alignment verdict, or any prose.
+- Never delete the entry. Never delete the section header. Never compress runs into table rows. Never extract content into new reference files. Those are user-triggered cleanups, not skill actions.
+
+**Procedure:**
+
+1. Locate the prior entry: the second-most-recent `## YYYY-MM-DD — Run #N` header in INSIGHTS.md.
+2. Read its `### Recommended actions` section. If it already starts with `**All actions closed**` (any case/punctuation variant), this step is a no-op — record `"prior entry already trimmed"` in the new entry's Section B closing line.
+3. For each numbered action in the prior entry's list, classify it:
+   - **Closed (ROADMAP):** matching `[x]` item exists in current `goal_snapshot.ROADMAP.md`.
+   - **Closed (shipped):** action explicitly references a commit, CHANGELOG entry, or memory write that exists.
+   - **Tracked (ROADMAP):** matching `[ ]` item exists (the action is now a roadmap line — counts as closed *from this entry's perspective* because the action's job was to escalate the work onto the roadmap).
+   - **Open:** none of the above.
+4. If **every** action classifies as closed/tracked, use Edit to replace the entire numbered-list body of `### Recommended actions` with a single line:
+
+   ```markdown
+   **All actions closed.** <≤25-word summary citing ROADMAP milestones, commits, or CHANGELOG entries that absorbed them>.
+   ```
+
+   Keep the `### Recommended actions` header itself. Do not add a date — the entry header already has it.
+5. If **any** action remains open, leave the section unchanged. Record `"prior entry still has open actions"` in the new entry's Section B closing line so the audit trail shows the cleanup was considered.
+
+**Self-check before Step 7 (extend the existing self-check):** files edited this run must still be a subset of `{INSIGHTS.md, OPTIMIZE_IDEAS.md}`. The Step 6.5 edit lands on INSIGHTS.md, so the set is unchanged.
+
 ### Step 7 — Report back to the user
 
 In your conversation reply (not in the files), summarize:
 - Path to the new INSIGHTS.md entry.
 - Headline alignment verdict.
 - Whether OPTIMIZE_IDEAS.md was reordered (and which item moved).
+- Whether the prior entry's Recommended Actions were trimmed (Step 6.5 outcome: trimmed / already-trimmed / open-actions-remain).
 - Top 1-3 recommended actions in one line each.
 
 Keep it under 10 lines. The file is the durable record; chat is the pointer.
