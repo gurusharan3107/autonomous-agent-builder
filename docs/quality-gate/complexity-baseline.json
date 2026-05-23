@@ -42,7 +42,7 @@
     },
     "src/autonomous_agent_builder/cli/commands/logs.py": {
       "extraction_plan": "Move command-family helpers and output builders into focused CLI modules before adding commands or options.",
-      "lines": 1679,
+      "lines": 1346,
       "owner": "CLI command owner"
     },
     "src/autonomous_agent_builder/cli/commands/memory.py": {

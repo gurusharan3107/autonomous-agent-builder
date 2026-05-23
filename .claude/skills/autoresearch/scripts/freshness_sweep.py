@@ -14,7 +14,7 @@ Checks (each isolated; one drift doesn't short-circuit the rest):
 
   - METRICS.md documents `runtime_aggregates.session_scoped` (contract
     landed 2026-05-23 with ROADMAP M2.3).
-  - logs.py still emits `session_scoped` in the analyze payload.
+  - logs_runtime_aggregates.py still emits `session_scoped` in the analyze payload.
   - `Task.chat_session_id` column still defined in `db/models.py`.
   - TSV headers (`baseline_runs.tsv`, `optimize_results.tsv`,
     `per_prompt_results.tsv`) match `run.py:SESSION_HEADERS` /
@@ -94,14 +94,15 @@ def check_metrics_documents_session_scoped() -> Finding | None:
 
 
 def check_logs_emits_session_scoped() -> Finding | None:
-    text = _read(SRC / "cli" / "commands" / "logs.py")
+    text = _read(SRC / "cli" / "commands" / "logs_runtime_aggregates.py")
     if '"session_scoped"' not in text:
         return Finding(
             "logs_emits_session_scoped",
             "hard",
-            "src/.../cli/commands/logs.py no longer emits `session_scoped` key in analyze payload.",
+            "src/.../cli/commands/logs_runtime_aggregates.py no longer emits "
+            "`session_scoped` key in analyze payload.",
             "The M2.3 fix was reverted or shadowed. Restore the key in "
-            "_runtime_aggregates() payload dict. See commit a3354c2.",
+            "runtime_aggregates() payload dict. See commit a3354c2.",
         )
     return None
 

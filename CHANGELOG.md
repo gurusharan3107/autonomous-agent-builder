@@ -7,6 +7,32 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - M1.3 extraction: `cli/commands/logs.py` 1679→1346
+
+### Changed
+
+- **`src/autonomous_agent_builder/cli/commands/logs.py`** 1679→1346 lines. Split into two sibling modules:
+  - `cli/commands/logs_runtime_aggregates.py` (408 lines) — public `runtime_aggregates(db_path, session_id=None)` and `selected_runtime_sdk()` plus the supporting per-summary helpers (`_optimization_summary`, `_sum_agent_rows`, `_stop_reason_counts`, `_tool_counts`, `_approval_wait_summary`, `_weighted_average_wait`, `_provider_limit_summary`, `_provider_payload`, `_parse_iso_datetime`, `_phase_ceremony_summary`, `_agent_cost`, `_repeated_retrieval_signal`, `_session_task_filter`).
+  - `cli/commands/logs_db_utils.py` (37 lines) — shared sqlite helpers `table_exists`, `table_columns`, `row_dict`, `maybe_json_dict`; needed by both `logs.py` and the new aggregates module without creating a circular import.
+- **`docs/quality-gate/complexity-baseline.json`** — `logs.py` baseline ratcheted 1679 → 1346. Lint surfaces a `baseline_not_ratcheted_down` violation if a tracked file shrinks past its baseline without a baseline update, so each extraction commit must update the JSON in the same change.
+
+### Fixed
+
+- Removed a dead duplicate `_table_columns` definition in `logs.py`. The second definition (no `_table_exists` guard) silently shadowed the first (safer guarded variant) at module scope; extraction consolidated to one guarded helper in `logs_db_utils.py`.
+- **`.claude/skills/autoresearch/scripts/freshness_sweep.py:check_logs_emits_session_scoped`** now checks `logs_runtime_aggregates.py` for the `session_scoped` key, matching the new file location (M2.3 contract invariant preserved).
+
+### Validation
+
+- `builder lint --complexity-report --json` — `logs.py` no longer in violations list (was the largest `baseline_growth` case; now removed). 6 violations remaining across `sprint_execution.py`, `db/models.py`, `agent_sprint_planning.py`, `test_builder_cli_surfaces.py`, `introspect.py`, `scripts/autoresearch/run.py`.
+- `tests/test_builder_cli_surfaces.py` — 61/61 green (includes the `_selected_runtime_from_coverage` import the new structure preserves).
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — `OK`.
+- `builder logs --help` smoke OK; module imports resolve cleanly.
+
+### Notes
+
+- `_selected_runtime_from_coverage` kept at `logs.py` module level — `tests/test_builder_cli_surfaces.py:2731` imports it. Per `.memory/feedback_extraction_constraints.md`: don't extract test-facing APIs.
+- ROADMAP M1.3 `[ ]` re-close entry restructured with seven per-file sub-checkboxes; this commit ticks `logs.py`. Remaining six unblock M3.5 D1 once cleared.
+
 ## 2026-05-23 - Project-local save-session / resume-session skills
 
 ### Added
