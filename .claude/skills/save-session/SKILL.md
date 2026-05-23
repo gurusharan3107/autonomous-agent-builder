@@ -6,6 +6,8 @@ allowed-tools: Bash
 
 # save-session — tactical checkpoint
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 `docs/goal/STATUS.md` carries durable goal state (milestone, decisions, evidence pointers). This skill carries the *transient working context* that won't survive a session boundary otherwise.
 
 ## When to invoke

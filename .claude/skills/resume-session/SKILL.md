@@ -6,6 +6,8 @@ allowed-tools: Bash, Read
 
 # resume-session — tactical-first session entry
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 Counterpart to [`start`](../start/SKILL.md). When the prior session ran `/save-session`, `CURRENT.md` carries actionable handoff (current intent, next concrete action, open blockers, mid-session learnings) that `docs/goal/STATUS.md` deliberately does not. This skill surfaces that block FIRST, then chains into `start` so framework + STATUS + drift + git log also load. Both entry paths converge on the same fully-loaded state.
 
 ## When to invoke

@@ -13,6 +13,8 @@ compatibility:
 
 # Knowledge Base Operations
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 The global Claude-tooling knowledge base at `~/.claude/knowledge/raw/` is the agent's discovery surface. This skill owns every operation on it.
 
 ## Scope — what this skill covers

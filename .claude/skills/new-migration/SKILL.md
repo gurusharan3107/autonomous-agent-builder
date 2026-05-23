@@ -18,6 +18,8 @@ Run from the repo root:
 cd /home/gurusharangupta/code/autonomous-agent-builder-codex-architecture-review/autonomous-agent-builder-codex-architecture-review
 
 # 1. Generate the migration
+
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
 alembic revision --autogenerate -m "$MIGRATION_MESSAGE"
 
 # 2. Capture the generated file path from stdout (looks like: Generating .../versions/xxxx_<slug>.py)

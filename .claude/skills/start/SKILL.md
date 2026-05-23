@@ -9,6 +9,8 @@ compatibility:
 
 # start — primary session-entry briefing
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 The default command typed at the start of every session in this repo. Loads durable framework + recent state + optional tactical handoff. Read-only synthesis; never auto-executes.
 
 ## Why this exists (vs `/resume-session`)

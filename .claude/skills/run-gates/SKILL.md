@@ -4,6 +4,8 @@ description: Run all quality gate scripts for autonomous-agent-builder and repor
 disable-model-invocation: true
 ---
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 Run all gates from the repo root, even if earlier ones fail — the user needs the full picture, not just the first failure.
 
 ## Steps

@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 # Implementation
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 Pick the next feature. Build it. Verify it. Ship it.
 
 ## Gotchas
