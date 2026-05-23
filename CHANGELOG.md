@@ -7,6 +7,29 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - iterations.html — progress chart (replaces iteration-only sparkline)
+
+### Changed
+
+- **`docs/autoresearch/iterations.html`** — replaced the 64px iteration-only sparkline with a 240px progress chart that always renders when baseline data exists. New chart:
+  - X-axis: combined sequence — baseline runs (B1..N, fixture A only) first, then iterations (I1..M) appended right. Reserves 5 iteration slots when none exist so the chart shows headroom.
+  - Y-axis: composite (linear, padded ±15% around min/max with μ ± 2σ included).
+  - Reference layers: shaded `μ ± 2σ` noise band; solid `μ` line with value label; dashed `2σ floor` line with value label.
+  - Vertical dashed separator between the baseline region (left) and iteration region (right), labeled `← baseline | iterations →`.
+  - Dots: baseline ships green, incomplete muted, crash red, iterations colored by verdict (keep green / discard muted / crash red / pending ink).
+  - Connecting polyline: dim through baseline cohort, bold through iteration progress.
+  - "iterations land here →" placeholder text in the iteration region when no iterations exist yet.
+- New CSS class `.progress-chart` and helpers `.mean-line` / `.floor-line` / `.separator` / `.band-label` / `.empty-msg`. Removed the old `.spark` CSS block (40 lines).
+- `renderSparkline` removed; replaced by `renderProgressChart` (108 LOC) + a small `svgEl(name, attrs)` helper to reduce DOM verbosity.
+
+### Notes
+
+- Chart is operator-readable at any state: baseline-only (5 dots + reference lines + empty iteration region), after iterations (dots extend right, iter-line shows progress vs noise band), or post-keep (kept iterations cluster below the 2σ floor).
+- No payload schema change — `renderProgressChart` reads the same `baseline.runs[]` + `iterations[]` arrays added in the earlier baseline-detail upgrade.
+- Fixture A only on the chart (it's the cheap-proxy fixture used for keep/discard decisions); fixture B–E runs surface in the Baseline detail table below.
+
+---
+
 ## 2026-05-23 - P16: composite formula → `noncached_plus_output_tokens` only
 
 ### Changed

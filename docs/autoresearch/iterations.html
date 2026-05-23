@@ -69,20 +69,43 @@
   .headline .stat .value { font-size: 22px; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
   .headline .stat .delta { font-size: 12px; color: var(--muted); }
 
-  /* Sparkline area */
-  .spark {
+  /* Progress chart — baseline runs + iterations against μ and 2σ-floor */
+  .progress-chart {
     display: block;
     width: 100%;
-    height: 64px;
+    height: 240px;
+    margin: 16px 0 32px;
   }
-  .spark .axis { stroke: var(--rule); stroke-width: 1; }
-  .spark .noise-band { fill: var(--noise-band); }
-  .spark .line { stroke: var(--ink); stroke-width: 1.4; fill: none; }
-  .spark .dot { fill: var(--ink); }
-  .spark .dot.keep { fill: var(--keep); }
-  .spark .dot.discard { fill: var(--discard); }
-  .spark .dot.crash { fill: var(--crash); }
-  .spark .label { font-size: 10px; fill: var(--muted); font-family: ui-monospace, monospace; }
+  .progress-chart .axis { stroke: var(--rule); stroke-width: 1; }
+  .progress-chart .noise-band { fill: var(--noise-band); }
+  .progress-chart .mean-line { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: none; }
+  .progress-chart .floor-line { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 3; }
+  .progress-chart .separator { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 4; }
+  .progress-chart .baseline-line { stroke: var(--muted); stroke-width: 1; fill: none; opacity: 0.4; }
+  .progress-chart .iter-line { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+  .progress-chart .dot { stroke: var(--paper); stroke-width: 1.5; }
+  .progress-chart .dot.shipped { fill: var(--keep); }
+  .progress-chart .dot.keep { fill: var(--keep); }
+  .progress-chart .dot.incomplete { fill: var(--muted); }
+  .progress-chart .dot.discard { fill: var(--muted); }
+  .progress-chart .dot.crash { fill: var(--crash); }
+  .progress-chart .dot.pending { fill: var(--ink); }
+  .progress-chart .label,
+  .progress-chart .axis-label {
+    font-size: 10px;
+    fill: var(--muted);
+    font-family: ui-monospace, monospace;
+  }
+  .progress-chart .band-label {
+    font-size: 10px;
+    fill: var(--ink);
+    font-family: ui-monospace, monospace;
+  }
+  .progress-chart .empty-msg {
+    font-size: 12px;
+    fill: var(--muted);
+    font-family: -apple-system, sans-serif;
+  }
 
   /* Iteration list — small multiples */
   .iter {
@@ -293,7 +316,7 @@
 
 <section id="headline" class="headline" hidden></section>
 
-<svg id="spark" class="spark" viewBox="0 0 900 64" preserveAspectRatio="none" hidden></svg>
+<svg id="progress-chart" class="progress-chart" viewBox="0 0 900 240" preserveAspectRatio="xMidYMid meet" hidden></svg>
 
 <section id="baseline-detail" class="baseline-detail" hidden></section>
 
@@ -315,7 +338,7 @@
 //──────────────────────────────────────────────────────────────────────────────
 // __ITERATIONS_DATA_START__
 window.ITERATIONS = {
-  "generated_at": "2026-05-23T16:34:41Z",
+  "generated_at": "2026-05-23T16:38:52Z",
   "baseline": {
     "measured_at": "2026-05-23",
     "mean_composite": 216497,
@@ -540,9 +563,178 @@ function fmtSigma(n) {
 
 function render(data) {
   renderHeadline(data);
-  renderSparkline(data);
+  renderProgressChart(data);
   renderBaselineDetail(data);
   renderIterations(data);
+}
+
+function svgEl(name, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function renderProgressChart(data) {
+  const svg = document.getElementById("progress-chart");
+  if (!svg) return;
+  const b = data.baseline || {};
+  // Fixture A baseline runs only (stable cheap-proxy fixture). Iterations
+  // append to the right of the baseline. If we have neither, hide entirely.
+  const baselineRuns = (b.runs || []).filter(r => r.fixture === "A");
+  const iters = data.iterations || [];
+  if (!baselineRuns.length && !iters.length) { svg.hidden = true; return; }
+  svg.hidden = false;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const W = 900, H = 240;
+  const padL = 64, padR = 24, padT = 24, padB = 32;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+
+  // Combined sequence: baseline runs first, then iterations
+  const points = baselineRuns.map((r, i) => ({
+    kind: "baseline",
+    seqIdx: i,
+    composite: r.composite,
+    cls: r.status || "",
+    label: "B" + (i + 1),
+  })).concat(iters.map((it, i) => ({
+    kind: "iter",
+    seqIdx: baselineRuns.length + i,
+    composite: it.composite,
+    cls: it.verdict || "pending",
+    label: "I" + (i + 1),
+  })));
+
+  // Y range: pad around min/max of all points + μ ± 2σ band
+  const composites = points.map(p => p.composite).filter(v => v != null);
+  const mu = b.mean_composite;
+  const sigma = b.stdev_composite;
+  const yCandidates = composites.slice();
+  if (mu != null) yCandidates.push(mu);
+  if (mu != null && sigma != null) {
+    yCandidates.push(mu + 2 * sigma);
+    yCandidates.push(Math.max(mu - 2 * sigma, 0));
+  }
+  if (yCandidates.length === 0) { svg.hidden = true; return; }
+  let maxV = Math.max.apply(null, yCandidates);
+  let minV = Math.min.apply(null, yCandidates);
+  const pad = (maxV - minV) * 0.15 || maxV * 0.15 || 1;
+  maxV += pad; minV = Math.max(minV - pad, 0);
+  const range = Math.max(maxV - minV, 1);
+
+  // X scale: fixed slots even if only baseline (so chart shows headroom for
+  // future iterations). Reserve at least 10 slots — baseline + first 5 iters.
+  const totalSlots = Math.max(points.length, baselineRuns.length + 5, 10);
+  function x(seqIdx) {
+    return padL + (seqIdx / Math.max(totalSlots - 1, 1)) * innerW;
+  }
+  function y(v) { return padT + (1 - (v - minV) / range) * innerH; }
+
+  // 1. Shaded μ ± 2σ noise band
+  if (mu != null && sigma != null) {
+    const yTop = y(mu + 2 * sigma);
+    const yBot = y(Math.max(mu - 2 * sigma, 0));
+    svg.appendChild(svgEl("rect", {
+      x: padL, y: yTop, width: innerW,
+      height: Math.max(yBot - yTop, 1),
+      class: "noise-band",
+    }));
+  }
+
+  // 2. Y-axis (left)
+  svg.appendChild(svgEl("line", {
+    x1: padL, x2: padL, y1: padT, y2: padT + innerH, class: "axis",
+  }));
+  // 3. X-axis (bottom)
+  svg.appendChild(svgEl("line", {
+    x1: padL, x2: W - padR, y1: padT + innerH, y2: padT + innerH, class: "axis",
+  }));
+
+  // 4. μ line + label
+  if (mu != null) {
+    svg.appendChild(svgEl("line", {
+      x1: padL, x2: W - padR, y1: y(mu), y2: y(mu), class: "mean-line",
+    }));
+    const mt = svgEl("text", { x: padL - 6, y: y(mu) + 3, class: "band-label", "text-anchor": "end" });
+    mt.textContent = "μ " + fmtInt(mu);
+    svg.appendChild(mt);
+  }
+
+  // 5. 2σ-floor line + label (the "win" threshold)
+  if (mu != null && sigma != null) {
+    const floor = mu - 2 * sigma;
+    svg.appendChild(svgEl("line", {
+      x1: padL, x2: W - padR, y1: y(floor), y2: y(floor), class: "floor-line",
+    }));
+    const ft = svgEl("text", { x: padL - 6, y: y(floor) + 3, class: "label", "text-anchor": "end" });
+    ft.textContent = "2σ floor " + fmtInt(floor);
+    svg.appendChild(ft);
+  }
+
+  // 6. Vertical separator between baseline and iteration regions
+  if (baselineRuns.length && totalSlots > baselineRuns.length) {
+    const sepX = (x(baselineRuns.length - 1) + x(baselineRuns.length)) / 2;
+    svg.appendChild(svgEl("line", {
+      x1: sepX, x2: sepX, y1: padT, y2: padT + innerH, class: "separator",
+    }));
+    const sepT = svgEl("text", {
+      x: sepX, y: padT - 8, class: "label", "text-anchor": "middle",
+    });
+    sepT.textContent = "← baseline | iterations →";
+    svg.appendChild(sepT);
+  }
+
+  // 7. Connecting polylines (baseline cohort dim, iteration progress bold)
+  const baselinePts = points.filter(p => p.kind === "baseline" && p.composite != null);
+  if (baselinePts.length > 1) {
+    svg.appendChild(svgEl("polyline", {
+      points: baselinePts.map(p => x(p.seqIdx) + "," + y(p.composite)).join(" "),
+      class: "baseline-line",
+    }));
+  }
+  const iterPts = points.filter(p => p.kind === "iter" && p.composite != null);
+  if (iterPts.length > 1) {
+    svg.appendChild(svgEl("polyline", {
+      points: iterPts.map(p => x(p.seqIdx) + "," + y(p.composite)).join(" "),
+      class: "iter-line",
+    }));
+  }
+
+  // 8. Dots — colored by status (baseline) or verdict (iteration)
+  points.forEach(p => {
+    if (p.composite == null) return;
+    svg.appendChild(svgEl("circle", {
+      cx: x(p.seqIdx), cy: y(p.composite), r: 4,
+      class: "dot " + p.cls,
+    }));
+  });
+
+  // 9. X-axis labels (every point gets a small mono label)
+  points.forEach(p => {
+    const t = svgEl("text", {
+      x: x(p.seqIdx), y: padT + innerH + 14, class: "label", "text-anchor": "middle",
+    });
+    t.textContent = p.label;
+    svg.appendChild(t);
+  });
+
+  // 10. Y-axis range labels (top + bottom of inner area)
+  const yTopT = svgEl("text", { x: padL - 6, y: padT + 4, class: "axis-label", "text-anchor": "end" });
+  yTopT.textContent = fmtInt(maxV);
+  svg.appendChild(yTopT);
+  const yBotT = svgEl("text", { x: padL - 6, y: padT + innerH + 4, class: "axis-label", "text-anchor": "end" });
+  yBotT.textContent = fmtInt(minV);
+  svg.appendChild(yBotT);
+
+  // 11. Empty-iterations message centered in the iteration region
+  if (!iters.length && baselineRuns.length) {
+    const cx = (x(baselineRuns.length) + x(totalSlots - 1)) / 2;
+    const t = svgEl("text", {
+      x: cx, y: padT + innerH / 2, class: "empty-msg", "text-anchor": "middle",
+    });
+    t.textContent = "iterations land here →";
+    svg.appendChild(t);
+  }
 }
 
 function renderBaselineDetail(data) {
@@ -671,80 +863,6 @@ function stat(label, value, delta) {
               + "<div class='value'>" + value + "</div>"
               + "<div class='delta'>" + (delta || "") + "</div>";
   return d;
-}
-
-function renderSparkline(data) {
-  const svg = document.getElementById("spark");
-  const b = data.baseline || {};
-  const iters = data.iterations || [];
-  if (!iters.length || b.mean_composite == null) {
-    svg.hidden = true;
-    return;
-  }
-  svg.hidden = false;
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
-
-  const W = 900, H = 64, padL = 48, padR = 16, padT = 8, padB = 16;
-  const innerW = W - padL - padR, innerH = H - padT - padB;
-  const values = [b.mean_composite].concat(iters.map(i => i.composite));
-  const maxV = Math.max.apply(null, values);
-  const minV = Math.min.apply(null, values);
-  const range = Math.max(maxV - minV, 1);
-
-  function x(i) { return padL + (i / Math.max(values.length - 1, 1)) * innerW; }
-  function y(v) { return padT + (1 - (v - minV) / range) * innerH; }
-
-  // Noise-band rectangle (mean ± 2σ visualized as a gray band)
-  if (b.stdev_composite) {
-    const yTop = y(b.mean_composite + 2 * b.stdev_composite);
-    const yBot = y(b.mean_composite - 2 * b.stdev_composite);
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", padL);
-    rect.setAttribute("y", yTop);
-    rect.setAttribute("width", innerW);
-    rect.setAttribute("height", Math.max(yBot - yTop, 1));
-    rect.setAttribute("class", "noise-band");
-    svg.appendChild(rect);
-  }
-
-  // Baseline horizontal line
-  const base = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  base.setAttribute("x1", padL); base.setAttribute("x2", W - padR);
-  base.setAttribute("y1", y(b.mean_composite)); base.setAttribute("y2", y(b.mean_composite));
-  base.setAttribute("class", "axis");
-  svg.appendChild(base);
-
-  // Connecting polyline
-  const pts = values.map((v, i) => x(i) + "," + y(v)).join(" ");
-  const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  line.setAttribute("points", pts);
-  line.setAttribute("class", "line");
-  svg.appendChild(line);
-
-  // Dots — color-coded by verdict
-  values.forEach((v, i) => {
-    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    dot.setAttribute("cx", x(i));
-    dot.setAttribute("cy", y(v));
-    dot.setAttribute("r", 3);
-    const cls = i === 0 ? "" : (iters[i - 1].verdict || "");
-    dot.setAttribute("class", "dot " + cls);
-    svg.appendChild(dot);
-  });
-
-  // Labels — only the first (baseline) and last value to maximize data-ink
-  function label(text, vx, vy, anchor) {
-    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    t.setAttribute("x", vx);
-    t.setAttribute("y", vy);
-    t.setAttribute("class", "label");
-    t.setAttribute("text-anchor", anchor || "start");
-    t.textContent = text;
-    svg.appendChild(t);
-  }
-  label("baseline", padL - 4, y(b.mean_composite) + 4, "end");
-  label(fmtInt(values[0]), padL + 4, y(values[0]) - 6, "start");
-  label("#" + iters.length, x(values.length - 1) + 4, y(values[values.length - 1]) - 6, "start");
 }
 
 function renderIterations(data) {
