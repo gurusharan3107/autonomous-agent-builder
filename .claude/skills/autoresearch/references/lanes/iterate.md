@@ -52,7 +52,7 @@ WATCHDOG_PID=$!
 trap "kill -TERM $WATCHDOG_PID 2>/dev/null" EXIT
 
 # 1c. If joining a session and uncertain whether a lane is already in flight:
-python3 scripts/autoresearch/lane_status.py --human
+python3 .claude/skills/autoresearch/scripts/lane_status.py --human
 # Reports any running baseline.py / loop.py + progress + ETA. The Recipe-2
 # preflight also hard-fails when another lane is detected; this command is
 # just the human-readable version for orientation.

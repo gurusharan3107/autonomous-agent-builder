@@ -22,21 +22,23 @@ Do not read `CONTEXT-LEDGER.md` / `SDK-OBSERVABILITY.md` / `GAPS.md` unless exte
   - `docs/autoresearch/baseline_variance.md` — append observed σ context.
   - `docs/autoresearch/iterations.json` / `iterations.html` (data block only) — via render_iterations.py.
   - `docs/autoresearch/INTROSPECTION.md` — via introspect.py.
-  - `docs/goal/STATUS.md` Recent Decisions — append baseline result line.
+  - `docs/autoresearch/PROGRESS.md` — append the closeout entry (Hard Rule 1).
 
 - **Iterate lane:**
   - `docs/autoresearch/OPTIMIZE_IDEAS.md` — add new ideas + attempt markers.
   - `docs/autoresearch/optimize_results.tsv` / `per_prompt_results.tsv` (append-only via run.py / loop.py).
   - `docs/autoresearch/iterations.json` / `iterations.html` (data block only).
   - `docs/autoresearch/INTROSPECTION.md`.
-  - On kept-and-shipped iterations only: `docs/goal/ROADMAP.md` (tick `[x]`), `docs/goal/STATUS.md` (Recent Decisions), `CHANGELOG.md`.
+  - `docs/autoresearch/PROGRESS.md` — append the verdict entry (Hard Rule 1).
+  - **Only on KEEP that ships and closes a milestone scope item:** `docs/goal/ROADMAP.md` (tick `[x]`); cross-cutting decisions also go to `docs/goal/STATUS.md` Recent Decisions.
 
 - **Fix lane:**
-  - `docs/goal/ROADMAP.md` (add line + tick), `docs/goal/STATUS.md` (Recent Decisions + Last Update), `CHANGELOG.md`.
+  - `docs/autoresearch/PROGRESS.md` — primary closeout target (Hard Rule 1).
   - `docs/autoresearch/README.md` / `METRICS.md` / `HARNESS.md` — when the fix changes a documented contract.
   - The TSV files — truncate to header-only when prior measurements are invalidated by the fix.
   - `src/autonomous_agent_builder/**` or `scripts/autoresearch/*.{py,sh,yml}` per FIX-STANDARD.
   - Tests under `tests/`.
+  - **Only when the fix has cross-cutting Builder-runtime implications (not autoresearch-internal):** also add a `CHANGELOG.md` entry and a `docs/goal/STATUS.md` Recent Decisions line.
 
 ## Files this skill MUST NEVER edit
 

@@ -24,7 +24,7 @@ This skill is the only entry point for the autoresearch loop. Three mutually exc
 `baseline.py` / `loop.py` run for hours and may have been started outside this session. **First action when this skill activates:**
 
 ```bash
-python3 scripts/autoresearch/lane_status.py --human
+python3 .claude/skills/autoresearch/scripts/lane_status.py --human
 ```
 
 If anything is reported, surface it FIRST — TSV state is changing under you. Recipe-1/2/3 preflights also hard-fail on in-flight lanes (safety net for accidental concurrent starts).

@@ -9,7 +9,7 @@
 ### When to choose this lane
 
 - The loop's preflight, baseline.py, or compare.py reports a contract violation (`session_scoped is False`, schema drift between TSV header and writer, anchor drift in extractor, malformed analyze.json shape).
-- STATUS Recent Decisions or `docs/autoresearch/NEXT-SESSION.md`-style handoffs name a specific source defect blocking the loop.
+- STATUS Recent Decisions or a one-shot handoff doc (e.g., a `NEXT-SESSION.md` placed at the repo root or `docs/autoresearch/`) names a specific source defect blocking the loop.
 - A kept iteration exposes a generalizable bug in Builder source that other agents will hit.
 - The operator types "fix the gap", "address the blocker", or names a specific defect.
 
@@ -23,7 +23,7 @@ Lane-specific hard requirements (refuse to start until all three are satisfied):
 
 - A **named gap source** — file:line, contract name, or handoff doc that names the defect. Fix lane refuses to start on vague intent. If the operator's prompt doesn't name one, ask via AskUserQuestion before proceeding.
 - A **clean git state** — Fix lane creates real commits on `master` (or the active feature branch); a dirty tree means uncommitted prior work that must be resolved first.
-- A **ROADMAP entry written before any code edit.** Per Hard Rule 1, the ROADMAP line lands *first*. If the existing ROADMAP has no home for this fix, add the line (typically under M2.3 for cost-aware-execution / telemetry / contract defects, M3.5 for autoresearch-loop-internal defects) and commit nothing else until the line exists. The line stays `[ ]` until the Closeout tick — but writing it is a precondition, not a closeout step.
+- A **PROGRESS.md stub entry written before any code edit.** Per SKILL.md Hard Rule 1, autoresearch lane closeouts write to `docs/autoresearch/PROGRESS.md`, not ROADMAP. Pre-edit stub: append a `**WIP <pattern-name>** — investigating <symptom>. *(OPEN)*` line under today's date header in PROGRESS.md, then make the code change; on closeout, replace the WIP line with the final shipped entry. Exception: a fix that touches Builder source AND has cross-cutting Builder-runtime implications also needs a ROADMAP line (typically M2.3) — see § Closeout "Out of scope" note.
 
 ### Do
 
@@ -49,7 +49,7 @@ Every Fix lane closeout MUST do all of:
 4. **Freshness sweep** — `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` must exit 0. Drift outside the Fix scope expands the Fix.
 5. **Single commit** — all of the above in one commit. Subject: `fix(<area>): <one-line summary>` (concise, no template body unless landmark).
 6. **Push** — closeout isn't done until pushed.
-7. **Retire handoff docs** — delete any `NEXT-SESSION.md`-style trigger doc.
+7. **Retire handoff docs** — delete any one-shot trigger doc (e.g., a `NEXT-SESSION.md`) that drove this Fix lane.
 8. **Tell the operator** which lane to run next. Baseline if the fix shifted prompt shape or aggregate semantics (pre-fix σ-floor invalid); Iterate if harness-only.
 
 **Out of scope for Fix-lane closeout:** ROADMAP `[x]` ticks, STATUS Recent Decisions, CHANGELOG sections — those land in PROGRESS.md per Hard Rule 1. Exception: a fix that touches Builder source AND has non-autoresearch implications (e.g., the M2.3 telemetry-honesty fix that affected non-autoresearch consumers) gets a STATUS Recent Decisions line and a CHANGELOG entry in addition to PROGRESS.md. When in doubt: PROGRESS.md only.
@@ -67,7 +67,7 @@ Every Fix lane closeout MUST do all of:
   - Next lane: Iterate (P15 was harness-only; σ-floor now defined).
   - TSVs truncated to header-only (pre-fix measurements poisoned).
   - Single commit `a3354c2`, pushed.
-  - `NEXT-SESSION.md` retired.
+  - One-shot handoff doc retired (where applicable).
   - Next lane: Baseline (telemetry surface changed; σ-floor must be recomputed).
 
 ---

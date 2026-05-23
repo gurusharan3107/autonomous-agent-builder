@@ -430,7 +430,7 @@ def check_no_inflight_lane() -> Check:
         f"{len(lanes)} lane process(es) already running — {summary}",
         fix=(
             "another lane is in flight; run "
-            "`python3 scripts/autoresearch/lane_status.py --human` for progress, "
+            "`python3 .claude/skills/autoresearch/scripts/lane_status.py --human` for progress, "
             "then either wait or `kill -TERM <PID>` (graceful) before starting a new lane"
         ),
     )

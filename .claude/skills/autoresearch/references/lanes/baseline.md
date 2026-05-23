@@ -59,7 +59,7 @@ python3 scripts/autoresearch/baseline.py --fixtures A,B,C,D,E --n 5 \
     --evidence-root /tmp/autoresearch/baseline-$(date +%Y-%m-%d)
 ```
 
-**Joining a session with an in-flight lane.** Run `python3 scripts/autoresearch/lane_status.py --human` before touching anything. Preflight `--recipe 1` hard-fails on detected lanes (TSV/workspace/port collision). Wait or `kill -TERM <PID>` before starting new.
+**Joining a session with an in-flight lane.** Run `python3 .claude/skills/autoresearch/scripts/lane_status.py --human` before touching anything. Preflight `--recipe 1` hard-fails on detected lanes (TSV/workspace/port collision). Wait or `kill -TERM <PID>` before starting new.
 
 ### Closeout
 
