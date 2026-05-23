@@ -32,17 +32,22 @@ After lane selection, run the Audit lane in [`references/audit.md`](references/a
 ## Audit at a glance
 
 ```bash
-# Static-only audit of a target (skill dir, Python package, repo)
+# Deterministic-only audit (qualitative criteria return `unknown` honestly)
 python3 .claude/skills/autonomy-audit/scripts/audit.py <target-path>
 
-# Add dynamic probes (briefly launches target, 60s cap per probe)
+# + LLM grading of qualitative criteria (C3, C4, C5, C9) via `claude -p`
+python3 .claude/skills/autonomy-audit/scripts/audit.py <target-path> --model-backed
+
+# + dynamic probes (briefly launches target, 60s cap per probe — v2)
 python3 .claude/skills/autonomy-audit/scripts/audit.py <target-path> --dynamic
 
 # Machine-readable
-python3 .claude/skills/autonomy-audit/scripts/audit.py <target-path> --json
+python3 .claude/skills/autonomy-audit/scripts/audit.py <target-path> --json --model-backed
 ```
 
-Exit 0 = audit ran cleanly (verdicts may still include `fail`). Exit 1 = the audit itself failed (target unreadable / structurally broken). Verdicts: `pass` (predicate satisfied), `partial` (some sub-checks pass), `fail` (predicate missing/broken), `unknown` (insufficient evidence — typical for dynamic checks without `--dynamic`).
+**Two-layer architecture.** Structural criteria (C1, C2, C6, C7, C8, C10, C11, C12, C13) are decided deterministically: regex / file checks / AST patterns are sufficient. Qualitative criteria (C3 catalog-quality, C4 unknown-handling-quality, C5 predicate-discrimination, C9 cascade-quality) need judgment a regex can't do — without `--model-backed`, those return `unknown` honestly. With `--model-backed`, the deterministic gather + Claude Code CLI grading produces a real verdict per criterion. Bounded by `--max-cost-usd` (default $0.50).
+
+Exit 0 = audit ran cleanly (verdicts may still include `fail`). Exit 1 = the audit itself failed (target unreadable / structurally broken). Verdicts: `pass` (predicate satisfied), `partial` (some sub-checks pass), `fail` (predicate missing/broken), `unknown` (insufficient evidence — expected for qualitative criteria without `--model-backed`).
 
 The 13 criteria + their predicates + their fix_pointer templates live in [`references/criteria.md`](references/criteria.md). The audit script consults that catalog; the two must stay in sync.
 

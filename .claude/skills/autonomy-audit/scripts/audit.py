@@ -24,8 +24,11 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 
@@ -45,6 +48,7 @@ class Match:
     confidence: float
     evidence: list[str] = field(default_factory=list)
     fix_pointer: str = ""
+    model_graded: bool = False  # True when verdict came from --model-backed pass
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -83,6 +87,137 @@ def _grep_any(target: pathlib.Path, globs: list[str], patterns: list[str]) -> li
                 hits.append((f, line.strip()))
                 break
     return hits
+
+
+# -- Model-backed grading -----------------------------------------------------
+#
+# Some criteria (C3 catalog quality, C4 unknown handling quality, C5 predicate
+# discrimination, C9 cascade quality) require judgment that deterministic
+# regex cannot perform. For those, the auditor gathers evidence
+# deterministically, then optionally calls Claude Code CLI with a narrow
+# grading prompt and parses the verdict back into the same Match schema.
+#
+# This is criterion C11 of the auditor's own audit (LLM-as-diagnoser fallback).
+# Without --model-backed, qualitative criteria return `unknown` honestly.
+
+CRITERION_RE = re.compile(r"^## (C\d+) — (.+)$", re.MULTILINE)
+
+
+def _criterion_text(criterion_id: str) -> str:
+    """Extract the entry for criterion_id from references/criteria.md."""
+    try:
+        text = CRITERIA_FILE.read_text(errors="replace")
+    except OSError:
+        return ""
+    sections = list(CRITERION_RE.finditer(text))
+    for i, m in enumerate(sections):
+        if m.group(1) == criterion_id:
+            start = m.start()
+            end = sections[i + 1].start() if i + 1 < len(sections) else len(text)
+            return text[start:end].strip()
+    return ""
+
+
+def _call_claude(prompt: str, timeout_s: int = 60) -> str:
+    """Invoke `claude -p` and return stdout. Raises on unavailable / error."""
+    if not shutil.which("claude"):
+        raise RuntimeError("claude CLI not on PATH; install Claude Code or unset --model-backed")
+    result = subprocess.run(
+        ["claude", "-p", prompt],
+        capture_output=True, text=True, timeout=timeout_s,
+        env={**os.environ, "CLAUDE_NONINTERACTIVE": "1"},
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"claude CLI exit {result.returncode}: {result.stderr[:200]}")
+    return result.stdout
+
+
+def _extract_json(text: str) -> dict | None:
+    """Find a {verdict: ...} JSON object in the response text."""
+    # Try fenced code block first.
+    for m in re.finditer(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL):
+        try:
+            obj = json.loads(m.group(1))
+            if "verdict" in obj:
+                return obj
+        except (ValueError, json.JSONDecodeError):
+            continue
+    # Try raw object with verdict key.
+    for m in re.finditer(r"\{[^{}]*?\"verdict\"[^{}]*?\}", text, re.DOTALL):
+        try:
+            obj = json.loads(m.group(0))
+            return obj
+        except (ValueError, json.JSONDecodeError):
+            continue
+    return None
+
+
+def _model_grade(
+    criterion_id: str,
+    name: str,
+    bundle: dict,
+    cost_ctx: dict,
+) -> Match:
+    """Grade a qualitative criterion via Claude Code CLI. Bounded by cost cap."""
+    if cost_ctx["spent_usd"] >= cost_ctx["cap_usd"]:
+        return Match(
+            id=criterion_id, name=name,
+            verdict="unknown", confidence=0.0,
+            evidence=[f"cost cap ${cost_ctx['cap_usd']:.2f} reached; criterion skipped"],
+            fix_pointer="rerun with higher --max-cost-usd to grade this criterion",
+            model_graded=False,
+        )
+    criterion_text = _criterion_text(criterion_id) or f"(criterion {criterion_id} text not found)"
+    bundle_json = json.dumps(bundle, indent=2)[:8000]  # cap context per call
+    prompt = (
+        f"You are grading autonomy criterion {criterion_id} for a target system. "
+        f"Be strict and honest — return `unknown` if evidence is genuinely "
+        f"insufficient to grade, rather than guessing.\n\n"
+        f"# CRITERION DEFINITION\n{criterion_text}\n\n"
+        f"# EVIDENCE GATHERED (deterministic, from grep/file checks)\n"
+        f"```json\n{bundle_json}\n```\n\n"
+        f"# YOUR TASK\n"
+        f"Read the criterion's narrow predicate and the gathered evidence. "
+        f"Decide whether the target satisfies the criterion's QUALITY aspect "
+        f"(not just structural presence — quality of the structure).\n\n"
+        f"Return strictly this JSON inside a fenced ```json code block, nothing else:\n"
+        f"{{\n"
+        f"  \"verdict\": \"pass|partial|fail|unknown\",\n"
+        f"  \"confidence\": 0.0-1.0,\n"
+        f"  \"reason\": \"one paragraph, concrete, evidence-backed\",\n"
+        f"  \"fix_pointer\": \"specific file/function/diff suggestion if not pass\"\n"
+        f"}}\n"
+    )
+    try:
+        response = _call_claude(prompt, timeout_s=90)
+    except (RuntimeError, subprocess.SubprocessError, OSError) as exc:
+        return Match(
+            id=criterion_id, name=name,
+            verdict="unknown", confidence=0.0,
+            evidence=[f"model call failed: {type(exc).__name__}: {exc}"],
+            fix_pointer="ensure `claude` CLI is on PATH or drop --model-backed",
+            model_graded=False,
+        )
+    # Rough cost estimate: $0.01-0.05 per call depending on prompt size.
+    # Real cost tracking requires --output-format json parsing; this is approximate.
+    cost_ctx["spent_usd"] += 0.03
+    graded = _extract_json(response)
+    if not graded or "verdict" not in graded:
+        return Match(
+            id=criterion_id, name=name,
+            verdict="unknown", confidence=0.2,
+            evidence=[f"model response unparseable: {response[:200]}"],
+            fix_pointer="re-run; if persistent, file as auditor bug",
+            model_graded=True,
+        )
+    return Match(
+        id=criterion_id, name=name,
+        verdict=str(graded.get("verdict", "unknown")),
+        confidence=float(graded.get("confidence", 0.5)),
+        evidence=[str(graded.get("reason", ""))[:500]],
+        fix_pointer=str(graded.get("fix_pointer", "")),
+        model_graded=True,
+    )
 
 
 def _file_globs_exist(target: pathlib.Path, name_patterns: list[str]) -> list[pathlib.Path]:
@@ -190,15 +325,31 @@ def match_c2_forensics(target: pathlib.Path, dynamic: bool) -> Match:
     )
 
 
-def match_c3_catalog(target: pathlib.Path, dynamic: bool) -> Match:
-    """Pattern catalog as data structure."""
-    del dynamic
+def _gather_c3(target: pathlib.Path) -> dict:
+    """Deterministic evidence gather for C3 (catalog quality)."""
     catalog_files = _file_globs_exist(
         target,
         [r"KNOWN_PATTERNS\.md", r"patterns\.(json|yaml|toml)",
          r"signatures\.(yaml|json|toml)", r"issues\.(toml|yaml)"],
     )
+    bundle: dict = {"catalog_files": [str(p.name) for p in catalog_files]}
     if not catalog_files:
+        return bundle
+    catalog = catalog_files[0]
+    bundle["catalog_path"] = str(catalog.relative_to(target) if target.is_dir() and catalog.is_relative_to(target) else catalog.name)
+    bundle["catalog_excerpt"] = _read_text(catalog)[:4000]
+    consumers = _grep_any(target, SOURCE_GLOBS, [re.escape(catalog.name)])
+    bundle["consumer_files"] = sorted({h[0].name for h in consumers})[:5]
+    if consumers:
+        bundle["consumer_excerpt"] = _read_text(consumers[0][0])[:2500]
+    return bundle
+
+
+def match_c3_catalog(target: pathlib.Path, dynamic: bool, *, model_backed: bool = False, cost_ctx: dict | None = None) -> Match:
+    """Pattern catalog as data structure (qualitative — uses model when --model-backed)."""
+    del dynamic
+    bundle = _gather_c3(target)
+    if not bundle["catalog_files"]:
         return Match(
             id="C3", name="Pattern catalog as data structure (not prose)",
             verdict="fail", confidence=0.9, evidence=["no catalog file found"],
@@ -210,31 +361,22 @@ def match_c3_catalog(target: pathlib.Path, dynamic: bool) -> Match:
                 ".claude/skills/autoresearch/{KNOWN_PATTERNS.md,scripts/diagnose_hang.py}"
             ),
         )
-    catalog_name = catalog_files[0].name
-    # Is the catalog referenced by any source file?
-    consumers = _grep_any(target, SOURCE_GLOBS, [re.escape(catalog_name)])
-    # Are the catalog entries predicate-shaped, not pure prose?
-    text = _read_text(catalog_files[0])
-    has_predicates = bool(re.search(r"regex|grep|sqlite|SELECT|matcher|predicate|`/.+/`|/proc/", text, re.IGNORECASE))
-    if consumers and has_predicates:
-        verdict, conf = "pass", 0.9
-    elif consumers or has_predicates:
-        verdict, conf = "partial", 0.65
-    else:
-        verdict, conf = "fail", 0.85
-    evidence = [f"catalog: {catalog_files[0].name}"]
-    if consumers:
-        evidence.append(f"{len(consumers)} source file(s) reference catalog by name")
-    if has_predicates:
-        evidence.append("catalog entries contain predicate-shaped checks (regex / SQL / proc / matcher)")
+    if model_backed:
+        return _model_grade(
+            "C3", "Pattern catalog as data structure (not prose)",
+            bundle, cost_ctx or {"spent_usd": 0.0, "cap_usd": 0.50},
+        )
+    # Deterministic path returns `unknown` honestly — the QUALITY of catalog
+    # entries (are they predicates or prose?) requires judgment.
     return Match(
         id="C3", name="Pattern catalog as data structure (not prose)",
-        verdict=verdict, confidence=conf, evidence=evidence,
-        fix_pointer=(
-            "Add a matcher script that programmatically consults the catalog, "
-            "and ensure each catalog entry includes a narrow predicate (regex / "
-            "SQL / file check), not just prose description."
-        ) if verdict != "pass" else "",
+        verdict="unknown", confidence=0.4,
+        evidence=[
+            f"catalog found: {bundle.get('catalog_path', bundle['catalog_files'][0])}",
+            f"{len(bundle.get('consumer_files', []))} consumer file(s) reference it",
+            "qualitative grade (entries are predicates vs prose) requires --model-backed",
+        ],
+        fix_pointer="Run audit.py with --model-backed to grade catalog entry quality.",
     )
 
 
@@ -317,25 +459,41 @@ def match_c5_narrow_predicates(target: pathlib.Path, dynamic: bool) -> Match:
 def match_c6_budgets(target: pathlib.Path, dynamic: bool) -> Match:
     """Cost-bounded cycles."""
     del dynamic
-    budgets = _grep_any(
-        target, SOURCE_GLOBS,
-        [r"--max[\-_]iterations?", r"--cost[\-_]budget", r"--timeout",
-         r"--max[\-_]tokens?", r"--max[\-_]cycles?", r"max_iterations",
-         r"cost_budget", r"deadline"],
+    # Look specifically in code (.py/.ts/.js — not shell scripts where these
+    # strings often appear in error messages) for budget flag DEFINITIONS
+    # (add_argument / Click option / dataclass field), not random mentions.
+    # Shell scripts excluded because cycle 9 false-positive matched the word
+    # "reachable" containing "ach" → "max-iterations" substring fragment.
+    code_globs = ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js"]
+    budget_flags = _grep_any(
+        target, code_globs,
+        [r"add_argument\([\"']--max[\-_]iter",
+         r"add_argument\([\"']--cost[\-_]budget",
+         r"add_argument\([\"']--timeout",
+         r"add_argument\([\"']--max[\-_]tokens?",
+         r"add_argument\([\"']--max[\-_]cycles?",
+         r"add_argument\([\"']--max[\-_]auto[\-_]fixes?",
+         r"\.option\([\"']--max[\-_]iter",  # Click
+         r"\.option\([\"']--cost[\-_]budget"],
     )
-    distinct_budgets = len({h[0].name for h in budgets})
+    distinct_files = {h[0].name for h in budget_flags}
     cycle_check = bool(_grep_any(
-        target, SOURCE_GLOBS,
-        [r"if .* > .*budget", r"if .* >= .*max[\-_]iter", r"while .* < .*deadline",
-         r"if time\.time\(\) > "],
+        target, code_globs,
+        [r"if\s+.*>\s*.*max[\-_]iter",
+         r"if\s+.*cost.*>\s*.*budget",
+         r"if\s+time\.time\(\)\s*>\s*deadline",
+         r"if\s+iterations?\s*>=?\s*max",
+         r"while\s+.*<\s*deadline"],
     ))
-    if distinct_budgets >= 2 and cycle_check:
+    if len(distinct_files) >= 2 and cycle_check:
         verdict, conf = "pass", 0.9
-    elif distinct_budgets >= 1 or cycle_check:
+    elif len(distinct_files) >= 2 or (len(distinct_files) >= 1 and cycle_check):
+        verdict, conf = "pass", 0.8
+    elif len(distinct_files) >= 1 or cycle_check:
         verdict, conf = "partial", 0.65
     else:
         verdict, conf = "fail", 0.85
-    evidence = [f"budget flag: {h[0].name}: {h[1]}" for h in budgets[:3]]
+    evidence = [f"budget flag: {h[0].name}: {h[1][:80]}" for h in budget_flags[:3]]
     if cycle_check:
         evidence.append("per-cycle budget check present in loop body")
     return Match(
@@ -353,37 +511,70 @@ def match_c6_budgets(target: pathlib.Path, dynamic: bool) -> Match:
 def match_c7_propagation(target: pathlib.Path, dynamic: bool) -> Match:
     """Fixes propagate to surfaces future agents read."""
     del dynamic
-    # Look for durable surfaces by name.
-    surfaces = _file_globs_exist(
-        target,
-        [r"ROADMAP\.md", r"CHANGELOG\.md", r"STATUS\.md", r"KNOWN_PATTERNS\.md",
-         r"INSIGHTS\.md", r"DECISIONS?\.md"],
-    )
-    # Look for documented closeout step.
+    surface_patterns = {
+        "ROADMAP": [r"^ROADMAP\.md$"],
+        "STATUS": [r"^STATUS\.md$"],
+        "CHANGELOG": [r"^CHANGELOG\.md$"],
+        "KNOWN_PATTERNS": [r"^KNOWN_PATTERNS\.md$"],
+        "INSIGHTS": [r"^INSIGHTS\.md$"],
+        "DECISIONS": [r"^DECISIONS?\.md$"],
+    }
+    # Find each distinct surface type, searching target + walking up to repo root.
+    found_kinds: set[str] = set()
+    found_paths: list[pathlib.Path] = []
+
+    def _check_dir(d: pathlib.Path) -> None:
+        if not d.is_dir():
+            return
+        for kind, pats in surface_patterns.items():
+            if kind in found_kinds:
+                continue
+            for child in d.rglob("*.md"):
+                if any(part in IGNORE_DIRS for part in child.parts):
+                    continue
+                if any(re.match(p, child.name) for p in pats):
+                    found_kinds.add(kind)
+                    found_paths.append(child)
+                    break
+
+    # Walk from target up to repo root (.git boundary or 6 levels).
+    search_root: pathlib.Path = target if target.is_dir() else target.parent
+    for _ in range(6):
+        _check_dir(search_root)
+        if (search_root / ".git").exists():
+            break
+        if search_root.parent == search_root:
+            break
+        search_root = search_root.parent
+    # Also peek inside common doc locations.
+    for sub in ("docs", "docs/goal"):
+        candidate = search_root / sub
+        if candidate.exists():
+            _check_dir(candidate)
+
+    # Look for documented closeout step in target docs.
     closeout = bool(_grep_any(
         target, DOC_GLOBS,
-        [r"closeout", r"post[\-_]fix", r"after.*fix", r"propagat"],
+        [r"closeout", r"post[\-_]fix", r"propagat", r"after.*fix.*commit"],
     ))
-    # If target is a sub-dir, look in repo-root too (one level up).
-    parent_surfaces = []
-    if target.is_dir() and target.parent != target:
-        repo_root = target
-        for _ in range(4):  # up to 4 levels up
-            if (repo_root.parent / "ROADMAP.md").exists() or (repo_root.parent / "docs" / "goal" / "ROADMAP.md").exists():
-                parent_surfaces.append("ROADMAP.md in repo root")
-                break
-            repo_root = repo_root.parent
-            if repo_root == repo_root.parent:
-                break
-    total_surfaces = len(surfaces) + len(parent_surfaces)
-    if total_surfaces >= 3 and closeout:
+
+    n = len(found_kinds)
+    if n >= 4 and closeout:
         verdict, conf = "pass", 0.9
-    elif total_surfaces >= 2 or closeout:
+    elif n >= 4 or (n >= 3 and closeout):
+        verdict, conf = "pass", 0.8
+    elif n >= 2:
         verdict, conf = "partial", 0.65
+    elif n >= 1 or closeout:
+        verdict, conf = "partial", 0.5
     else:
         verdict, conf = "fail", 0.8
-    evidence = [f"surface: {s.name}" for s in surfaces[:4]]
-    evidence += [f"upstream: {s}" for s in parent_surfaces]
+    evidence = [f"surface kinds found: {sorted(found_kinds)}"]
+    for p in found_paths[:5]:
+        try:
+            evidence.append(f"  {p.relative_to(search_root)}")
+        except ValueError:
+            evidence.append(f"  {p.name}")
     if closeout:
         evidence.append("docs reference closeout/post-fix workflow")
     return Match(
@@ -400,30 +591,44 @@ def match_c7_propagation(target: pathlib.Path, dynamic: bool) -> Match:
 def match_c8_state(target: pathlib.Path, dynamic: bool) -> Match:
     """State, not conversation."""
     del dynamic
-    persistence = _grep_any(
+    # Persistent state is broader than "has a config.toml". Accept ANY of:
+    # structured data files (TSV/CSV/JSONL/Parquet), SQLite DBs, JSON snapshots,
+    # config files, evidence dumps, append-only logs the target writes itself.
+    persistence_code = _grep_any(
         target, SOURCE_GLOBS,
-        [r"\.read_text\(\)", r"\.write_text\(", r"json\.load", r"sqlite3\.connect",
-         r"open\([\"'].*\.toml", r"yaml\.safe_load"],
+        [r"\.write_text\(", r"\.read_text\(\)", r"json\.dump", r"json\.load",
+         r"sqlite3\.connect", r"csv\.writer", r"csv\.DictWriter",
+         r"tomli?\.load", r"yaml\.safe_(load|dump)",
+         r"with open\([^)]*[\"']w"],
     )
-    config_in_files = bool(_file_globs_exist(target, [r"config\.(toml|yaml|json|ini)", r"\.env\.example"]))
-    if persistence and config_in_files:
+    # Persistent data artifact files (the actual state on disk that survives).
+    data_artifacts = _file_globs_exist(
+        target,
+        [r"\.tsv$", r"\.csv$", r"\.jsonl$", r"\.sqlite$", r"\.db$",
+         r"_summary\.json$", r"_history\.json$", r"_runs\.json$",
+         r"^config\.(toml|yaml|json|ini)$", r"^\.env\.example$",
+         r"KNOWN_PATTERNS\.md", r"baseline.*\.json"],
+    )
+    if persistence_code and data_artifacts:
         verdict, conf = "pass", 0.85
-    elif persistence:
+    elif persistence_code or data_artifacts:
         verdict, conf = "partial", 0.6
     else:
         verdict, conf = "fail", 0.7
     evidence = []
-    if persistence:
-        evidence.append(f"{len(persistence)} file-IO call site(s) found")
-    if config_in_files:
-        evidence.append("config file(s) detected")
+    if persistence_code:
+        evidence.append(f"{len(persistence_code)} file-IO call site(s)")
+    if data_artifacts:
+        kinds = sorted({a.suffix or a.name for a in data_artifacts})[:5]
+        evidence.append(f"{len(data_artifacts)} data artifact(s) on disk ({', '.join(kinds)})")
     return Match(
         id="C8", name="State, not conversation",
         verdict=verdict, confidence=conf, evidence=evidence,
         fix_pointer=(
             "Move ephemeral state to files: catalog → KNOWN_PATTERNS.md, "
-            "decisions → decisions.json, config → config.toml. Verify cold "
-            "start: invoke target from fresh shell with no env context."
+            "decisions → decisions.json, config → config.toml, "
+            "evidence rows → results.tsv. Verify cold start: invoke target "
+            "from fresh shell with no env context and confirm identical behavior."
         ) if verdict != "pass" else "",
     )
 
@@ -507,16 +712,26 @@ def match_c10_safe_to_fail(target: pathlib.Path, dynamic: bool) -> Match:
 def match_c11_llm_fallback(target: pathlib.Path, dynamic: bool) -> Match:
     """LLM-as-diagnoser fallback (Gap-1)."""
     del dynamic
+    # Match ACTUAL LLM client construction / subprocess call, not env vars
+    # (CLAUDE_CODE_ENABLE_TELEMETRY style false-positive caught 2026-05-23).
+    code_globs = ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js"]
     llm_invoke = _grep_any(
-        target, SOURCE_GLOBS,
-        [r"anthropic\.", r"openai\.", r"claude[\-_]code", r"\bcodex\s+exec\b",
-         r"subprocess.*claude", r"llm[\-_]fallback", r"on_unknown.*llm"],
+        target, code_globs,
+        [r"\bAnthropic\(",
+         r"\banthropic\.Anthropic\(",
+         r"\bopenai\.(OpenAI|ChatCompletion|Completion)\(",
+         r"\bclient\.messages\.create\(",
+         r"subprocess\.(run|Popen)\(\[?[\"']claude[\"']",
+         r"subprocess\.(run|Popen)\(\[?[\"']codex[\"']",
+         r"\bllm[\-_]fallback\b",
+         r"on_unknown.*llm",
+         r"@anthropic-ai/sdk"],
     )
     if llm_invoke:
         verdict, conf = "pass", 0.85
     else:
         verdict, conf = "fail", 0.95
-    evidence = [f"{h[0].name}: {h[1]}" for h in llm_invoke[:3]] if llm_invoke else [
+    evidence = [f"{h[0].name}: {h[1][:80]}" for h in llm_invoke[:3]] if llm_invoke else [
         "no LLM invocation site found; `unknown` verdicts require human triage"
     ]
     return Match(
@@ -535,24 +750,41 @@ def match_c11_llm_fallback(target: pathlib.Path, dynamic: bool) -> Match:
 def match_c12_auto_apply(target: pathlib.Path, dynamic: bool) -> Match:
     """Auto-apply governance (Gap-2)."""
     del dynamic
-    auto_apply = _grep_any(
-        target, SOURCE_GLOBS + DOC_GLOBS,
-        [r"auto[\-_]apply", r"auto[\-_]fix", r"automatic.*commit",
-         r"safe[\-_]to[\-_]apply", r"--apply"],
+    # Match ACTUAL auto-apply code, not docs that mention the concept.
+    # Requires: a code path that programmatically commits AND gates on a
+    # confidence/safety flag. Mere "auto-apply" prose isn't evidence — the
+    # C12 description itself contains the phrase and would otherwise match
+    # every target that audits this very skill (false positive).
+    code_globs = ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.sh"]
+    commit_calls = _grep_any(
+        target, code_globs,
+        [r"subprocess\.run\(\[?[\"']git[\"'],\s*[\"']commit",
+         r"git\s+commit\s+-m\s+[\"']auto[\-_]?fix",
+         r"call_git\([\"']commit"],
     )
-    confidence_threshold = bool(_grep_any(
-        target, SOURCE_GLOBS,
-        [r"confidence\s*>=?\s*0\.[89]", r"threshold.*apply"],
-    ))
-    if auto_apply and confidence_threshold:
+    safety_gate = _grep_any(
+        target, code_globs,
+        [r"auto_apply_safe", r"safe_to_auto_apply", r"auto_apply\s*=\s*True",
+         r"if\s+.*confidence\s*>=?\s*0\.[89]"],
+    )
+    dedicated_file = _file_globs_exist(
+        target, [r"^auto[\-_]apply\.", r"^auto[\-_]fix\.", r"^apply[\-_]fixes?\."],
+    )
+    if (commit_calls and safety_gate) or dedicated_file:
         verdict, conf = "pass", 0.85
-    elif auto_apply:
+    elif commit_calls or safety_gate:
         verdict, conf = "partial", 0.6
     else:
         verdict, conf = "fail", 0.95
-    evidence = [f"{h[0].name}: {h[1]}" for h in auto_apply[:3]] if auto_apply else [
-        "no auto-apply path found; every fix requires manual operator action"
-    ]
+    evidence = []
+    if commit_calls:
+        evidence.append(f"{len(commit_calls)} programmatic git-commit call site(s)")
+    if safety_gate:
+        evidence.append(f"{len(safety_gate)} safety-gate site(s)")
+    if dedicated_file:
+        evidence.append(f"dedicated auto-apply script: {dedicated_file[0].name}")
+    if not evidence:
+        evidence.append("no auto-apply code path found; fixes require manual operator action")
     return Match(
         id="C12", name="Auto-apply governance for high-confidence fixes (Gap-2)",
         verdict=verdict, confidence=conf, evidence=evidence,
@@ -623,12 +855,17 @@ CHECKS: list = [
 ]
 
 
-def run_audit(target: pathlib.Path, *, dynamic: bool, only: str | None) -> dict:
+def run_audit(target: pathlib.Path, *, dynamic: bool, only: str | None, model_backed: bool = False, max_cost_usd: float = 0.50) -> dict:
     matches: list[Match] = []
+    cost_ctx = {"spent_usd": 0.0, "cap_usd": max_cost_usd}
     for fn in CHECKS:
         m = Match(id="?", name=fn.__name__, verdict="unknown", confidence=0.0)
         try:
-            m = fn(target, dynamic)
+            # Matchers that accept model_backed/cost_ctx get them; others fall back.
+            try:
+                m = fn(target, dynamic, model_backed=model_backed, cost_ctx=cost_ctx)
+            except TypeError:
+                m = fn(target, dynamic)
         except Exception as exc:
             m.evidence = [f"matcher error: {type(exc).__name__}: {exc}"]
             m.verdict = "unknown"
@@ -695,6 +932,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     ap.add_argument("--dynamic", action="store_true", help="enable dynamic probes (60s cap each)")
     ap.add_argument("--criterion", help="run a single criterion (e.g., C7)")
+    ap.add_argument(
+        "--model-backed", action="store_true",
+        help="invoke `claude` CLI to grade qualitative criteria (C3, C4, C5, C9). "
+             "Without this flag, qualitative criteria return `unknown` honestly. "
+             "Each call bounded by --max-cost-usd.",
+    )
+    ap.add_argument(
+        "--max-cost-usd", type=float, default=0.50,
+        help="cap aggregate LLM cost across all model-backed criteria (default $0.50). "
+             "Hit the cap → remaining qualitative criteria return `unknown`.",
+    )
     args = ap.parse_args(argv)
 
     target = pathlib.Path(args.target).expanduser().resolve()
@@ -702,7 +950,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {target} does not exist", file=sys.stderr)
         return 1
 
-    audit = run_audit(target, dynamic=args.dynamic, only=args.criterion)
+    audit = run_audit(
+        target, dynamic=args.dynamic, only=args.criterion,
+        model_backed=args.model_backed, max_cost_usd=args.max_cost_usd,
+    )
 
     if args.json:
         print(json.dumps(audit, indent=2))
