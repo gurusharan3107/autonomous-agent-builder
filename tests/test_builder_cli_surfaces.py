@@ -318,7 +318,11 @@ def test_root_invalid_option_supports_global_json():
     assert payload["exit_code"] == 2
     assert payload["status"] == "error"
     assert payload["error"]["code"] == "invalid_usage"
-    assert payload["error"]["message"] == "No such option: --badflag"
+    # Click changed its "no such option" formatting (`: --badflag` →
+    # `'--badflag'.`) between versions; match the underlying option name
+    # rather than the surrounding punctuation.
+    assert "--badflag" in payload["error"]["message"]
+    assert "No such option" in payload["error"]["message"]
     assert payload["next"] == "builder --help"
 
 

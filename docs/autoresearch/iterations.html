@@ -1,0 +1,590 @@
+<!doctype html>
+<!--
+  Autoresearch iteration map — single-file static HTML.
+
+  Design discipline:
+  - Dieter Rams: as little design as possible; useful, honest, unobtrusive.
+    System font, generous whitespace, no decoration, no gradients, no shadows.
+  - Edward Tufte: maximize data-ink; small multiples; sparklines; layered
+    information; no chartjunk; numbers aligned by decimal for direct comparison.
+
+  Data: embedded inline in window.ITERATIONS below. Regenerate from the live
+  TSVs after each loop.py iteration via:
+    python3 .claude/skills/autoresearch/scripts/render_iterations.py \
+        > docs/autoresearch/iterations.html
+
+  If iterations.json exists in the same dir, the page prefers it over the
+  embedded fallback so a fresh fetch reflects current state without regen.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Autoresearch iterations</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #fafafa;
+    --rule: #d4d4d4;
+    --muted: #8a8a8a;
+    --keep: #1f6b3a;
+    --discard: #8a8a8a;
+    --crash: #b22222;
+    --noise-band: #f0f0f0;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--paper); color: var(--ink); margin: 0; }
+  body {
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    max-width: 920px;
+    margin: 56px auto;
+    padding: 0 32px 80px;
+    font-feature-settings: "tnum" on, "lnum" on;
+  }
+  h1, h2, h3 {
+    font-weight: 500;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  h1 { font-size: 22px; }
+  h2 { font-size: 16px; margin-top: 48px; }
+  h3 { font-size: 14px; color: var(--muted); }
+  p { margin: 0 0 8px; }
+  .num, .mono {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .muted { color: var(--muted); }
+  .rule { border: 0; border-top: 1px solid var(--rule); margin: 24px 0; }
+  header { margin-bottom: 32px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+
+  /* Headline */
+  .headline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .headline .stat .label { color: var(--muted); font-size: 12px; letter-spacing: 0.02em; }
+  .headline .stat .value { font-size: 22px; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .headline .stat .delta { font-size: 12px; color: var(--muted); }
+
+  /* Sparkline area */
+  .spark {
+    display: block;
+    width: 100%;
+    height: 64px;
+  }
+  .spark .axis { stroke: var(--rule); stroke-width: 1; }
+  .spark .noise-band { fill: var(--noise-band); }
+  .spark .line { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+  .spark .dot { fill: var(--ink); }
+  .spark .dot.keep { fill: var(--keep); }
+  .spark .dot.discard { fill: var(--discard); }
+  .spark .dot.crash { fill: var(--crash); }
+  .spark .label { font-size: 10px; fill: var(--muted); font-family: ui-monospace, monospace; }
+
+  /* Iteration list — small multiples */
+  .iter {
+    display: grid;
+    grid-template-columns: 32px 1fr 220px;
+    gap: 16px;
+    padding: 16px 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+  .iter:last-child { border-bottom: 1px solid var(--rule); }
+  .iter .idx {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--muted);
+    padding-top: 2px;
+  }
+  .iter .body .title {
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+  }
+  .iter .body .title .verdict {
+    margin-left: 8px;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .verdict.keep { background: var(--keep); color: white; }
+  .verdict.discard { color: var(--discard); border: 1px solid var(--discard); }
+  .verdict.crash { color: var(--crash); border: 1px solid var(--crash); }
+  .iter .body .meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .iter .body .numbers {
+    margin-top: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .iter .body .numbers .col .label { font-size: 11px; color: var(--muted); font-family: -apple-system, sans-serif; }
+
+  /* gates row + promotion row */
+  .iter .charts { padding-top: 4px; }
+  .iter .charts .row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .iter .charts .row .label { width: 56px; font-family: -apple-system, sans-serif; }
+  .gate, .fixture {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    text-align: center;
+    line-height: 14px;
+    font-size: 10px;
+    font-family: ui-monospace, monospace;
+    border: 1px solid var(--rule);
+  }
+  .gate.pass { background: var(--ink); color: white; border-color: var(--ink); }
+  .gate.fail { background: white; color: var(--crash); border-color: var(--crash); }
+  .fixture.kept { background: var(--ink); }
+  .fixture.discarded { background: white; }
+  .fixture.skipped { background: var(--noise-band); border-color: var(--noise-band); }
+
+  /* delta bar */
+  .delta-bar {
+    position: relative;
+    height: 4px;
+    background: var(--noise-band);
+    margin-top: 8px;
+    width: 100%;
+  }
+  .delta-bar .fill {
+    position: absolute;
+    height: 100%;
+    background: var(--keep);
+  }
+  .delta-bar .fill.discard { background: var(--discard); }
+  .delta-bar .baseline {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 1px;
+    background: var(--ink);
+  }
+  .delta-bar .noise-floor {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 1px;
+    background: var(--rule);
+  }
+
+  footer {
+    margin-top: 64px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  footer code { font-size: 12px; }
+
+  .empty {
+    padding: 48px 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Autoresearch iterations</h1>
+  <p class="meta">
+    Composite = noncached_plus_output_tokens × operator_turns × wallclock_seconds (lower is better).
+    A candidate counts as <em>keep</em> only when composite is at least 2σ below the baseline mean, all six hard gates pass, and the change holds across fixtures A → E.
+  </p>
+</header>
+
+<section id="headline" class="headline" hidden></section>
+
+<svg id="spark" class="spark" viewBox="0 0 900 64" preserveAspectRatio="none" hidden></svg>
+
+<h2>Iterations</h2>
+<section id="iterations"></section>
+
+<footer>
+  <p>Hard gates (in order): <code>cache_ratio > 5×</code>, <code>chunk_pressure_risk false</code>, <code>avoidable_cost_flags empty</code>, <code>gate_pass_rate 1.0</code>, <code>feature_correct</code> (npm build &amp; test), <code>fully_shipped</code> (board phase = shipped). Fixture promotion order: A short → B long → C ambiguous → D vague → E multi-turn. <a href="OPTIMIZE.md">OPTIMIZE.md</a> · <a href="COMPARE.md">COMPARE.md</a>.</p>
+  <p>Regenerate from current TSVs: <code>python3 .claude/skills/autoresearch/scripts/render_iterations.py</code></p>
+</footer>
+
+<script>
+//──────────────────────────────────────────────────────────────────────────────
+// Embedded example/fallback data. Replaced verbatim by render_iterations.py
+// after each loop.py iteration. The block between the markers below is the
+// only thing the regenerator rewrites — everything else (layout, render code,
+// example fallback) is preserved across regenerations.
+//──────────────────────────────────────────────────────────────────────────────
+// __ITERATIONS_DATA_START__
+window.ITERATIONS = {
+  "generated_at": "2026-05-22T20:05:26Z",
+  "baseline": {
+    "measured_at": null,
+    "mean_composite": null,
+    "stdev_composite": null,
+    "noise_floor_2sigma": null,
+    "fixtures_stable": 0,
+    "fixtures_total": 5
+  },
+  "iterations": []
+};
+// __ITERATIONS_DATA_END__
+
+// EXAMPLE DATA — uncomment to preview the layout with synthetic numbers.
+// The real loop overwrites this whole assignment.
+window.ITERATIONS_EXAMPLE = {
+  generated_at: "2026-05-22 (example)",
+  baseline: {
+    measured_at: "2026-05-22",
+    mean_composite: 11_320_000,
+    stdev_composite: 1_540_000,
+    noise_floor_2sigma: 8_240_000,
+    fixtures_stable: 5,
+    fixtures_total: 5
+  },
+  iterations: [
+    {
+      index: 1, ref: "stable-system-prompt-header", date: "2026-05-23",
+      branch: "autoresearch/iter-1-stable-system-prompt-header",
+      verdict: "keep", reason: "composite_below_2sigma_noise_floor",
+      composite: 8_245_001, delta_pct: -27.2, delta_sigma: -1.99,
+      gates: [true, true, true, true, true, true],
+      promotion: { A: "kept", B: "kept", C: "kept", D: "kept", E: "kept" },
+      diff_lines: 23
+    },
+    {
+      index: 2, ref: "reduce-board-state-block", date: "2026-05-24",
+      branch: "autoresearch/iter-2-reduce-board-state-block",
+      verdict: "discard", reason: "composite_within_2sigma_of_baseline",
+      composite: 9_820_000, delta_pct: -13.2, delta_sigma: -0.97,
+      gates: [true, true, true, true, true, true],
+      promotion: { A: "kept", B: "discarded", C: "skipped", D: "skipped", E: "skipped" },
+      diff_lines: 41
+    },
+    {
+      index: 3, ref: "collapse-documentation-context", date: "2026-05-25",
+      branch: "autoresearch/iter-3-collapse-documentation-context",
+      verdict: "discard", reason: "hard_gate_failed: feature_correct",
+      composite: 7_910_000, delta_pct: -30.1, delta_sigma: -2.21,
+      gates: [true, true, true, true, false, false],
+      promotion: { A: "discarded", B: "skipped", C: "skipped", D: "skipped", E: "skipped" },
+      diff_lines: 87
+    },
+    {
+      index: 4, ref: "prune-tool-reinjection", date: "2026-05-26",
+      branch: "autoresearch/iter-4-prune-tool-reinjection",
+      verdict: "keep", reason: "composite_below_2sigma_noise_floor",
+      composite: 7_640_000, delta_pct: -32.5, delta_sigma: -2.39,
+      gates: [true, true, true, true, true, true],
+      promotion: { A: "kept", B: "kept", C: "kept", D: "kept", E: "kept" },
+      diff_lines: 14
+    }
+  ]
+};
+
+// If iterations.json exists in same dir, prefer it; else fall back to example
+// when the embedded ITERATIONS has no rows.
+(async function () {
+  try {
+    const r = await fetch("iterations.json", { cache: "no-store" });
+    if (r.ok) {
+      const data = await r.json();
+      if (data && Array.isArray(data.iterations)) window.ITERATIONS = data;
+    }
+  } catch (_) { /* file:// or no json — fine */ }
+  if (!window.ITERATIONS.iterations.length && window.ITERATIONS_EXAMPLE) {
+    window.ITERATIONS = window.ITERATIONS_EXAMPLE;
+    document.title = "Autoresearch iterations (example)";
+  }
+  render(window.ITERATIONS);
+})();
+
+//──────────────────────────────────────────────────────────────────────────────
+// Rendering. Pure DOM, no framework. Tufte: data-ink only; Rams: minimal.
+//──────────────────────────────────────────────────────────────────────────────
+
+function fmtInt(n) {
+  if (n == null) return "—";
+  return Math.round(n).toLocaleString("en-US");
+}
+function fmtPct(n) {
+  if (n == null) return "—";
+  return (n > 0 ? "+" : "") + n.toFixed(1) + "%";
+}
+function fmtSigma(n) {
+  if (n == null) return "—";
+  return (n > 0 ? "+" : "") + n.toFixed(2) + "σ";
+}
+
+function render(data) {
+  renderHeadline(data);
+  renderSparkline(data);
+  renderIterations(data);
+}
+
+function renderHeadline(data) {
+  const el = document.getElementById("headline");
+  const b = data.baseline || {};
+  const iters = data.iterations || [];
+  const kept = iters.filter(i => i.verdict === "keep");
+  const lastKept = kept[kept.length - 1];
+  const cumDelta = lastKept
+    ? ((lastKept.composite - b.mean_composite) / b.mean_composite * 100)
+    : null;
+
+  el.hidden = false;
+  el.innerHTML = "";
+  el.appendChild(stat("Baseline mean composite", fmtInt(b.mean_composite),
+                       b.measured_at ? "measured " + b.measured_at : "not yet measured"));
+  el.appendChild(stat("σ floor (2σ band)", fmtInt(b.noise_floor_2sigma),
+                       "candidate must beat this to count"));
+  el.appendChild(stat("Iterations", iters.length + " run",
+                       kept.length + " kept · " + (iters.length - kept.length) + " discarded"));
+  el.appendChild(stat("Cumulative composite vs baseline",
+                       cumDelta == null ? "—" : fmtPct(cumDelta),
+                       lastKept ? "last kept: #" + lastKept.index : "no wins yet"));
+}
+
+function stat(label, value, delta) {
+  const d = document.createElement("div");
+  d.className = "stat";
+  d.innerHTML = "<div class='label'>" + label + "</div>"
+              + "<div class='value'>" + value + "</div>"
+              + "<div class='delta'>" + (delta || "") + "</div>";
+  return d;
+}
+
+function renderSparkline(data) {
+  const svg = document.getElementById("spark");
+  const b = data.baseline || {};
+  const iters = data.iterations || [];
+  if (!iters.length || b.mean_composite == null) {
+    svg.hidden = true;
+    return;
+  }
+  svg.hidden = false;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const W = 900, H = 64, padL = 48, padR = 16, padT = 8, padB = 16;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const values = [b.mean_composite].concat(iters.map(i => i.composite));
+  const maxV = Math.max.apply(null, values);
+  const minV = Math.min.apply(null, values);
+  const range = Math.max(maxV - minV, 1);
+
+  function x(i) { return padL + (i / Math.max(values.length - 1, 1)) * innerW; }
+  function y(v) { return padT + (1 - (v - minV) / range) * innerH; }
+
+  // Noise-band rectangle (mean ± 2σ visualized as a gray band)
+  if (b.stdev_composite) {
+    const yTop = y(b.mean_composite + 2 * b.stdev_composite);
+    const yBot = y(b.mean_composite - 2 * b.stdev_composite);
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", padL);
+    rect.setAttribute("y", yTop);
+    rect.setAttribute("width", innerW);
+    rect.setAttribute("height", Math.max(yBot - yTop, 1));
+    rect.setAttribute("class", "noise-band");
+    svg.appendChild(rect);
+  }
+
+  // Baseline horizontal line
+  const base = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  base.setAttribute("x1", padL); base.setAttribute("x2", W - padR);
+  base.setAttribute("y1", y(b.mean_composite)); base.setAttribute("y2", y(b.mean_composite));
+  base.setAttribute("class", "axis");
+  svg.appendChild(base);
+
+  // Connecting polyline
+  const pts = values.map((v, i) => x(i) + "," + y(v)).join(" ");
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  line.setAttribute("points", pts);
+  line.setAttribute("class", "line");
+  svg.appendChild(line);
+
+  // Dots — color-coded by verdict
+  values.forEach((v, i) => {
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("cx", x(i));
+    dot.setAttribute("cy", y(v));
+    dot.setAttribute("r", 3);
+    const cls = i === 0 ? "" : (iters[i - 1].verdict || "");
+    dot.setAttribute("class", "dot " + cls);
+    svg.appendChild(dot);
+  });
+
+  // Labels — only the first (baseline) and last value to maximize data-ink
+  function label(text, vx, vy, anchor) {
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("x", vx);
+    t.setAttribute("y", vy);
+    t.setAttribute("class", "label");
+    t.setAttribute("text-anchor", anchor || "start");
+    t.textContent = text;
+    svg.appendChild(t);
+  }
+  label("baseline", padL - 4, y(b.mean_composite) + 4, "end");
+  label(fmtInt(values[0]), padL + 4, y(values[0]) - 6, "start");
+  label("#" + iters.length, x(values.length - 1) + 4, y(values[values.length - 1]) - 6, "start");
+}
+
+function renderIterations(data) {
+  const root = document.getElementById("iterations");
+  root.innerHTML = "";
+  const iters = data.iterations || [];
+  if (!iters.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No iterations recorded yet. After loop.py completes its first iteration, this page will populate.";
+    root.appendChild(empty);
+    return;
+  }
+  iters.forEach(it => root.appendChild(iterationCard(it, data.baseline)));
+}
+
+function iterationCard(it, baseline) {
+  const card = document.createElement("article");
+  card.className = "iter";
+
+  const idx = document.createElement("div");
+  idx.className = "idx";
+  idx.textContent = "#" + it.index;
+  card.appendChild(idx);
+
+  const body = document.createElement("div");
+  body.className = "body";
+
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = it.ref || "(unnamed idea)";
+  const v = document.createElement("span");
+  v.className = "verdict " + (it.verdict || "discard");
+  v.textContent = it.verdict || "discard";
+  title.appendChild(v);
+  body.appendChild(title);
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = (it.date || "") + " · " + (it.reason || "");
+  body.appendChild(meta);
+
+  const numbers = document.createElement("div");
+  numbers.className = "numbers";
+  numbers.appendChild(numCol("composite", fmtInt(it.composite)));
+  numbers.appendChild(numCol("Δ vs baseline mean", fmtPct(it.delta_pct)));
+  numbers.appendChild(numCol("Δ in σ units", fmtSigma(it.delta_sigma)));
+  body.appendChild(numbers);
+
+  body.appendChild(deltaBar(it, baseline));
+
+  card.appendChild(body);
+  card.appendChild(charts(it));
+  return card;
+}
+
+function numCol(label, value) {
+  const c = document.createElement("div");
+  c.className = "col";
+  c.innerHTML = "<div class='label'>" + label + "</div><div>" + value + "</div>";
+  return c;
+}
+
+function deltaBar(it, baseline) {
+  const wrap = document.createElement("div");
+  wrap.className = "delta-bar";
+  if (!baseline || baseline.mean_composite == null || it.composite == null) return wrap;
+
+  // Bar spans 0..200% of baseline mean; baseline at 50%, noise floor at noise_floor / (2 * mean) * 100
+  const meanPct = 50;
+  const noisePct = (baseline.noise_floor_2sigma / (2 * baseline.mean_composite)) * 100;
+  const candidatePct = (it.composite / (2 * baseline.mean_composite)) * 100;
+
+  const fill = document.createElement("div");
+  fill.className = "fill " + (it.verdict === "keep" ? "" : "discard");
+  fill.style.left = Math.min(candidatePct, meanPct) + "%";
+  fill.style.width = Math.abs(meanPct - candidatePct) + "%";
+  wrap.appendChild(fill);
+
+  const baseMark = document.createElement("div");
+  baseMark.className = "baseline";
+  baseMark.style.left = meanPct + "%";
+  wrap.appendChild(baseMark);
+
+  const noiseMark = document.createElement("div");
+  noiseMark.className = "noise-floor";
+  noiseMark.style.left = noisePct + "%";
+  wrap.appendChild(noiseMark);
+
+  return wrap;
+}
+
+function charts(it) {
+  const c = document.createElement("div");
+  c.className = "charts";
+
+  // Gates row — 6 cells, ✓ if passed
+  const gatesRow = document.createElement("div");
+  gatesRow.className = "row";
+  const gatesLabel = document.createElement("span");
+  gatesLabel.className = "label";
+  gatesLabel.textContent = "gates";
+  gatesRow.appendChild(gatesLabel);
+  const gateNames = ["cache", "chunk", "avoid", "rate", "build", "ship"];
+  (it.gates || [false, false, false, false, false, false]).forEach((pass, i) => {
+    const cell = document.createElement("span");
+    cell.className = "gate " + (pass ? "pass" : "fail");
+    cell.title = gateNames[i] + ": " + (pass ? "pass" : "fail");
+    cell.textContent = pass ? "✓" : "✗";
+    gatesRow.appendChild(cell);
+  });
+  c.appendChild(gatesRow);
+
+  // Promotion row — A B C D E
+  const promoRow = document.createElement("div");
+  promoRow.className = "row";
+  const promoLabel = document.createElement("span");
+  promoLabel.className = "label";
+  promoLabel.textContent = "A→E";
+  promoRow.appendChild(promoLabel);
+  ["A", "B", "C", "D", "E"].forEach(f => {
+    const status = (it.promotion && it.promotion[f]) || "skipped";
+    const cell = document.createElement("span");
+    cell.className = "fixture " + status;
+    cell.title = f + ": " + status;
+    cell.textContent = f;
+    promoRow.appendChild(cell);
+  });
+  c.appendChild(promoRow);
+
+  // Diff row — single number, surface-area honesty (Tufte: small things matter)
+  const diffRow = document.createElement("div");
+  diffRow.className = "row";
+  diffRow.innerHTML = "<span class='label'>diff</span><span class='mono'>"
+    + (it.diff_lines != null ? it.diff_lines + " lines" : "—")
+    + "</span>";
+  c.appendChild(diffRow);
+
+  return c;
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-05-22T20:05:26Z",
+  "baseline": {
+    "measured_at": null,
+    "mean_composite": null,
+    "stdev_composite": null,
+    "noise_floor_2sigma": null,
+    "fixtures_stable": 0,
+    "fixtures_total": 5
+  },
+  "iterations": []
+}

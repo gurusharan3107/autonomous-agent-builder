@@ -1,1 +1,2 @@
 run_id	prompt_index	turn_role	agent_name	phase	context_budget_tokens	tokens_input	tokens_cached	cache_creation_tokens	tokens_output	noncached_plus_output_tokens	cache_ratio	tool_calls_count	tool_names_json	stop_reason	duration_ms	cost_usd	runtime_sdk	model	effort	context_breakdown_json
+5b28985b-a74f-44cd-8f7b-a4937c3ceef4	0	user			0	0	0	0	0	0	0	0	[]		0	0				{}

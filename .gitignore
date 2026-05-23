@@ -47,3 +47,7 @@ MagicMock/
 *.db-wal
 session-report-*.html
 .codex/
+
+# Skill evaluation workspaces (per-iteration TSVs, grading.json, response.md,
+# benchmark.md, review.html). Ephemeral evaluation evidence, never committed.
+.claude/skills/*-workspace/

@@ -14,12 +14,14 @@
 
 services:
   jaeger:
-    image: jaegertracing/all-in-one:1.62
+    image: jaegertracing/all-in-one:1.76.0
     container_name: autoresearch-jaeger
+    # WSL2 + Docker bridge networking sometimes drops port forwarding when
+    # nftables/iptables rules don't apply cleanly in the WSL kernel. Using
+    # host network mode bypasses the bridge entirely — the container's
+    # listeners on :16686/:4317/:4318 appear directly on the WSL host.
+    # Safe because all three ports are explicitly opt-in for the loop.
+    network_mode: host
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
-    ports:
-      - "16686:16686"   # Jaeger UI
-      - "4317:4317"     # OTLP gRPC
-      - "4318:4318"     # OTLP HTTP
     restart: unless-stopped
