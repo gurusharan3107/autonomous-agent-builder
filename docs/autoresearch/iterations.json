@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-05-22T20:05:26Z",
+  "generated_at": "2026-05-23T14:36:53Z",
   "baseline": {
-    "measured_at": null,
-    "mean_composite": null,
-    "stdev_composite": null,
-    "noise_floor_2sigma": null,
-    "fixtures_stable": 0,
+    "measured_at": "2026-05-23",
+    "mean_composite": 5786513343.333333,
+    "stdev_composite": 4486946445.24594,
+    "noise_floor_2sigma": -3187379547.1585474,
+    "fixtures_stable": 1,
     "fixtures_total": 5
   },
   "iterations": []

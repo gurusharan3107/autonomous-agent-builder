@@ -1,22 +1,17 @@
 # Autoresearch loop introspection
 
-*Generated 2026-05-22T20:05:37Z by `.claude/skills/autoresearch/scripts/introspect.py`. Overwritten each close-out — `git log` for history.*
+*Generated 2026-05-23T14:36:55Z by `.claude/skills/autoresearch/scripts/introspect.py`. Overwritten each close-out — `git log` for history.*
 
 ## 1. Token economics — where do tokens go?
 
-- **1 iterations recorded** consuming ~0 non-cached+output tokens total.
-- **Average per iteration:** 0 non-cached+output tokens.
-
-Top agents by cumulative cost (the ones to target with lean ideas first):
-
-(no per-prompt rows have non-zero token counts)
+- No per-prompt rows yet (zero iterations). Section becomes meaningful once `optimize_results.tsv` has rows.
 
 ## 2. Cumulative loop ROI
 
-- **Spent:** $0.0 across all iterations (per-prompt cost sum).
+- **Spent:** $8.69 across all iterations (per-prompt cost sum).
 - **Kept iterations:** 0.
 - **Cumulative composite savings:** 0.0% vs original baseline.
-- **Break-even:** no cost recorded yet.
+- **Break-even:** $8.69 spent, no kept iterations yet — loop is net-negative.
 
 ## 3. What worked
 
@@ -33,8 +28,8 @@ lands a row in `optimize_results.tsv`. Re-run `introspect.py` after iteration #1
 
 ## 6. What's noisy
 
-- All fixtures within 25% σ/mean threshold (good).
-- **Anchor attribution drift:** 0/1 prompts have >10% unattributed tokens (0.0%).
+- **Fixture A**: σ/mean = 77.5% (target: <25%). Timing-fragile.
+- **Anchor attribution drift:** 0/23 prompts have >10% unattributed tokens (0.0%).
 
 ## 7. Idea backlog
 
@@ -44,6 +39,7 @@ lands a row in `optimize_results.tsv`. Re-run `introspect.py` after iteration #1
 
 *Ranked by `(expected token reduction × applicability)`. Each item is actionable today — no speculation.*
 
+- **Loop has spent $8.69 with zero kept iterations.** Either the 2σ bar is too tight (re-run baseline with N=10 to tighten σ) or ideas are systematically over-ambitious. Try smaller, more targeted ideas; the best ideas usually touch <50 lines.
 - **No iterations recorded yet.** Run Recipe 1 + Recipe 2 first; introspection becomes useful after ≥5 iterations.
 
 ## 9. KB leads (from `workflow knowledge`)
@@ -134,11 +130,16 @@ Articles relevant to making the loop leaner. Read with: `workflow knowledge read
     }
   },
   "baseline_noise": {
-    "noisy_fixtures": [],
-    "stable_count": 0
+    "noisy_fixtures": [
+      [
+        "A",
+        77.5
+      ]
+    ],
+    "stable_count": 1
   },
   "per_prompt_anchors": {
-    "scanned": 1,
+    "scanned": 23,
     "drift_runs": 0,
     "drift_pct": 0.0
   },

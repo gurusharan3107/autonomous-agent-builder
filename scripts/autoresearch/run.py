@@ -868,8 +868,15 @@ def main() -> int:
     breakdown = extract_context_breakdown(evidence_dir)
 
     prompts = analyze.get("prompts") or []
+    # P15 (2026-05-23): metrics response key is `optimization_summary`, not
+    # `optimization` (per the P12 fix in evaluate_hard_gates). Reading the wrong
+    # key here made composite=0 for every baseline + iterate run, which broke
+    # baseline.py's compute_summary (`if r.get("composite")` filters them out)
+    # → baseline_runs_summary.json stayed at status=unstable, mean/stdev/2σ all
+    # null, iterations.html and INTROSPECTION.md showed empty baseline.
+    opt = (metrics.get("optimization_summary") or metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     composite = int(
-        ((metrics.get("optimization") or {}).get("noncached_plus_output_tokens") or 0)
+        (opt.get("noncached_plus_output_tokens") or 0)
         * max(len(prompts), 1)
         * max(int(wallclock_s), 1)
     )

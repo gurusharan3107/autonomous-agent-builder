@@ -7,6 +7,33 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - P15 composite formula fix + baseline summary regen + artifacts
+
+### Fixed
+
+- **`scripts/autoresearch/run.py:870-880` (P15)** — composite formula now reads `metrics["optimization_summary"]` first, then falls back to `metrics["optimization"]`, mirroring the P12 fix in `evaluate_hard_gates`. P12 was incomplete — it patched the gate evaluator but missed the parallel composite calculation, which kept reading `metrics["optimization"]` (legacy/empty key). Symptom: all 5 N=5 fixture-A baseline rows landed in `baseline_runs.tsv` with `composite=0`. Downstream, `baseline.py:compute_summary` filtered them all out via `if r.get("composite")` → empty `composites` → `stable_runs=0` regardless of how many shipped at 6/6 → `baseline_runs_summary.json` stayed at `status=unstable, mean/stdev/2σ all null` → `iterations.html` + `INTROSPECTION.md` showed empty baseline.
+
+### Changed
+
+- **`docs/autoresearch/baseline_runs.tsv`** — backfilled the 5 fixture-A composite values from each run's `/tmp/autoresearch/baseline-2026-05-23/A/run-N/metrics.json` (no re-runs needed; the canonical `optimization_summary.noncached_plus_output_tokens` × `len(prompts)` × `wallclock_s` formula is deterministic from existing evidence).
+- **`docs/autoresearch/baseline_runs_summary.json`** — regenerated via `baseline.py:compute_summary` against the patched TSV. Fixture A is now `status=stable, stable_runs=3, total_runs=5, mean=5.79e9, stdev=4.49e9, noise_floor_2sigma=-3.19e9`. The negative 2σ-floor signals substrate variance exceeds the mean (CV=77%) — driven mostly by run-2 (`ba140d79`) finishing in 9 prompts × 378s vs ~25 × ~1400s for the other two ships.
+- **`docs/autoresearch/iterations.html` + `iterations.json`** — regenerated via `.claude/skills/autoresearch/scripts/render_iterations.py`. Embedded `window.ITERATIONS` data block updated between the `__ITERATIONS_DATA_START__` / `_END__` markers.
+- **`docs/autoresearch/INTROSPECTION.md`** — regenerated via `.claude/skills/autoresearch/scripts/introspect.py`. Reports current per-prompt cost across the 5 baseline runs.
+- **`docs/goal/ROADMAP.md`** — new `[x]` P15 entry under M3.5.
+
+### Validation
+
+- Backfill math sanity-checked against each run's `metrics.json` + `analyze.json`: `run-0` 229431 × 25 × 1422 = 8156272050, `run-1` 222603 × 25 × 2449 = 13628868675, `run-2` 180235 × 9 × 377 = 611537355, `run-3` 239825 × 25 × 1433 = 8591730625, `run-4` 195025 × 14 × 504 = 1376096400.
+- `compute_summary` re-derived stable_runs=3/5 (the 3 runs with gates_passed="6/6": ec68b9da, ba140d79, a3e41fb3).
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — exit 0.
+
+### Notes
+
+- σ-floor at -3.19e9 is honest but currently unusable for 2σ keep/discard gating. The Iterate lane's `compare.py` will need either (a) more ships to shrink σ, (b) a tighter fixture-A prompt to reduce code-gen scope variance, or (c) a different composite formula that doesn't punish fast runs as heavily.
+- Surface as candidate work for OPTIMIZE_IDEAS or M3.5 follow-up — not blocking the harness shipping.
+
+---
+
 ## 2026-05-23 - N=5 fixture-A Baseline + Fix-lane patches P11/P12/P13/P14
 
 ### Added

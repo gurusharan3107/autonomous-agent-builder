@@ -1,8 +1,12 @@
 {
   "A": {
-    "status": "unstable",
-    "stable_runs": 0,
-    "total_runs": 1,
-    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+    "status": "stable",
+    "stable_runs": 3,
+    "total_runs": 5,
+    "mean": 5786513343.333333,
+    "stdev": 4486946445.24594,
+    "min": 611537355,
+    "max": 8591730625,
+    "noise_floor_2sigma": -3187379547.1585474
   }
 }
