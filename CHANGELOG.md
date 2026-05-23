@@ -7,6 +7,23 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - Project-local save-session / resume-session skills
+
+### Added
+
+- **`.claude/skills/save-session/SKILL.md`** — terse skill that snapshots tactical working context to `.claude/session-data/CURRENT.md` via Bash heredoc (atomic, no Read→Write context bloat). Eight sections per checkpoint: time, branch/last_commit, working_on (operator language, 1–3 sentences), next_action (one concrete sentence), blockers, learnings, key_files, useful_commands. Triggers: `/save-session`, "save session", "save progress", "checkpoint".
+- **`.claude/skills/resume-session/SKILL.md`** — terse counterpart that reads CURRENT.md + STATUS Current Position + recent git log and synthesizes a single "here's where you left off" message in ≤25 lines. Does NOT auto-execute — waits for operator confirmation. Triggers: `/resume-session`, "resume session", "continue where I left off".
+- **`.claude/session-data/CURRENT.md`** — dogfooded as the first real checkpoint at end of this session. The directory is gitignored (existing repo convention at `.gitignore:26`) — session-data is machine-local fast-resume only; cross-machine + cross-collaborator continuity rides on `docs/goal/STATUS.md` and git history.
+
+### Removed
+
+- User-global `~/.claude/skills/save-session/` and `~/.claude/skills/resume-session/` — earlier today by operator; their bodies (1.8 KB save-session) triggered context compaction when invoked near the limit. Project-local replacement is ~60 lines each.
+
+### Notes
+
+- ROADMAP M1.3 line landed before the skills per refined Hard Rule 1 (substantive change: new product behavior). Ticked `[x]` after dogfooding verified the heredoc save mechanism works.
+- The session-data file is gitignored per existing repo convention (`.gitignore:26`). Machine-local handoff only. STATUS.md is the cross-machine + durable layer.
+
 ## 2026-05-23 - Autoresearch freshness sweep — bundled discipline script
 
 ### Added
