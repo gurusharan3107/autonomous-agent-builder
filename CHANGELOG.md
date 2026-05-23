@@ -7,6 +7,52 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - Autoresearch Baseline: first `status=shipped` after 11-cycle self-evolving Fix loop
+
+### Added
+
+- **`.claude/skills/autoresearch/scripts/hang_watchdog.py`** — skill-owned watchdog that runs alongside `baseline.py`/`loop.py`, discovers active `/tmp/devpulse-<uuid>` builder processes, watches `agent_builder.db-wal` mtime + per-evidence-dir `raw_bodies/` mtime as a dual liveness signal, dumps `STUCK_DETECTED.json` + `builder logs --error` + `builder agent sessions --full` + `/proc/<pid>/{status,stack,wchan,threads,fds}` + `py-spy dump` (when available) + `ss -tnp` + DB-file copies to `/tmp/autoresearch/diagnostics/<UTC>-pid<PID>/`. Flags: `--terminate-on-detect`, `--exit-on-detect`. Closes the prior 47-min silent-stall blindspot; detection latency ~3 min.
+- **`.claude/skills/autoresearch/scripts/diagnose_hang.py`** — read-only pattern matcher that walks a STUCK dump and reports `{pattern_id, confidence, evidence, fix_pointer}` per `KNOWN_PATTERNS.md`. 7 matchers ranked by specificity. `unknown` verdict signals a new pattern to catalog.
+- **`.claude/skills/autoresearch/KNOWN_PATTERNS.md`** — catalog of 10 hang/blocker patterns first-seen 2026-05-23. Each entry: first-seen date, evidence query, root-cause analysis, file:line fix pointer, recurrence-prevention note. Synced with diagnose_hang.py matcher list.
+- **`scripts/autoresearch/run.py:latest_chat_state`** — new helper deriving "chat is awaiting operator" from `assistant_message.payload.final == True` (since `run_status` is filtered out of `/api/agent/chat/history` by `VISIBLE_EVENT_TYPES`).
+- **ROADMAP entries M3.5** — 7 new `[x]` lines covering the harness contract-drift fixes.
+
+### Changed
+
+- **`scripts/autoresearch/run.py:get_pending_question`** — aligned to current `agent_api_models.py` contract: reads `items` (was `events`) + `TimelineItem.status` (was `state`).
+- **`scripts/autoresearch/run.py:send_chat_respond`** — uses `event_id` (was `request_id`), `selected_options: list[str]` (was `option_index: int`), `custom_text` (was `text`).
+- **`scripts/autoresearch/run.py:wait_for_question_or_ship`** — adds `proceed_needed` outcome when chat ends without a structured question; main loop fires `send_chat` continuation.
+- **`scripts/autoresearch/run.py:restore_seed`** — three behaviors: create `main` branch from current HEAD; repoint `projects.repo_url` in the seed's SQLite DB to the ephemeral workspace; append `.venv/` to workspace `.gitignore` + `git rm --cached .venv` + commit.
+- **`scripts/autoresearch/run.py:main`** — Popen redirects `stdout`/`stderr` to `evidence_dir/builder_stdout_stderr.log` (file handle, never blocks); `send_chat_respond` wrapped in try/except for HTTPError 400 with `send_chat` fallback.
+- **`.claude/skills/autoresearch/SKILL.md`** — Baseline + Iterate `Do` blocks launch `hang_watchdog.py` via shell `trap`. New "When a hang is detected — diagnose, don't re-investigate" section.
+- **`.claude/skills/autoresearch/scripts/preflight.py`** — adds soft `py-spy CLI (optional)` and hard `hang_watchdog.py` presence checks. Bootstrap.sh extended to `pip install --user py-spy`.
+
+### Fixed
+
+- **P1: chat-history + respond API field-name drift** (`run.py` ↔ `agent_api_models.py`) — 6 field-name mismatches blocked all autoresearch runs at the first intake question.
+- **P2: free-text scoping path** — chat agent emits markdown clarifying questions inside `assistant_message` events (no `ask_user_question` event surfaced). Harness now detects + auto-continues via `send_chat`.
+- **P3: hang-watchdog single-signal false positive** — WAL-only liveness mis-flagged active code-gen runs as hangs when raw_bodies kept growing.
+- **P4: subprocess pipe deadlock** — builder's main asyncio thread blocked on `pipe_write` after ~MB of code-gen log filled the 64KB PIPE buffer.
+- **P5: sprint merge `git checkout main` against wrong workspace** — Builder reads `task.feature.project.repo_url` which the seed had baked as `~/Builder-Workspace/devpulse`. Repointed + created `main` branch.
+- **P6: tracked `.venv/lib64` blocks post-merge check** — untrack with `git rm --cached`.
+- **P7: `latest_chat_state` reads `run_status` instead of latest content event** — filter to content-event whitelist.
+- **P8: `run_status` is not in `VISIBLE_EVENT_TYPES`** — derive `running` from `assistant_message.payload.final` instead.
+- **P9: `git checkout main` overwrites untracked `.venv/`** — add `.venv/` to workspace `.gitignore`.
+- **P10: `/api/agent/chat/respond` returns 400 mid-iteration** — defensive try/except → fallback to `send_chat`.
+
+### Validation
+
+- Cycle 11 baseline TSV row: `status=shipped, gate_pass_rate=0.5, gates_passed=3/6, wallclock=492s, operator_turns=15`. First non-crash iteration in this repo's autoresearch history.
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — clean (8/8 hard, 2/2 soft pass).
+- `python3 .claude/skills/autoresearch/scripts/diagnose_hang.py <dump>` regression-tested against cycle 4, 5, 7, 8 dumps — each matches the correct pattern at 0.90–0.95 confidence.
+- `python3 -m py_compile scripts/autoresearch/run.py .claude/skills/autoresearch/scripts/*.py` — clean.
+
+### Notes
+
+- **Diagnosis-time speedup**: hand investigation took ~15 min in cycle 2; after KNOWN_PATTERNS + diagnoser were in place, ~3 min per cycle.
+- **Remaining gap to stable σ baseline**: gate_pass_rate=0.5 means 3 of 6 gates fail (feature-correctness). Builder code-gen quality territory, not harness — defer to a separate session.
+- **Cycle 10 + 11 TSV rows** retained in `docs/autoresearch/baseline_runs.tsv` — neither contributes to σ (gate_pass_rate<1.0) but a valid record of progression. `baseline.py:compute_summary()` correctly reports `status=unstable` until 3+ clean N=1 runs accumulate.
+
 ## 2026-05-23 - M1.3 re-close: remaining 6 complexity violations resolved
 
 ### Changed

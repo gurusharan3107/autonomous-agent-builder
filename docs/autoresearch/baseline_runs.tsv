@@ -1,1 +1,3 @@
 run_id	timestamp	branch	idea_ref	files_touched	lines_added	lines_deleted	fixture_id	noncached_plus_output_tokens	cache_ratio	chunk_pressure_risk	avoidable_cost_flags	gate_pass_rate	feature_correct	wallclock_s	operator_turns	composite	composite_delta_pct	gates_passed	decision	notes
+42b8b065-2d34-4bb8-b4e9-53b7804e4ee6	2026-05-23T09:33:45Z	main		0	0	0	A	0	0		[]	0.3333	False	402.21	9	0		2/6		sha=4a0d01d86e06 status=crash
+b4d19ea9-aeb5-41bc-b71a-f23e573e6349	2026-05-23T09:45:30Z	main		0	0	0	A	0	0		[]	0.5	False	492.9	15	0		3/6		sha=4a0d01d86e06 status=shipped

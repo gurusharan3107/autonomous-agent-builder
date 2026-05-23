@@ -28,6 +28,7 @@ import os
 import pathlib
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -110,19 +111,24 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
     # Make the working copy writable (seed is read-only).
     subprocess.run(["chmod", "-R", "u+w", str(workspace)], check=True)
     # The seed (a copy of the devpulse template) uses `master` as its default
-    # branch, but Builder's sprint-merge code hardcodes `git checkout main` at
-    # sprint completion. Without a `main` branch present, every sprint ends in
-    # `phase=blocked` with `verification_status=blocked` and
-    # `sprint_merge_error: "could not check out main"` even when every task,
-    # every gate, and every verification ran green. Caught 2026-05-23 cycle 5:
-    # all 3 tasks `status=done`, every `gate_results.status=pass`, 304 model
-    # API calls, but the sprint never reaches `phase=shipped`, run.py polls to
-    # timeout, watchdog fires.
-    #
-    # Fix: create `main` from the current HEAD if it doesn't exist. Branch must
-    # exist for Builder's merge target; we don't check it out here so the
-    # workspace stays on whatever the seed's HEAD points at (typically master
-    # or a sprint branch).
+    # branch, but Builder's sprint-merge code at
+    # `orchestrator/sprint_lifecycle.py:sprint_maybe_ff_merge` runs
+    # `git checkout main` against `task.feature.project.repo_url`. That URL
+    # was set at original `builder init` time and points at
+    # `~/Builder-Workspace/devpulse` (the upstream), NOT this ephemeral copy.
+    # Two problems compound:
+    #   1. The upstream's default branch is `master`, not `main`, so the merge
+    #      step errors with `"could not check out main: pathspec 'main' did
+    #      not match"` for every sprint — every fixture A run ended in
+    #      phase=blocked even with all tasks done + all gates green.
+    #   2. If the merge ever succeeded, Builder would be writing into the
+    #      user's real workspace. Autoresearch must not leak there.
+    # Fix: (a) repoint the project's repo_url to this ephemeral workspace so
+    # sprint merge operates on the ephemeral copy; (b) create `main` from
+    # current HEAD as the merge target. Caught 2026-05-23 cycle 6 by the
+    # diagnose_hang.py P5 matcher (which initially detected the same symptom
+    # cycle 5; the real fix was discovered after re-reading sprint_lifecycle.py
+    # to find where repo_root comes from).
     git_env = {"GIT_TERMINAL_PROMPT": "0"}
     try:
         existing = subprocess.run(
@@ -136,6 +142,67 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
             )
     except (subprocess.SubprocessError, OSError):
         # Seed without git is a setup error elsewhere — let Builder surface it.
+        pass
+
+    # Repoint projects.repo_url to the ephemeral workspace so sprint merge
+    # operates here (and never on the user's upstream).
+    db_path = workspace / ".agent-builder" / "agent_builder.db"
+    if db_path.exists():
+        try:
+            with sqlite3.connect(str(db_path)) as con:
+                con.execute("UPDATE projects SET repo_url=?", (str(workspace),))
+                con.commit()
+        except sqlite3.Error:
+            # If the DB is locked / schema differs, surface via Builder logs.
+            pass
+
+    # Untrack .venv from git AND add it to .gitignore so neither the
+    # post-merge "tracked changes" check nor the `git checkout main` step
+    # sees .venv as a problem. The devpulse seed commits part of .venv
+    # (notably the lib64 symlink); when task code-gen recreates .venv fresh,
+    # those tracked entries first appear as deleted (P6 — caught cycle 7),
+    # then later as untracked files that block `git checkout main`
+    # ("Updating the following directories would lose untracked files",
+    # P9 — caught cycle 10). Gitignoring .venv covers both: ignored files
+    # neither show as "tracked changes" nor block checkout. Untracking +
+    # gitignoring + committing leaves the working tree's .venv alone.
+    try:
+        # 1. Append .venv/ to .gitignore (idempotent).
+        gitignore = workspace / ".gitignore"
+        existing = gitignore.read_text() if gitignore.exists() else ""
+        if not any(line.strip() in (".venv", ".venv/") for line in existing.splitlines()):
+            with gitignore.open("a") as f:
+                if existing and not existing.endswith("\n"):
+                    f.write("\n")
+                f.write(".venv/\n")
+        # 2. Untrack any .venv entries currently in the index.
+        subprocess.run(
+            [
+                "git", "-C", str(workspace),
+                "rm", "-r", "--cached", "--ignore-unmatch", "-q", ".venv",
+            ],
+            check=False, timeout=10, env=git_env,
+        )
+        # 3. Stage .gitignore explicitly (rm doesn't pick it up).
+        subprocess.run(
+            ["git", "-C", str(workspace), "add", ".gitignore"],
+            check=False, timeout=5, env=git_env,
+        )
+        # 4. Commit only if something staged; otherwise git complains.
+        diff = subprocess.run(
+            ["git", "-C", str(workspace), "diff", "--cached", "--quiet"],
+            timeout=5, env=git_env,
+        )
+        if diff.returncode != 0:
+            subprocess.run(
+                [
+                    "git", "-C", str(workspace), "-c", "user.email=autoresearch@local",
+                    "-c", "user.name=autoresearch", "commit",
+                    "-m", "autoresearch: gitignore + untrack .venv",
+                ],
+                check=False, timeout=10, env=git_env,
+            )
+    except (subprocess.SubprocessError, OSError):
         pass
 
 
@@ -250,24 +317,41 @@ def latest_chat_state(port: int, session_id: str) -> dict:
     )
     r.raise_for_status()
     items = r.json().get("items", []) or []
-    running = True
-    last_type: str | None = None
+    last_content_type: str | None = None
     last_assistant_text = ""
+    last_assistant_final = False
+    # `run_status` events are not in VISIBLE_EVENT_TYPES on the server side
+    # (see agent_chat_transcript.py), so the history API never returns them.
+    # The reliable "chat is done" signal is `assistant_message.payload.final
+    # == True` — set when the model ends_turn. Earlier revisions relied on
+    # `run_status.running == false`, which never fired because run_status was
+    # invisible. Caught 2026-05-23 cycle 9 (P8 in KNOWN_PATTERNS.md).
+    content_event_types = {
+        "assistant_message",
+        "ask_user_question",
+        "user_message",
+        "tool_approval_request",
+    }
     for item in reversed(items):
-        last_type = last_type or item.get("type")
-        if item.get("type") == "run_status":
-            payload = item.get("payload") or {}
-            running = bool(payload.get("running", True))
+        if item.get("type") in content_event_types:
+            last_content_type = item.get("type")
+            if last_content_type == "assistant_message":
+                payload = item.get("payload") or {}
+                last_assistant_text = str(payload.get("content") or "")
+                last_assistant_final = bool(payload.get("final"))
             break
-    for item in reversed(items):
-        if item.get("type") == "assistant_message":
-            payload = item.get("payload") or {}
-            last_assistant_text = str(payload.get("content") or "")
-            break
+    # `running` is True unless the latest assistant_message is marked final.
+    # This is the harness's proxy for "the chat agent has yielded back to the
+    # operator and is awaiting input"; if the latest content event is a
+    # tool_use or in-flight assistant message, running stays True.
+    running = not (
+        last_content_type == "assistant_message" and last_assistant_final
+    )
     return {
         "running": running,
-        "last_event_type": last_type,
+        "last_content_event_type": last_content_type,
         "last_assistant_text": last_assistant_text,
+        "last_assistant_final": last_assistant_final,
     }
 
 
@@ -291,7 +375,7 @@ def wait_for_question_or_ship(port: int, session_id: str, timeout_s: int) -> str
             state = latest_chat_state(port, session_id)
             if (
                 not state["running"]
-                and state["last_event_type"] == "assistant_message"
+                and state["last_content_event_type"] == "assistant_message"
             ):
                 return "proceed_needed"
         except requests.RequestException:
@@ -685,7 +769,26 @@ def main() -> int:
                 follow_up_idx += 1
             else:
                 answer = default_answer
-            send_chat_respond(args.port, session_id, pending_item, answer)
+            # P10 (2026-05-23, cycle 10): `/api/agent/chat/respond` can return
+            # 400 Bad Request when the pending question's payload doesn't
+            # match what the harness's contract assumes (e.g., a
+            # tool_approval_request that needs `decision=allow|deny` instead
+            # of `selected_options`, or an ask_user_question whose options
+            # list is empty). Don't let a single bad respond crash the whole
+            # iteration — fall back to send_chat continuation so the run can
+            # progress to shipped. The iteration may still fail its gates,
+            # but we capture the verdict cleanly.
+            try:
+                send_chat_respond(args.port, session_id, pending_item, answer)
+            except requests.HTTPError as exc:
+                if exc.response is not None and exc.response.status_code == 400:
+                    send_chat(
+                        args.port,
+                        "Continue with reasonable defaults.",
+                        session_id=session_id,
+                    )
+                else:
+                    raise
             questions_answered += 1
 
         shipped = ship_or_timeout(args.port, fixture["timeout_s"])

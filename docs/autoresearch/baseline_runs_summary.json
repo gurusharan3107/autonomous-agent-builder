@@ -1,0 +1,8 @@
+{
+  "A": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 1,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  }
+}

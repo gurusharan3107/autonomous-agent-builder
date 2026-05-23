@@ -69,3 +69,19 @@ Noise floor (composite, 2σ):
   short-feature: 8.2e6 — improvements below this are noise
   long-feature:  ...
 ```
+
+## Recorded baselines
+
+Run date: 2026-05-23
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| A | unstable | 0/1 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-23
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| A | unstable | 0/1 | — | — | — |

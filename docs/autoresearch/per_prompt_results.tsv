@@ -1,1 +1,11 @@
 run_id	prompt_index	turn_role	agent_name	phase	context_budget_tokens	tokens_input	tokens_cached	cache_creation_tokens	tokens_output	noncached_plus_output_tokens	cache_ratio	tool_calls_count	tool_names_json	stop_reason	duration_ms	cost_usd	runtime_sdk	model	effort	context_breakdown_json
+42b8b065-2d34-4bb8-b4e9-53b7804e4ee6	0	agent	code-gen		0	46	670849	0	6831	0	670849.0	0	[]		253914	0.64081185	deterministic			{}
+42b8b065-2d34-4bb8-b4e9-53b7804e4ee6	1	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		6254	0.0	deterministic			{}
+42b8b065-2d34-4bb8-b4e9-53b7804e4ee6	2	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
+42b8b065-2d34-4bb8-b4e9-53b7804e4ee6	3	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		16835	0.0	deterministic			{}
+b4d19ea9-aeb5-41bc-b71a-f23e573e6349	0	agent	code-gen		0	72	982696	0	8214	0	982696.0	0	[]		380268	0.8955417	deterministic			{}
+b4d19ea9-aeb5-41bc-b71a-f23e573e6349	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		6878	0.0	deterministic			{}
+b4d19ea9-aeb5-41bc-b71a-f23e573e6349	2	agent	feature-verifier		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
+b4d19ea9-aeb5-41bc-b71a-f23e573e6349	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		15452	0.0	deterministic			{}
+b4d19ea9-aeb5-41bc-b71a-f23e573e6349	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
+b4d19ea9-aeb5-41bc-b71a-f23e573e6349	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		23080	0.0	deterministic			{}
