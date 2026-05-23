@@ -6,6 +6,8 @@ This directory adapts Karpathy's [autoresearch](https://github.com/karpathy/auto
 
 **ACTIVATING — 2026-05-22.** Pre-harness prerequisites are met (IMP-001..004 closed, fresh devpulse ships end-to-end, Tier-1 cache/chunk/avoidable thresholds clear by live devpulse evidence, complexity at 0 violations). Two prerequisites are deferred to in-harness validation: `gate_pass_rate=1.0` and N=5 baseline variance are both measured *during* baseline.py execution — they cannot be pre-verified without the harness existing. The loop becomes ACTIVE once Phase B (Jaeger + seed snapshot + OTEL smoke), Phase C (5 harness scripts), and Phase D1 (N=5 baseline) close cleanly.
 
+**2026-05-23 — telemetry honesty landed.** `builder logs analyze --session <id>` is now session-scoped via `tasks.chat_session_id` FK (ROADMAP M2.3). `top_cost_drivers`, `cache_ratio`, `cached_tokens`, `raw_token_total`, `noncached_plus_output_tokens` are this session's numbers — not bled across every session in the DB. Analyze payload carries `runtime_aggregates.session_scoped: true` when scoping is active. Per-agent attribution lives in `runtime_aggregates.by_agent` (also session-scoped); per-prompt `prompts[]` keeps its operator-chat-turn semantics. The N=5 baseline σ-floor is now reliable.
+
 The framework is spec-complete and the runner is executable today against the existing Builder CLI commands and `POST /api/agent/chat` / `POST /api/agent/chat/respond` HTTP endpoints. Source-code work that would improve diagnostic resolution is captured in [GAPS.md](GAPS.md).
 
 ## Read order

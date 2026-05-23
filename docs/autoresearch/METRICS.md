@@ -48,7 +48,7 @@ Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). One row 
 | `gate_pass_rate` | `builder board show --json` | Hard gate. Computed by harness from task statuses. |
 | `feature_correct` | `npm run build && npm run test` exit code | Hard gate. Boolean. |
 | `wallclock_s` | Harness wall clock from first prompt to `shipped` | Second composite component. |
-| `operator_turns` | `builder logs analyze --session <id> --json` `prompt_count` | Third composite component. |
+| `operator_turns` | `builder logs analyze --session <id> --json` `prompt_count` | Third composite component. **`prompt_count` = operator chat turns** (one per `user_message` event) — *not* model-call count. For model-call count use `runtime_aggregates.totals.runs`. |
 | `composite` | Computed | Primary metric. |
 | `composite_delta_pct` | vs prior `keep`-status row for same fixture | Used by loop decision logic. |
 | `gates_passed` | "5/5" or "4/5" etc. | Audit string. |
@@ -57,7 +57,9 @@ Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). One row 
 
 ## Per-Prompt TSV (`per_prompt_results.tsv`) — new in this framework
 
-Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). One row per prompt within a session. This is the table that makes diagnosis possible — when composite worsens, here is where you see *which* turn or *which* context block grew.
+Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). **One row per session-scoped agent** (code-gen, scaffold, feature-verifier, build-verifier, …) — *not* one row per chat prompt. This is the table that makes diagnosis possible: when composite worsens, here is where you see *which* agent's tokens grew.
+
+**2026-05-23 contract update.** Pre-fix this file claimed "one row per prompt within a session". That was the intent, but `analyze.prompts[]` is operator-chat-turn-scoped (1 entry for autoresearch fixture-A intake) and never carried `agent_name`. Per-agent attribution lives in `analyze.runtime_aggregates.by_agent`, which `_runtime_aggregates(session_id=...)` now scopes to this chat session via `tasks.chat_session_id`. `run.py:append_prompt_rows` reads `by_agent` and emits one row per agent. Columns are unchanged, but the data model is now per-agent, not per-chat-prompt.
 
 | Column | Source | Description |
 | --- | --- | --- |
@@ -89,7 +91,8 @@ Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). One row 
 
 `builder logs analyze --session <id> --full --json` returns (verified by reading `src/autonomous_agent_builder/cli/commands/logs.py:1258`):
 
-- Session-level: `session_id`, `sdk_session_id`, `prompt_count`, `total_tokens`, `total_cost_usd`, `raw_token_total`, `input_tokens`, `output_tokens`, `cached_tokens`, `noncached_plus_output_tokens`, `cache_ratio`
+- Session-level: `session_id`, `sdk_session_id`, `prompt_count` (= operator chat turns), `total_tokens`, `total_cost_usd`, `raw_token_total`, `input_tokens`, `output_tokens`, `cached_tokens`, `noncached_plus_output_tokens`, `cache_ratio`. **Session-scoping flag:** `runtime_aggregates.session_scoped: true` when `--session <id>` resolves a chat session linked to tasks via `tasks.chat_session_id`. **Harness must assert this flag is `true` before trusting σ-floor inputs** — `false` indicates an older DB without the FK and aggregates fall back to global.
+- Session-scoped agent aggregates: `runtime_aggregates.by_agent[*]` rows carry `agent_name`, `runs` (model-call count), `turns`, `input_tokens`, `output_tokens`, `cached_tokens`, `cost_usd`, `duration_ms`. This is the canonical source for per-agent attribution.
 - Drivers: `phase_ceremony_tokens`, `avoidable_token_estimate`, `top_cost_drivers[]`, `recommended_next_change`, `optimization_decision`, `runtime_decision_summary`, `phase_runtime_decisions[]`, `deterministic_script_candidates[]`, `deterministic_recommendations[]`
 - Context: `context_budget`, `runtime_native_telemetry_health`, `builder_product_telemetry_health`
 - Per agent run: `agent_run_evidence` with `id`, `task_id`, `agent_name`, `runtime_sdk`, `provider`, `model`, `effort`, `status`, `stop_reason`, `tokens`, `tokens_cached`, `duration_ms`, `cost_usd`, `estimated_cost_usd`, `observability_available`

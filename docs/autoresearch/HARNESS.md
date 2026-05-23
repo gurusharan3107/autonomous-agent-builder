@@ -117,6 +117,18 @@ def main():
     board = json.loads((evidence_dir / "board.json").read_text())
 
     # 10. Compute composite, evaluate hard gates
+    # `prompt_count` = operator chat turns (one per user_message event). For
+    # model-call count use `runtime_aggregates.totals.runs`. The composite
+    # intentionally weights operator turns (Bar 1 UX cost), not model calls.
+    # `analyze["cache_ratio"]` / `noncached_plus_output_tokens` are
+    # session-scoped (post-2026-05-23) when
+    # `runtime_aggregates.session_scoped is True` — the harness MUST assert
+    # this flag is true before trusting σ-floor inputs.
+    assert analyze.get("runtime_aggregates", {}).get("session_scoped") is True, (
+        "analyze.runtime_aggregates.session_scoped is False — DB predates "
+        "the `tasks.chat_session_id` migration (ROADMAP M2.3). Aggregates "
+        "have fallen back to global scope and will poison σ-floor."
+    )
     composite = (
         int(analyze.get("noncached_plus_output_tokens") or 0)
         * int(analyze.get("prompt_count") or 0)
@@ -132,7 +144,14 @@ def main():
         decision_status=decision_status,
     )
 
-    # 12. Append per-prompt rows (one per analyze['prompts'][i])
+    # 12. Append per-agent rows.
+    # NB: post-2026-05-23, this emits one row per session-scoped agent
+    # (`analyze.runtime_aggregates.by_agent[*]`), NOT one per chat prompt.
+    # `analyze.prompts[]` is operator-chat-turn-scoped (length 1 for
+    # autoresearch fixture-A intake) and never carries `agent_name`. Per-agent
+    # attribution comes from `by_agent`, which is session-scoped via
+    # `tasks.chat_session_id`. Headers in per_prompt_results.tsv are unchanged
+    # but each row now represents one agent's aggregate, not one chat turn.
     append_prompt_rows(run_id, analyze, breakdown_by_prompt)
 
     # 13. Cleanup workspace (keep evidence_dir until comparison decides keep/discard)

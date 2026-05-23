@@ -207,6 +207,7 @@ Source: [docs/autoresearch/](../autoresearch/). Activates only after [autoresear
 - [ ] Autoresearch loop produces at least one optimization that survives variance gating and ships.
 - [ ] The loop's optimizations are reflected back into runtime policy (`execution_policy.py`) and prompt shape, not just kept in the experiment results TSV.
 - [ ] **After-fix sibling search** — after a bug-fix task closes, a bounded `repo-researcher` subagent scans for sibling files/tests that exhibit the same pattern and flags them before the sprint ends. Add as OPTIMIZE_IDEAS #11; promote when runtime evidence shows recurring same-pattern regressions.
+- [x] **Autoresearch skill: single entry + 3 lanes + freshness ownership.** Skill restructured around an `AskUserQuestion`-driven lane picker — **Baseline** (calibration), **Iterate** (forward motion), **Fix** (loop-surfaced source defects). Hard Rule 1 ("ROADMAP first, code second") and Hard Rule 2 ("skill owns `docs/autoresearch/` freshness") binding across all lanes. Universal closeout freshness sweep runs every lane every time; any drift the lane didn't cause routes to Fix lane. `docs/autoresearch/README.md` + `METRICS.md` + `HARNESS.md` updated against post-2026-05-23 telemetry contract; pre-fix TSVs truncated to header-only so the next Baseline starts on honest signal. *(2026-05-23)*
 
 ---
 

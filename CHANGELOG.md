@@ -7,6 +7,27 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - Autoresearch skill restructure (single entry + 3 lanes + freshness ownership)
+
+### Changed
+
+- **`.claude/skills/autoresearch/SKILL.md`** — rewritten around a single entry point that asks `AskUserQuestion` for one of three mutually exclusive lanes: **Baseline** (establish σ-floor), **Iterate** (pick top OPTIMIZE_IDEA → run → verdict), **Fix** (source-patch a defect the loop surfaced and can't patch itself). Skips the question only when the typed prompt unambiguously names a lane. Each lane has its own preflight + do + closeout. Recipe 1/2/3/4/5 from the prior shape collapsed into the 3 lanes (recipes 3+5+4 absorbed into Iterate; the prior implicit "fix a gap" intent became its own lane). The 2026-05-23 telemetry-honesty fix is documented as the worked example of Fix lane's full propagation chain.
+- **Hard Rule 1 — "ROADMAP first, code second."** Any code change driven by the skill (Builder source, harness script, or autoresearch doc) requires a `docs/goal/ROADMAP.md` line to land before the edit. Fix lane preflight enforces this; Baseline/Iterate switch to Fix lane if they discover a defect mid-flow.
+- **Hard Rule 2 — "Skill owns `docs/autoresearch/` freshness."** The skill is the sole agent responsible for keeping every file under `docs/autoresearch/` consistent with current code, current loop contract, and current measurements. Every lane's closeout runs a freshness sweep over all 14 files in that folder; any drift the lane didn't cause routes to Fix lane.
+- **`docs/autoresearch/README.md`** — activation block updated with 2026-05-23 telemetry-honesty line so the next agent sees why the σ-floor is now reliable.
+- **`docs/autoresearch/METRICS.md`** — `prompt_count` row clarified as operator chat turns (not model calls); `runtime_aggregates.session_scoped: true` flag documented as required assertion; `runtime_aggregates.by_agent[*]` named as canonical per-agent source; Per-Prompt TSV section's "one row per prompt" claim updated to "one row per session-scoped agent" with explanation of the 2026-05-23 contract shift.
+- **`docs/autoresearch/HARNESS.md`** — composite-formula docstring clarifies `prompt_count = operator turns`; assertion added that `runtime_aggregates.session_scoped is True` before σ-floor numbers are trusted; per-agent TSV-row semantics documented.
+- **`docs/autoresearch/baseline_runs.tsv` / `optimize_results.tsv` / `per_prompt_results.tsv`** — truncated to header-only. Pre-fix rows were measured under the broken-aggregate-scope contract and would poison the new σ-floor.
+
+### Added
+
+- **ROADMAP M3.5** entry covering this restructure, ticked `[x]` with evidence pointer.
+- **STATUS.md Recent Decisions** dated line + Last Update field refresh.
+
+### Notes
+
+- The skill restructure is itself a "task that required code changes" under the new Hard Rule 1. It was added to ROADMAP M3.5 before this commit; ticked `[x]` here as the closing step.
+
 ## 2026-05-23 - M2.3 session-scoped `builder logs analyze` (unblocks M3.5 σ-floor)
 
 ### Added

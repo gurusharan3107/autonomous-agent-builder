@@ -1,9 +1,9 @@
 ---
 name: autoresearch
-description: "Drive the M3.5 Track B autoresearch optimization loop end-to-end: seed snapshot → N=5 baseline → idea-by-idea Karpathy iteration. Use whenever the user asks to 'run autoresearch', 'start the autoresearch loop', 'kick off a baseline', 'run baseline', 'try the next optimize idea', 'iterate on optimization #N', 'compare a candidate run to baseline', 'add a new optimize idea', 'pick the next autoresearch idea', or any variant that pairs autoresearch / loop / optimize / baseline / fixture language with execution. ALSO use proactively after `goal-audit` reorders `docs/autoresearch/OPTIMIZE_IDEAS.md` (the new top idea should be the next iteration's candidate), after a `roadmap-audit` flips an SDK lever from `[ ]` to `[x]` (the loop should re-baseline because the prompt shape changed), and whenever STATUS.md indicates the loop is ACTIVATING/ACTIVE but the last `baseline_runs_summary.json` is older than 14 days. Everything required is self-contained under `docs/autoresearch/` (contracts) + `scripts/autoresearch/` (5 Python entry points + setup_seed.sh + optional Jaeger docker-compose). The skill does NOT invoke the model itself for each iteration — v1 is human-in-the-loop, the operator makes the source edit per the picked idea between `run.py` invocations."
+description: "Single entry point for the M3.5 Track B autoresearch optimization loop. Three lanes — Baseline (establish σ-floor), Iterate (pick idea → run → verdict), Fix (source-patch a gap the loop surfaced and can't patch itself). On invocation, ALWAYS asks the operator which lane via AskUserQuestion; only skips the question when the typed prompt unambiguously names one (e.g. 'run baseline', 'iterate on idea 4', 'fix the telemetry gap'). Use whenever the operator asks to 'run autoresearch', 'start the loop', 'kick off baseline', 'run baseline', 'try the next optimize idea', 'iterate on optimization #N', 'compare a candidate', 'add a new optimize idea', 'fix the gap raised by autoresearch', 'address the autoresearch blocker', 'patch the telemetry/contract/schema gap', or any variant pairing autoresearch / loop / optimize / baseline / fixture / gap / blocker language with execution. ALSO use proactively after `goal-audit` reorders `docs/autoresearch/OPTIMIZE_IDEAS.md` (new top → Iterate), after `roadmap-audit` flips an SDK lever `[ ]` → `[x]` (re-baseline → Baseline), whenever STATUS.md says ACTIVATING/ACTIVE but the last `baseline_runs_summary.json` is older than 14 days (Baseline), and when STATUS Recent Decisions or autoresearch closeout artifacts surface a defect the loop can't patch itself (Fix)."
 model: sonnet
 effort: high
-allowed-tools: Read, Edit, Bash, Write
+allowed-tools: Read, Edit, Bash, Write, AskUserQuestion
 compatibility:
   - python3 >= 3.12 (run.py / baseline.py / compare.py / loop.py / extract_context_breakdown.py)
   - requests (pip install requests)
@@ -13,181 +13,149 @@ compatibility:
   - docker (optional; only if Jaeger UI is desired — Path A raw-body capture works without it)
 ---
 
-# autoresearch — drive the M3.5 Track B optimization loop
+# autoresearch — single entry, three lanes
 
-Codifies the workflow specified in [`docs/autoresearch/`](../../../docs/autoresearch/) into an agent-runnable lane. Adapts Karpathy's autoresearch philosophy ("rapid autonomous iteration at small scale beats big runs at slow cadence") to optimize the Autonomous Builder's own prompt shape, context size, agent use, and runtime policy.
+This skill is the only entry point for the autoresearch loop. Three mutually exclusive lanes — **Baseline**, **Iterate**, **Fix** — each with its own preflight + do + closeout. Codifies [`docs/autoresearch/`](../../../docs/autoresearch/) into an agent-runnable shape.
 
-## ⚠ HARD RULES — read once, internalize
+## Entry point — always ask which lane
 
-1. **The harness must not import from `autonomous_agent_builder/`.** It is a runner *against* Builder, not coupled to it. All 5 scripts in `scripts/autoresearch/` use `builder` CLI as subprocess + HTTP endpoints. Preserve this when editing.
-2. **`.seed/devpulse/` is read-only after capture.** `chmod -R a-w` enforces this. If the seed needs to change (devpulse template evolves), capture a NEW seed and document the drift in `baseline_variance.md`. Never edit in-place.
-3. **The first content block of the system prompt is cache-stable.** When you make a source edit for an optimization idea, never insert dynamic content into `agents/execution_policy.py::build_system_prompt()` before the existing stable prefix. Doing so destroys the cache and the candidate will always lose on composite even when the idea was correct.
-4. **`gate_pass_rate=1.0` is per-baseline-run, not historical aggregate.** Per `docs/autoresearch/README.md` § Prerequisites, this is validated *inside* `baseline.py` per fixture run. Do not block on the historical `builder metrics show` aggregate which folds in M1.x dev-time failures.
-5. **Stop conditions are sacred.** `loop.py` honours `--max-iterations`, `--cost-budget-usd`, and SIGINT. Do not silently extend any of these in the middle of a session — abort and ask the operator.
-6. **Wins must promote A→E before merge.** A keep on fixture A alone is not a real win. `loop.py` already enforces this; do not paper over it by manually editing `optimize_results.tsv decision` columns.
-7. **Preflight is mandatory.** Before invoking any recipe — even read-only status checks — run the bundled preflight validator and act on its output. The recipe-specific gate (`--recipe N`) catches missing seed / baseline σ / busy ports / etc. before they bite mid-run and burn API credits.
+When this skill activates, the FIRST action is `AskUserQuestion`:
 
-## Mandatory preflight check
-
-The skill bundles `scripts/preflight.py` to validate infra before any recipe. It is the discipline layer for Hard Rule 7 — without it, the skill is just prose. Always run it first and act on a non-zero exit:
-
-```bash
-# General health (every session start)
-python3 .claude/skills/autoresearch/scripts/preflight.py
-
-# Before Recipe 1 (first-time activation)
-python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 1
-
-# Before Recipe 2 (iteration) — requires seed + baseline σ floor
-python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --json
-
-# Before Recipe 3 (manual compare) — same prereqs as Recipe 2
-python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 3 --json
+```
+question: "Which autoresearch lane?"
+header:   "Lane"
+options:
+  - "Baseline"  — Establish or re-establish the σ noise floor across fixtures A–E. Expensive (~2h, ~$5–10). Required before any iteration; required again after an SDK lever flip or a prompt-shape change.
+  - "Iterate"   — Pick top unattempted idea from OPTIMIZE_IDEAS.md, run, verdict. The forward motion of the loop. Cheap per iteration; compounds over time.
+  - "Fix"       — Source-patch a defect the loop surfaced but cannot patch itself (telemetry-not-session-scoped, schema mismatch, contract drift, harness bug). Drives FIX-STANDARD + the full propagation chain.
 ```
 
-What it checks:
+**Skip the question only when the typed prompt unambiguously names one lane.** Examples:
+
+| Typed prompt | Lane | Skip the question? |
+|---|---|---|
+| "run baseline" / "kick off baseline" / "establish σ floor" / "re-baseline" | Baseline | Yes |
+| "iterate on idea 4" / "try the next optimize idea" / "next iteration" / "pick from OPTIMIZE_IDEAS" / "compare this candidate" | Iterate | Yes |
+| "fix the telemetry gap" / "address the autoresearch blocker" / "patch the schema gap" / "the loop surfaced X — fix it" | Fix | Yes |
+| "run autoresearch" / "start the loop" / "what should we do next?" | *(ambiguous)* | **No — ask.** |
+
+After the lane is chosen, run that lane's preflight, do, and closeout in order. Lanes do not mix mid-session.
+
+## ⚠ Hard rules — read once, internalize (universal across lanes)
+
+1. **ROADMAP first, code second.** Any code change driven by this skill — Builder source, harness script, autoresearch doc — must have a `docs/goal/ROADMAP.md` line *before* the edit lands. If no line exists, create one in the right milestone (typically M2.3 for cost-aware-execution defects, M3.5 for loop-internal defects) before touching code. Hard Rule 2 of `docs/goal/README.md`: nothing happens off-roadmap. Fix lane preflight enforces this; the same rule binds Baseline and Iterate when they discover a defect mid-flow (switch to Fix lane).
+2. **This skill owns `docs/autoresearch/` freshness.** The skill is the sole agent responsible for keeping every file under `docs/autoresearch/` consistent with current code, current loop contract, and current measurements. No stale state allowed — ever. Every lane's closeout MUST end with a freshness sweep (see § Universal closeout freshness sweep). If the sweep finds drift the lane didn't cause, the skill stops, surfaces the drift to the operator, and asks whether to switch to Fix lane.
+3. **The harness must not import from `autonomous_agent_builder/`.** It is a runner *against* Builder, not coupled to it. All 5 scripts in `scripts/autoresearch/` use `builder` CLI as subprocess + HTTP endpoints. Preserve this when editing.
+4. **`.seed/devpulse/` is read-only after capture.** `chmod -R a-w` enforces this. If the seed needs to change (devpulse template evolves), capture a NEW seed and document the drift in `baseline_variance.md`. Never edit in-place.
+5. **The first content block of the system prompt is cache-stable.** When making a source edit for an optimization idea, never insert dynamic content into `agents/execution_policy.py::build_system_prompt()` before the existing stable prefix. Doing so destroys the cache and the candidate will always lose on composite even when the idea was correct.
+6. **`gate_pass_rate=1.0` is per-baseline-run, not historical aggregate.** Validated *inside* `baseline.py` per fixture run. Do not block on the historical `builder metrics show` aggregate which folds in M1.x dev-time failures.
+7. **Stop conditions are sacred.** `loop.py` honours `--max-iterations`, `--cost-budget-usd`, and SIGINT. Do not silently extend any of these mid-session — abort and ask the operator.
+8. **Wins must promote A→E before merge.** A keep on fixture A alone is not a real win. `loop.py` already enforces this; do not paper over it by hand-editing `optimize_results.tsv decision` columns.
+9. **Preflight is mandatory.** Each lane has its own; the universal preflight runs first. The recipe-specific gate (`--recipe N`) catches missing seed / baseline σ / busy ports before they bite mid-run and burn API credits.
+10. **`runtime_aggregates.session_scoped` must be `true`.** Every analyze.json the harness consumes (Baseline + Iterate) must carry this flag. `false` means the DB predates ROADMAP M2.3's `tasks.chat_session_id` migration and aggregates have fallen back to global scope — Fix lane required before anything else can proceed.
+
+## Universal closeout freshness sweep (every lane, every time)
+
+Before any lane is considered closed, the skill performs this sweep over `docs/autoresearch/`:
+
+| File | Freshness assertion |
+|---|---|
+| `README.md` | Activation status block reflects current state. If a Fix lane changed a contract, the date-stamped activation line names it. |
+| `METRICS.md` | Every documented field still matches what `builder logs analyze --session <id> --full --json` actually emits. If a Fix changed shape, the affected rows + source listings are updated. |
+| `HARNESS.md` | Composite formula, TSV row semantics, and preflight assertions match what the harness scripts actually do. |
+| `OPTIMIZE.md` / `COMPARE.md` | Loop contract description matches what `loop.py` / `compare.py` actually enforce. |
+| `OPTIMIZE_IDEAS.md` | Top unattempted idea is current intent. Closed ideas have attempt markers. |
+| `baseline_runs.tsv` / `optimize_results.tsv` / `per_prompt_results.tsv` | Headers match `run.py:SESSION_HEADERS` / `PROMPT_HEADERS` exactly. Pre-fix rows that became poisoned by a contract change have been truncated. |
+| `baseline_runs_summary.json` / `iterations.json` / `iterations.html` / `INTROSPECTION.md` | Regenerated by their scripts in this closeout. |
+| `GAPS.md` / `SDK-OBSERVABILITY.md` / `CONTEXT-LEDGER.md` / `fixtures.md` / `baseline_variance.md` | Closed gaps removed; remaining gaps still describe today's state. |
+
+How the sweep runs: read each file's last-modified date + cross-check key claims against current code via grep. Any drift = stop, surface, recommend Fix lane. The skill never silently commits with stale autoresearch docs.
+
+## Universal preflight — always run first
+
+Bundled `scripts/preflight.py` validates the shared infrastructure. Always run it before any lane, act on a non-zero exit:
+
+```bash
+# General health (every session start, before lane choice)
+python3 .claude/skills/autoresearch/scripts/preflight.py
+
+# Then run the lane-specific preflight via --recipe N inside the lane.
+```
 
 | Layer | Checks |
 | --- | --- |
-| **Hard** (must pass — exits 1 on fail) | `builder` / `npm` / `python3` / `git` on PATH; `requests` importable; `~/Builder-Workspace/devpulse` exists; 5 contract docs in `docs/autoresearch/`; 6 harness files in `scripts/autoresearch/` |
-| **Recipe-specific** (gated by `--recipe N`) | Recipe 2/3: `.seed/devpulse` exists + `baseline_runs_summary.json` exists + every fixture `status=stable`. Recipe 1: warns if baseline already exists (re-snapshot scenario). |
-| **Soft** (warn-only — loop runs degraded) | `tiktoken` importable (else 4-char fallback); ports 9876–9880 free; `/tmp` has ≥5 GB free; docker present + Jaeger container running; git on a clean branch |
+| **Hard** (must pass — exit 1 on fail) | `builder` / `npm` / `python3` / `git` on PATH; `requests` importable; `~/Builder-Workspace/devpulse` exists; 5 contract docs in `docs/autoresearch/`; 6 harness files in `scripts/autoresearch/` |
+| **Recipe-specific** (gated by `--recipe N`) | Baseline (`--recipe 1`): warns if baseline already exists. Iterate (`--recipe 2`/`3`): `.seed/devpulse` exists + `baseline_runs_summary.json` exists + every fixture `status=stable`. |
+| **Soft** (warn-only — degraded mode) | `tiktoken` importable; ports 9876–9880 free; `/tmp` has ≥5 GB free; docker present + Jaeger running; git on clean branch |
 
-Output formats: human-readable table by default; `--json` for machine-readable consumption. Exit code 0 = pass or warn-only; 1 = hard or recipe-specific failure. **If exit is non-zero, do not proceed — run the bundled bootstrap (next section) or surface the `fix:` field of each failed check to the operator.**
+`--json` emits machine-readable output. Exit 0 = pass or warn-only; 1 = hard or recipe-specific failure. **If exit non-zero, run bootstrap (below) or surface the `fix:` field of each failed check to the operator. Do not proceed.**
 
 ## Bootstrap — one-shot auto-fix
 
-When preflight reports failures, the skill also bundles `scripts/bootstrap.sh` to auto-fix every machine-fixable item. Idempotent and safe to re-run:
+When preflight fails, `scripts/bootstrap.sh` auto-fixes the machine-fixable items. Idempotent:
 
 ```bash
-# One-shot setup (auto-installs deps, captures seed, brings up Jaeger if docker present)
 bash .claude/skills/autoresearch/scripts/bootstrap.sh
-
-# Selective skips for items you don't want
 bash .claude/skills/autoresearch/scripts/bootstrap.sh --skip-seed     # don't snapshot
 bash .claude/skills/autoresearch/scripts/bootstrap.sh --skip-jaeger   # don't start Jaeger
 bash .claude/skills/autoresearch/scripts/bootstrap.sh --dry-run       # report only
 ```
 
-What bootstrap auto-fixes:
-- `pip install --user requests tiktoken` if either is missing
-- `bash scripts/autoresearch/setup_seed.sh` if `.seed/devpulse` is missing (delegates to the canonical script, never re-snapshots an existing seed)
-- `docker compose -f scripts/autoresearch/docker-compose.yml up -d` if docker present and Jaeger container not running
+Auto-fixes: pip-install `requests`/`tiktoken`; runs `setup_seed.sh` if `.seed/devpulse` missing; `docker compose up -d` for Jaeger.
 
-What bootstrap surfaces but cannot fix (operator action required):
-- docker daemon not installed → prints the one-liner curl install command
-- Ports 9876–9880 in use → operator must free or pass `--port-base`
-- Git in dirty / non-main state → operator must commit / stash / checkout
-- Disk space below threshold → operator must free disk
-
-After auto-fix passes, bootstrap re-runs preflight and prints the residual manual TODO list. **If bootstrap exits cleanly and the residual list is empty, you're cleared to run any recipe.**
+Cannot fix (operator action required): docker daemon down, ports 9876–9880 busy, dirty git, low disk. Bootstrap prints the remedy per item.
 
 ## Teardown — clean session shutdown
 
-When the loop session ends, the skill bundles `scripts/teardown.sh` to release ephemeral state cleanly:
+`scripts/teardown.sh` releases ephemeral state cleanly:
 
 ```bash
-# Standard teardown — stop Jaeger, clean /tmp/devpulse-<uuid>/ workspaces
-bash .claude/skills/autoresearch/scripts/teardown.sh
-
-# Aggressive — also wipe /tmp/autoresearch/ evidence dirs
-bash .claude/skills/autoresearch/scripts/teardown.sh --with-evidence
-
-# Keep Jaeger running (e.g., for post-mortem trace inspection)
-bash .claude/skills/autoresearch/scripts/teardown.sh --keep-jaeger
+bash .claude/skills/autoresearch/scripts/teardown.sh                   # default — stop Jaeger, clean stuck workspaces
+bash .claude/skills/autoresearch/scripts/teardown.sh --with-evidence   # also wipe /tmp/autoresearch/
+bash .claude/skills/autoresearch/scripts/teardown.sh --keep-jaeger     # keep Jaeger for trace inspection
 ```
 
-Teardown is intentionally surgical:
-- ✓ Stops + removes the Jaeger container (`docker compose down`)
-- ✓ Removes UUID-shaped `/tmp/devpulse-<uuid>/` workspaces (run.py leftovers if it crashed mid-iteration). Refuses to touch non-UUID paths like `/tmp/devpulse-venv` — surfaces them as "skipped, looks unrelated".
-- ✓ Optional `/tmp/autoresearch/` evidence cleanup (gated by `--with-evidence`)
-- ✗ Never touches `.seed/devpulse` (immutable; teardown must not delete the snapshot)
-- ✗ Never touches `docs/autoresearch/*.tsv` (durable evidence rows persist across sessions)
-- ✗ Never touches `baseline_runs_summary.json` (σ floor reused across iterations)
-- ✗ Never touches git state (operator owns branches)
+Surgical: stops Jaeger, removes UUID-pattern `/tmp/devpulse-<uuid>/` workspaces (refuses non-UUID paths), optional evidence wipe. Never touches `.seed/devpulse`.
 
-## Docker container lifecycle
+## Docker container lifecycle (Jaeger)
 
-Docker handling is split between **bootstrap.sh** (start) and **teardown.sh** (stop):
+Optional; only needed for live trace inspection. `scripts/autoresearch/docker-compose.yml` runs Jaeger all-in-one with `network_mode: host` (avoids WSL2 port-forwarding flake). UI: <http://127.0.0.1:16686>. Path A raw-body capture works without Jaeger; treat the UI as a debugging tool.
 
-| Phase | What happens | Where |
-|---|---|---|
-| Daemon install | NOT auto-installed (requires sudo). Bootstrap prints the one-liner for WSL2 Ubuntu: `curl -fsSL https://get.docker.com \| sh && sudo usermod -aG docker $USER && sudo service docker start`. Re-login then re-run bootstrap. | Operator action |
-| Daemon reachability | Bootstrap checks `docker info`; if it fails, prints `sudo service docker start` hint and skips Jaeger (Path A file-OTEL still works). | bootstrap.sh |
-| Container start | `docker compose -f scripts/autoresearch/docker-compose.yml up -d`. If the container already exists but is stopped, restarts via `docker start autoresearch-jaeger` instead. | bootstrap.sh |
-| Health check | Polls `http://127.0.0.1:16686` (Jaeger UI) up to 30s. Also pings `:4318/v1/traces` to confirm OTLP HTTP receiver is live. | bootstrap.sh |
-| Container stop | `docker compose down`. Idempotent — handles "not present", "stopped", and "running" states uniformly. | teardown.sh |
-| Cleanup of stopped container | `docker rm autoresearch-jaeger` if container exists but isn't running. | teardown.sh |
+---
 
-If docker isn't installed at all, the skill degrades to Path A file-OTEL — `OTEL_LOG_RAW_API_BODIES=file:<dir>` writes raw API bodies directly to disk and `extract_context_breakdown.py` parses them. No traces or spans, but the σ floor and 2σ comparison still work.
+## Lane 1 — Baseline
 
-## Surface map — everything self-contained
+**Purpose:** establish or re-establish the σ noise floor across fixtures A–E. Every Iterate verdict is measured relative to this floor.
 
-```text
-docs/autoresearch/                       # contracts (read these first)
-├── README.md                            # entry point; activation status; prereqs
-├── OPTIMIZE.md                          # loop contract: composite, hard gates, allowlist, stop conditions
-├── METRICS.md                           # every signal → source → TSV column
-├── HARNESS.md                           # runnable harness contract; pseudo-code per script
-├── COMPARE.md                           # two-run diff protocol; 2σ test + per-prompt sanity
-├── SDK-OBSERVABILITY.md                 # OTEL env-var prescription
-├── CONTEXT-LEDGER.md                    # Path A (executable) + Path B (source instrumentation, future) anchor logic
-├── GAPS.md                              # source changes that would simplify the loop (v1/v2/v3 tiers)
-├── OPTIMIZE_IDEAS.md                    # living backlog of optimization hypotheses (top first)
-├── fixtures.md                          # five scripted operator prompts (A short / B long / C ambiguous / D vague / E multi-turn)
-├── baseline_variance.md                 # N=5 protocol + recorded σ history
-├── baseline_runs.tsv                    # filled by baseline.py
-├── optimize_results.tsv                 # filled by run.py (one row per iteration)
-├── per_prompt_results.tsv               # filled by run.py (one row per prompt within a session)
-├── baseline_runs_summary.json           # filled by baseline.py; read by compare.py for 2σ floor
-├── iterations.json                      # filled by render_iterations.py per closeout
-├── iterations.html                      # visual map of iteration progress (Dieter Rams + Tufte)
-└── INTROSPECTION.md                     # overwritten by introspect.py per closeout (meta-loop report)
+### When to choose this lane
 
-scripts/autoresearch/                    # the v1 harness
-├── README.md                            # operator runbook
-├── docker-compose.yml                   # optional Jaeger all-in-one (UI only)
-├── setup_seed.sh                        # one-time .seed/devpulse capture
-├── run.py                               # atomic fixture runner
-├── baseline.py                          # N=5 σ driver
-├── compare.py                           # 2σ + 6-hard-gate verdict generator
-├── loop.py                              # Karpathy human-in-loop iteration
-└── extract_context_breakdown.py         # Path A tiktoken + anchor attribution
-```
+- First-time activation (no `baseline_runs_summary.json`).
+- After a `roadmap-audit` flips an SDK lever `[ ]` → `[x]` (prompt-shape change → re-baseline).
+- After a Fix lane closes that changed prompt assembly, runtime policy, or telemetry surface.
+- When `baseline_runs_summary.json` is older than 14 days.
+- When any fixture's σ/mean > 25% (timing-fragile; re-baseline that fixture).
 
-## When to invoke this skill
-
-Match on user intent — exact strings are not required:
-
-- "run autoresearch" / "start the loop" / "kick off the autoresearch loop"
-- "run baseline" / "kick off baseline" / "establish σ floor"
-- "try the next optimize idea" / "iterate on idea N" / "pick next from OPTIMIZE_IDEAS"
-- "compare a candidate against baseline" / "is this a win?"
-- "add a new optimize idea" / "log this optimization hypothesis"
-- "what's the autoresearch status?" / "where are we in the loop?"
-
-Proactively engage when:
-
-- `goal-audit` reorders `OPTIMIZE_IDEAS.md` (the new top is the next candidate).
-- A `roadmap-audit` flips an SDK lever `[ ]` → `[x]` (prompt-shape change → re-baseline).
-- STATUS.md says ACTIVE/ACTIVATING but `baseline_runs_summary.json` is older than 14 days.
-
-## Execution recipes
-
-### Recipe 1 — First-time activation (one-time bootstrap)
+### Preflight
 
 ```bash
-# 1. Verify the activation gate (everything except in-harness prereqs)
+python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 1 --json
+```
+
+Hard requirements: `~/Builder-Workspace/devpulse` exists; `builder` healthy; ports 9876–9880 free.
+Soft: `.seed/devpulse` will be (re-)snapshotted; warns if one already exists.
+
+### Do
+
+```bash
+# 1. Verify complexity gate (autoresearch prerequisite from M3.5 README)
 builder lint --complexity-report --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print("violations:", len(d["report"]["violations"]))'
 # Expect: 0
 
 # 2. Capture the immutable seed (only if /home/gurusharangupta/.seed/devpulse does not exist)
 bash scripts/autoresearch/setup_seed.sh
-# Outputs: /home/gurusharangupta/.seed/devpulse (chmod -R a-w) + /home/gurusharangupta/.seed/devpulse.sha256
 
 # 3. (Optional) Bring up Jaeger UI for live trace inspection
 docker compose -f scripts/autoresearch/docker-compose.yml up -d
-# UI: http://127.0.0.1:16686
 
 # 4. Dry-run the runner to confirm wiring
 python3 scripts/autoresearch/run.py --fixture A --branch main --port 9999 --dry-run
@@ -195,107 +163,197 @@ python3 scripts/autoresearch/run.py --fixture A --branch main --port 9999 --dry-
 # 5. Real N=5 baseline across all five fixtures (~2h wallclock, ~25 model runs, ~$5–10 cost)
 python3 scripts/autoresearch/baseline.py --fixtures A,B,C,D,E --n 5 \
     --evidence-root /tmp/autoresearch/baseline-$(date +%Y-%m-%d)
+```
 
-# 6. Inspect σ floor
+### Closeout
+
+Required, every time — even on partial completion:
+
+```bash
+# 1. Inspect σ floor
 cat docs/autoresearch/baseline_runs_summary.json
-# Tier-1 acceptance: every fixture shows status="stable" with reasonable σ
-# (typically composite σ < 25% of mean; bigger σ → fixture timing-fragile, re-run)
+# Tier-1 acceptance: every fixture status="stable", composite σ < 25% of mean.
 
-# 7. ✱ Baseline closeout — render the visual map so docs/autoresearch/iterations.html
-#    reflects the new σ floor (empty iterations list, populated baseline panel).
+# 2. Regenerate the visual map
 python3 .claude/skills/autoresearch/scripts/render_iterations.py
-```
 
-### Recipe 2 — Run one optimization iteration
-
-```bash
-# 1. Pick top unattempted idea from docs/autoresearch/OPTIMIZE_IDEAS.md (preview only)
-grep -A2 "^[0-9]\+\.\s*\*\*" docs/autoresearch/OPTIMIZE_IDEAS.md | head -10
-
-# 2. Let loop.py drive the iteration (it prompts you mid-flow for the source edit)
-python3 scripts/autoresearch/loop.py --max-iterations 1 --cost-budget-usd 5
-# Workflow:
-#   a) loop.py creates branch autoresearch/iter-N-<ref>
-#   b) loop.py prints idea + allowlist; pauses for ENTER
-#   c) You make the edit, `git add` + `git commit` on the branch
-#   d) You press ENTER → loop.py runs run.py on fixture A → compare.py
-#   e) If keep: loop.py promotes to B,C,D,E (sequentially) → final keep/discard
-#   f) On discard: loop.py rewinds (git checkout main + branch -D) and marks attempted
-#   g) On keep: loop.py leaves the branch in place for human review + merge
-
-# 3. ✱ Iteration closeout — ALWAYS run, regardless of verdict
-python3 .claude/skills/autoresearch/scripts/render_iterations.py
-# Aggregates the new row(s) in optimize_results.tsv into iterations.json and
-# rewrites the embedded data block in docs/autoresearch/iterations.html so the
-# visual map reflects current state. Idempotent and safe to re-run.
-
-# 4. ✱ Self-introspection — meta-autoresearch (does the loop pay for itself?)
+# 3. (Re-)run introspection
 python3 .claude/skills/autoresearch/scripts/introspect.py
-# Writes docs/autoresearch/INTROSPECTION.md. Sections: token economics
-# (which agent costs the most), cumulative ROI vs API spend, redundant gates
-# / noisy fixtures, KB leads (workflow knowledge articles relevant to making
-# the loop leaner), lean recommendations ranked by token-reduction impact.
-# stdout prints recommendations only; the full report goes to the file.
+
+# 4. STATUS.md Recent Decisions — append a dated line:
+#    "<DATE> — Baseline N=5 across A–E. σ summary: <per-fixture composite means + σ>. Cost: $X.YZ. Wallclock: Hh Mm."
+
+# 5. If any fixture status=unstable: re-run just that one with N=10 and document the σ tightening.
+
+# 6. Universal closeout freshness sweep (Hard Rule 2) — run before considering this lane closed.
+#    Verify every file in § Universal closeout freshness sweep above is current; if drift found
+#    the Baseline lane didn't cause, stop and surface to operator. Recommend Fix lane if needed.
 ```
 
-### Recipe 3 — Compare an existing candidate against baseline
+**Do not tick a ROADMAP `[x]` from inside Baseline lane** — Baseline is calibration, not delivery. Tick happens from Iterate lane when a kept iteration ships, or from Fix lane when a contract defect closes.
+
+---
+
+## Lane 2 — Iterate
+
+**Purpose:** pick the top unattempted idea from `OPTIMIZE_IDEAS.md`, try it on fixture A, compare to baseline, promote A→E on keep, mark attempt result. Forward motion.
+
+### When to choose this lane
+
+- After Baseline closeout when the σ-floor is fresh and `OPTIMIZE_IDEAS.md` has unattempted entries.
+- After `goal-audit` reorders OPTIMIZE_IDEAS (new top is the next candidate).
+- After a previous iteration's verdict landed and the operator wants the next one.
+- For "compare a candidate" — same lane, just runs the verdict half (compare.py) on an existing `run_id`.
+
+### Preflight
 
 ```bash
-# When you already ran run.py and want a verdict without loop.py orchestrating
-python3 scripts/autoresearch/compare.py --fixture A \
-    --candidate-run <run_id from optimize_results.tsv>
-# Stdout: JSON verdict {decision, reason, detail}
-# Side effect: patches optimize_results.tsv decision + composite_delta_pct columns
+python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --json
 ```
 
-### Recipe 4 — Add a new optimize idea
+Hard requirements: `.seed/devpulse` exists; `baseline_runs_summary.json` exists with every fixture `status=stable`; clean git on a branch suitable for cutting `autoresearch/iter-N-<ref>`.
+
+**Stuck-residue check:** preflight surfaces stuck `/tmp/devpulse-<uuid>/` workspaces and dangling `autoresearch/iter-*` branches from prior crashes. Resolve before proceeding — run `teardown.sh` and clean branches with `git branch -D <branch>`.
+
+**Empty-backlog check:** if `OPTIMIZE_IDEAS.md` has no unattempted ideas, surface this to the operator and ask whether they want to add one (10-second edit per the format below) before continuing. Do not silently abort.
 
 ```text
-1. Append a new numbered entry to docs/autoresearch/OPTIMIZE_IDEAS.md following
-   the existing format:
-       N. **idea-ref-slug** — one-line description
-          Files: <path1>, <path2>          (allowlist — bounds the edit surface)
-          Hypothesis: <why this should win>
-          Expected impact: <token/cache/UX>
-2. Order by expected impact, highest first. loop.py picks the top unattempted.
-3. Do not run the idea immediately; let the operator decide when to start.
+Append a new numbered entry to docs/autoresearch/OPTIMIZE_IDEAS.md following
+the existing format:
+    N. **idea-ref-slug** — one-line description
+       Files: <path1>, <path2>          (allowlist — bounds the edit surface)
+       Hypothesis: <why this should win>
+       Expected impact: <token/cache/UX>
 ```
 
-### Recipe 5 — Recover from a stuck or broken iteration
-
-Different recovery paths depending on **how** the iteration broke:
-
-**Diagnosis first — read the evidence:**
+### Do
 
 ```bash
-# 1. Find the run_id of the last iteration (last row in optimize_results.tsv)
-tail -1 docs/autoresearch/optimize_results.tsv | cut -f1
+# 1. Preview top unattempted idea (read-only)
+grep -A2 "^[0-9]\+\.\s*\*\*" docs/autoresearch/OPTIMIZE_IDEAS.md | head -10
 
-# 2. Read the crash log (set by run.py's except handler)
-cat /tmp/autoresearch/<run-id>/crash.log
+# 2. Drive the iteration via loop.py (it prompts mid-flow for the source edit)
+python3 scripts/autoresearch/loop.py --max-iterations 1 --cost-budget-usd 5
+# Flow:
+#   a) loop.py creates branch autoresearch/iter-N-<ref>
+#   b) loop.py prints idea + allowlist; pauses for ENTER
+#   c) Operator makes the edit, `git add` + `git commit` on the branch
+#   d) Operator presses ENTER → loop.py runs run.py on fixture A → compare.py
+#   e) Keep: loop.py promotes to B,C,D,E → final keep/discard
+#   f) Discard: loop.py rewinds (git checkout main + branch -D), marks attempted
+#   g) Keep: loop.py leaves branch for human review + merge
 
-# 3. Inspect raw API bodies — what was the agent doing when it stalled?
-ls /tmp/autoresearch/<run-id>/raw_bodies/
-# Each .jsonl file is one API turn. Last one usually shows where the run stopped.
-
-# 4. Check the analyze.json for the agent that was active at crash time
-python3 -c "import json; d = json.load(open('/tmp/autoresearch/<run-id>/analyze.json')); print(d.get('prompts', [])[-1])"
+# (Alternative — manual compare without loop.py orchestrating)
+python3 scripts/autoresearch/compare.py --fixture A --candidate-run <run_id>
 ```
 
-**Crash types and the fix per type:**
+### Closeout
 
-| Symptom | Likely cause | Action |
-| --- | --- | --- |
-| `decision_status: crash` + `TimeoutError: No question or ship within 600s` | Fixture's `follow_ups` list exhausted while builder still waiting for operator answers | Add more `follow_ups` entries OR rely on the `default_answer: "recommended"` fallback (now built in to run.py's question loop). Re-run the fixture. |
-| `feature_correct: false` + npm/pytest in crash.log | Workspace-stack mismatch (e.g., harness ran `npm` against a Python app) | `run.py:run_feature_check` now auto-detects `package.json` vs `pyproject.toml`. If your stack is something else (Go/Rust/etc.) extend that function with the right command. |
-| TSV row with garbage cells ('2/6' under noncached_plus_output_tokens) | Schema drift between `run.py:SESSION_HEADERS` and the TSV header | `preflight.py` now catches this before the run. If it slipped through: align run.py and the TSV (delete the row, fix run.py, re-run). |
-| `loop.py` Ctrl-C'd mid-iteration | Operator interrupt; branch still exists | `git status` → find `autoresearch/iter-*` branch → `git checkout main && git branch -D <branch>` → append `> attempted: interrupted (operator_ctrl_c, YYYY-MM-DD)` to the idea in OPTIMIZE_IDEAS.md so `loop.py` doesn't re-pick it. |
-| `baseline.py` quota-failed mid-run | Provider rate limit hit; some fixtures incomplete | `baseline_runs.tsv` already has the completed rows. `compute_summary()` only counts rows with `gates_passed=6/6` so partial runs are auto-excluded. Restart `baseline.py` with the same `--evidence-root`; completed rows append cleanly. |
-| Stale TSV header (drift from a long-past schema) | Header was written manually or by an older `run.py` | `preflight.py --recipe 2` flags the drift. Fix the TSV header to match `run.py:SESSION_HEADERS` exactly, preserve data rows. |
-| Stuck `/tmp/devpulse-<uuid>` workspaces | Iteration crashed before teardown's workspace cleanup | `bash .claude/skills/autoresearch/scripts/teardown.sh` removes UUID-pattern workspaces; never touches non-UUID `/tmp/devpulse-*` paths like `/tmp/devpulse-venv`. |
-| Builder restored after teardown is stale | Teardown's restore copied stale state | `.autoresearch-bootstrap-state` records which builders bootstrap stopped. After teardown auto-restart, verify with `curl 127.0.0.1:<port>/api/dashboard/board`. If broken, stop and restart manually. |
+Required, every time — kept OR discarded OR crashed:
 
-**Hard rule for any recovery:** never hand-edit the TSV `decision` column to fake a "keep". The verdict is mechanical — if the iteration crashed, it's `crash`, period. Re-running the fix is cheaper than carrying a false win forward into the σ floor.
+```bash
+# 1. Regenerate visual map
+python3 .claude/skills/autoresearch/scripts/render_iterations.py
+
+# 2. Re-run introspection (does the loop pay for itself?)
+python3 .claude/skills/autoresearch/scripts/introspect.py
+
+# 3. OPTIMIZE_IDEAS.md — confirm the idea's attempt marker was appended:
+#    > attempted: <decision> (<reason>, YYYY-MM-DD)
+#    loop.py does this automatically; on crash, append manually.
+
+# 4. On KEEP that shipped (merged to main):
+#    - tick the relevant ROADMAP `[x]` if the iteration closed a milestone item.
+#    - update STATUS.md Recent Decisions with composite delta + branch name.
+#    - CHANGELOG entry under "Changed" + "Validation".
+#    - single commit + push.
+#
+#    On DISCARD or CRASH: no roadmap/status changes. Just the closeout regen above.
+
+# 5. Universal closeout freshness sweep (Hard Rule 2) — run before considering this lane closed.
+#    Especially important on KEEP: a shipped optimization often changes prompt shape or
+#    runtime policy, which means METRICS.md / HARNESS.md / README.md may now describe
+#    stale measurements. If sweep finds drift, switch to Fix lane to update the docs
+#    in the same propagation chain as the merge commit.
+```
+
+**Hard rule:** never hand-edit `optimize_results.tsv decision` columns to fake a keep. The verdict is mechanical — if it crashed it's `crash`, if compare returned `discard` it's `discard`. Re-running is cheaper than carrying a false win into the σ floor.
+
+---
+
+## Lane 3 — Fix
+
+**Purpose:** source-patch a defect the loop surfaced but cannot patch itself. The loop is a measurement instrument; when measurement reveals a contract bug in Builder source, harness scripts, or autoresearch docs, this lane drives the fix + the full propagation chain.
+
+### When to choose this lane
+
+- The loop's preflight, baseline.py, or compare.py reports a contract violation (`session_scoped is False`, schema drift between TSV header and writer, anchor drift in extractor, malformed analyze.json shape).
+- STATUS Recent Decisions or `docs/autoresearch/NEXT-SESSION.md`-style handoffs name a specific source defect blocking the loop.
+- A kept iteration exposes a generalizable bug in Builder source that other agents will hit.
+- The operator types "fix the gap", "address the blocker", or names a specific defect.
+
+### Preflight
+
+```bash
+python3 .claude/skills/autoresearch/scripts/preflight.py --json
+```
+
+Lane-specific hard requirements (refuse to start until all three are satisfied):
+
+- A **named gap source** — file:line, contract name, or handoff doc that names the defect. Fix lane refuses to start on vague intent. If the operator's prompt doesn't name one, ask via AskUserQuestion before proceeding.
+- A **clean git state** — Fix lane creates real commits on `master` (or the active feature branch); a dirty tree means uncommitted prior work that must be resolved first.
+- A **ROADMAP entry written before any code edit.** Per Hard Rule 1, the ROADMAP line lands *first*. If the existing ROADMAP has no home for this fix, add the line (typically under M2.3 for cost-aware-execution / telemetry / contract defects, M3.5 for autoresearch-loop-internal defects) and commit nothing else until the line exists. The line stays `[ ]` until the Closeout tick — but writing it is a precondition, not a closeout step.
+
+### Do
+
+Follow [`docs/goal/FIX-STANDARD.md`](../../../docs/goal/FIX-STANDARD.md): memory → explore → triggers → SDK grounding → correct layer → verify → record → memory write. Specific to autoresearch defects:
+
+1. **Diagnose** — read the evidence, not the hypothesis. The handoff or symptom may misattribute the cause (e.g., 2026-05-23 telemetry-gap was hypothesized as chat-event persistence; actual root cause was aggregate scope in `_runtime_aggregates`).
+2. **Choose the layer** — Builder source (most contract defects), harness script (schema/anchor drift in `scripts/autoresearch/`), or autoresearch doc (stale contract description in `docs/autoresearch/`). Almost never all three.
+3. **Implement the smallest correct fix** per FIX-STANDARD. Don't expand surface area.
+4. **Tests** — new unit/integration test that fails without the fix and passes with it. Existing tests stay green.
+5. **Verify** — `pytest` on the touched suite + neighboring suites; for telemetry/contract fixes also run a real `builder logs analyze --session <id> --full --json` against a recent session and inspect the changed field.
+
+### Closeout — the propagation chain
+
+This is the discipline payload of Fix lane. Every Fix lane closeout MUST do all of:
+
+1. **ROADMAP tick** — find the relevant `[ ]` line, tick `[x]` with evidence pointer, date `*(YYYY-MM-DD)*`. If no line exists, add one *before* the tick (Hard Rule 2: everything maps to ROADMAP). Common homes: M1.x (defect closure), M2.3 (cost-aware execution / telemetry honesty), M3.5 (autoresearch-loop-internal).
+2. **STATUS.md Recent Decisions** — one line at the top of Recent Decisions: `**YYYY-MM-DD** — <one-sentence what + why + evidence pointer>`. Update `Last Update` field too.
+3. **CHANGELOG entry** — full Added/Changed/Fixed/Validation sections per Keep-a-Changelog. Date heading at top.
+4. **`docs/autoresearch/` contract docs** — if the fix changes a contract the loop depends on:
+   - `README.md` activation block — append a dated line naming the fix.
+   - `METRICS.md` — update the affected row(s) and any source-by-source field listing.
+   - `HARNESS.md` — update composite formula notes, TSV row semantics, or the harness preflight assertions.
+   - `OPTIMIZE.md` / `COMPARE.md` — only if the loop contract itself shifted.
+5. **Truncate poisoned data** — if the fix invalidates prior measurements (e.g., session-scope change means pre-fix baseline σ is no longer comparable), truncate the affected TSVs to header-only so the next Baseline run starts on honest signal. Files:
+   - `docs/autoresearch/baseline_runs.tsv`
+   - `docs/autoresearch/optimize_results.tsv`
+   - `docs/autoresearch/per_prompt_results.tsv`
+   - `docs/autoresearch/baseline_runs_summary.json` (delete; baseline.py will regenerate)
+6. **Single commit** — all of the above in one commit per Hard Rule 13 from `docs/goal/README.md`. Message format: `fix(<area>): <one-line summary> (unblocks <next>)`.
+7. **Push** — Hard Rule 12: a `[x]` is not closed until pushed.
+8. **Retire handoff docs** — if a `NEXT-SESSION.md` or similar one-shot doc triggered the Fix, delete it as the last step.
+9. **Tell the operator** which lane to run next. Typically: Baseline if the fix changed prompt shape or aggregate semantics (pre-fix σ-floor invalid); Iterate if the fix was harness-only and prior measurements remain comparable.
+
+### Worked example — 2026-05-23 telemetry-honesty fix (commit `a3354c2`)
+
+- **Gap named:** `docs/autoresearch/NEXT-SESSION.md` reported `prompt_count=1, agent_name=None` in autoresearch-spawned `analyze.json` despite 50-min runs.
+- **Diagnosis differed from hypothesis.** Handoff blamed chat-event persistence; actual root cause was `_runtime_aggregates()` reading `agent_runs` globally with no session filter.
+- **Layer:** Builder source (`cli/commands/logs.py` + `db/models.py` + `db/session.py` + `services/sprint_execution.py` + `embedded/server/agent_sprint_planning.py`) + harness (`scripts/autoresearch/run.py`) + 1 test file.
+- **Closeout propagation** (this template):
+  - ROADMAP M2.3 line ticked `[x]` with test-name evidence.
+  - STATUS Recent Decisions + Last Update updated.
+  - CHANGELOG dated entry with Added/Changed/Fixed/Validation/Notes.
+  - `docs/autoresearch/README.md` activation block — appended 2026-05-23 telemetry-honesty line.
+  - `docs/autoresearch/METRICS.md` — `prompt_count` row clarified (= operator turns, not model calls); session-scoping flag documented; `by_agent` named as canonical per-agent source.
+  - `docs/autoresearch/HARNESS.md` — composite formula notes added; `session_scoped` assertion added; per-agent TSV-row semantics documented.
+  - TSVs truncated to header-only (pre-fix measurements poisoned).
+  - Single commit `a3354c2`, pushed.
+  - `NEXT-SESSION.md` retired.
+  - Next lane: Baseline (telemetry surface changed; σ-floor must be recomputed).
+
+---
 
 ## Common gotchas (collected from v1 setup)
 
@@ -303,34 +361,22 @@ These cost real time on the v1 first-fixture-A test. Doing them right the first 
 
 | Gotcha | Why it bites | Fix / discipline |
 | --- | --- | --- |
-| Invoking harness scripts from the wrong CWD | `cd scripts/autoresearch && python3 scripts/autoresearch/run.py` resolves as nested path. Script not found, exits immediately. | Always invoke from repo root. `bootstrap.sh` and `teardown.sh` derive the repo root from `BASH_SOURCE`; you should do the same in your shell scripts. |
-| Empty `follow_ups` list on a fixture | Builder surfaces multiple intake/approval questions per feature. An empty `follow_ups` list stalls the run. | Use `default_answer: "recommended"` (now baked into run.py's question loop). All unanswered questions get auto-approved. |
-| Workspace stack mismatch | Harness defaults to `npm run build && test`; if the workspace is Python, the gate silently fails. | `preflight.py --recipe N` now detects via `package.json` vs `pyproject.toml`. Extend `run_feature_check()` in `run.py` for Go/Rust/etc. |
-| Jaeger image tag drift | Docker Hub removes old tags. `1.62` was stale when we set up; the compose file errored on pull. | `bootstrap.sh` pre-pulls explicitly and reports the failure with a link to query Docker Hub for current tags. |
-| WSL2 + Docker bridge networking dropping port forwarding | Container UP, but `127.0.0.1:16686` from WSL host doesn't reach it. | `docker-compose.yml` uses `network_mode: host` — the container's listeners appear directly on the WSL host. |
-| Live builder bound to OTEL ports | Two daemons can't share `:4318`. Existing builder on devpulse blocks Jaeger startup. | `bootstrap.sh --auto-free-ports` detects builder processes on OTEL ports, prompts/stops them, and records state to `.autoresearch-bootstrap-state` for teardown to restart. |
-| Docker daemon group membership | First-time sudo for `usermod -aG docker $USER` + `chmod 666 /var/run/docker.sock`. Without it, all docker commands fail "permission denied". | One-time setup, then never again. `bootstrap.sh` distinguishes "daemon down" from "no socket access" and prints the right remedy. |
-| OneCLI auth not loaded | `CLAUDE_CODE_OAUTH_TOKEN` isn't readable in the spawned `builder start` env. | NOT an autoresearch concern (per memory: `project_autoresearch_auth_scope.md`). Whatever auth Builder is configured for, the harness uses transparently. |
-| TSV header drift | `run.py:SESSION_HEADERS` and `optimize_results.tsv` / `baseline_runs.tsv` headers can diverge across script versions. Silent corruption. | `preflight.py --recipe N` now verifies alignment via the canonical writer schema. Caught the drift before our 2nd fixture-A test. |
+| Invoking harness scripts from the wrong CWD | `cd scripts/autoresearch && python3 scripts/autoresearch/run.py` resolves as nested path. Script not found. | Always invoke from repo root. `bootstrap.sh` / `teardown.sh` derive root from `BASH_SOURCE`; do the same in your shell scripts. |
+| Empty `follow_ups` list on a fixture | Builder surfaces multiple intake/approval questions. Empty list stalls the run. | `default_answer: "recommended"` (baked into run.py's question loop) auto-approves unanswered questions. |
+| Workspace stack mismatch | Harness defaults to `npm run build && test`; against a Python app the gate silently fails. | `preflight.py --recipe N` detects via `package.json` vs `pyproject.toml`. Extend `run_feature_check()` in `run.py` for Go/Rust/etc. |
+| Jaeger image tag drift | Docker Hub removes old tags. | `bootstrap.sh` pre-pulls explicitly and surfaces the failure with a tag-lookup link. |
+| WSL2 + Docker bridge networking | Container UP but `127.0.0.1:16686` unreachable from WSL host. | `docker-compose.yml` uses `network_mode: host` — listeners appear directly on the WSL host. |
+| Live builder bound to OTEL ports | Two daemons can't share `:4318`. | `bootstrap.sh --auto-free-ports` detects + offers to stop conflicting processes; records state for teardown to restart. |
+| Docker daemon group membership | First-time `usermod -aG docker $USER` + `chmod 666 /var/run/docker.sock`. | `bootstrap.sh` distinguishes "daemon down" from "no socket access" and prints the right remedy. |
+| OneCLI auth not loaded | `CLAUDE_CODE_OAUTH_TOKEN` not in the spawned `builder start` env. | NOT an autoresearch concern (memory: `project_autoresearch_auth_scope.md`). Harness uses whatever auth Builder has. |
+| TSV header drift | `run.py:SESSION_HEADERS` and the TSV header diverge across versions. Silent corruption. | `preflight.py --recipe N` verifies alignment via the canonical writer schema. |
+| Stuck `/tmp/devpulse-<uuid>` workspaces | Iteration crashed before teardown's workspace cleanup. | `teardown.sh` removes UUID-pattern workspaces only; never touches `/tmp/devpulse-venv` etc. |
 
 ## Visual iteration map — `docs/autoresearch/iterations.html`
 
-A single-file static HTML page that visualizes baseline + every iteration's verdict, composite delta, 6-hard-gate status, and A→E promotion. Designed per Dieter Rams (minimal chrome, generous whitespace, no decoration) and Edward Tufte (maximize data-ink, small multiples, sparklines, no chartjunk).
+Single-file static page that visualizes baseline + every iteration's verdict, composite delta, 6-hard-gate status, A→E promotion. Reads `iterations.json` first, then the embedded `window.ITERATIONS` block as fallback (for `file://` viewing).
 
-The page reads two data sources at load time:
-
-1. `docs/autoresearch/iterations.json` — preferred, written by the regenerator.
-2. Embedded `window.ITERATIONS` block inside the HTML — fallback when the JSON is unreachable (e.g., opening from `file://` without a server).
-
-**Regenerator: `scripts/render_iterations.py` (bundled with this skill).** Runs as part of every iteration closeout (Recipe 1 step 7 and Recipe 2 step 3). It:
-
-- Reads `optimize_results.tsv` and groups rows by iteration branch (`autoresearch/iter-N-<ref>`).
-- Reads `baseline_runs_summary.json` for mean / σ / 2σ noise floor.
-- Computes per-iteration verdict, composite delta in % and σ units, 6-gate pass mask, A→E promotion status, and diff size (via `git diff --shortstat`).
-- Writes `iterations.json` (production fetch path) AND rewrites the embedded block in `iterations.html` between the `// __ITERATIONS_DATA_START__` and `// __ITERATIONS_DATA_END__` markers (so `file://` viewing still works).
-- Preserves all other content in `iterations.html` (CSS, render code, example fallback data, comments) verbatim across regenerations.
-
-Operator command:
+**Regenerator:** `scripts/render_iterations.py`, bundled with this skill. Runs as part of every Baseline + Iterate closeout. Reads `optimize_results.tsv` + `baseline_runs_summary.json`, computes per-iteration verdict + composite delta in % + σ units, writes `iterations.json` and rewrites the embedded data block between `// __ITERATIONS_DATA_START__` and `// __ITERATIONS_DATA_END__`.
 
 ```bash
 python3 .claude/skills/autoresearch/scripts/render_iterations.py            # write json + html
@@ -338,82 +384,94 @@ python3 .claude/skills/autoresearch/scripts/render_iterations.py --dry-run  # re
 python3 .claude/skills/autoresearch/scripts/render_iterations.py --json-only # skip html rewrite
 ```
 
-**Do not hand-edit `iterations.html`.** The render code, CSS, and structural markers (`__ITERATIONS_DATA_START__` / `__ITERATIONS_DATA_END__`) are the contract the regenerator depends on. If the visualization needs to change shape, edit the template once in the skill's repo and let the next regeneration propagate.
+**Do not hand-edit `iterations.html`.** Layout, CSS, render code, and the structural markers are the contract the regenerator depends on. To change shape, edit the skill's template once and let the next regeneration propagate.
 
 ## Self-introspection — `docs/autoresearch/INTROSPECTION.md`
 
-The skill bundles `scripts/introspect.py` to answer the meta-question: **does the loop pay for itself?** It runs after `render_iterations.py` in every iteration closeout and writes (overwrites) `docs/autoresearch/INTROSPECTION.md`. Git history of the file is the canonical record of how the loop evolved.
+`scripts/introspect.py` answers the meta-question: **does the loop pay for itself?** Runs as part of every Baseline + Iterate closeout; overwrites `INTROSPECTION.md`. Git history is the canonical record.
 
-What the report covers:
+Sections: token economics (which agent costs most); cumulative loop ROI ($ spent vs composite savings); what worked / didn't / redundant / noisy; KB-grounded leads from pinned `workflow knowledge` queries; lean recommendations ranked by `(expected token reduction × applicability)`.
 
-1. **Token economics** — total non-cached+output tokens consumed across all iterations; top-5 agents by cumulative cost. Identifies the *highest-leverage* targets for future lean ideas (improving cache hit rate on a 60%-of-cost agent beats improving a 5%-of-cost agent by the same percentage).
-2. **Cumulative loop ROI** — total $ spent (summed from `per_prompt_results.tsv.cost_usd`) vs cumulative composite savings. Surfaces break-even: "after N future feature ships, the loop has earned back what it cost".
-3. **What worked / didn't / redundant / noisy** — kept iterations, discard reasons grouped, hard gates that never discriminated (= wasted evaluation), fixtures with σ/mean > 25% (= wasted runs).
-4. **KB-grounded leads** — `workflow knowledge search` results across pinned token-cost / cache / context-engineering queries. Surfaces relevant articles the operator can read for the next iteration's idea selection. KB queries are intentionally pinned (not goal-audit's "what's next?" job) so the report is stable iteration to iteration and a new article landing in the KB stands out.
-5. **Lean recommendations** — ranked by `(expected token reduction × applicability)`. Each item points at a specific Builder source path / harness file with a concrete change.
-
-`introspect.py` is **tolerant of malformed data**: if a TSV column drifts out of sync with the writer schema (we hit this in v1 testing — `run.py`'s `SESSION_HEADERS` didn't match the existing TSV header), the introspection script still completes and surfaces the drift as the highest-priority recommendation. Never silently truncates.
+Tolerant of malformed data — TSV column drift surfaces as the highest-priority recommendation rather than crashing.
 
 ```bash
 python3 .claude/skills/autoresearch/scripts/introspect.py             # write + stdout summary
 python3 .claude/skills/autoresearch/scripts/introspect.py --quiet     # write only
-python3 .claude/skills/autoresearch/scripts/introspect.py --stdout-only  # don't overwrite INTROSPECTION.md
+python3 .claude/skills/autoresearch/scripts/introspect.py --stdout-only  # don't overwrite
 python3 .claude/skills/autoresearch/scripts/introspect.py --skip-kb   # skip workflow knowledge queries
 ```
 
 ## Reading order for a fresh session
 
-When this skill activates, follow exactly this read order to build context:
+After lane choice, build context in this order:
 
-1. **`docs/autoresearch/README.md`** — current activation status; check Prerequisites section for what's open/closed today.
-2. **`docs/autoresearch/OPTIMIZE.md`** — the loop contract (composite formula, 6 hard gates, allowlist policy, stop conditions).
-3. **`docs/autoresearch/OPTIMIZE_IDEAS.md`** — find the top unattempted idea; this is the candidate for the next iteration.
-4. **`docs/autoresearch/HARNESS.md`** — only if you need to debug or extend a harness script.
-5. **`docs/autoresearch/COMPARE.md`** — only if you need to interpret a `decision: discard` JSON verdict.
+1. **`docs/autoresearch/README.md`** — activation status; what's open/closed today.
+2. **`docs/autoresearch/OPTIMIZE.md`** — loop contract (composite formula, 6 hard gates, allowlist policy, stop conditions). Iterate + Baseline lanes both depend on this.
+3. **`docs/autoresearch/OPTIMIZE_IDEAS.md`** — Iterate lane only; find the top unattempted idea.
+4. **`docs/autoresearch/HARNESS.md`** — only if debugging or extending a harness script (Fix lane on harness defects).
+5. **`docs/autoresearch/COMPARE.md`** — Iterate lane only; interpret `decision: discard` verdicts.
+6. **`docs/autoresearch/METRICS.md`** — Fix lane on telemetry defects.
 
-Do not read METRICS.md / CONTEXT-LEDGER.md / SDK-OBSERVABILITY.md / GAPS.md unless extending the harness itself — they are reference docs for the v1 author, not for loop operators.
+Do not read `CONTEXT-LEDGER.md` / `SDK-OBSERVABILITY.md` / `GAPS.md` unless extending the harness itself.
 
-## Files this skill MAY edit
+## Files this skill MAY edit (by lane)
 
-- `docs/autoresearch/OPTIMIZE_IDEAS.md` — append new ideas; mark attempted/kept/discarded.
-- `docs/autoresearch/baseline_variance.md` — append observed σ table after `baseline.py` completes (already done by baseline.py, but the skill may add prose context).
-- `docs/autoresearch/baseline_runs.tsv` / `optimize_results.tsv` / `per_prompt_results.tsv` — append-only via the scripts; never hand-edit rows.
-- `docs/autoresearch/baseline_runs_summary.json` — overwritten by baseline.py; never hand-edit.
-- `docs/autoresearch/iterations.json` — overwritten by render_iterations.py; never hand-edit.
-- `docs/autoresearch/iterations.html` — only the embedded data block between the `__ITERATIONS_DATA_START__` / `__ITERATIONS_DATA_END__` markers is rewritten by render_iterations.py. Layout / CSS / render code is preserved and should never be hand-edited (edit the skill's template instead).
-- `docs/goal/STATUS.md` Recent Decisions — one-liner after a kept iteration ships, with the composite delta and the branch name.
-- `docs/goal/ROADMAP.md` § M3.5 — tick `[x]` on activation milestones as they close.
+- **Baseline lane:**
+  - `docs/autoresearch/baseline_runs.tsv` / `baseline_runs_summary.json` (append-only via baseline.py; never hand-edit rows).
+  - `docs/autoresearch/baseline_variance.md` — append observed σ context.
+  - `docs/autoresearch/iterations.json` / `iterations.html` (data block only) — via render_iterations.py.
+  - `docs/autoresearch/INTROSPECTION.md` — via introspect.py.
+  - `docs/goal/STATUS.md` Recent Decisions — append baseline result line.
+
+- **Iterate lane:**
+  - `docs/autoresearch/OPTIMIZE_IDEAS.md` — add new ideas + attempt markers.
+  - `docs/autoresearch/optimize_results.tsv` / `per_prompt_results.tsv` (append-only via run.py / loop.py).
+  - `docs/autoresearch/iterations.json` / `iterations.html` (data block only).
+  - `docs/autoresearch/INTROSPECTION.md`.
+  - On kept-and-shipped iterations only: `docs/goal/ROADMAP.md` (tick `[x]`), `docs/goal/STATUS.md` (Recent Decisions), `CHANGELOG.md`.
+
+- **Fix lane:**
+  - `docs/goal/ROADMAP.md` (add line + tick), `docs/goal/STATUS.md` (Recent Decisions + Last Update), `CHANGELOG.md`.
+  - `docs/autoresearch/README.md` / `METRICS.md` / `HARNESS.md` — when the fix changes a documented contract.
+  - The TSV files — truncate to header-only when prior measurements are invalidated by the fix.
+  - `src/autonomous_agent_builder/**` or `scripts/autoresearch/*.{py,sh,yml}` per FIX-STANDARD.
+  - Tests under `tests/`.
 
 ## Files this skill MUST NEVER edit
 
-- `docs/autoresearch/{README,OPTIMIZE,METRICS,HARNESS,COMPARE,SDK-OBSERVABILITY,CONTEXT-LEDGER,GAPS,fixtures}.md` — contracts, owned by the v1 author / human review. If you need to evolve a contract, write a v2 spec proposal in INSIGHTS.md instead.
-- `scripts/autoresearch/*.{py,sh,yml}` — harness source; only edit when fixing a script-level bug. Optimization ideas operate on Builder source, not the harness.
-- `src/autonomous_agent_builder/` — never edited by this skill directly. Edits happen as part of an iteration, and `loop.py` hands them to the operator. The skill orchestrates; the human writes the code per the idea's allowlist.
+- `docs/autoresearch/{OPTIMIZE,COMPARE,SDK-OBSERVABILITY,CONTEXT-LEDGER,GAPS,fixtures}.md` — stable contracts; if one must evolve, that's a separate Fix lane closeout including a versioning discussion.
+- `src/autonomous_agent_builder/` from inside Iterate lane — those edits happen as part of the operator's idea attempt, on the iteration branch, not as a skill-driven edit on master.
+- `optimize_results.tsv decision` column — never hand-edit; the verdict is mechanical.
+- `.seed/devpulse/` — immutable after capture.
 
 ## Failure modes & escalation
 
 | Symptom | Likely cause | Action |
 | --- | --- | --- |
-| `setup_seed.sh` says "source devpulse not found" | `~/Builder-Workspace/devpulse` missing or moved | Confirm the canonical workspace path with the operator; pass `--src` to the script |
-| `baseline.py` reports `status=unstable` for a fixture (<3 clean runs) | Timing-fragile fixture or quota interruption | Re-run only the unstable fixture: `baseline.py --fixtures D --n 5 --evidence-root .../retry` |
-| `compare.py` returns `decision: crash, reason: no_baseline` | `baseline_runs_summary.json` missing or fixture row missing | Run Recipe 1 step 5 first |
-| `loop.py` repeatedly picks the same idea | OPTIMIZE_IDEAS.md attempted marker not applied | Check the idea's section — the marker is `> attempted: <decision> (<reason>, <date>)` appended below the idea body. Add it manually if needed. |
-| Every candidate `discard` with `composite_within_2sigma` | Baseline σ too wide; iteration not meaningful | Re-run baseline with N=10 to tighten σ, or pick higher-impact ideas |
-| `extract_context_breakdown.py` reports `unattributed_tokens > 10%` | Prompt assembly anchor drift (a header was renamed) | Check `extractor_warnings.log` and update the `ANCHORS` table in the extractor to match the new prompt structure |
-| `iterations.html` shows example data after a real iteration ran | Closeout step skipped — `render_iterations.py` was not invoked | Run the closeout: `python3 .claude/skills/autoresearch/scripts/render_iterations.py`. If still empty, check `optimize_results.tsv` actually has rows tagged `branch=autoresearch/iter-N-…` in the `notes` column. |
-| `render_iterations.py` reports 0 iterations despite TSV rows | Branch tag missing from `notes` column (older rows or run.py change) | The script keys on `branch=autoresearch/iter-N-<ref>` in the `notes` field. Older rows without that tag are silently skipped — backfill or accept the gap. |
+| `analyze.json.runtime_aggregates.session_scoped is False` | DB predates `tasks.chat_session_id` migration (M2.3). | Switch to Fix lane — restore the FK + scoping; per Hard Rule 8 nothing else can proceed. |
+| `setup_seed.sh` says "source devpulse not found" | `~/Builder-Workspace/devpulse` missing or moved. | Confirm canonical workspace path; pass `--src` to the script. |
+| `baseline.py` reports `status=unstable` for a fixture (<3 clean runs) | Timing-fragile fixture or quota interruption. | Re-run only that fixture: `baseline.py --fixtures D --n 5 --evidence-root .../retry` |
+| `compare.py` returns `decision: crash, reason: no_baseline` | `baseline_runs_summary.json` missing. | Run Baseline lane first. |
+| `loop.py` repeatedly picks the same idea | Attempt marker not applied. | The marker is `> attempted: <decision> (<reason>, <date>)` appended below the idea body. Add manually if needed. |
+| Every candidate `discard` with `composite_within_2sigma` | Baseline σ too wide. | Re-run Baseline with N=10 to tighten σ, or pick higher-impact ideas. |
+| `extract_context_breakdown.py` reports `unattributed_tokens > 10%` | Prompt-assembly anchor drift. | Switch to Fix lane — update `ANCHORS` table in the extractor to match the new prompt structure. |
+| `iterations.html` shows example data after a real iteration ran | Closeout step skipped. | Run `render_iterations.py`. If still empty, check `optimize_results.tsv` rows have `branch=autoresearch/iter-N-…` in `notes`. |
+| TSV row with garbage cells | Schema drift between `run.py:SESSION_HEADERS` and the TSV header. | Switch to Fix lane — align headers; delete the corrupt row. |
+| `loop.py` Ctrl-C'd mid-iteration | Operator interrupt; branch still exists. | `git status` → find `autoresearch/iter-*` branch → `git checkout main && git branch -D <branch>` → append `> attempted: interrupted` to the idea. |
+| `baseline.py` quota-failed mid-run | Provider rate limit. | `compute_summary()` only counts `gates_passed=6/6` rows so partial runs auto-excluded. Restart with same `--evidence-root`; completed rows append cleanly. |
 
-When unsure, stop and surface the state to the operator via `AskUserQuestion`. Do not silently expand `--max-iterations` or `--cost-budget-usd` or skip a hard gate.
+When unsure, stop and surface state via `AskUserQuestion`. Do not silently expand `--max-iterations` / `--cost-budget-usd` or skip a hard gate.
 
 ## Cross-references
 
-- Roadmap home: [`docs/goal/ROADMAP.md` § M3.5](../../../docs/goal/ROADMAP.md)
-- Activation rationale: [`docs/autoresearch/README.md`](../../../docs/autoresearch/README.md)
+- Roadmap home: [`docs/goal/ROADMAP.md` § M3.5](../../../docs/goal/ROADMAP.md) (autoresearch activation) and § M2.3 (cost-aware execution surface — Fix lane's most frequent home).
+- Activation status: [`docs/autoresearch/README.md`](../../../docs/autoresearch/README.md).
+- Fix procedure: [`docs/goal/FIX-STANDARD.md`](../../../docs/goal/FIX-STANDARD.md).
 - Related skills:
-  - `goal-audit` — reorders OPTIMIZE_IDEAS.md based on session intent + autoresearch focus signals; do NOT duplicate that here, but check its INSIGHTS output before picking the next idea
-  - `roadmap-audit` — flags SDK levers that should trigger a re-baseline when they flip from `[ ]` to `[x]`
-  - `knowledge-base` — refreshes the Claude Agent SDK rubric that those audits consume
+  - `goal-audit` — reorders `OPTIMIZE_IDEAS.md` based on session intent + autoresearch focus signals; check its INSIGHTS output before Iterate.
+  - `roadmap-audit` — flags SDK levers that should trigger re-baseline when flipped `[ ]` → `[x]`.
+  - `knowledge-base` — refreshes the Claude Agent SDK rubric those audits consume.
 
 ## Why this skill exists (one paragraph)
 
-The autoresearch loop is the only Builder workflow whose value compounds with iteration count — every kept change improves the substrate that all future iterations run on. But it's also the workflow most prone to operator drift: forgetting to honor the 2σ gate, hand-editing TSV rows, picking ideas out of order, skipping the A→E promotion. This skill is the discipline layer. It locks the operator into the contract specified in `docs/autoresearch/`, surfaces the next concrete action from `OPTIMIZE_IDEAS.md`, and refuses to let the loop fall back into ad-hoc tuning.
+The autoresearch loop is the only Builder workflow whose value compounds with iteration count — every kept change improves the substrate all future iterations run on. But it's also the workflow most prone to operator drift: forgetting the 2σ gate, hand-editing TSV rows, picking ideas out of order, skipping A→E promotion, and — most expensively — running iterations on a contract-broken substrate (the 2026-05-23 telemetry-gap case). This skill is the discipline layer. One entry point, three lanes, each with explicit preflight and closeout. The Fix lane exists because the loop is a measurement instrument that occasionally needs its measurement contract repaired before any further measurement is meaningful.
