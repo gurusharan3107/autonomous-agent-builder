@@ -72,16 +72,27 @@ Noise floor (composite, 2σ):
 
 ## Recorded baselines
 
-Run date: 2026-05-23
+### 2026-05-23 (initial N=5 fixture A) — main @ `2599d3b35a07`
 
-| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
-| --- | --- | --- | --- | --- | --- |
-| A | unstable | 0/1 | — | — | — |
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor | CV |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | stable | 3/5 | 216,497 | 31,831 | 152,835 | 14.7% |
+| B | retired — see seed-drift entry below |
+| C | not measured | — | — | — | — | — |
+| D | not measured | — | — | — | — | — |
+| E | not measured | — | — | — | — | — |
 
-## Recorded baselines
+Composite = `noncached_plus_output_tokens` (P16, 2026-05-23).
 
-Run date: 2026-05-23
+### Seed drift — 2026-05-23 (pytest-asyncio fix)
 
-| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
-| --- | --- | --- | --- | --- | --- |
-| A | unstable | 0/1 | — | — | — |
+The original seed (sha256 `a9986867a2de…`) was missing `pytest-asyncio>=0.23.0` from `requirements.txt`, even though `pyproject.toml [tool.pytest.ini_options] asyncio_mode = "auto"` requires it and the `[project.optional-dependencies] dev` group declared it. The harness's `pip install -r requirements.txt` in `run_feature_check` therefore could not execute async tests — fixture B's "notes feature that persists between visits" prompts code-gen to generate `async def test_*` using `httpx.AsyncClient`, all of which silently failed → `feature_correct=False` on every fixture-B run.
+
+Fix: added `pytest-asyncio>=0.23.0` to upstream `~/Builder-Workspace/devpulse/requirements.txt` and re-captured the seed via `setup_seed.sh`. The new seed (sha256 `20af53c012f5…`) is the substrate for all baseline runs going forward.
+
+Drift impact:
+- All 5 pre-fix fixture-B rows in `baseline_runs.tsv` (and their per-prompt rows) were truncated — they measured a substrate defect, not Builder behavior, and aren't comparable to post-fix measurements.
+- Fixture A pre-fix data stays (fixture A doesn't generate async tests; `feature_correct` was True in 5/5 A runs irrespective of the pytest-asyncio absence).
+- Sanity check post-fix: bare-seed `pytest tests` runs 139 tests vs 107 pre-fix — pytest-asyncio was silently blocking 32 async tests in the seed itself.
+
+Next baseline action: re-baseline fixtures B–E (`baseline.py --fixtures B,C,D,E --n 5`).

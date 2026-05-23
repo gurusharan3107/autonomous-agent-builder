@@ -7,6 +7,38 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - Seed drift: pytest-asyncio dep added; fixture B unblocked
+
+### Diagnosis
+
+- **Root cause:** seed `pyproject.toml` declared `pytest-asyncio>=0.23.0` only under `[project.optional-dependencies] dev`, while `[tool.pytest.ini_options] asyncio_mode = "auto"` made the plugin a runtime requirement for any test suite containing `async def test_*`.
+- **Impact:** `~/Builder-Workspace/devpulse/requirements.txt` (which the harness's `run_feature_check` installs into a clean post-fast-forward `.venv`) did not list `pytest-asyncio`. Builder's code-gen agent installed it ad-hoc in its own task workspace (its own pytest output in `builder_stdout_stderr.log` showed all dots passing), but the harness's clean venv never got the plugin.
+- **Symptom:** fixture B's "notes feature with persistence" reliably generates async FastAPI tests (`httpx.AsyncClient` + `async def test_create_note`, etc). Without the plugin: async tests collected, treated as coroutines that pytest never awaits → exit code != 0 → `feature_correct=False`.
+- **Confirmation:** bare-seed pytest under the harness's exact invocation: 107 passed pre-fix vs 139 passed post-fix (plugin unlocks 32 async tests in the seed itself).
+- **Verdict:** seed/fixture defect, NOT a Builder bug. Builder's code-gen behavior was correct.
+
+### Changed
+
+- **`~/Builder-Workspace/devpulse/requirements.txt`** — added `pytest-asyncio>=0.23.0` (promoted from `[project.optional-dependencies] dev` group to runtime, since `asyncio_mode = "auto"` already makes it runtime-required).
+- **`~/.seed/devpulse/` (immutable snapshot)** — re-captured via `scripts/autoresearch/setup_seed.sh`. New sha256: `20af53c012f5901642082de8e55de73e88f3342ece66ab7362d264292148de40`. Prior: `a9986867a2de54da350a2430f42eb053cb737a43448bdc189e7f2a5ad78ce2f5`.
+- **`docs/autoresearch/baseline_runs.tsv`** — truncated 5 pre-fix fixture-B rows (run_ids: 98344624, bead0650, 3fad9297, c2d34c5d, 4d0fefc9). Those rows measured a substrate defect, not Builder behavior. Pre-fix fixture-A rows (5) retained — fixture A doesn't generate async tests, so its `feature_correct` values were unaffected by the missing plugin.
+- **`docs/autoresearch/per_prompt_results.tsv`** — truncated the 31 per-prompt rows attached to the removed B run_ids.
+- **`docs/autoresearch/baseline_runs_summary.json`** — regenerated. Fixture A unchanged (stable 3/5, μ=216,497, σ=31,831, 2σ-floor=152,835). Fixture B now absent — `render_iterations.py:parse_baseline` will surface it as `status=not_measured` until re-baselined.
+- **`docs/autoresearch/baseline_variance.md § Recorded baselines`** — replaced the prior duplicate "unstable 0/1" stub with a real recorded entry for fixture A + a new `§ Seed drift — 2026-05-23 (pytest-asyncio fix)` section documenting the dep gap, the truncation, and the sha256 transition.
+- **`docs/autoresearch/iterations.html` + `iterations.json`** — regenerated against the trimmed summary.
+- **`docs/autoresearch/INTROSPECTION.md`** — regenerated.
+
+### Validation
+
+- Bare-seed harness pytest invocation: `python -m pytest tests -q --no-header --ignore-glob='*playwright*' --ignore-glob='*test_github*'` → **139 passed** in 1.84s (pre-fix: 107 passed in 0.97s with `Unknown config option: asyncio_mode` warning).
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — exit 0.
+
+### Next operator action
+
+- `python3 scripts/autoresearch/baseline.py --fixtures B,C,D,E --n 5` — re-baseline the four promotion fixtures on the new seed. ~$25–50 + ~3–4 hours. Once stable across all five fixtures, the Iterate lane can run end-to-end (A win → A→E promotion).
+
+---
+
 ## 2026-05-23 - iterations.html — progress chart (replaces iteration-only sparkline)
 
 ### Changed

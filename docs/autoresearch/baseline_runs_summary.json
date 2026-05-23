@@ -8,11 +8,5 @@
     "min": 180235,
     "max": 239825,
     "noise_floor_2sigma": 152835.1341146837
-  },
-  "B": {
-    "status": "unstable",
-    "stable_runs": 0,
-    "total_runs": 4,
-    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
   }
 }

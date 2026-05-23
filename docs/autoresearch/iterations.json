@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-23T16:38:52Z",
+  "generated_at": "2026-05-23T17:12:18Z",
   "baseline": {
     "measured_at": "2026-05-23",
     "mean_composite": 216497,
@@ -20,9 +20,9 @@
       },
       {
         "id": "B",
-        "status": "unstable",
+        "status": "not_measured",
         "stable_runs": 0,
-        "total_runs": 4,
+        "total_runs": 0,
         "mean": null,
         "stdev": null,
         "noise_floor_2sigma": null,
@@ -128,62 +128,6 @@
         "composite": 195025,
         "noncached_plus_output_tokens": 195025,
         "cache_ratio": 2034.1084,
-        "chunk_pressure_risk": false
-      },
-      {
-        "run_id": "98344624-ba3f-4eb6-8463-f9fb358113fb",
-        "fixture": "B",
-        "timestamp": "2026-05-23T14:40:53Z",
-        "gates_passed": "5/6",
-        "feature_correct": false,
-        "status": "shipped",
-        "wallclock_s": 1515,
-        "operator_turns": 25,
-        "composite": 272852,
-        "noncached_plus_output_tokens": 272852,
-        "cache_ratio": 3720.4581,
-        "chunk_pressure_risk": false
-      },
-      {
-        "run_id": "bead0650-2f5b-4089-8b62-1d97eee6874f",
-        "fixture": "B",
-        "timestamp": "2026-05-23T15:31:43Z",
-        "gates_passed": "3/6",
-        "feature_correct": false,
-        "status": "incomplete",
-        "wallclock_s": 3030,
-        "operator_turns": 25,
-        "composite": 263647,
-        "noncached_plus_output_tokens": 263647,
-        "cache_ratio": 2625.1823,
-        "chunk_pressure_risk": false
-      },
-      {
-        "run_id": "3fad9297-5a85-4065-9ab7-b651af7a4d56",
-        "fixture": "B",
-        "timestamp": "2026-05-23T16:00:43Z",
-        "gates_passed": "5/6",
-        "feature_correct": false,
-        "status": "shipped",
-        "wallclock_s": 1713,
-        "operator_turns": 24,
-        "composite": 264645,
-        "noncached_plus_output_tokens": 264645,
-        "cache_ratio": 2474.7233,
-        "chunk_pressure_risk": false
-      },
-      {
-        "run_id": "c2d34c5d-f7bd-4abb-92a0-190c74f5d06b",
-        "fixture": "B",
-        "timestamp": "2026-05-23T16:19:18Z",
-        "gates_passed": "5/6",
-        "feature_correct": false,
-        "status": "shipped",
-        "wallclock_s": 1086,
-        "operator_turns": 24,
-        "composite": 226607,
-        "noncached_plus_output_tokens": 226607,
-        "cache_ratio": 1274.5474,
         "chunk_pressure_risk": false
       }
     ]
