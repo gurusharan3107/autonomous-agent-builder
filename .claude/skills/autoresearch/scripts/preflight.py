@@ -292,7 +292,7 @@ def check_git_state() -> Check:
         return Check("git state", "warn", "git unavailable or repo not initialized")
 
 
-def check_baseline_summary(recipe: int) -> Check:
+def check_baseline_summary(recipe: int, allow_unstable: bool = False) -> Check:
     path = REPO / "docs/autoresearch/baseline_runs_summary.json"
     if not path.exists():
         if recipe in (2, 3):
@@ -302,11 +302,29 @@ def check_baseline_summary(recipe: int) -> Check:
         return Check("baseline_runs_summary.json", "pass", "not yet produced (OK for Recipe 1)")
     try:
         data = json.loads(path.read_text())
-        unstable = [f for f, v in data.items() if isinstance(v, dict) and v.get("status") != "stable"]
-        if unstable:
-            return Check("baseline_runs_summary.json", "warn",
-                         f"present but {len(unstable)} fixture(s) unstable: {unstable}",
-                         fix="re-run baseline for unstable fixtures (see SKILL.md failure-mode table)")
+        # Treat both "unstable" rows and missing (not_measured) fixtures as
+        # not-stable for Iterate / Compare. promotion order is A→E; a missing
+        # fixture in the summary means render_iterations.py surfaces it as
+        # not_measured but loop.py will still hit a wall during A→E promotion.
+        all_fixtures = ["A", "B", "C", "D", "E"]
+        present_status = {f: (data.get(f) or {}).get("status") for f in all_fixtures}
+        not_stable = [f for f in all_fixtures if present_status[f] != "stable"]
+        if not_stable:
+            # Iterate-lane Hard Rule 8 ("Wins must promote A→E before merge")
+            # and lanes/iterate.md preflight Hard Requirements declare every
+            # fixture status=stable as a HARD precondition. Without it, any
+            # real fixture-A keep is guaranteed discard at A→E promotion
+            # because compare.py has no σ-floor for the next fixture. fail
+            # by default; require --allow-unstable-promotion to opt in.
+            severity = "warn" if allow_unstable or recipe not in (2, 3) else "fail"
+            detail = f"present but {len(not_stable)}/{len(all_fixtures)} fixture(s) not stable: {not_stable}"
+            fix = (
+                "re-run baseline for those fixtures: "
+                f"python3 scripts/autoresearch/baseline.py --fixtures {','.join(not_stable)} --n 5"
+            )
+            if allow_unstable:
+                fix += "  (currently degraded — --allow-unstable-promotion override active)"
+            return Check("baseline_runs_summary.json", severity, detail, fix=fix)
         return Check("baseline_runs_summary.json", "pass",
                      f"present, {len(data)} fixtures stable")
     except (OSError, json.JSONDecodeError) as exc:
@@ -368,11 +386,11 @@ def gather_soft_checks() -> list[Check]:
     ]
 
 
-def gather_recipe_checks(recipe: int) -> list[Check]:
+def gather_recipe_checks(recipe: int, allow_unstable: bool = False) -> list[Check]:
     if recipe in (2, 3):
         seed = check_path_exists("seed snapshot (required for recipe)", SEED_DST, hard=True,
                                   kind="immutable snapshot")
-        baseline = check_baseline_summary(recipe)
+        baseline = check_baseline_summary(recipe, allow_unstable=allow_unstable)
         return [seed, baseline, check_tsv_schema_alignment(), check_workspace_stack()]
     if recipe == 1:
         # Recipe 1 produces the seed and baseline; we still want to catch the
@@ -500,7 +518,7 @@ def main() -> int:
     report.hard = gather_hard_checks()
     report.soft = gather_soft_checks()
     if args.recipe is not None:
-        report.recipe_specific = gather_recipe_checks(args.recipe)
+        report.recipe_specific = gather_recipe_checks(args.recipe, allow_unstable=args.allow_unstable_promotion)
 
     out = format_json(report) if args.json else format_human(report)
     print(out)
@@ -512,6 +530,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--recipe", type=int, choices=[1, 2, 3, 4, 5], default=None,
                    help="Gate against a specific recipe's prereqs (see SKILL.md)")
     p.add_argument("--json", action="store_true", help="Machine-readable JSON output")
+    p.add_argument(
+        "--allow-unstable-promotion",
+        action="store_true",
+        help=(
+            "Downgrade the 'all fixtures status=stable' check from fail to warn. "
+            "Use only when knowingly iterating against a partial baseline; real "
+            "keeps cannot ship in this mode (A→E promotion will discard)."
+        ),
+    )
     return p.parse_args()
 
 

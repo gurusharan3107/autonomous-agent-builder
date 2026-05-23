@@ -552,8 +552,267 @@ def match_p10_respond_400(
     )
 
 
+def match_p11_p14_respond_409(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P11/P14: 409 Conflict on /api/agent/chat/respond.
+
+    Both P11 (chained 400→send_chat fallback→409) and P14 (direct 409 race
+    with Builder auto-handling the pending item) produce the same crash.log
+    line. Both fixes are now in run.py:825-839 — this matcher exists so the
+    next session sees "P11/P14 hit again" instead of rediscovering it.
+    """
+    del stuck, con, threads, sockets  # signature uniform across matchers
+    crash_log = (dump / "crash.log") if dump else None
+    text = ""
+    if crash_log and crash_log.exists():
+        try:
+            text = crash_log.read_text(errors="replace")
+        except OSError:
+            text = ""
+    if not text or "409" not in text or "chat/respond" not in text:
+        return None
+    # Distinguish P11 (chained) vs P14 (direct) by scanning the builder
+    # stdout/stderr log for a preceding 400 close in time.
+    log = ""
+    sl = dump / "builder_stdout_stderr.log"
+    if sl.exists():
+        try:
+            log = sl.read_text(errors="replace")[-40_000:]
+        except OSError:
+            log = ""
+    has_prior_400 = '"POST /api/agent/chat/respond HTTP/1.1" 400' in log
+    pid = "P11" if has_prior_400 else "P14"
+    return Match(
+        pattern_id=pid,
+        name=(
+            "send_chat→409 cascade after 400-respond (P11)"
+            if has_prior_400
+            else "Direct 409 on /api/agent/chat/respond; pending item auto-handled (P14)"
+        ),
+        confidence=0.92,
+        evidence=[
+            f"crash.log: {text.strip()[:200]}",
+            (
+                "builder_stdout_stderr.log shows prior 400 on /api/agent/chat/respond"
+                if has_prior_400
+                else "no prior 400 in builder_stdout_stderr.log — direct 409 race"
+            ),
+        ],
+        fix_pointer=(
+            "scripts/autoresearch/run.py main loop HTTPError handler — "
+            "ensure both `if status_code == 400: break` (P11) and "
+            "`elif status_code == 409: continue` (P14) branches exist. "
+            "Reserve `break` for 400 (payload rejected), `continue` for 409 "
+            "(session busy, poll again)."
+        ),
+    )
+
+
+def _repo_root_from_dump(dump: pathlib.Path) -> pathlib.Path:
+    """Walk up to find the repo root (has docs/autoresearch/) for substrate-pattern matchers.
+
+    Falls back to the script's own discovered repo if the dump path isn't under one.
+    """
+    here = pathlib.Path(__file__).resolve()
+    # .claude/skills/autoresearch/scripts/diagnose_hang.py → repo at parents[4]
+    return here.parents[4]
+
+
+def match_p15_composite_zero(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P15: composite=0 with non-zero noncached_plus_output_tokens in baseline_runs.tsv."""
+    del stuck, con, threads, sockets  # substrate matcher reads repo state, not dump
+    repo = _repo_root_from_dump(dump)
+    tsv = repo / "docs" / "autoresearch" / "baseline_runs.tsv"
+    if not tsv.exists():
+        return None
+    try:
+        lines = tsv.read_text(errors="replace").strip().splitlines()
+    except OSError:
+        return None
+    if len(lines) < 2:
+        return None
+    header = lines[0].split("\t")
+    try:
+        idx_comp = header.index("composite")
+        idx_nps = header.index("noncached_plus_output_tokens")
+    except ValueError:
+        return None
+    zero_rows = 0
+    inspected = 0
+    sample = ""
+    for row in lines[1:]:
+        cols = row.split("\t")
+        if len(cols) <= max(idx_comp, idx_nps):
+            continue
+        inspected += 1
+        try:
+            comp = int(cols[idx_comp] or 0)
+            nps = int(cols[idx_nps] or 0)
+        except ValueError:
+            continue
+        if comp == 0 and nps > 0:
+            zero_rows += 1
+            if not sample:
+                sample = f"{cols[0][:8]}: composite=0 but noncached_tokens={nps}"
+    if zero_rows == 0 or inspected == 0:
+        return None
+    return Match(
+        pattern_id="P15",
+        name="Composite formula reads wrong metrics key (composite=0)",
+        confidence=min(0.7 + 0.1 * zero_rows, 0.98),
+        evidence=[
+            f"baseline_runs.tsv has {zero_rows}/{inspected} rows with composite=0 and noncached>0",
+            sample,
+        ],
+        fix_pointer=(
+            "scripts/autoresearch/run.py composite site — read "
+            "metrics['optimization_summary'] (P12 contract), not "
+            "metrics['optimization']. Backfill existing rows from each run's "
+            "evidence metrics.json without re-running."
+        ),
+    )
+
+
+def match_p16_high_cv(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P16: σ/μ > 0.5 in baseline_runs_summary.json → 2σ-floor non-discriminating."""
+    del stuck, con, threads, sockets  # substrate matcher reads repo state, not dump
+    repo = _repo_root_from_dump(dump)
+    summary = repo / "docs" / "autoresearch" / "baseline_runs_summary.json"
+    if not summary.exists():
+        return None
+    try:
+        data = json.loads(summary.read_text())
+    except (ValueError, OSError):
+        return None
+    high_cv = []
+    for fid, stats in data.items():
+        if not isinstance(stats, dict):
+            continue
+        mean = stats.get("mean")
+        stdev = stats.get("stdev")
+        if not mean or stdev is None:
+            continue
+        cv = stdev / mean
+        if cv > 0.5:
+            high_cv.append((fid, mean, stdev, cv))
+    if not high_cv:
+        return None
+    high_cv.sort(key=lambda t: -t[3])
+    fid, mean, stdev, cv = high_cv[0]
+    return Match(
+        pattern_id="P16",
+        name="Composite formula compounds correlated noise (CV>50%)",
+        confidence=0.9,
+        evidence=[
+            f"baseline_runs_summary.json fixture {fid}: μ={int(mean)} σ={int(stdev)} CV={cv*100:.1f}%",
+            (
+                f"noise_floor_2sigma={int(mean - 2 * stdev)} "
+                f"(negative → 2σ gate useless)"
+                if mean - 2 * stdev < 0
+                else "noise floor positive but band exceeds μ — gate barely discriminates"
+            ),
+        ],
+        fix_pointer=(
+            "If the composite formula is multiplicative across correlated "
+            "dimensions (e.g., tokens × turns × wallclock), drop the "
+            "non-billed factors. With the fixture held constant, the cost "
+            "dimension alone (noncached_plus_output_tokens) is the right "
+            "composite. See scripts/autoresearch/run.py + 6 doc sites "
+            "(OPTIMIZE.md, METRICS.md, README.md, iterations.html, "
+            "baseline.py docstring, run.py)."
+        ),
+    )
+
+
+def match_p17_seed_dep_gap(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P17: fixture-X feature_correct=False on every row of that fixture (seed dep gap)."""
+    del stuck, con, threads, sockets  # substrate matcher reads repo state, not dump
+    repo = _repo_root_from_dump(dump)
+    tsv = repo / "docs" / "autoresearch" / "baseline_runs.tsv"
+    if not tsv.exists():
+        return None
+    try:
+        lines = tsv.read_text(errors="replace").strip().splitlines()
+    except OSError:
+        return None
+    if len(lines) < 2:
+        return None
+    header = lines[0].split("\t")
+    try:
+        idx_fix = header.index("fixture_id")
+        idx_fc = header.index("feature_correct")
+        idx_id = header.index("run_id")
+    except ValueError:
+        return None
+    by_fixture: dict[str, list[tuple[str, bool]]] = {}
+    for row in lines[1:]:
+        cols = row.split("\t")
+        if len(cols) <= max(idx_fix, idx_fc, idx_id):
+            continue
+        fid = cols[idx_fix]
+        fc = (cols[idx_fc] or "").strip().lower() in ("true", "1", "yes", "pass")
+        by_fixture.setdefault(fid, []).append((cols[idx_id], fc))
+    suspects = [
+        (fid, rows) for fid, rows in by_fixture.items()
+        if len(rows) >= 3 and not any(fc for _, fc in rows)
+    ]
+    if not suspects:
+        return None
+    # Look for a "passing" fixture to contrast
+    healthy = [fid for fid, rows in by_fixture.items() if any(fc for _, fc in rows)]
+    fid, rows = suspects[0]
+    return Match(
+        pattern_id="P17",
+        name=f"Fixture {fid} feature_correct=False on all {len(rows)} runs (seed dep gap)",
+        confidence=0.85 if healthy else 0.7,
+        evidence=[
+            f"baseline_runs.tsv: fixture {fid} has 0/{len(rows)} runs with feature_correct=True",
+            (
+                f"other fixtures pass: {healthy[:3]} — substrate isn't broken, "
+                f"fixture {fid}'s generated tests need a dep the harness can't see"
+                if healthy
+                else "no healthy fixture to compare; could be substrate-wide"
+            ),
+        ],
+        fix_pointer=(
+            "Diff devpulse seed's pyproject.toml [project.optional-dependencies] "
+            "dev list against requirements.txt. Anything required by "
+            "[tool.pytest.ini_options] (e.g., asyncio_mode=auto ⇒ "
+            "pytest-asyncio) MUST be in requirements.txt, not just dev. Builder's "
+            "code-gen agent installs ad-hoc in its task workspace; the harness's "
+            "clean post-FF venv only sees requirements.txt. Sanity test: "
+            "bare-seed pytest passing-count before vs after adding the suspected "
+            "plugin should jump (107 → 139 was the signal for pytest-asyncio)."
+        ),
+    )
+
+
 MATCHERS = [
-    match_p10_respond_400,            # very specific — check first
+    match_p11_p14_respond_409,        # very specific — check first
+    match_p10_respond_400,
     match_p9_sprint_merge_untracked_venv,
     match_p6_sprint_merge_venv,
     match_p5_sprint_merge_main,
@@ -561,6 +820,11 @@ MATCHERS = [
     match_p1_contract_drift,
     match_p2_free_text_scoping,
     match_p3_watchdog_false_positive,
+    # Substrate-state matchers (read repo TSVs + summary, not dump dir).
+    # Always check last so a real hang-dump match wins on confidence ordering.
+    match_p15_composite_zero,
+    match_p16_high_cv,
+    match_p17_seed_dep_gap,
 ]
 
 

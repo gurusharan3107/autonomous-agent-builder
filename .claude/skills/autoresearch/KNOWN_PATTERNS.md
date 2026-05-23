@@ -584,6 +584,79 @@ they reach production.
 
 ---
 
+## P15 — Composite formula reads wrong metrics key (composite=0 for every run)
+
+- **First seen:** 2026-05-23, post-P12 fixture-A N=5 baseline closeout
+- **Wallclock to repro:** appears across every baseline + iteration row in the TSV
+- **Status:** Fixed
+
+**Symptom.** Every baseline / iteration row in `docs/autoresearch/baseline_runs.tsv` and `optimize_results.tsv` has `composite=0` despite non-zero `noncached_plus_output_tokens` (column 9), non-zero `wallclock_s`, non-zero `operator_turns`. `baseline_runs_summary.json` shows `status=unstable, stable_runs=0` regardless of how many runs shipped at 6/6. `iterations.html` headline shows `mean=null, stdev=null, fixtures_stable=0`. `INTROSPECTION.md` says "No per-prompt rows yet" with 5+ real runs in the TSV.
+
+**Evidence query.**
+
+1. `baseline_runs.tsv` column 17 (composite) is `0` on rows where column 9 (noncached_plus_output_tokens) is non-zero.
+2. `baseline_runs_summary.json` `status="unstable"` for every fixture with `stable_runs=0` but raw TSV has multiple `gates_passed="6/6"` rows.
+3. `grep 'composite = int' scripts/autoresearch/run.py` shows `metrics.get("optimization")` instead of `metrics.get("optimization_summary")`.
+
+**Why it happens.** P12 fixed `evaluate_hard_gates` to read `metrics["optimization_summary"]` (the actual response key) but missed the parallel composite-computation site in `run.py:main`. The wrong key returns empty `{}`, so `noncached_plus_output_tokens` resolves to `0`, the product is `0`, and `baseline.py:compute_summary` filters every row out via `if r.get("composite")` (falsy for 0).
+
+**Fix pointer.** `scripts/autoresearch/run.py:main` composite calculation:
+- Read `metrics["optimization_summary"]` first with fallback to `metrics["optimization"]` (mirrors P12).
+- Composites in already-written TSV rows can be backfilled deterministically from each run's `metrics.json` without re-running.
+
+**Recurrence prevention.** Any time the metrics-response schema is renamed, grep all references to the old key in the harness. Adding a `freshness_sweep.py` check that the composite-formula site references `optimization_summary` would catch this at lane closeout.
+
+---
+
+## P16 — Composite formula compounds correlated noise (CV >50%, 2σ-floor negative)
+
+- **First seen:** 2026-05-23, fixture-A N=5 first end-to-end baseline
+- **Wallclock to repro:** appears once σ-floor is computed from any non-tiny baseline
+- **Status:** Fixed
+
+**Symptom.** Even with composites correctly computed, `baseline_runs_summary.json` shows σ comparable to or larger than μ (CV >50%). `2σ-floor` is negative (μ − 2σ < 0), meaning any candidate beats the noise band — the σ-gate is useless. `iterations.html` fixture card displays the CV pill in red.
+
+**Evidence query.**
+
+1. `baseline_runs_summary.json` → for any fixture, `stdev` ≥ `mean / 2`.
+2. `noise_floor_2sigma` is negative.
+3. Examine raw TSV: the 3+ stable runs span an order of magnitude on `composite` despite all hitting `gates_passed="6/6"`.
+4. `grep 'composite = ' scripts/autoresearch/run.py` shows a multiplicative form like `tokens × turns × wallclock`.
+
+**Why it happens.** The three factors are correlated — a longer fixture run produces more tokens AND more operator turns AND more wallclock. Multiplying them compounds variance instead of averaging it. `operator_turns` and `wallclock_seconds` are not billed and measure "how long the conversation was," not "how efficient the agent was." With the fixture held constant across baseline + iteration runs, the only dimension that matters for cost comparison is tokens — exactly `noncached_plus_output_tokens`.
+
+**Fix pointer.** `scripts/autoresearch/run.py:main`: `composite = int(opt.get("noncached_plus_output_tokens") or 0)`. Drop the `× turns × wallclock` factors. Also update the 6 doc sites: `OPTIMIZE.md`, `METRICS.md`, `README.md val_bpb` row, `iterations.html` methodology paragraph, `baseline.py` docstring.
+
+**Recurrence prevention.** Future composite changes need to (a) declare independence of factors before multiplying; (b) measure post-change CV before declaring the formula sound. If σ/μ stays >30% after N=5, the formula is too noisy regardless of what it claims to measure.
+
+---
+
+## P17 — Fixture `feature_correct=False` on all runs while agent's own pytest passes (seed dep gap)
+
+- **First seen:** 2026-05-23, fixture B N=4 baseline (sha=171cd69 + sha=dcd3fd3, all 4 runs)
+- **Wallclock to repro:** appears on every run of a fixture whose code-gen produces tests with a runtime dep not in `requirements.txt`
+- **Status:** Fixed (for pytest-asyncio specifically; general matcher recommended)
+
+**Symptom.** A specific fixture (here B) has `feature_correct=False` on every baseline run across multiple shas. Other fixtures (A) pass `feature_correct=True` cleanly. Pre-build Builder side: `builder_stdout_stderr.log` shows the agent's own pytest invocation passing all dots (e.g., `python3 -m pytest -x -q ... [100%]`). Post-build harness side: `run_feature_check` returns False.
+
+**Evidence query.**
+
+1. `baseline_runs.tsv` fixture-X rows have `feature_correct=False` across ≥3 distinct run_ids and ≥2 distinct shas.
+2. Other fixtures pass `feature_correct=True` on the same shas.
+3. `grep '\[100%\]\|passed' /tmp/autoresearch/baseline-*/X/run-*/builder_stdout_stderr.log` shows the agent's own pytest passing.
+4. Diff `pyproject.toml [project.optional-dependencies] dev` against `requirements.txt`. Look for anything required by `[tool.pytest.ini_options]` (e.g., `asyncio_mode = "auto"` ⇒ pytest-asyncio).
+5. Sanity test: in a clean venv, `pip install -r <seed>/requirements.txt` then `cd <seed> && pytest tests -q --ignore-glob='*playwright*' --ignore-glob='*test_github*'`. Compare the passing-count before vs after adding the suspected dep. A jump (e.g., 107 → 139) confirms missing-plugin diagnosis.
+
+**Why it happens.** Builder's code-gen agent runs tests in its own `/tmp/aab-workspaces/<task_id>` workspace with whatever deps it pip-installs ad-hoc — its pytest succeeds. After sprint fast-forward, Builder shuts down and the harness runs `run_feature_check` against the project workspace's clean `.venv`, which it rebuilds from `requirements.txt` only. Any test-suite dep declared in `pyproject.toml [optional-dependencies] dev` but missing from `requirements.txt` is absent in the harness's check. Tests that need it (async tests need pytest-asyncio when `asyncio_mode = "auto"`; tests with markers like `@pytest.mark.timeout` need pytest-timeout) silently fail collection → exit code ≠ 0 → `feature_correct=False`.
+
+The fixture pattern matters: fixture A "button shows current time" generates sync tests, no plugin needed. Fixture B "notes feature with persistence" generates `httpx.AsyncClient + async def test_*` (the natural FastAPI persistence test pattern), which needs pytest-asyncio.
+
+**Fix pointer.** Add the missing dep to the seed's upstream `requirements.txt` (e.g., `pytest-asyncio>=0.23.0`), re-capture seed via `scripts/autoresearch/setup_seed.sh`, truncate poisoned baseline rows, document drift in `docs/autoresearch/baseline_variance.md § Seed drift`. Do NOT patch the harness to install dev-deps — that hides future seed defects.
+
+**Recurrence prevention.** Whenever the seed's `pyproject.toml` lists a pytest plugin or runtime dep in `[project.optional-dependencies] dev`, audit `requirements.txt` for the same line. If a `[tool.pytest.ini_options]` directive (asyncio_mode, timeout, etc.) requires a plugin, that plugin belongs in `requirements.txt` not `dev`. A `freshness_sweep.py` check that lists declared-but-missing pytest plugins would catch this at lane closeout.
+
+---
+
 ## Pattern entry template
 
 ```markdown

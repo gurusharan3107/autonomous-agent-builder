@@ -7,6 +7,39 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - Autoresearch skill polish: 4 gaps closed before B-E re-baseline
+
+### Changed
+
+- **`.claude/skills/autoresearch/scripts/preflight.py:check_baseline_summary`** — severity for unstable / not_measured fixtures bumped from `warn` → `fail` on Recipes 2 and 3 (Iterate / Compare). Iterate-lane preflight + the autoresearch SKILL's Hard Rule 8 already declared "every fixture status=stable" as a hard requirement, but the script returned `warn`, so `overall` came back as `warn` and operators could miss it. Now the preflight matches the doc contract.
+- **`.claude/skills/autoresearch/scripts/preflight.py:parse_args`** — new `--allow-unstable-promotion` opt-in flag that downgrades the unstable-fixture check from `fail` back to `warn` with a `(currently degraded — --allow-unstable-promotion override active)` annotation in the `fix` field. Use only for exploratory iteration against a partial baseline; real keeps cannot ship in this mode.
+- **`.claude/skills/autoresearch/references/lanes/iterate.md`** — preflight section now explicitly defines `not stable`: either missing from `baseline_runs_summary.json` (`status=not_measured`) OR present with `status="unstable"` (<3 runs at `gates_passed="6/6"`). Both fail the preflight at fail severity. The `--allow-unstable-promotion` override is documented with the trade-off (real keeps can't ship; A→E promotion will discard).
+- **`.claude/skills/autoresearch/scripts/diagnose_hang.py`** — new matchers added to the catalog:
+  - `match_p11_p14_respond_409` — fires when crash.log contains 409 on /api/agent/chat/respond. Disambiguates P11 (chained 400→send_chat→409) vs P14 (direct 409 race) by scanning `builder_stdout_stderr.log` for a prior 400 POST.
+  - `match_p15_composite_zero` — substrate-state matcher; reads `docs/autoresearch/baseline_runs.tsv` and reports when any row has `composite=0` while `noncached_plus_output_tokens > 0`. Confidence scales with the count of zero rows.
+  - `match_p16_high_cv` — substrate-state matcher; reads `docs/autoresearch/baseline_runs_summary.json` and reports when any fixture has `σ/μ > 0.5`. Includes a 2σ-floor sign check so the negative-floor case is called out explicitly.
+  - `match_p17_seed_dep_gap` — substrate-state matcher; reads `baseline_runs.tsv` and reports when any fixture has `feature_correct=False` on every row (≥3) while another fixture has at least one True row. Includes a side-by-side healthy-vs-failed fixture comparison to anchor the diagnosis.
+  - MATCHERS list updated: 409 matcher checked first (most specific). Substrate matchers added at the end so single-dump matchers win ordering on confidence ties.
+
+### Added
+
+- **`.claude/skills/autoresearch/KNOWN_PATTERNS.md`** — three new pattern entries (P15, P16, P17). Each follows the existing template: first-seen, evidence query, why-it-happens, fix pointer, recurrence prevention. P15 + P16 reference today's source patches in `run.py` + the 6 doc sites; P17 documents the diagnostic-jump-test approach (bare-seed pytest count before vs after adding the suspected plugin: 107 → 139 was the signal for pytest-asyncio).
+
+### Validation
+
+- `python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --json` → `overall: fail` with detail `present but 4/5 fixture(s) not stable: ['B', 'C', 'D', 'E']` (correctly blocks).
+- `python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --allow-unstable-promotion --json` → `overall: warn` with override annotation (correctly opts in).
+- `python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 1 --json` → unchanged warn behavior (Baseline lane produces the data; doesn't gate on it).
+- `python3 .claude/skills/autoresearch/scripts/diagnose_hang.py /tmp/autoresearch/diagnostics/20260523T085518Z-pid1686701 --json` → still matches P5 at confidence 0.95; new matchers correctly return None on current healthy substrate (no composite=0, CV=14.7%, fixture B truncated).
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — exit 0.
+
+### Notes
+
+- Pyright "unused parameter" warnings on the existing matchers (P1, P10, etc) are pre-existing — diagnostic surface was expanded this session. Not introduced by this change; suppression in this PR limited to the 4 new matchers I added.
+- Next operator action unchanged: `python3 scripts/autoresearch/baseline.py --fixtures B,C,D,E --n 5` against the post-pytest-asyncio seed. Now that preflight will hard-fail on unstable B–E afterward if anything goes sideways, the next session can't accidentally run Iterate before B–E stabilize.
+
+---
+
 ## 2026-05-23 - Seed drift: pytest-asyncio dep added; fixture B unblocked
 
 ### Diagnosis
