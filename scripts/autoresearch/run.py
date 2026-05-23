@@ -416,24 +416,40 @@ def capture_evidence(workspace: pathlib.Path, session_id: str, evidence_dir: pat
             subprocess.run(cmd, cwd=str(workspace), stdout=out, check=False)
 
 
-def run_feature_check(workspace: pathlib.Path) -> bool:
+def run_feature_check(workspace: pathlib.Path, evidence_dir: pathlib.Path | None = None) -> bool:
     """Run the workspace's feature-correctness gate.
 
     Auto-detect Node (package.json) vs Python (pyproject.toml). Failing
     to detect a known stack returns False so the iteration is recorded
     as a feature-check failure — operator can fix run.py or add a stack.
+
+    P17 (2026-05-23): every subprocess captures stdout+stderr to
+    evidence_dir/feature_check.log. Prior shape inherited fds, so a silent
+    install failure (pip exit !=0, network blip, lockfile contention) burned
+    20+ doomed iterations across fixtures B/C/D/E with feature_correct=False
+    and zero forensic trail. Now: every pip/pytest run leaves a phase-tagged
+    log line + the subprocess's own output, so the next operator can grep
+    feature_check.log instead of re-running by hand.
     """
     app = workspace / "app"
     if not app.exists():
         # Some workspaces keep code at the root (single-package Python repos).
         app = workspace
+    log_path = (evidence_dir / "feature_check.log") if evidence_dir else None
+    log_fh = log_path.open("ab") if log_path else None
+
+    def _run(phase: str, cmd: list[str], **kwargs) -> None:
+        if log_fh:
+            log_fh.write(f"\n=== {phase}: {' '.join(cmd)} ===\n".encode())
+            log_fh.flush()
+            kwargs.setdefault("stdout", log_fh)
+            kwargs.setdefault("stderr", subprocess.STDOUT)
+        subprocess.run(cmd, check=True, **kwargs)
+
     try:
         if (app / "package.json").exists():
-            subprocess.run(["npm", "--prefix", str(app), "run", "build"], check=True, timeout=600)
-            subprocess.run(
-                ["npm", "--prefix", str(app), "run", "test", "--", "--watch=false"],
-                check=True, timeout=600,
-            )
+            _run("npm-build", ["npm", "--prefix", str(app), "run", "build"], timeout=600)
+            _run("npm-test", ["npm", "--prefix", str(app), "run", "test", "--", "--watch=false"], timeout=600)
             return True
         if (workspace / "pyproject.toml").exists() or (app / "pyproject.toml").exists():
             # Python stack — run pytest if a tests dir exists; ruff format/check
@@ -445,20 +461,14 @@ def run_feature_check(workspace: pathlib.Path) -> bool:
             # working tree. If venv_py is gone, recreate a fresh venv so pip
             # install below can proceed without hitting PEP 668 (system-pip block).
             if not venv_py.exists():
-                subprocess.run(
-                    [sys.executable, "-m", "venv", str(workspace / ".venv")],
-                    check=True, timeout=60,
-                )
+                _run("venv-create", [sys.executable, "-m", "venv", str(workspace / ".venv")], timeout=60)
             py = str(venv_py)
             # P12 (2026-05-23): seed .venv is minimal (no jinja2/httpx etc).
             # Install from requirements.txt before running tests so imports
             # don't fail at collection time.
             req_file = workspace / "requirements.txt"
             if req_file.exists():
-                subprocess.run(
-                    [py, "-m", "pip", "install", "-q", "-r", str(req_file)],
-                    check=True, timeout=120,
-                )
+                _run("pip-install", [py, "-m", "pip", "install", "-q", "-r", str(req_file)], timeout=120)
             tests_dir = next(
                 (d for d in (workspace / "tests", app / "tests") if d.exists()),
                 None,
@@ -468,7 +478,8 @@ def run_feature_check(workspace: pathlib.Path) -> bool:
                 # so the iteration isn't penalized for the workspace's choice
                 # to skip tests. compare.py's other gates still bound the run.
                 return True
-            subprocess.run(
+            _run(
+                "pytest",
                 [
                     py, "-m", "pytest", str(tests_dir), "-q", "--no-header",
                     # Playwright tests require a live devpulse server.
@@ -478,13 +489,20 @@ def run_feature_check(workspace: pathlib.Path) -> bool:
                     "--ignore-glob=*test_github*",
                 ],
                 cwd=str(workspace),
-                check=True, timeout=600,
+                timeout=600,
             )
             return True
         # Unknown stack — surface as failure so the operator notices
+        if log_fh:
+            log_fh.write(b"\n=== unknown-stack: no package.json or pyproject.toml found ===\n")
         return False
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        if log_fh:
+            log_fh.write(f"\n=== EXCEPTION: {type(exc).__name__}: {exc} ===\n".encode())
         return False
+    finally:
+        if log_fh:
+            log_fh.close()
 
 
 def evaluate_hard_gates(
@@ -860,7 +878,7 @@ def main() -> int:
         time.sleep(3)
 
     capture_evidence(workspace, session_id or "", evidence_dir)
-    feature_correct = run_feature_check(workspace)
+    feature_correct = run_feature_check(workspace, evidence_dir)
 
     analyze = _read_json(evidence_dir / "analyze.json")
     metrics = _read_json(evidence_dir / "metrics.json")

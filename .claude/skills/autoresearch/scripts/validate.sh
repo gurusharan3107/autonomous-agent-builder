@@ -20,13 +20,20 @@ REPO_ROOT="$SKILL_DIR"
 while [ "$REPO_ROOT" != "/" ] && [ ! -d "$REPO_ROOT/.claude" ]; do
     REPO_ROOT="$(dirname "$REPO_ROOT")"
 done
-if [ ! -d "$REPO_ROOT/.claude/skills/create-skill" ]; then
-    echo "validate.sh: could not locate create-skill from $SKILL_DIR" >&2
-    echo "  Expected: <repo>/.claude/skills/create-skill/scripts/audit.py" >&2
+
+# 2026-05-23: create-skill moved to user-global ~/.claude/skills/. Prefer
+# repo-local copy if present (legacy), fall back to global. Skills here can be
+# audited regardless of where the create-skill tooling lives.
+if [ -f "$REPO_ROOT/.claude/skills/create-skill/scripts/audit.py" ]; then
+    AUDIT="$REPO_ROOT/.claude/skills/create-skill/scripts/audit.py"
+elif [ -f "$HOME/.claude/skills/create-skill/scripts/audit.py" ]; then
+    AUDIT="$HOME/.claude/skills/create-skill/scripts/audit.py"
+else
+    echo "validate.sh: could not locate create-skill audit.py" >&2
+    echo "  Tried: $REPO_ROOT/.claude/skills/create-skill/scripts/audit.py" >&2
+    echo "  Tried: $HOME/.claude/skills/create-skill/scripts/audit.py" >&2
     exit 2
 fi
-
-AUDIT="$REPO_ROOT/.claude/skills/create-skill/scripts/audit.py"
 
 set +e
 python3 "$AUDIT" "$SKILL_DIR" "$@"

@@ -67,6 +67,8 @@ After the lane is chosen, run the universal preflight (load [`references/lifecyc
 8. **Wins must promote A→E before merge.** A keep on fixture A alone is not a real win. `loop.py` already enforces this; do not paper over it by hand-editing `optimize_results.tsv decision` columns.
 9. **Preflight is mandatory.** Each lane has its own; the universal preflight runs first. The recipe-specific gate (`--recipe N`) catches missing seed / baseline σ / busy ports before they bite mid-run and burn API credits. See [`references/lifecycle.md`](references/lifecycle.md).
 10. **`runtime_aggregates.session_scoped` must be `true`.** Every analyze.json the harness consumes (Baseline + Iterate) must carry this flag. `false` means the DB predates ROADMAP M2.3's `tasks.chat_session_id` migration and aggregates have fallen back to global scope — Fix lane required before anything else can proceed.
+11. **Per-iter sanity gate + autonomous self-heal.** Every iter must ship 6/6 gates with `feature_correct=True`. On failure, `baseline.py` invokes the skill's `scripts/self_heal.py`, which parses `evidence_dir/feature_check.log` and seed git state for known patterns (missing seed deps → `pip install` into seed; uncommitted seed working-tree → `git commit`; missing pytest plugin → install) and **auto-applies the mechanical fix, then retries the iter from scratch on a fresh evidence subdir** (`run-<N>.heal1/`). At most 1 auto-fix + 1 retry per iter; if self_heal can't match a pattern OR the retry still fails, baseline aborts with diagnostic pointers. The 2026-05-23 burn (~$5 / 1.5h on 3 doomed B iters from a missing `jinja2` in the seed `.venv`) would now self-heal at iter 1: the gate fires, self_heal detects `ModuleNotFoundError: jinja2` in `feature_check.log`, `pip install`s it into the seed, retries iter 1, and continues. **Extending the catalog is part of the skill, not the operator's job** — when a new failure pattern surfaces, add it to `scripts/self_heal.py:LOG_PATTERNS` (or `PYTEST_PLUGIN_FOR_OPTION` for plugin-config gaps). `--allow-imperfect-iter` exists only for genuinely acceptable flake (a fixture with deliberate 1-in-5 timeout characteristic); default is strict + self-heal. Do not flip the default.
+12. **`scripts/preflight.py --recipe 1` is the upstream guard.** It runs `pytest --collect-only` against the seed and checks `git status` on the seed before any iter spends a token. The pytest probe takes ~1.5s; it catches missing seed deps for $0 instead of $5. Always run it before launching Baseline. If `seed pytest collects` fails, the named fix (`pip install -r requirements.txt` into the seed `.venv`, then `chmod -R a-w`) is mechanical — do it, don't skip it.
 
 ## Lane index — load only the lane the operator picked
 
@@ -87,6 +89,19 @@ After the lane is chosen, run the universal preflight (load [`references/lifecyc
 | [`references/hang-detection.md`](references/hang-detection.md) | When the watchdog dumps to `/tmp/autoresearch/diagnostics/` — match against `KNOWN_PATTERNS.md` before diagnosing by hand. |
 | [`references/failure-modes.md`](references/failure-modes.md) | When a known symptom appears (`session_scoped=False`, fixture status=unstable, compare returns crash, etc.). |
 | [`KNOWN_PATTERNS.md`](KNOWN_PATTERNS.md) | When `scripts/diagnose_hang.py` identifies (or fails to identify) a hang class. |
+
+## Skill-owned scripts
+
+| Script | Purpose |
+|---|---|
+| `scripts/self_heal.py` | Autonomous diagnose-and-fix invoked by `baseline.py` on a failed per-iter gate. Pattern catalog at top of file — **extend it** when a new failure surfaces; that's how autonomy grows. |
+| `scripts/preflight.py` | Upstream guard: hard-fails the lane before any iter spends a token when seed pytest-collect / seed git-clean / TSV / port / disk checks miss. |
+| `scripts/lane_status.py` | Read-only inflight detector (`baseline.py`/`loop.py` via `ps -ef`). |
+| `scripts/hang_watchdog.py` | Forensic dump trigger on idle (idle-seconds + grace-seconds). |
+| `scripts/diagnose_hang.py` | Pattern matcher over hang-watchdog dumps (KNOWN_PATTERNS). |
+| `scripts/render_iterations.py` | Closeout: regenerate `iterations.html` data block. |
+| `scripts/introspect.py` | Closeout: regenerate `INTROSPECTION.md`. |
+| `scripts/freshness_sweep.py` | Closeout gate (Hard Rule 2). |
 
 ## Cross-references
 

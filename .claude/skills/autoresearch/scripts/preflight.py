@@ -441,12 +441,20 @@ def gather_recipe_checks(recipe: int, allow_unstable: bool = False) -> list[Chec
         seed = check_path_exists("seed snapshot (required for recipe)", SEED_DST, hard=True,
                                   kind="immutable snapshot")
         baseline = check_baseline_summary(recipe, allow_unstable=allow_unstable)
-        return [check_no_inflight_lane(), seed, baseline, check_tsv_schema_alignment(), check_workspace_stack()]
+        # Iterate lanes also need seed pytest-collect + git-clean — they ride on
+        # the same fragile feature_check path baseline does.
+        return [check_no_inflight_lane(), seed, baseline,
+                check_tsv_schema_alignment(), check_workspace_stack(),
+                check_seed_pytest_collect(), check_seed_git_clean()]
     if recipe == 1:
         # Recipe 1 produces the seed and baseline; we still want to catch the
         # schema-drift and stack-mismatch bugs early, before a 10-minute run
-        # discovers them the painful way.
-        return [check_no_inflight_lane(), check_baseline_summary(1), check_tsv_schema_alignment(), check_workspace_stack()]
+        # discovers them the painful way. P17 (2026-05-23) added the
+        # pytest-collect + git-clean probes after a $5 / 1.5h doomed-iter burn
+        # caused by seed .venv missing jinja2 + uncommitted requirements.txt.
+        return [check_no_inflight_lane(), check_baseline_summary(1),
+                check_tsv_schema_alignment(), check_workspace_stack(),
+                check_seed_pytest_collect(), check_seed_git_clean()]
     return []
 
 
@@ -522,6 +530,105 @@ def check_workspace_stack() -> Check:
                          "if the stack is something else (Go/Rust/etc.)")
     return Check("workspace stack detection", "pass",
                  f"stack(s) found: {', '.join(found)}")
+
+
+def check_seed_pytest_collect() -> Check:
+    """P17 (2026-05-23): actually run pytest --collect-only against the seed.
+
+    Why this exists: 2026-05-23 N=5 baseline burned 3 doomed iters of fixture B
+    (~$3-5, ~1.5h wallclock) before the operator noticed every iter had
+    feature_correct=False. Root cause was seed .venv missing jinja2 and
+    pytest-asyncio — pytest collection errored with ModuleNotFoundError. The
+    harness's `pip install -r requirements.txt` in run_feature_check was
+    supposed to fix it but silently didn't (now logged to evidence_dir/
+    feature_check.log per the same patch). This preflight catches it for $0
+    by running the same pytest invocation against the seed itself, before
+    a single iter spends any tokens.
+    """
+    if not SEED_DST.exists():
+        return Check("seed pytest collects", "warn",
+                     "seed missing — collect check deferred",
+                     fix="bash scripts/autoresearch/setup_seed.sh")
+    venv_py = SEED_DST / ".venv" / "bin" / "python"
+    tests_dir = SEED_DST / "tests"
+    if not venv_py.exists() or not tests_dir.exists():
+        return Check("seed pytest collects", "warn",
+                     "seed has no .venv or tests/ — non-Python stack or first-run",
+                     fix="")
+    try:
+        r = subprocess.run(
+            [str(venv_py), "-m", "pytest", str(tests_dir), "--collect-only", "-q",
+             "--ignore-glob=*playwright*", "--ignore-glob=*test_github*"],
+            capture_output=True, text=True, timeout=60, cwd=str(SEED_DST),
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return Check("seed pytest collects", "fail",
+                     f"pytest --collect-only failed to start: {type(exc).__name__}",
+                     fix="verify seed .venv is intact; run scripts/autoresearch/setup_seed.sh "
+                         "to regenerate if corrupt")
+    if r.returncode != 0:
+        # Extract the first ModuleNotFoundError / ImportError / ERROR line for clarity
+        tail = (r.stderr or r.stdout).strip().splitlines()
+        signature = next((ln for ln in tail
+                          if "ModuleNotFoundError" in ln or "ImportError" in ln
+                          or ln.startswith("ERROR")), tail[-1] if tail else "unknown")
+        return Check("seed pytest collects", "fail",
+                     f"pytest collection errored: {signature[:200]}",
+                     fix="install missing deps into the seed .venv: "
+                         f"chmod -R u+w {SEED_DST} && "
+                         f"{venv_py} -m pip install -r {SEED_DST}/requirements.txt && "
+                         f"chmod -R a-w {SEED_DST}. "
+                         "Then re-run this preflight.")
+    return Check("seed pytest collects", "pass",
+                 f"pytest --collect-only OK against {tests_dir.name}/")
+
+
+def check_seed_git_clean() -> Check:
+    """P17 (2026-05-23): seed's git status must be clean (HEAD == working tree).
+
+    Why this exists: 2026-05-23 we discovered the seed had `M requirements.txt`
+    — pytest-asyncio was added to working-tree requirements.txt but never
+    committed. Any Builder operation that runs `git checkout` or `git reset`
+    inside a task workspace reverts requirements.txt to HEAD (which is missing
+    pytest-asyncio), so subsequent pip install --requirements gets the wrong
+    dep list. Symptom: feature_correct=False with no surfaced reason. This
+    preflight catches the divergence before the baseline burns iters.
+    """
+    if not SEED_DST.exists():
+        return Check("seed git clean", "warn",
+                     "seed missing — git-clean check deferred",
+                     fix="")
+    if not (SEED_DST / ".git").exists():
+        return Check("seed git clean", "warn",
+                     "seed is not a git repo — divergence check skipped",
+                     fix="")
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(SEED_DST), "status", "--porcelain"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return Check("seed git clean", "warn",
+                     f"git status failed: {type(exc).__name__}", fix="")
+    if r.returncode != 0:
+        return Check("seed git clean", "warn",
+                     f"git status returned {r.returncode}", fix="")
+    # Filter to non-.venv tracked-file changes — .venv churn (.pyc etc.) is noise
+    dirty = [ln for ln in r.stdout.splitlines()
+             if ln and not ln[3:].startswith(".venv/")
+             and not ln[3:].startswith(".claude/")]
+    if dirty:
+        return Check("seed git clean", "fail",
+                     f"{len(dirty)} tracked file(s) diverge from HEAD: " +
+                     ", ".join(ln.strip() for ln in dirty[:3]) +
+                     ("..." if len(dirty) > 3 else ""),
+                     fix=f"commit the divergence so HEAD == working tree: "
+                         f"chmod -R u+w {SEED_DST} && "
+                         f"git -C {SEED_DST} add <files> && "
+                         f"git -C {SEED_DST} commit -m '...' && "
+                         f"chmod -R a-w {SEED_DST}")
+    return Check("seed git clean", "pass",
+                 "HEAD == working tree (no tracked-file divergence)")
 
 
 def format_human(report: Report) -> str:

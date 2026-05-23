@@ -21,6 +21,8 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 TSV_ROOT = ROOT / "docs" / "autoresearch"
+SELF_HEAL = ROOT / ".claude" / "skills" / "autoresearch" / "scripts" / "self_heal.py"
+DEFAULT_SEED_DIR = pathlib.Path("/home/gurusharangupta/.seed/devpulse")
 
 
 def run_one_fixture(
@@ -38,6 +40,33 @@ def run_one_fixture(
         cmd.append("--dry-run")
     out = subprocess.check_output(cmd, cwd=str(ROOT))
     return json.loads(out.decode().strip().splitlines()[-1])
+
+
+def invoke_self_heal(evidence_dir: pathlib.Path, seed_dir: pathlib.Path) -> dict:
+    """Run the skill-owned self_heal probe; return the fix record.
+
+    Skill at .claude/skills/autoresearch/scripts/self_heal.py owns the
+    pattern catalog and remediations. Harness invokes it as a subprocess
+    to preserve the harness/skill boundary (Hard Rule 3: harness must not
+    import from skill or builder)."""
+    if not SELF_HEAL.exists():
+        return {"applied": False, "pattern": None,
+                "detail": f"self_heal.py missing at {SELF_HEAL}"}
+    try:
+        r = subprocess.run(
+            [sys.executable, str(SELF_HEAL),
+             "--evidence-dir", str(evidence_dir),
+             "--seed-dir", str(seed_dir)],
+            capture_output=True, text=True, timeout=300,
+        )
+        try:
+            return json.loads(r.stdout)
+        except json.JSONDecodeError:
+            return {"applied": False, "pattern": None,
+                    "detail": f"self_heal returned non-JSON: {r.stdout[:200]} stderr={r.stderr[:200]}"}
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return {"applied": False, "pattern": None,
+                "detail": f"self_heal failed: {type(exc).__name__}: {exc}"}
 
 
 def compute_summary(runs_by_fixture: dict[str, list[dict]]) -> dict:
@@ -93,21 +122,117 @@ def main() -> int:
     evidence_root.mkdir(parents=True, exist_ok=True)
 
     runs_by_fixture: dict[str, list[dict]] = {f: [] for f in fixtures}
-    for fixture in fixtures:
+    aborted = False
+    # Per-iter self-heal attempt cap: prevents an unfixable error from looping
+    # forever (e.g., self_heal applies the wrong fix and the iter keeps failing).
+    # 2 = at most one auto-fix + one retry per iter.
+    MAX_HEAL_ATTEMPTS = 2
+
+    def _gate_issues(res: dict) -> list[str]:
+        """Return the list of imperfections in an iter result. Empty = clean."""
+        out = []
+        if res.get("feature_correct") is not True:
+            out.append(f"feature_correct={res.get('feature_correct')!r}")
+        if not (res.get("gates_passed") or "").startswith("6/"):
+            out.append(f"gates_passed={res.get('gates_passed') or '?'}")
+        if res.get("decision_status") != "shipped":
+            out.append(f"decision_status={res.get('decision_status') or '?'}")
+        return out
+
+    seed_dir = pathlib.Path(args.seed_dir) if args.seed_dir else DEFAULT_SEED_DIR
+
+    for f_idx, fixture in enumerate(fixtures):
+        if aborted:
+            break
         for i in range(args.n):
-            ev = evidence_root / fixture / f"run-{i}"
+            ev_base = evidence_root / fixture / f"run-{i}"
             port = args.port_base + i
-            print(f"[baseline] fixture={fixture} iter={i+1}/{args.n} port={port} evidence={ev}", file=sys.stderr)
-            try:
-                result = run_one_fixture(fixture, args.branch, port, ev, args.dry_run)
+
+            # Strict per-iter gate (P17 2026-05-23): every iter must ship 6/6
+            # gates with feature_correct=True. If the gate fires, the skill's
+            # self_heal.py probes evidence_dir/feature_check.log + seed git
+            # state for known patterns (missing seed deps, uncommitted seed
+            # working-tree) and auto-applies the mechanical fix. The iter is
+            # then retried in a FRESH evidence subdir. If self_heal can't
+            # match a pattern, baseline aborts with diagnostic pointers —
+            # autonomous when possible, transparent when not.
+            for attempt in range(MAX_HEAL_ATTEMPTS):
+                ev = ev_base if attempt == 0 else (ev_base.parent / f"run-{i}.heal{attempt}")
+                print(f"[baseline] fixture={fixture} iter={i+1}/{args.n} port={port} evidence={ev}"
+                      + (f" (heal-attempt {attempt})" if attempt else ""),
+                      file=sys.stderr)
+                try:
+                    result = run_one_fixture(fixture, args.branch, port, ev, args.dry_run)
+                except subprocess.CalledProcessError as exc:
+                    print(f"[baseline] iter crashed: {exc}", file=sys.stderr)
+                    result = {"run_id": None, "error": str(exc),
+                              "feature_correct": False, "decision_status": "crash",
+                              "gates_passed": "0/6"}
+
+                # In dry-run or --allow-imperfect mode, skip the gate.
+                if args.dry_run or args.allow_imperfect_iter:
+                    runs_by_fixture[fixture].append(result)
+                    break
+
+                issues = _gate_issues(result)
+                if not issues:
+                    runs_by_fixture[fixture].append(result)
+                    break
+
+                # Imperfect — try self_heal before recording the result.
+                heal = invoke_self_heal(ev, seed_dir)
+                print(
+                    f"[baseline] iter imperfect: {', '.join(issues)}. "
+                    f"self_heal: applied={heal.get('applied')} "
+                    f"pattern={heal.get('pattern')} detail={(heal.get('detail') or '')[:200]}",
+                    file=sys.stderr,
+                )
+                if heal.get("applied") and attempt + 1 < MAX_HEAL_ATTEMPTS:
+                    # Don't append this result — retry the iter from scratch
+                    # on a fresh evidence dir. The applied fix should make
+                    # the next attempt clean.
+                    continue
+
+                # Either self_heal had no fix, or we've exhausted heal attempts.
                 runs_by_fixture[fixture].append(result)
-            except subprocess.CalledProcessError as exc:
-                print(f"[baseline] iter failed: {exc}", file=sys.stderr)
-                runs_by_fixture[fixture].append({"run_id": None, "error": str(exc)})
+                remaining = (len(fixtures) - f_idx) * args.n - (i + 1)
+                hints = []
+                if result.get("feature_correct") is not True:
+                    hints.append(f"{ev}/feature_check.log (pip/pytest stderr)")
+                if not (result.get("gates_passed") or "").startswith("6/"):
+                    hints.append(f"{ev}/analyze.json+metrics.json+board.json")
+                if result.get("decision_status") != "shipped":
+                    hints.append(f"{ev}/builder_stdout_stderr.log+crash.log")
+                print(
+                    f"[baseline] ABORT — fixture={fixture} iter={i+1}/{args.n} "
+                    f"imperfect after {attempt+1} self_heal attempt(s). "
+                    f"Saved ~{remaining} more iters. "
+                    f"Inspect: {'; '.join(hints)}. "
+                    f"Extend self_heal pattern catalog at "
+                    f".claude/skills/autoresearch/scripts/self_heal.py, "
+                    f"or re-run with --allow-imperfect-iter if flake is acceptable.",
+                    file=sys.stderr,
+                )
+                aborted = True
+                break
+
+            if aborted:
+                break
 
     summary = compute_summary(runs_by_fixture)
     out_json = TSV_ROOT / "baseline_runs_summary.json"
-    out_json.write_text(json.dumps(summary, indent=2))
+    # P17 (2026-05-23): merge with existing summary so partial re-baselines
+    # (e.g., `--fixtures B,C,D,E` after A is already stable) don't clobber
+    # the unrelated fixture entries. Operator can still force a full reset by
+    # deleting baseline_runs_summary.json before launching.
+    merged: dict[str, dict] = {}
+    if out_json.exists():
+        try:
+            merged = json.loads(out_json.read_text())
+        except (OSError, json.JSONDecodeError):
+            merged = {}
+    merged.update(summary)
+    out_json.write_text(json.dumps(merged, indent=2))
     append_variance_doc(summary, TSV_ROOT / "baseline_variance.md")
     print(json.dumps(summary, indent=2))
     return 0
@@ -120,6 +245,21 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--evidence-root", default="/tmp/autoresearch/baseline")
     p.add_argument("--branch", default="main")
     p.add_argument("--port-base", type=int, default=9876)
+    p.add_argument(
+        "--seed-dir", default=None,
+        help="Path to the read-only seed snapshot. Default: ~/.seed/devpulse. "
+             "Used by self_heal.py when an imperfect iter triggers auto-fix.",
+    )
+    p.add_argument(
+        "--allow-imperfect-iter", action="store_true",
+        help=(
+            "Continue past iters that don't ship 6/6 gates with feature_correct=True. "
+            "Default: abort and require operator investigation. Use only when the "
+            "imperfect-iter pattern is known-acceptable flake (e.g., a specific "
+            "fixture has 1-in-5 timeout characteristic by design) and you accept "
+            "the noise in σ-floor numbers."
+        ),
+    )
     p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
 
