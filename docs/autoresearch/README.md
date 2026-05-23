@@ -131,7 +131,7 @@ When the in-harness prerequisites close, edit this section to flip the status li
 |---|---|
 | `train.py` (the single mutable file) | The allowlist in [OPTIMIZE.md](OPTIMIZE.md) (initially: prompt-shape files only) |
 | `prepare.py` (immutable infrastructure) | `tests/`, `docs/quality-gate/`, readiness gates, devpulse workspace contents |
-| `val_bpb` (the single metric) | Composite metric defined in [OPTIMIZE.md](OPTIMIZE.md): `noncached_tokens × operator_turns × wallclock_s` under hard gates |
+| `val_bpb` (the single metric) | Composite metric defined in [OPTIMIZE.md](OPTIMIZE.md): `noncached_plus_output_tokens` under hard gates (P16 2026-05-23: dropped `× operator_turns × wallclock_s` — multiplicative form compounded correlated noise) |
 | `evaluate_bpb` (the ground-truth check) | `builder logs analyze` + feature-correctness check (`npm run build && npm run test` on devpulse) |
 | `program.md` (agent instructions) | [OPTIMIZE.md](OPTIMIZE.md) |
 | `results.tsv` | [optimize_results.tsv](optimize_results.tsv) |

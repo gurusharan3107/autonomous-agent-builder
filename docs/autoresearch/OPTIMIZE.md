@@ -7,10 +7,10 @@ This is the agent's program for the autoresearch loop. The agent loops continuou
 ## Primary metric (lower is better)
 
 ```
-composite = noncached_plus_output_tokens × operator_turns × wallclock_seconds
+composite = noncached_plus_output_tokens
 ```
 
-Measured per shipped feature for a given fixture (see [`fixtures.md`](fixtures.md)). Averaged across `N=3` runs of the same fixture to suppress single-run noise.
+Measured per shipped feature for a given fixture (see [`fixtures.md`](fixtures.md)). Averaged across `N=3` runs of the same fixture to suppress single-run noise. **P16 (2026-05-23):** dropped the prior `× operator_turns × wallclock_seconds` factors — they are correlated with token count (longer fixture runs produce more of each) and aren't billed, so the product compounded variance instead of averaging it (fixture-A CV went 77.5% → 14.7% after the change).
 
 **An improvement only counts as a win if `composite_after < composite_before − 2σ_baseline`** where `σ_baseline` is computed per [`baseline_variance.md`](baseline_variance.md). Anything inside 2σ is noise.
 

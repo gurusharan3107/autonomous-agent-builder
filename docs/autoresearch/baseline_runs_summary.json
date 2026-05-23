@@ -3,11 +3,11 @@
     "status": "stable",
     "stable_runs": 3,
     "total_runs": 5,
-    "mean": 5786513343.333333,
-    "stdev": 4486946445.24594,
-    "min": 611537355,
-    "max": 8591730625,
-    "noise_floor_2sigma": -3187379547.1585474
+    "mean": 216497,
+    "stdev": 31830.932942658153,
+    "min": 180235,
+    "max": 239825,
+    "noise_floor_2sigma": 152835.1341146837
   },
   "B": {
     "status": "unstable",

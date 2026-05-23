@@ -3,7 +3,7 @@
 
 Runs each fixture N times against `main` (or whatever branch is checked out),
 appends rows to baseline_runs.tsv, and computes per-fixture mean/σ for
-composite, noncached_plus_output_tokens, operator_turns, and wallclock_s.
+composite (= `noncached_plus_output_tokens` per P16, 2026-05-23).
 
 Output: docs/autoresearch/baseline_runs_summary.json — the 2σ floor that
 compare.py reads when deciding keep/discard.

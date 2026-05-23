@@ -9,10 +9,10 @@ The loop captures three data streams per fixture run: **Builder CLI evidence** (
 ## Composite Metric (loop primary)
 
 ```
-composite = noncached_plus_output_tokens × operator_turns × wallclock_seconds
+composite = noncached_plus_output_tokens
 ```
 
-Lower is better. An improvement counts as a win only when `composite_after < composite_before − 2σ_baseline` (see [baseline_variance.md](baseline_variance.md)). All three components are captured directly from Builder CLI evidence.
+Lower is better. An improvement counts as a win only when `composite_after < composite_before − 2σ_baseline` (see [baseline_variance.md](baseline_variance.md)). Sourced directly from `builder metrics show --json` → `optimization_summary.noncached_plus_output_tokens`. **P16 (2026-05-23):** previously `noncached_tokens × operator_turns × wallclock_seconds`; the multiplicative form combined three correlated dimensions (longer fixture runs produce more of each) and inflated σ to 77.5% of mean. `operator_turns` and `wallclock_seconds` are not billed; they measure conversation length, not agent efficiency. With the fixture held constant, `noncached_plus_output_tokens` is the right cost comparison.
 
 ## Hard Gates (binary filters)
 

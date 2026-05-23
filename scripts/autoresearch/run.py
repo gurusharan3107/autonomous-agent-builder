@@ -867,19 +867,19 @@ def main() -> int:
     board = _read_json(evidence_dir / "board.json")
     breakdown = extract_context_breakdown(evidence_dir)
 
-    prompts = analyze.get("prompts") or []
-    # P15 (2026-05-23): metrics response key is `optimization_summary`, not
-    # `optimization` (per the P12 fix in evaluate_hard_gates). Reading the wrong
-    # key here made composite=0 for every baseline + iterate run, which broke
-    # baseline.py's compute_summary (`if r.get("composite")` filters them out)
-    # → baseline_runs_summary.json stayed at status=unstable, mean/stdev/2σ all
-    # null, iterations.html and INTROSPECTION.md showed empty baseline.
+    # P16 (2026-05-23): composite := noncached_plus_output_tokens only.
+    # Previous formula multiplied this by operator_turns × wallclock_seconds,
+    # but those three dimensions are correlated (longer fixture runs produce
+    # more of each), so the product compounded variance instead of averaging
+    # it (N=3 fixture-A ships: CV=77.5%, 2σ-floor=-3.19e9 — gate useless).
+    # turns + wallclock aren't billed; they measure "conversation length,"
+    # not "agent efficiency." Fixture is held constant across runs, so the
+    # right cost comparison is "tokens to complete this fixture" — exactly
+    # noncached_plus_output_tokens. New fixture-A CV: 14.7% (gateable).
+    # P15 (2026-05-23): key is `optimization_summary` not `optimization`
+    # (mirrors evaluate_hard_gates P12 fix).
     opt = (metrics.get("optimization_summary") or metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
-    composite = int(
-        (opt.get("noncached_plus_output_tokens") or 0)
-        * max(len(prompts), 1)
-        * max(int(wallclock_s), 1)
-    )
+    composite = int(opt.get("noncached_plus_output_tokens") or 0)
     gates_str, _ = evaluate_hard_gates(analyze, metrics, board, feature_correct, decision_status == "shipped")
 
     tsv_path = tsv_root / ("baseline_runs.tsv" if args.baseline else "optimize_results.tsv")

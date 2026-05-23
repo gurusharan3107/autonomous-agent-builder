@@ -286,7 +286,7 @@
 <header>
   <h1>Autoresearch iterations</h1>
   <p class="meta">
-    Composite = noncached_plus_output_tokens × operator_turns × wallclock_seconds (lower is better).
+    Composite = noncached_plus_output_tokens (lower is better; P16 dropped the prior multiplicative factors that compounded noise).
     A candidate counts as <em>keep</em> only when composite is at least 2σ below the baseline mean, all six hard gates pass, and the change holds across fixtures A → E.
   </p>
 </header>
@@ -315,12 +315,12 @@
 //──────────────────────────────────────────────────────────────────────────────
 // __ITERATIONS_DATA_START__
 window.ITERATIONS = {
-  "generated_at": "2026-05-23T16:29:17Z",
+  "generated_at": "2026-05-23T16:34:41Z",
   "baseline": {
     "measured_at": "2026-05-23",
-    "mean_composite": 5786513343.333333,
-    "stdev_composite": 4486946445.24594,
-    "noise_floor_2sigma": -3187379547.1585474,
+    "mean_composite": 216497,
+    "stdev_composite": 31830.932942658153,
+    "noise_floor_2sigma": 152835.1341146837,
     "fixtures_stable": 1,
     "fixtures_total": 5,
     "fixtures": [
@@ -329,10 +329,10 @@ window.ITERATIONS = {
         "status": "stable",
         "stable_runs": 3,
         "total_runs": 5,
-        "mean": 5786513343.333333,
-        "stdev": 4486946445.24594,
-        "noise_floor_2sigma": -3187379547.1585474,
-        "cv_pct": 77.5
+        "mean": 216497,
+        "stdev": 31830.932942658153,
+        "noise_floor_2sigma": 152835.1341146837,
+        "cv_pct": 14.7
       },
       {
         "id": "B",
@@ -385,7 +385,7 @@ window.ITERATIONS = {
         "status": "shipped",
         "wallclock_s": 1422,
         "operator_turns": 25,
-        "composite": 8156272050,
+        "composite": 229431,
         "noncached_plus_output_tokens": 229431,
         "cache_ratio": 1572.4646,
         "chunk_pressure_risk": false
@@ -399,7 +399,7 @@ window.ITERATIONS = {
         "status": "incomplete",
         "wallclock_s": 2449,
         "operator_turns": 25,
-        "composite": 13628868675,
+        "composite": 222603,
         "noncached_plus_output_tokens": 222603,
         "cache_ratio": 3238.6385,
         "chunk_pressure_risk": false
@@ -413,7 +413,7 @@ window.ITERATIONS = {
         "status": "shipped",
         "wallclock_s": 377,
         "operator_turns": 9,
-        "composite": 611537355,
+        "composite": 180235,
         "noncached_plus_output_tokens": 180235,
         "cache_ratio": 3564.3966,
         "chunk_pressure_risk": false
@@ -427,7 +427,7 @@ window.ITERATIONS = {
         "status": "shipped",
         "wallclock_s": 1433,
         "operator_turns": 25,
-        "composite": 8591730625,
+        "composite": 239825,
         "noncached_plus_output_tokens": 239825,
         "cache_ratio": 3012.6993,
         "chunk_pressure_risk": false
@@ -441,7 +441,7 @@ window.ITERATIONS = {
         "status": "crash",
         "wallclock_s": 504,
         "operator_turns": 14,
-        "composite": 1376096400,
+        "composite": 195025,
         "noncached_plus_output_tokens": 195025,
         "cache_ratio": 2034.1084,
         "chunk_pressure_risk": false
@@ -455,7 +455,7 @@ window.ITERATIONS = {
         "status": "shipped",
         "wallclock_s": 1515,
         "operator_turns": 25,
-        "composite": 0,
+        "composite": 272852,
         "noncached_plus_output_tokens": 272852,
         "cache_ratio": 3720.4581,
         "chunk_pressure_risk": false
@@ -469,7 +469,7 @@ window.ITERATIONS = {
         "status": "incomplete",
         "wallclock_s": 3030,
         "operator_turns": 25,
-        "composite": 19971260250,
+        "composite": 263647,
         "noncached_plus_output_tokens": 263647,
         "cache_ratio": 2625.1823,
         "chunk_pressure_risk": false
@@ -483,7 +483,7 @@ window.ITERATIONS = {
         "status": "shipped",
         "wallclock_s": 1713,
         "operator_turns": 24,
-        "composite": 10880085240,
+        "composite": 264645,
         "noncached_plus_output_tokens": 264645,
         "cache_ratio": 2474.7233,
         "chunk_pressure_risk": false
@@ -497,7 +497,7 @@ window.ITERATIONS = {
         "status": "shipped",
         "wallclock_s": 1086,
         "operator_turns": 24,
-        "composite": 5906284848,
+        "composite": 226607,
         "noncached_plus_output_tokens": 226607,
         "cache_ratio": 1274.5474,
         "chunk_pressure_risk": false

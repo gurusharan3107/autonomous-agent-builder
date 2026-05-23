@@ -7,6 +7,38 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - P16: composite formula → `noncached_plus_output_tokens` only
+
+### Changed
+
+- **`scripts/autoresearch/run.py`** — composite formula simplified from `noncached_plus_output_tokens × operator_turns × wallclock_seconds` to `noncached_plus_output_tokens`. The multiplicative form combined three correlated dimensions (a longer fixture run produces more of each), inflating σ to 77.5% of mean and pushing the 2σ-floor below zero. `operator_turns` and `wallclock_seconds` are not billed and measure conversation length, not agent efficiency. With the fixture held constant across runs, `noncached_plus_output_tokens` is the right cost comparison.
+- **`docs/autoresearch/baseline_runs.tsv`** — backfilled the `composite` column for all 9 existing rows: composite := noncached_plus_output_tokens (no re-runs needed; same column was already present).
+- **`docs/autoresearch/baseline_runs_summary.json`** — fixture A status now: μ=216,497, σ=31,831, CV=14.7%, 2σ-floor=152,835 (positive). Previously μ=5.79e9, σ=4.49e9, CV=77.5%, 2σ-floor=-3.19e9.
+- **`docs/autoresearch/iterations.html` + `iterations.json`** — regenerated against the new summary.
+- **`docs/autoresearch/INTROSPECTION.md`** — regenerated.
+
+### Documented in
+
+- `scripts/autoresearch/run.py` (composite computation site + comment)
+- `docs/autoresearch/OPTIMIZE.md` (primary metric section)
+- `docs/autoresearch/METRICS.md` (composite metric section)
+- `docs/autoresearch/README.md` (val_bpb table row)
+- `docs/autoresearch/iterations.html` (methodology paragraph)
+- `scripts/autoresearch/baseline.py` (module docstring)
+- `docs/goal/ROADMAP.md` (P16 [x] entry under M3.5)
+
+### Validation
+
+- Fixture A composites for the 3 ships at 6/6: 229,431; 180,235; 239,825 → mean 216,497, stdev 31,831, CV 14.7%.
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — exit 0.
+
+### Notes
+
+- 2σ-floor is now positive and usefully wide: a candidate must beat 152,835 noncached_plus_output_tokens on fixture A to count as a keep.
+- Fixture B remains unstable (0/4 ships at 6/6); not a formula problem — feature_correct=False on all 4 B runs, real Builder substrate issue.
+
+---
+
 ## 2026-05-23 - iterations.html — baseline detail section for baseline-only state
 
 ### Added
