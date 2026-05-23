@@ -228,10 +228,11 @@
 
 <script>
 //──────────────────────────────────────────────────────────────────────────────
-// Embedded example/fallback data. Replaced verbatim by render_iterations.py
-// after each loop.py iteration. The block between the markers below is the
-// only thing the regenerator rewrites — everything else (layout, render code,
-// example fallback) is preserved across regenerations.
+// Embedded loop data. Replaced verbatim by render_iterations.py after each
+// closeout. The block between the markers below is the only thing the
+// regenerator rewrites — layout + render code is preserved across regenerations.
+// Empty state ("No iterations recorded yet") is rendered honestly when the
+// list is empty; no example/demo fallback by operator preference.
 //──────────────────────────────────────────────────────────────────────────────
 // __ITERATIONS_DATA_START__
 window.ITERATIONS = {
@@ -248,60 +249,8 @@ window.ITERATIONS = {
 };
 // __ITERATIONS_DATA_END__
 
-// EXAMPLE DATA — uncomment to preview the layout with synthetic numbers.
-// The real loop overwrites this whole assignment.
-window.ITERATIONS_EXAMPLE = {
-  generated_at: "2026-05-22 (example)",
-  baseline: {
-    measured_at: "2026-05-22",
-    mean_composite: 11_320_000,
-    stdev_composite: 1_540_000,
-    noise_floor_2sigma: 8_240_000,
-    fixtures_stable: 5,
-    fixtures_total: 5
-  },
-  iterations: [
-    {
-      index: 1, ref: "stable-system-prompt-header", date: "2026-05-23",
-      branch: "autoresearch/iter-1-stable-system-prompt-header",
-      verdict: "keep", reason: "composite_below_2sigma_noise_floor",
-      composite: 8_245_001, delta_pct: -27.2, delta_sigma: -1.99,
-      gates: [true, true, true, true, true, true],
-      promotion: { A: "kept", B: "kept", C: "kept", D: "kept", E: "kept" },
-      diff_lines: 23
-    },
-    {
-      index: 2, ref: "reduce-board-state-block", date: "2026-05-24",
-      branch: "autoresearch/iter-2-reduce-board-state-block",
-      verdict: "discard", reason: "composite_within_2sigma_of_baseline",
-      composite: 9_820_000, delta_pct: -13.2, delta_sigma: -0.97,
-      gates: [true, true, true, true, true, true],
-      promotion: { A: "kept", B: "discarded", C: "skipped", D: "skipped", E: "skipped" },
-      diff_lines: 41
-    },
-    {
-      index: 3, ref: "collapse-documentation-context", date: "2026-05-25",
-      branch: "autoresearch/iter-3-collapse-documentation-context",
-      verdict: "discard", reason: "hard_gate_failed: feature_correct",
-      composite: 7_910_000, delta_pct: -30.1, delta_sigma: -2.21,
-      gates: [true, true, true, true, false, false],
-      promotion: { A: "discarded", B: "skipped", C: "skipped", D: "skipped", E: "skipped" },
-      diff_lines: 87
-    },
-    {
-      index: 4, ref: "prune-tool-reinjection", date: "2026-05-26",
-      branch: "autoresearch/iter-4-prune-tool-reinjection",
-      verdict: "keep", reason: "composite_below_2sigma_noise_floor",
-      composite: 7_640_000, delta_pct: -32.5, delta_sigma: -2.39,
-      gates: [true, true, true, true, true, true],
-      promotion: { A: "kept", B: "kept", C: "kept", D: "kept", E: "kept" },
-      diff_lines: 14
-    }
-  ]
-};
-
-// If iterations.json exists in same dir, prefer it; else fall back to example
-// when the embedded ITERATIONS has no rows.
+// Prefer iterations.json from same dir; fall through to the embedded block
+// above when the JSON is unreachable (e.g., file:// viewing).
 (async function () {
   try {
     const r = await fetch("iterations.json", { cache: "no-store" });
@@ -309,11 +258,7 @@ window.ITERATIONS_EXAMPLE = {
       const data = await r.json();
       if (data && Array.isArray(data.iterations)) window.ITERATIONS = data;
     }
-  } catch (_) { /* file:// or no json — fine */ }
-  if (!window.ITERATIONS.iterations.length && window.ITERATIONS_EXAMPLE) {
-    window.ITERATIONS = window.ITERATIONS_EXAMPLE;
-    document.title = "Autoresearch iterations (example)";
-  }
+  } catch (_) { /* file:// or no json — fine, embedded block is the source */ }
   render(window.ITERATIONS);
 })();
 
