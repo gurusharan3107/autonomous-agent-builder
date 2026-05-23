@@ -57,7 +57,19 @@ python3 .claude/skills/autoresearch/scripts/hang_watchdog.py \
 WATCHDOG_PID=$!
 trap "kill -TERM $WATCHDOG_PID 2>/dev/null" EXIT
 
+# 1c. If joining a session and uncertain whether a lane is already in flight:
+python3 scripts/autoresearch/lane_status.py --human
+# Reports any running baseline.py / loop.py + progress + ETA. The Recipe-2
+# preflight also hard-fails when another lane is detected; this command is
+# just the human-readable version for orientation.
+
 # 2. Drive the iteration via loop.py (it prompts mid-flow for the source edit)
+#
+# Launch with `Bash run_in_background: true` (NOT `nohup ... &`) so the harness
+# tracks the process + auto-notifies on completion. Pair with `Monitor` so each
+# `[loop]` / `[run]` progress line streams as a notification. For interactive
+# `prompt_for_edit` pauses, the bash background mode still surfaces stdin
+# prompts — operator answers via the foreground.
 python3 scripts/autoresearch/loop.py --max-iterations 1 --cost-budget-usd 5
 # Flow:
 #   a) loop.py creates branch autoresearch/iter-N-<ref>

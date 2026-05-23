@@ -386,17 +386,67 @@ def gather_soft_checks() -> list[Check]:
     ]
 
 
+def check_no_inflight_lane() -> Check:
+    """Hard-fail if another `baseline.py` or `loop.py` is already running.
+
+    Without this, a second lane started in parallel would collide on:
+    (a) `baseline_runs.tsv` / `optimize_results.tsv` append races,
+    (b) `/tmp/devpulse-<uuid>/` workspace allocation,
+    (c) builder server ports (run.py picks via --port; baseline.py walks
+        9876–9885), and most importantly,
+    (d) the operator's mental model — TSV rows from two lanes interleaved
+        without a clean "this run is which lane" marker.
+
+    The 2026-05-23 session footgun: a baseline.py from a prior session was
+    still running when /start surveyed file/commit state and reported "ready
+    to run baseline." The lane skill must own its own producer-process
+    awareness; that's why this check is here and not in /start.
+    """
+    try:
+        out = subprocess.check_output(
+            ["ps", "-eo", "pid,etime,args"], text=True, timeout=10,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return Check("autoresearch lane processes", "warn",
+                     "could not run `ps` to check for in-flight lanes",
+                     fix="manually verify no baseline.py/loop.py is running before proceeding")
+    lanes = []
+    for line in out.splitlines()[1:]:
+        parts = line.strip().split(None, 2)
+        if len(parts) < 3:
+            continue
+        pid, etime, args = parts
+        # Avoid matching our own preflight invocation when piped through grep wrappers
+        if "preflight.py" in args or "lane_status.py" in args:
+            continue
+        if "python" in args and ("baseline.py" in args or "loop.py" in args):
+            lanes.append((pid, etime, args))
+    if not lanes:
+        return Check("autoresearch lane processes", "pass",
+                     "no in-flight baseline.py / loop.py")
+    summary = "; ".join(f"PID {p} ({et}): {a[:80]}" for p, et, a in lanes[:3])
+    return Check(
+        "autoresearch lane processes", "fail",
+        f"{len(lanes)} lane process(es) already running — {summary}",
+        fix=(
+            "another lane is in flight; run "
+            "`python3 scripts/autoresearch/lane_status.py --human` for progress, "
+            "then either wait or `kill -TERM <PID>` (graceful) before starting a new lane"
+        ),
+    )
+
+
 def gather_recipe_checks(recipe: int, allow_unstable: bool = False) -> list[Check]:
     if recipe in (2, 3):
         seed = check_path_exists("seed snapshot (required for recipe)", SEED_DST, hard=True,
                                   kind="immutable snapshot")
         baseline = check_baseline_summary(recipe, allow_unstable=allow_unstable)
-        return [seed, baseline, check_tsv_schema_alignment(), check_workspace_stack()]
+        return [check_no_inflight_lane(), seed, baseline, check_tsv_schema_alignment(), check_workspace_stack()]
     if recipe == 1:
         # Recipe 1 produces the seed and baseline; we still want to catch the
         # schema-drift and stack-mismatch bugs early, before a 10-minute run
         # discovers them the painful way.
-        return [check_baseline_summary(1), check_tsv_schema_alignment(), check_workspace_stack()]
+        return [check_no_inflight_lane(), check_baseline_summary(1), check_tsv_schema_alignment(), check_workspace_stack()]
     return []
 
 

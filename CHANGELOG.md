@@ -7,6 +7,37 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - Autoresearch process awareness: lane_status + preflight detection + Bash-background guidance
+
+### Added
+
+- **`scripts/autoresearch/lane_status.py`** — read-only progress reporter for in-flight autoresearch lanes. Auto-discovers running `baseline.py` / `loop.py` / `run.py` / `builder start` / `hang_watchdog.py` from `ps -ef`; parses each lane's argv for `--evidence-root`, `--fixtures`, `--n`; reads per-fixture `run-N/metrics.json` presence to count completed runs; emits JSON or `--human` output with per-lane summary (PID, elapsed wallclock, evidence-root, fixtures × N, completed-by-fixture, active run.py child + its fixture/port/elapsed, avg seconds/run, estimated remaining). Read-only, safe to run in parallel with the lane.
+
+### Changed
+
+- **`.claude/skills/autoresearch/scripts/preflight.py:check_no_inflight_lane`** — new check that runs `ps -eo pid,etime,args` and reports any `baseline.py` or `loop.py` process. Hard-`fail` on Recipes 1/2/3 (the lane-execution recipes); not run on Recipes 4/5 (idea-add, recover). Includes per-process PID + etime + argv-prefix in `detail`; `fix` field points to `lane_status.py --human` for orientation and `kill -TERM <PID>` (graceful) as the remediation path. Prevents concurrent-lane collisions on TSV writers, workspace allocation, and builder ports.
+- **`.claude/skills/autoresearch/SKILL.md`** — new "Before anything — check for in-flight lanes" section at the top, before the lane picker. Documents `lane_status.py --human` as the first action when this skill activates and explains the `Bash run_in_background: true` + `Monitor` launch pattern (harness auto-notifies on completion; each progress line streams as a notification).
+- **`.claude/skills/autoresearch/references/lanes/baseline.md`** — Do block step 5 documents the background-launch + Monitor pattern; new section "Joining an existing session" points operators at `lane_status.py` before reasoning about TSV state.
+- **`.claude/skills/autoresearch/references/lanes/iterate.md`** — Do block step 1c invokes `lane_status.py` for orientation; step 2 documents the background-launch + Monitor pattern and notes that interactive `prompt_for_edit` pauses still work through background mode.
+
+### Memory
+
+- **`feedback_check_running_processes_at_session_entry.md`** (project-local) — autoresearch-scoped feedback entry. Why: 2026-05-23 session footgun, full diagnosis included. How-to-apply: `ps -ef` before reasoning about autoresearch substrate state; validate CURRENT.md `next_action` against `ps` before treating it as the next move; TSV rows appearing with later timestamps are a producer signal not a one-shot. Explicitly scoped to autoresearch — `/start` and `/save-session` do NOT need general process scans; that's over-broad.
+
+### Validation
+
+- `python3 scripts/autoresearch/lane_status.py --human` against current state shows the in-flight `baseline.py` PID 2005081, elapsed 5h15m, 10/25 runs complete, ETA ~8h remaining, active C run-0 at 34min wallclock.
+- `python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 1 --json` → `overall: fail` with the `autoresearch lane processes` check correctly identifying the in-flight baseline.
+- `python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --json` → still `overall: fail` (the original unstable-fixture check + the new in-flight check both fire).
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — exit 0.
+
+### Notes
+
+- The check is autoresearch-specific because autoresearch is the only skill in this repo that owns multi-hour producer processes. `/start` (project-agnostic session entry) and `/save-session` (tactical handoff) deliberately don't carry skill-specific process scans — that would scope-creep them.
+- Scope of "lane in flight" detection: any `python` process whose argv contains `baseline.py` or `loop.py`. Does NOT include long-running `builder start` workspaces (could be unrelated dev work like `todo-app-validation`) or `hang_watchdog.py` (the watchdog is a sibling tool, not a lane).
+
+---
+
 ## 2026-05-23 - Autoresearch skill polish: 4 gaps closed before B-E re-baseline
 
 ### Changed

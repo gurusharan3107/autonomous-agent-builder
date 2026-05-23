@@ -50,9 +50,25 @@ WATCHDOG_PID=$!
 trap "kill -TERM $WATCHDOG_PID 2>/dev/null" EXIT
 
 # 5. Real N=5 baseline across all five fixtures (~2h wallclock, ~25 model runs, ~$5–10 cost)
+#
+# Launch with `Bash run_in_background: true` (NOT `nohup ... &`) so the harness
+# tracks the process + auto-notifies on completion. Then pair with `Monitor`
+# (or `BashOutput` for one-shot polls) so each `[baseline] fixture=X iter=Y/5`
+# line streams as a notification — keeps you aware of progress without re-checking.
 python3 scripts/autoresearch/baseline.py --fixtures A,B,C,D,E --n 5 \
     --evidence-root /tmp/autoresearch/baseline-$(date +%Y-%m-%d)
 ```
+
+**Joining an existing session** where a lane was started by a prior session or operator (the 2026-05-23 footgun): before reasoning about TSV state or `baseline_runs_summary.json`, run the bundled status reporter so you know what's in flight:
+
+```bash
+python3 scripts/autoresearch/lane_status.py --human
+# Reports: PID, elapsed wallclock, evidence-root, fixtures × N progress,
+# active run.py child + its fixture/port, avg time per run + ETA, watchdog
+# status. Read-only; safe to run in parallel with the lane.
+```
+
+If a lane is already running, the preflight (`--recipe 1`) will hard-fail with `autoresearch lane processes: fail — N lane process(es) already running`. That's intentional — two concurrent lanes collide on the TSV writers, workspace allocation, and builder ports. Either wait for the in-flight lane to finish, or `kill -TERM <PID>` (graceful) before starting a new one.
 
 ### Closeout
 

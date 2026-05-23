@@ -19,6 +19,20 @@ compatibility:
 
 This skill is the only entry point for the autoresearch loop. Three mutually exclusive lanes — **Baseline**, **Iterate**, **Fix** — each with its own preflight + do + closeout. Codifies [`docs/autoresearch/`](../../../docs/autoresearch/) into an agent-runnable shape. **Lane-specific procedure lives in `references/lanes/*.md` and loads only when that lane is chosen.**
 
+## Before anything — check for in-flight lanes
+
+`baseline.py` and `loop.py` run for hours and may have been started by a prior session or by the operator outside this session. **Before reasoning about TSV state, fixture readiness, or what to baseline next, run:**
+
+```bash
+python3 scripts/autoresearch/lane_status.py --human
+```
+
+Auto-discovers running `baseline.py` / `loop.py` from `ps -ef`, parses their argv for evidence-root + fixtures, reports progress (`N/total runs complete`, per-fixture breakdown, active child PID, avg time per run + ETA). Read-only; safe to run in parallel with the lane. If anything is reported, surface it FIRST in your response to the operator — TSV state is changing under your feet.
+
+The Recipe-1/2/3 preflights also hard-fail when another lane is detected (`autoresearch lane processes: fail`). That check is the safety net for accidentally starting a second concurrent lane; `lane_status.py` is the orientation tool for the moment you join an existing session.
+
+**Process-launch pattern within a lane.** When launching `baseline.py` / `loop.py` from a Bash tool call, use `run_in_background: true` (NOT `nohup ... &`). The harness tracks the PID and auto-notifies on completion; pair with `Monitor` (or one-shot `BashOutput`) so each `[baseline] fixture=X iter=Y/5` line streams as a notification. That keeps you progress-aware without polling.
+
 ## Entry point — always ask which lane
 
 When this skill activates, the FIRST action is `AskUserQuestion`:
