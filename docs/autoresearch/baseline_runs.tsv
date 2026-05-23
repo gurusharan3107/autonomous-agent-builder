@@ -1,3 +1,6 @@
 run_id	timestamp	branch	idea_ref	files_touched	lines_added	lines_deleted	fixture_id	noncached_plus_output_tokens	cache_ratio	chunk_pressure_risk	avoidable_cost_flags	gate_pass_rate	feature_correct	wallclock_s	operator_turns	composite	composite_delta_pct	gates_passed	decision	notes
-42b8b065-2d34-4bb8-b4e9-53b7804e4ee6	2026-05-23T09:33:45Z	main		0	0	0	A	0	0		[]	0.3333	False	402.21	9	0		2/6		sha=4a0d01d86e06 status=crash
-b4d19ea9-aeb5-41bc-b71a-f23e573e6349	2026-05-23T09:45:30Z	main		0	0	0	A	0	0		[]	0.5	False	492.9	15	0		3/6		sha=4a0d01d86e06 status=shipped
+ec68b9da-6f02-45e7-851a-ceaf71f0171b	2026-05-23T12:54:27Z	main		0	0	0	A	229431	1572.4646	False	[]	1.0	True	1422.43	25	0		6/6		sha=2599d3b35a07 status=shipped
+7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	2026-05-23T13:35:32Z	main		0	0	0	A	222603	3238.6385	False	[]	0.6667	True	2449.66	25	0		4/6		sha=2599d3b35a07 status=incomplete
+ba140d79-f288-4e38-b470-28e5c8195c56	2026-05-23T13:42:11Z	main		0	0	0	A	180235	3564.3966	False	[]	1.0	True	377.61	9	0		6/6		sha=2599d3b35a07 status=shipped
+a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	2026-05-23T14:06:29Z	main		0	0	0	A	239825	3012.6993	False	[]	1.0	True	1433.4	25	0		6/6		sha=2599d3b35a07 status=shipped
+7f24b3bb-7219-43c1-9fa8-ab8d1829f565	2026-05-23T14:15:14Z	main		0	0	0	A	195025	2034.1084	False	[]	0.6667	True	504.75	14	0		4/6		sha=2599d3b35a07 status=crash

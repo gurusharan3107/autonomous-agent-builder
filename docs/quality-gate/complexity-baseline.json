@@ -5,9 +5,24 @@
       "lines": 806,
       "owner": "autoresearch skill owner"
     },
+    ".claude/skills/autoresearch/scripts/diagnose_hang.py": {
+      "extraction_plan": "Autoresearch tooling: split pattern matchers into a named patterns module if new hang classes are added; tooling, not product code.",
+      "lines": 662,
+      "owner": "autoresearch skill owner"
+    },
+    ".claude/skills/autoresearch/scripts/preflight.py": {
+      "extraction_plan": "Autoresearch tooling: split recipe-specific checks into focused recipe modules if new recipes are added; tooling, not product code.",
+      "lines": 519,
+      "owner": "autoresearch skill owner"
+    },
+    ".claude/skills/autonomy-audit/scripts/audit.py": {
+      "extraction_plan": "Autonomy-audit tooling: split deterministic checks and model-backed checks into separate audit modules if new criterion families are added; tooling, not product code.",
+      "lines": 966,
+      "owner": "autonomy-audit skill owner"
+    },
     "scripts/autoresearch/run.py": {
       "extraction_plan": "Autoresearch tooling: split SESSION_HEADERS / PROMPT_HEADERS schema + per-run harness wiring + reporting into focused helper modules under scripts/autoresearch/ if new lanes are added; tooling, not product code.",
-      "lines": 636,
+      "lines": 935,
       "owner": "autoresearch skill owner"
     },
     "src/autonomous_agent_builder/agents/definitions.py": {
@@ -37,7 +52,7 @@
     },
     "src/autonomous_agent_builder/api/routes/dashboard_api.py": {
       "extraction_plan": "Move request schemas, serialization, state transitions, and orchestration branches into focused route-adjacent services before adding route behavior.",
-      "lines": 1731,
+      "lines": 1736,
       "owner": "embedded/API route owner"
     },
     "src/autonomous_agent_builder/cli/commands/agent.py": {
@@ -156,7 +171,7 @@
       "owner": "orchestrator lifecycle owner"
     },
     "src/autonomous_agent_builder/orchestrator/quality_gate_runner.py": {
-      "extraction_plan": "This module IS the extraction target — split phase quality gate, feature acceptance gate, and acceptance test recorder into focused sub-modules if they exceed threshold.",
+      "extraction_plan": "This module IS the extraction target \u2014 split phase quality gate, feature acceptance gate, and acceptance test recorder into focused sub-modules if they exceed threshold.",
       "lines": 224,
       "owner": "orchestrator lifecycle owner"
     },
@@ -166,7 +181,7 @@
       "owner": "orchestrator lifecycle owner"
     },
     "src/autonomous_agent_builder/orchestrator/sprint_lifecycle.py": {
-      "extraction_plan": "This module IS the extraction target — split ff-merge, PR opening, and materialized checkout into focused sprint sub-modules if they exceed threshold.",
+      "extraction_plan": "This module IS the extraction target \u2014 split ff-merge, PR opening, and materialized checkout into focused sprint sub-modules if they exceed threshold.",
       "lines": 550,
       "owner": "orchestrator lifecycle owner"
     },

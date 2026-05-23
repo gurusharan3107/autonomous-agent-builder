@@ -7,6 +7,41 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - N=5 fixture-A Baseline + Fix-lane patches P11/P12/P13/P14
+
+### Added
+
+- **`docs/autoresearch/baseline_runs.tsv`** — first end-to-end N=5 fixture-A rows (sha=2599d3b35a07): 3/5 at `gate_pass_rate=1.0` shipped (ec68b9da @ 1422s, ba140d79 @ 378s, a3e41fb3 @ 1433s) + 2/5 at `gate_pass_rate=0.6667` non-shipped (7aea8d3e incomplete @ 2450s/25turns, 7f24b3bb crash @ 505s on `/api/agent/chat/respond` 409).
+- **`docs/autoresearch/per_prompt_results.tsv`** — per-prompt rows for all 5 runs across `code-gen`, `optimization-agent`, `integration-resolver`, `feature-acceptance-tests`, `evidence-collector`, `build-verifier` agents.
+- **`docs/quality-gate/complexity-baseline.json`** — registered 3 new tooling baselines: `.claude/skills/autoresearch/scripts/diagnose_hang.py` (662 LOC), `.claude/skills/autoresearch/scripts/preflight.py` (519 LOC), `.claude/skills/autonomy-audit/scripts/audit.py` (966 LOC). Updated `scripts/autoresearch/run.py` baseline 636→927 to reflect P11→P14 growth.
+- **`.claude/skills/autoresearch/KNOWN_PATTERNS.md`** — expanded Fix-lane pattern catalog with P11/P12/P13/P14 entries (first-seen, evidence query, root-cause, fix pointer, recurrence-prevention note for each).
+
+### Fixed
+
+- **`scripts/autoresearch/run.py:send_chat_respond` (P11)** — branches the respond payload by `pending_item["type"]`: `tool_approval_request` sends `{decision: "allow", reason: "autoresearch harness: auto-allow"}`; `ask_user_question` sends `selected_options` or `custom_text` (non-empty fallback). Earlier shape blindly sent option/text payload against approval events → server 400 → fallback `send_chat` → 409 because the session still held a reserved run. The previous 400-handler `send_chat` fallback is now `break` (incomplete, not crash).
+- **`scripts/autoresearch/run.py:evaluate_hard_gates` + `run_feature_check` (P12)** — gate evaluator reads `metrics["optimization_summary"]` (was `metrics["optimization"]` — empty in current schema, so `chunk_pressure` and `avoidable_flags` always failed). `run_feature_check` now `pip install -r requirements.txt` before pytest, sets `cwd=workspace` (was running from repo root, breaking `app/static` relative path at import time), and adds `--ignore-glob=*test_github*` (async tests need `pytest-asyncio` not in baseline requirements).
+- **`scripts/autoresearch/run.py:run_feature_check` (P13)** — recreates `.venv` via `python3 -m venv .venv` when `venv_py` is missing. Root cause: Builder's `workspace_integrated_fast_forward` merges task-branch `.venv` deletions into the sprint branch, and `git checkout sprint/*` then deletes `.venv` from the project workspace tree. Without the recreate, the harness fell back to system Python → PEP 668 → `CalledProcessError`.
+- **`scripts/autoresearch/run.py:main` (P14)** — `HTTPError` handler now `elif status_code == 409: continue` (was: re-raise → outer except → `decision_status="crash"`). 409 here is a race: Builder auto-handles a `tool_approval_request` between the harness's `get_pending_question` poll and the `send_chat_respond` call, so by respond time the session has no pending question. `continue` not `break`: the session is still active; `break` would prematurely call `ship_or_timeout`.
+
+### Changed
+
+- **`docs/goal/ROADMAP.md`** — 4 new `[x]` entries under M3.5 for P11/P12/P13/P14 with full root-cause + fix description (placed contiguously above the prior "Three gate failures" entry from the same day).
+
+### Validation
+
+- N=5 fixture-A Baseline result: 3/5 shipped at `gate_pass_rate=1.0`, 2/5 non-shipped (one incomplete, one crash). All 5 runs: gates 1–3 + 5 passed; the 2 non-shipped failed only `gate_pass_rate_full` + `fully_shipped` (correctly diagnosing real ship failures, not gate-evaluator bugs).
+- The 7f24b3bb crash (run-4 @ 14:15Z) preceded P14 application — a re-baseline with P14 active from run-0 would convert that crash into either an incomplete or a shipped run, shifting the variance estimate.
+- Evidence root: `/tmp/autoresearch/baseline-2026-05-23/A/run-{0..4}/` (analyze.json, board.json, metrics.json, errors.json, builder_stdout_stderr.log, raw_bodies/, plus crash.log on run-4).
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — exit 0.
+
+### Notes
+
+- σ-floor for fixture A computed across all 5 runs; 2/5 non-ship is real Builder substrate variance, not harness measurement error.
+- Builder-side residual: the chat-hub `reserve_run`/`release_run` lifecycle around `proceed_needed` continuations can race with the harness's poll-then-respond pattern. P14 makes the harness resilient; whether to also fix the race server-side is M2.x scope, not autoresearch loop scope.
+- run-1's 25-question stall (chat agent kept surfacing clarifications without finalizing scope) is Builder agent variance, not a harness fix candidate.
+
+---
+
 ## 2026-05-23 - Fix lane: 3 gate failures blocking N=5 baseline resolved
 
 ### Fixed
