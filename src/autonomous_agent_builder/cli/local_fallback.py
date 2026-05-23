@@ -12,7 +12,7 @@ from typing import Any
 from autonomous_agent_builder.agents.definitions import get_agent_definition
 from autonomous_agent_builder.api.routes.dashboard_api import (
     load_board_response,
-    metrics_json,
+    load_metrics_response,
 )
 from autonomous_agent_builder.cli.project_discovery import (
     ProjectNotFoundError,
@@ -177,7 +177,7 @@ def load_local_task_status(task_id: str) -> dict[str, Any] | None:
 async def _load_local_metrics_async() -> dict[str, Any]:
     factory = _local_session_factory()
     async with factory() as session:
-        data = await metrics_json(session)
+        data = await load_metrics_response(session, _project_root())
     payload = data.model_dump(mode="json")
     payload["summary"] = {
         "total_cost": payload.get("total_cost", 0),

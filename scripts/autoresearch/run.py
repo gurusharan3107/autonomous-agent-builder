@@ -401,7 +401,7 @@ def capture_evidence(workspace: pathlib.Path, session_id: str, evidence_dir: pat
     cmds = {
         "analyze.json": ["builder", "logs", "analyze", "--session", session_id, "--full", "--json"],
         "metrics.json": ["builder", "metrics", "show", "--json", "--full"],
-        "board.json": ["builder", "backlog", "task", "list", "--json"],
+        "board.json": ["builder", "board", "show", "--json", "--full"],
         "errors.json": ["builder", "logs", "--error", "--compact", "--json"],
     }
     for filename, cmd in cmds.items():
@@ -443,7 +443,12 @@ def run_feature_check(workspace: pathlib.Path) -> bool:
                 # to skip tests. compare.py's other gates still bound the run.
                 return True
             subprocess.run(
-                [py, "-m", "pytest", str(tests_dir), "-q", "--no-header"],
+                [
+                    py, "-m", "pytest", str(tests_dir), "-q", "--no-header",
+                    # Playwright tests require a live devpulse server which is
+                    # not running during the automated feature check.
+                    "--ignore-glob=*playwright*",
+                ],
                 check=True, timeout=600,
             )
             return True
@@ -470,8 +475,17 @@ def evaluate_hard_gates(
     chunk_pressure = optimization.get("chunk_pressure") or {}
     gate_chunk = chunk_pressure.get("risk") is False or chunk_pressure.get("chunk_pressure_risk") is False
     gate_flags = (optimization.get("active_avoidable_cost_flags") or []) == []
-    tasks = board.get("tasks") if isinstance(board, dict) else []
-    gate_rate = bool(tasks) and all(t.get("status") == "done" for t in tasks)
+    # board show schema: tasks in section lists (done/pending/active/review/blocked).
+    # Legacy backlog-task-list schema: flat "tasks" list with status field.
+    if isinstance(board, dict) and "tasks" not in board:
+        non_done = sum(
+            len(board.get(s) or []) for s in ("pending", "active", "review", "blocked")
+        )
+        done_tasks = board.get("done") or []
+        gate_rate = bool(done_tasks) and non_done == 0
+    else:
+        tasks = board.get("tasks") if isinstance(board, dict) else []
+        gate_rate = bool(tasks) and all(t.get("status") == "done" for t in tasks)
     gates = {
         "cache_ratio_gt_5x_after_turn_2": gate_cache,
         "chunk_pressure_risk_false": gate_chunk,

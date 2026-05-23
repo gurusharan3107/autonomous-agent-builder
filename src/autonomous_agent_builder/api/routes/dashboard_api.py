@@ -1248,6 +1248,11 @@ async def _load_sprint_summaries(
     return summaries
 
 
+async def load_metrics_response(db: AsyncSession, project_root: Path) -> MetricsResponse:
+    """Standalone metrics loader — callable without a FastAPI Request context."""
+    return await _load_metrics_response(db, project_root)
+
+
 async def load_board_response(db: AsyncSession, project_root: Path | None = None) -> BoardResponse:
     """Build the current board snapshot."""
     if project_root is not None and await sync_forward_engineering_feature_backlog(

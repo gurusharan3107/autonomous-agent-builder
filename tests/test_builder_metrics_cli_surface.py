@@ -358,3 +358,51 @@ def test_local_session_factory_targets_repo_agent_builder_db(monkeypatch, tmp_pa
         local_fallback_module.os.environ["DB_NAME"]
         == str((tmp_path / ".agent-builder" / "agent_builder").resolve())
     )
+
+
+def test_load_local_metrics_uses_standalone_loader(monkeypatch):
+    """Regression: load_local_metrics must call load_metrics_response(session),
+    NOT metrics_json(session, ...). metrics_json is a FastAPI route handler that
+    expects (request: Request, db: AsyncSession); passing an AsyncSession as
+    the first arg raises AttributeError: 'AsyncSession' object has no attribute
+    'app'. Caught 2026-05-23 via smoke-A-v2 evidence: metrics.json had
+    ok=False, error.type=AttributeError, blocking chunk_pressure_risk gate.
+    """
+    calls = []
+
+    async def _fake_load_metrics_response(session, project_root=None):
+        calls.append(session)
+
+        class _FakeMetrics:
+            def model_dump(self, **_kwargs):
+                return {
+                    "total_cost": 0.5,
+                    "total_tokens": 1000,
+                    "total_runs": 2,
+                    "gate_pass_rate": 1.0,
+                    "optimization": {"chunk_pressure": {"risk": False}},
+                }
+
+        return _FakeMetrics()
+
+    class _Session:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+    class _Factory:
+        def __call__(self):
+            return _Session()
+
+    monkeypatch.setattr(local_fallback_module, "_local_session_factory", lambda: _Factory())
+    monkeypatch.setattr(local_fallback_module, "load_metrics_response", _fake_load_metrics_response)
+
+    payload = local_fallback_module.load_local_metrics()
+
+    assert len(calls) == 1, "load_metrics_response must be called exactly once"
+    assert isinstance(calls[0], _Session), "session object must be passed to standalone loader"
+    assert payload["total_runs"] == 2
+    assert payload["degraded"] is True
+    assert payload["source"] == "local_db_fallback"
