@@ -26,6 +26,7 @@ import csv
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -210,17 +211,45 @@ def capture_evidence(workspace: pathlib.Path, session_id: str, evidence_dir: pat
 
 
 def run_feature_check(workspace: pathlib.Path) -> bool:
+    """Run the workspace's feature-correctness gate.
+
+    Auto-detect Node (package.json) vs Python (pyproject.toml). Failing
+    to detect a known stack returns False so the iteration is recorded
+    as a feature-check failure — operator can fix run.py or add a stack.
+    """
     app = workspace / "app"
     if not app.exists():
-        return False
+        # Some workspaces keep code at the root (single-package Python repos).
+        app = workspace
     try:
-        subprocess.run(["npm", "--prefix", str(app), "run", "build"], check=True, timeout=600)
-        subprocess.run(
-            ["npm", "--prefix", str(app), "run", "test", "--", "--watch=false"],
-            check=True,
-            timeout=600,
-        )
-        return True
+        if (app / "package.json").exists():
+            subprocess.run(["npm", "--prefix", str(app), "run", "build"], check=True, timeout=600)
+            subprocess.run(
+                ["npm", "--prefix", str(app), "run", "test", "--", "--watch=false"],
+                check=True, timeout=600,
+            )
+            return True
+        if (workspace / "pyproject.toml").exists() or (app / "pyproject.toml").exists():
+            # Python stack — run pytest if a tests dir exists; ruff format/check
+            # is opt-in via builder's quality gates, not the feature gate here.
+            venv_py = workspace / ".venv" / "bin" / "python"
+            py = str(venv_py) if venv_py.exists() else sys.executable
+            tests_dir = next(
+                (d for d in (workspace / "tests", app / "tests") if d.exists()),
+                None,
+            )
+            if tests_dir is None:
+                # No tests means the feature gate is vacuous — treat as pass
+                # so the iteration isn't penalized for the workspace's choice
+                # to skip tests. compare.py's other gates still bound the run.
+                return True
+            subprocess.run(
+                [py, "-m", "pytest", str(tests_dir), "-q", "--no-header"],
+                check=True, timeout=600,
+            )
+            return True
+        # Unknown stack — surface as failure so the operator notices
+        return False
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return False
 
@@ -228,12 +257,16 @@ def run_feature_check(workspace: pathlib.Path) -> bool:
 def evaluate_hard_gates(
     analyze: dict, metrics: dict, board: dict, feature_correct: bool, shipped: bool
 ) -> tuple[str, dict[str, bool]]:
-    prompts = analyze.get("prompts") or []
-    gate_cache = (
-        all(float(p.get("cache_ratio") or 0) > 5.0 for p in prompts[2:])
-        if len(prompts) > 2
-        else True
-    )
+    # Tier-1 bar is a single session-scoped number: `cache_ratio > 5x after
+    # turn 2`. With `_runtime_aggregates(session_id=...)` honestly scoped to
+    # this run, `analyze["cache_ratio"]` is the session aggregate. Prior shape
+    # walked `prompts[]` which is operator-chat-turn-scoped and produced 1
+    # entry for autoresearch fixture-A runs — the test was trivially true.
+    runtime_aggs = analyze.get("runtime_aggregates") or {}
+    totals = runtime_aggs.get("totals") or {}
+    has_agent_runs = int(totals.get("runs") or 0) > 0
+    session_cache_ratio = float(analyze.get("cache_ratio") or 0)
+    gate_cache = has_agent_runs and session_cache_ratio > 5.0
     optimization = (metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     chunk_pressure = optimization.get("chunk_pressure") or {}
     gate_chunk = chunk_pressure.get("risk") is False or chunk_pressure.get("chunk_pressure_risk") is False
@@ -253,10 +286,17 @@ def evaluate_hard_gates(
 
 
 SESSION_HEADERS = [
-    "run_id", "timestamp", "main_sha", "fixture_id",
-    "noncached_plus_output_tokens", "cache_ratio", "chunk_pressure_risk",
-    "avoidable_cost_flags", "gate_pass_rate", "feature_correct",
-    "wallclock_s", "operator_turns", "composite", "gates_passed", "notes",
+    # Must match docs/autoresearch/optimize_results.tsv + baseline_runs.tsv
+    # header exactly. Drift here silently corrupts every downstream consumer
+    # (compare.py, render_iterations.py, introspect.py). The introspection
+    # script auto-detects this drift and surfaces it as the top recommendation.
+    "run_id", "timestamp", "branch", "idea_ref",
+    "files_touched", "lines_added", "lines_deleted",
+    "fixture_id", "noncached_plus_output_tokens", "cache_ratio",
+    "chunk_pressure_risk", "avoidable_cost_flags", "gate_pass_rate",
+    "feature_correct", "wallclock_s", "operator_turns",
+    "composite", "composite_delta_pct", "gates_passed",
+    "decision", "notes",
 ]
 
 PROMPT_HEADERS = [
@@ -272,60 +312,97 @@ def append_session_row(
     *, tsv_path: pathlib.Path, run_id: str, fixture_id: str, branch: str,
     analyze: dict, metrics: dict, gates_passed: str, composite: int,
     wallclock_s: float, feature_correct: bool, decision_status: str,
+    idea_ref: str = "", diff_stats: dict | None = None,
 ) -> None:
     opt = (metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     chunk = opt.get("chunk_pressure") or {}
-    sha = git_main_sha()
+    diff_stats = diff_stats or {}
     row = [
         run_id,
         time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        sha,
+        branch,
+        idea_ref,
+        diff_stats.get("files_touched", 0),
+        diff_stats.get("lines_added", 0),
+        diff_stats.get("lines_deleted", 0),
         fixture_id,
         opt.get("noncached_plus_output_tokens") or 0,
         opt.get("cache_ratio") or 0,
         chunk.get("chunk_pressure_risk", chunk.get("risk")),
         json.dumps(opt.get("active_avoidable_cost_flags") or []),
-        gates_passed,
+        # gate_pass_rate is computed by the harness's evaluate_hard_gates;
+        # surface 1.0 if all 6 passed, else the fractional pass count
+        _gate_pass_rate_value(gates_passed),
         feature_correct,
         round(wallclock_s, 2),
         analyze.get("prompt_count") or len(analyze.get("prompts") or []),
         composite,
+        "",  # composite_delta_pct — patched by compare.py
         gates_passed,
-        f"branch={branch} status={decision_status}",
+        "",  # decision — patched by compare.py
+        f"sha={git_main_sha()} status={decision_status}",
     ]
     write_tsv_row(tsv_path, SESSION_HEADERS, row)
+
+
+def _gate_pass_rate_value(gates_passed: str) -> float:
+    """Parse '5/6' → 5/6. Returns 0.0 on malformed input."""
+    try:
+        num, denom = gates_passed.split("/", 1)
+        denom_n = int(denom)
+        return round(int(num) / denom_n, 4) if denom_n else 0.0
+    except (ValueError, AttributeError):
+        return 0.0
 
 
 def append_prompt_rows(
     *, tsv_path: pathlib.Path, run_id: str, analyze: dict, breakdown: dict
 ) -> None:
-    prompts = analyze.get("prompts") or []
-    runs_idx = {r.get("id"): r for r in (analyze.get("agent_run_evidence") or [])}
+    """Emit one TSV row per session-scoped agent (code-gen, scaffold, …).
+
+    `analyze.prompts[]` is operator-chat-turn-scoped (one entry per
+    `user_message` chat event) and never carries per-agent-run attribution.
+    Per-agent telemetry lives in `analyze.runtime_aggregates.by_agent` which
+    `_runtime_aggregates(session_id=...)` now scopes to this chat session via
+    `tasks.chat_session_id`. That's the honest source for autoresearch's
+    σ-floor + 2σ inputs.
+    """
+    aggs = analyze.get("runtime_aggregates") or {}
+    by_agent = aggs.get("by_agent") or []
+    by_runtime_idx = {
+        str(r.get("runtime_sdk") or ""): r for r in (aggs.get("by_runtime") or [])
+    }
+    runtime_default = next(iter(by_runtime_idx)) if by_runtime_idx else ""
     rows: list[list] = []
-    for i, p in enumerate(prompts):
-        run_meta = runs_idx.get(p.get("agent_run_id"), {})
-        tools = p.get("tool_calls") or []
+    for i, agent in enumerate(by_agent):
+        tokens_input = int(agent.get("input_tokens") or 0)
+        tokens_cached = int(agent.get("cached_tokens") or 0)
+        tokens_output = int(agent.get("output_tokens") or 0)
+        noncached_plus_output = max(tokens_input - tokens_cached + tokens_output, 0)
+        cache_ratio = (
+            tokens_cached / max(noncached_plus_output, 1) if tokens_cached else 0.0
+        )
         rows.append([
             run_id,
             i,
-            p.get("role") or "user" if i == 0 else "assistant",
-            p.get("agent_name") or run_meta.get("agent_name") or "",
-            p.get("phase") or run_meta.get("phase") or "",
-            p.get("context_budget_tokens") or 0,
-            p.get("tokens_input") or 0,
-            p.get("tokens_cached") or 0,
-            p.get("cache_creation_tokens") or 0,
-            p.get("tokens_output") or 0,
-            (p.get("tokens_input") or 0) - (p.get("tokens_cached") or 0) + (p.get("tokens_output") or 0),
-            p.get("cache_ratio") or 0,
-            len(tools),
-            json.dumps([t.get("name", "") for t in tools]),
-            p.get("stop_reason") or "",
-            p.get("duration_ms") or 0,
-            p.get("cost_usd") or 0,
-            run_meta.get("runtime_sdk") or "",
-            p.get("model") or run_meta.get("model") or "",
-            p.get("effort") or run_meta.get("effort") or "",
+            "agent",
+            agent.get("agent_name") or "",
+            "",
+            0,
+            tokens_input,
+            tokens_cached,
+            0,
+            tokens_output,
+            noncached_plus_output,
+            cache_ratio,
+            0,
+            "[]",
+            "",
+            int(agent.get("duration_ms") or 0),
+            float(agent.get("cost_usd") or 0.0),
+            runtime_default,
+            "",
+            "",
             json.dumps(breakdown.get(str(i)) or {}),
         ])
     for row in rows:
@@ -348,6 +425,31 @@ def git_main_sha() -> str:
         ).decode().strip()[:12]
     except Exception:
         return ""
+
+
+def compute_branch_diff_stats(branch: str) -> dict:
+    """Run `git diff --shortstat main...<branch>` to get the edit size of an
+    iteration. Used by compare.py's `simpler wins ties` rule and surfaced in
+    the iterations.html visualization. Returns zeros on any git failure."""
+    base = "main"
+    out = {"files_touched": 0, "lines_added": 0, "lines_deleted": 0}
+    try:
+        text = subprocess.check_output(
+            ["git", "diff", "--shortstat", f"{base}...{branch}"],
+            stderr=subprocess.DEVNULL, timeout=10,
+        ).decode()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return out
+    files = re.search(r"(\d+) files? changed", text)
+    added = re.search(r"(\d+) insertions?", text)
+    deleted = re.search(r"(\d+) deletions?", text)
+    if files:
+        out["files_touched"] = int(files.group(1))
+    if added:
+        out["lines_added"] = int(added.group(1))
+    if deleted:
+        out["lines_deleted"] = int(deleted.group(1))
+    return out
 
 
 def extract_context_breakdown(evidence_dir: pathlib.Path) -> dict:
@@ -403,16 +505,45 @@ def main() -> int:
     decision_status = "incomplete"
     session_id: str | None = None
     t0 = time.time()
+    # Cap how many questions we'll auto-answer before bailing — protects
+    # against an unbounded intake loop if builder keeps surfacing prompts.
+    max_questions = 25
+    default_answer = fixture.get("default_answer", "recommended")
     try:
         wait_for_ready(f"http://127.0.0.1:{args.port}/api/dashboard/board", timeout_s=120)
         session_id = send_chat(args.port, fixture["prompt"])
-        wait_for_question_or_ship(args.port, session_id, timeout_s=600)
-        for answer in fixture["follow_ups"]:
+        follow_ups = list(fixture.get("follow_ups") or [])
+        follow_up_idx = 0
+        questions_answered = 0
+
+        # Drive the chat lifecycle: keep alternating wait → answer until the
+        # board reaches shipped OR we hit the question cap OR fixture-specific
+        # timeout. Each iteration of this loop is one operator response cycle.
+        while questions_answered < max_questions:
+            try:
+                outcome = wait_for_question_or_ship(
+                    args.port, session_id, timeout_s=fixture["timeout_s"]
+                )
+            except TimeoutError:
+                break  # board still not shipped and no pending question
+            if outcome == "shipped":
+                break
             question_id = get_pending_question(args.port, session_id)
             if question_id is None:
-                break
+                break  # neither shipped nor pending — escape hatch
+            # Use the scripted follow-up if one exists for this question index;
+            # otherwise default to the fixture's auto-answer (typically
+            # "recommended"). This is the v1 intake-polling pattern — builder
+            # often surfaces multiple intake/approval questions for a single
+            # feature, and an empty follow_ups list shouldn't stall the run.
+            if follow_up_idx < len(follow_ups):
+                answer = follow_ups[follow_up_idx]
+                follow_up_idx += 1
+            else:
+                answer = default_answer
             send_chat_respond(args.port, session_id, question_id, answer)
-            wait_for_question_or_ship(args.port, session_id, timeout_s=600)
+            questions_answered += 1
+
         shipped = ship_or_timeout(args.port, fixture["timeout_s"])
         decision_status = "shipped" if shipped else "incomplete"
     except Exception as exc:
@@ -446,10 +577,19 @@ def main() -> int:
     gates_str, _ = evaluate_hard_gates(analyze, metrics, board, feature_correct, decision_status == "shipped")
 
     tsv_path = tsv_root / ("baseline_runs.tsv" if args.baseline else "optimize_results.tsv")
+    # Idea ref is parsed out of the branch name when this run is an iteration
+    # under loop.py (e.g., autoresearch/iter-3-stable-prompt-header → "stable-prompt-header").
+    # Otherwise empty (smoke tests, manual one-offs, baseline N=5 runs).
+    idea_ref = ""
+    m = re.match(r"^autoresearch/iter-\d+-(.+)$", args.branch or "")
+    if m:
+        idea_ref = m.group(1)
+    diff_stats = compute_branch_diff_stats(args.branch) if args.branch else {}
     append_session_row(
         tsv_path=tsv_path, run_id=run_id, fixture_id=args.fixture, branch=args.branch,
         analyze=analyze, metrics=metrics, gates_passed=gates_str, composite=composite,
         wallclock_s=wallclock_s, feature_correct=feature_correct, decision_status=decision_status,
+        idea_ref=idea_ref, diff_stats=diff_stats,
     )
     append_prompt_rows(
         tsv_path=tsv_root / "per_prompt_results.tsv",

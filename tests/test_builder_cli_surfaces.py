@@ -1867,6 +1867,147 @@ def test_logs_analyze_includes_runtime_aggregates(monkeypatch, tmp_path):
     assert payload["raw_evidence"]["event_count"] == 1
 
 
+def test_logs_analyze_scopes_runtime_aggregates_to_chat_session(monkeypatch, tmp_path):
+    """`analyze --session <id>` must not bleed other sessions' agent_runs.
+
+    Two chat sessions each drive their own task with disjoint agent runs.
+    Aggregates (totals, by_agent, top_cost_drivers, raw_token_total) must
+    surface only the targeted session's numbers — the M2.3 contract.
+    """
+    agent_builder_dir = tmp_path / ".agent-builder"
+    agent_builder_dir.mkdir(parents=True)
+    db_path = agent_builder_dir / "agent_builder.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        create table chat_sessions (
+            id varchar(36) primary key,
+            sdk_session_id varchar(255),
+            created_at datetime default current_timestamp,
+            updated_at datetime default current_timestamp
+        );
+        create table chat_events (
+            id varchar(36) primary key,
+            session_id varchar(36) not null,
+            event_type varchar(50) not null,
+            payload_json json not null,
+            status varchar(20) not null,
+            tool_use_id varchar(255),
+            response_to_event_id varchar(36),
+            created_at datetime default current_timestamp
+        );
+        create table tasks (
+            id varchar(36) primary key,
+            chat_session_id varchar(36),
+            status varchar(50) not null,
+            depends_on json
+        );
+        create table agent_runs (
+            id varchar(36) primary key,
+            task_id varchar(36) not null,
+            agent_name varchar(50) not null,
+            cost_usd float not null default 0,
+            tokens_input integer not null default 0,
+            tokens_output integer not null default 0,
+            tokens_cached integer not null default 0,
+            num_turns integer not null default 0,
+            duration_ms integer not null default 0,
+            stop_reason varchar(50),
+            status varchar(20) not null default 'completed'
+        );
+        create table approval_gates (
+            id varchar(36) primary key,
+            task_id varchar(36) not null,
+            gate_type varchar(50) not null,
+            status varchar(20) not null,
+            created_at datetime not null,
+            resolved_at datetime
+        );
+        create table agent_run_events (
+            id varchar(36) primary key,
+            run_id varchar(36) not null,
+            event_type varchar(50) not null,
+            tool_name varchar(100)
+        );
+        """
+    )
+    conn.executemany(
+        "insert into chat_sessions (id, sdk_session_id, created_at, updated_at) values (?, ?, ?, ?)",
+        [
+            ("sess-A", "sdk-A", "2026-04-22 12:00:00", "2026-04-22 12:00:00"),
+            ("sess-B", "sdk-B", "2026-04-22 12:05:00", "2026-04-22 12:05:00"),
+        ],
+    )
+    conn.executemany(
+        "insert into chat_events (id, session_id, event_type, payload_json, status, created_at) values (?, ?, ?, ?, ?, ?)",
+        [
+            (
+                "evt-A",
+                "sess-A",
+                "user_message",
+                json.dumps({"content": "Build feature A."}),
+                "completed",
+                "2026-04-22 12:00:01",
+            ),
+            (
+                "evt-B",
+                "sess-B",
+                "user_message",
+                json.dumps({"content": "Build feature B."}),
+                "completed",
+                "2026-04-22 12:05:01",
+            ),
+        ],
+    )
+    conn.executemany(
+        "insert into tasks (id, chat_session_id, status, depends_on) values (?, ?, ?, ?)",
+        [
+            ("task-A", "sess-A", "running", None),
+            ("task-B", "sess-B", "running", None),
+        ],
+    )
+    conn.executemany(
+        "insert into agent_runs (id, task_id, agent_name, cost_usd, tokens_input, tokens_output, num_turns, duration_ms, stop_reason, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            ("run-A1", "task-A", "code-gen", 0.5, 1000, 500, 10, 1000, "end_turn", "completed"),
+            ("run-A2", "task-A", "scaffold", 0.2, 400, 200, 5, 500, "end_turn", "completed"),
+            ("run-B1", "task-B", "feature-verifier", 0.9, 9000, 4500, 30, 5000, "end_turn", "completed"),
+            ("run-B2", "task-B", "build-verifier", 0.7, 6000, 3000, 20, 3000, "end_turn", "completed"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.chdir(tmp_path)
+
+    result_a = runner.invoke(
+        app, ["logs", "analyze", "--session", "sess-A", "--full", "--json"]
+    )
+    assert result_a.exit_code == 0, result_a.stdout
+    payload_a = json.loads(result_a.stdout)
+    aggs_a = payload_a["runtime_aggregates"]
+    assert aggs_a["session_scoped"] is True
+    assert aggs_a["totals"]["runs"] == 2
+    agent_names_a = sorted(row["agent_name"] for row in aggs_a["by_agent"])
+    assert agent_names_a == ["code-gen", "scaffold"]
+    assert "feature-verifier" not in agent_names_a
+    assert "build-verifier" not in agent_names_a
+    assert payload_a["raw_token_total"] == 2100  # (1000+500) + (400+200)
+
+    result_b = runner.invoke(
+        app, ["logs", "analyze", "--session", "sess-B", "--full", "--json"]
+    )
+    assert result_b.exit_code == 0, result_b.stdout
+    payload_b = json.loads(result_b.stdout)
+    aggs_b = payload_b["runtime_aggregates"]
+    assert aggs_b["session_scoped"] is True
+    assert aggs_b["totals"]["runs"] == 2
+    agent_names_b = sorted(row["agent_name"] for row in aggs_b["by_agent"])
+    assert agent_names_b == ["build-verifier", "feature-verifier"]
+    assert "code-gen" not in agent_names_b
+    assert payload_b["raw_token_total"] == 22500  # (9000+4500) + (6000+3000)
+
+
 def test_logs_analyze_does_not_flag_tool_events_before_first_run(monkeypatch, tmp_path):
     agent_builder_dir = tmp_path / ".agent-builder"
     agent_builder_dir.mkdir(parents=True)

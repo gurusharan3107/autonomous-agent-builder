@@ -578,8 +578,28 @@ def _table_columns(conn: sqlite3.Connection, table_name: str) -> set[str]:
     return {str(row["name"]) for row in conn.execute(f"pragma table_info({table_name})")}
 
 
-def _runtime_aggregates() -> dict[str, Any]:
-    """Return compact repo-local runtime aggregates for optimization review."""
+def _session_task_filter(
+    conn: sqlite3.Connection, session_id: str | None
+) -> tuple[str, tuple[Any, ...]]:
+    """Return (where_fragment, params) scoping `task_id` to a chat session.
+
+    Empty fragment when no session_id provided, or when the linkage column is
+    absent on this DB (older repos without the `tasks.chat_session_id` add).
+    """
+    if not session_id or not _table_exists(conn, "tasks"):
+        return "", ()
+    if "chat_session_id" not in _table_columns(conn, "tasks"):
+        return "", ()
+    return "task_id IN (SELECT id FROM tasks WHERE chat_session_id = ?)", (session_id,)
+
+
+def _runtime_aggregates(session_id: str | None = None) -> dict[str, Any]:
+    """Return compact repo-local runtime aggregates for optimization review.
+
+    When ``session_id`` is provided, all aggregate queries are scoped to the
+    chat session's tasks via ``tasks.chat_session_id``. Without it, aggregates
+    are global (preserves pre-existing behavior for non-session callers).
+    """
     db_path = _db_path()
     if not db_path.exists():
         return {"available": False, "reason": "agent_builder_db_missing"}
@@ -590,11 +610,13 @@ def _runtime_aggregates() -> dict[str, Any]:
         if not _table_exists(conn, "agent_runs"):
             return {"available": False, "reason": "agent_runs_table_missing"}
         run_columns = _table_columns(conn, "agent_runs")
+        task_filter, filter_params = _session_task_filter(conn, session_id)
+        where_clause = f"where {task_filter}" if task_filter else ""
 
         by_agent = [
             _row_dict(row)
             for row in conn.execute(
-                """
+                f"""
                 select agent_name,
                        count(*) as runs,
                        coalesce(sum(num_turns), 0) as turns,
@@ -604,9 +626,11 @@ def _runtime_aggregates() -> dict[str, Any]:
                        coalesce(sum(cost_usd), 0.0) as cost_usd,
                        coalesce(sum(duration_ms), 0) as duration_ms
                 from agent_runs
+                {where_clause}
                 group by agent_name
                 order by coalesce(sum(cost_usd), 0.0) desc
-                """
+                """,
+                filter_params,
             ).fetchall()
         ]
         by_runtime: list[dict[str, Any]] = []
@@ -614,7 +638,7 @@ def _runtime_aggregates() -> dict[str, Any]:
             by_runtime = [
                 _row_dict(row)
                 for row in conn.execute(
-                    """
+                    f"""
                     select coalesce(runtime_sdk, '') as runtime_sdk,
                            coalesce(provider, '') as provider,
                            count(*) as runs,
@@ -625,25 +649,28 @@ def _runtime_aggregates() -> dict[str, Any]:
                            coalesce(sum(cost_usd), 0.0) as cost_usd,
                            coalesce(sum(duration_ms), 0) as duration_ms
                     from agent_runs
+                    {where_clause}
                     group by coalesce(runtime_sdk, ''), coalesce(provider, '')
                     order by count(*) desc
-                    """
+                    """,
+                    filter_params,
                 ).fetchall()
             ]
-        approval_wait = _approval_wait_summary(conn)
-        tool_counts, tool_event_count = _tool_counts(conn)
-        optimization_summary = _optimization_summary(conn)
+        approval_wait = _approval_wait_summary(conn, session_id=session_id)
+        tool_counts, tool_event_count = _tool_counts(conn, session_id=session_id)
+        optimization_summary = _optimization_summary(conn, session_id=session_id)
         totals = _sum_agent_rows(by_agent)
         has_runtime_runs = int(totals.get("runs") or 0) > 0
         payload = {
             "available": True,
+            "session_scoped": bool(task_filter),
             "by_agent": by_agent,
             "by_runtime": by_runtime,
             "totals": totals,
-            "stop_reasons": _stop_reason_counts(conn),
+            "stop_reasons": _stop_reason_counts(conn, session_id=session_id),
             "phase_ceremony": _phase_ceremony_summary(by_agent, approval_wait),
             "approval_wait": approval_wait,
-            "provider_limits": _provider_limit_summary(conn),
+            "provider_limits": _provider_limit_summary(conn, session_id=session_id),
             "optimization_summary": optimization_summary,
             "tool_observability": {
                 "agent_run_events_available": _table_exists(conn, "agent_run_events"),
@@ -692,7 +719,9 @@ def _row_dict(row: sqlite3.Row) -> dict[str, Any]:
     return {key: row[key] for key in row.keys()}
 
 
-def _optimization_summary(conn: sqlite3.Connection) -> dict[str, Any]:
+def _optimization_summary(
+    conn: sqlite3.Connection, *, session_id: str | None = None
+) -> dict[str, Any]:
     if not _table_exists(conn, "agent_runs"):
         return {"available": False, "reason": "agent_runs_missing"}
     columns = _table_columns(conn, "agent_runs")
@@ -700,6 +729,8 @@ def _optimization_summary(conn: sqlite3.Connection) -> dict[str, Any]:
         "observability" if "observability" in columns else "null as observability"
     )
     runtime_select = "runtime_sdk" if "runtime_sdk" in columns else "'' as runtime_sdk"
+    task_filter, filter_params = _session_task_filter(conn, session_id)
+    where_clause = f"where {task_filter}" if task_filter else ""
     rows = conn.execute(
         f"""
         select agent_name,
@@ -709,7 +740,9 @@ def _optimization_summary(conn: sqlite3.Connection) -> dict[str, Any]:
                tokens_cached,
                {observability_select}
         from agent_runs
-        """
+        {where_clause}
+        """,
+        filter_params,
     ).fetchall()
     runs: list[dict[str, Any]] = []
     for row in rows:
@@ -737,51 +770,79 @@ def _sum_agent_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _stop_reason_counts(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+def _stop_reason_counts(
+    conn: sqlite3.Connection, *, session_id: str | None = None
+) -> list[dict[str, Any]]:
+    task_filter, filter_params = _session_task_filter(conn, session_id)
+    where_clause = f"where {task_filter}" if task_filter else ""
     return [
         _row_dict(row)
         for row in conn.execute(
-            """
+            f"""
             select coalesce(stop_reason, 'unknown') as stop_reason, count(*) as count
             from agent_runs
+            {where_clause}
             group by coalesce(stop_reason, 'unknown')
             order by count desc
-            """
+            """,
+            filter_params,
         ).fetchall()
     ]
 
 
-def _tool_counts(conn: sqlite3.Connection) -> tuple[list[dict[str, Any]], int]:
+def _tool_counts(
+    conn: sqlite3.Connection, *, session_id: str | None = None
+) -> tuple[list[dict[str, Any]], int]:
     if not _table_exists(conn, "agent_run_events"):
         return [], 0
-    event_count = int(conn.execute("select count(*) from agent_run_events").fetchone()[0] or 0)
+    task_filter, filter_params = _session_task_filter(conn, session_id)
+    if task_filter:
+        run_filter = (
+            f"where run_id IN (SELECT id FROM agent_runs WHERE {task_filter})"
+        )
+    else:
+        run_filter = ""
+    event_count = int(
+        conn.execute(
+            f"select count(*) from agent_run_events {run_filter}", filter_params
+        ).fetchone()[0]
+        or 0
+    )
     rows = conn.execute(
-        """
+        f"""
         select coalesce(tool_name, event_type, 'unknown') as tool_name, count(*) as calls
         from agent_run_events
+        {run_filter}
         group by coalesce(tool_name, event_type, 'unknown')
         order by calls desc
         limit 20
-        """
+        """,
+        filter_params,
     ).fetchall()
     return [_row_dict(row) for row in rows], event_count
 
 
-def _approval_wait_summary(conn: sqlite3.Connection) -> dict[str, Any]:
+def _approval_wait_summary(
+    conn: sqlite3.Connection, *, session_id: str | None = None
+) -> dict[str, Any]:
     if not _table_exists(conn, "approval_gates"):
         return {"available": False, "reason": "approval_gates_table_missing"}
+    task_filter, filter_params = _session_task_filter(conn, session_id)
+    where_clause = f"where {task_filter}" if task_filter else ""
     by_gate = [
         _row_dict(row)
         for row in conn.execute(
-            """
+            f"""
             select gate_type,
                    count(*) as total,
                    sum(case when resolved_at is not null then 1 else 0 end) as resolved,
                    coalesce(avg((julianday(resolved_at) - julianday(created_at)) * 86400000), 0) as avg_wait_ms
             from approval_gates
+            {where_clause}
             group by gate_type
             order by gate_type
-            """
+            """,
+            filter_params,
         ).fetchall()
     ]
     return {
@@ -803,11 +864,20 @@ def _weighted_average_wait(rows: list[dict[str, Any]]) -> float:
     return weighted / resolved
 
 
-def _provider_limit_summary(conn: sqlite3.Connection) -> dict[str, Any]:
+def _provider_limit_summary(
+    conn: sqlite3.Connection, *, session_id: str | None = None
+) -> dict[str, Any]:
     if not _table_exists(conn, "tasks"):
         return {"available": False, "reason": "tasks_table_missing"}
+    extra_clause = ""
+    params: tuple[Any, ...] = ()
+    if session_id and "chat_session_id" in _table_columns(conn, "tasks"):
+        extra_clause = " and chat_session_id = ?"
+        params = (session_id,)
     rows = conn.execute(
         "select id, status, depends_on from tasks where status = 'capability_limit'"
+        + extra_clause,
+        params,
     ).fetchall()
     now = datetime.now(UTC)
     ready = 0
@@ -1235,7 +1305,7 @@ def _analyze_timeline(
         1 for prompt in prompts if prompt.get("context_efficiency", {}).get("grade") == "review"
     )
     coverage = _observability_coverage(prompts)
-    runtime_aggregates = _runtime_aggregates()
+    runtime_aggregates = _runtime_aggregates(session_id=str(session.get("id") or "") or None)
     dashboard_observability = dashboard_observability_summary(_db_path())
     telemetry_health = dashboard_observability.get("observability_coverage", {}).get(
         "telemetry_health",

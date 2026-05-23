@@ -7,6 +7,39 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - M2.3 session-scoped `builder logs analyze` (unblocks M3.5 σ-floor)
+
+### Added
+
+- **`db/models.py` — `Task.chat_session_id`** FK to `chat_sessions.id`, indexed. Captures the chat session that drove task creation; durable linkage for resumability + per-session telemetry.
+- **`db/session.py`** — inline SQLite `ALTER TABLE tasks ADD COLUMN chat_session_id` migration for existing DBs (idempotent; matches the pattern used for other column adds).
+- **`cli/commands/logs.py` — `_session_task_filter(conn, session_id)`** helper. Returns `(where_fragment, params)` scoping `task_id` to a chat session via `task_id IN (SELECT id FROM tasks WHERE chat_session_id = ?)`. Inert when no session_id provided or the column is absent.
+
+### Changed
+
+- **`cli/commands/logs.py`** — `_runtime_aggregates`, `_optimization_summary`, `_stop_reason_counts`, `_tool_counts`, `_approval_wait_summary`, `_provider_limit_summary` now accept `session_id: str | None = None` and apply the session filter when provided. `_analyze_timeline` passes the resolved chat session id. Payload exposes `runtime_aggregates.session_scoped: true` when scoping is active.
+- **`services/sprint_execution.py` — `persist_sprint_execution_artifacts(... chat_session_id=None)`** — Task() construction sets `chat_session_id` so every chat-driven Task is linkable back to its originating session.
+- **`embedded/server/agent_sprint_planning.py`** — `create_delivery_plan_for_approved_features` forwards `chat_session_id=session_id` into `persist_sprint_execution_artifacts`.
+- **`scripts/autoresearch/run.py`** — `append_prompt_rows` now sources per-agent attribution from `analyze.runtime_aggregates.by_agent` (one TSV row per session-scoped agent) instead of operator-chat-turn-scoped `analyze.prompts[]`. `evaluate_hard_gates` reads the session-level aggregate `analyze["cache_ratio"]` against the Tier-1 `> 5x after turn 2` bar instead of walking `prompts[]` (which is always length 1 for autoresearch fixture-A intake).
+- **`docs/goal/ROADMAP.md`** — M2.3 line added covering the session-scope contract + M3.5 unblock.
+- **`docs/goal/STATUS.md`** — Recent Decisions + Last Update reflect the change.
+
+### Fixed
+
+- Root cause of the `docs/autoresearch/NEXT-SESSION.md` "telemetry gap": `analyze.json.top_cost_drivers`, `cache_ratio`, `cached_tokens`, `raw_token_total`, `noncached_plus_output_tokens` previously summed across **every** session in the DB, poisoning autoresearch's σ-floor. They are now this session's numbers. Per-prompt `prompts[]` keeps its operator-chat-turn semantics (Bar 1 vocabulary contract) and is no longer the source for per-agent attribution.
+
+### Validation
+
+- `pytest tests/test_builder_cli_surfaces.py::test_logs_analyze_scopes_runtime_aggregates_to_chat_session` — new — two overlapping chat sessions × disjoint agent runs; asserts `runtime_aggregates.session_scoped is True`, `totals.runs == 2` per session, `by_agent` names disjoint, and `raw_token_total` is the per-session sum (2100 / 22500). Passing.
+- `pytest tests/test_builder_cli_surfaces.py::test_logs_analyze_includes_runtime_aggregates` — pre-existing — still green; verifies the additive contract (no session_id ⇒ legacy global behavior).
+- `pytest tests/test_builder_cli_surfaces.py -k logs_analyze` — 7/7 passing.
+- `pytest tests/test_sprint_execution.py` — 18/18 passing (no regression from `persist_sprint_execution_artifacts` signature change).
+- `pytest tests/ -k "init_db or db_session or test_db"` — 13/13 passing.
+
+### Notes
+
+- `docs/autoresearch/NEXT-SESSION.md` retired — its hypothesis (chat-event persistence broken) was incorrect; the defect was an aggregate-scope bug in `analyze`, not a persistence loss. Diagnosis + plan documented inline in this changelog and STATUS Recent Decisions.
+
 ## 2026-05-22 - G1 Session rail: per-turn token visibility via stream_usage SSE
 
 ### Changed

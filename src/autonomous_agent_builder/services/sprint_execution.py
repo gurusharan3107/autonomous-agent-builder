@@ -384,6 +384,8 @@ async def persist_sprint_execution_artifacts(
     db: AsyncSession,
     project: Project,
     features: list[Feature],
+    *,
+    chat_session_id: str | None = None,
 ) -> dict[str, Any]:
     """Persist sprint plan/design metadata and generated sprint task slices."""
     plan = build_sprint_execution_plan(project, features)
@@ -407,6 +409,7 @@ async def persist_sprint_execution_artifacts(
         if task is None:
             task = Task(
                 feature_id=feature.id,
+                chat_session_id=chat_session_id,
                 title=str(spec.get("title") or feature.title),
                 description=str(spec.get("purpose") or feature.description or ""),
                 status=TaskStatus.PENDING,

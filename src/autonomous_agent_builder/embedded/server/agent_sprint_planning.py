@@ -454,7 +454,9 @@ async def create_delivery_plan_for_approved_features(
         project = await db.get(Project, next(iter(project_ids)))
         if project is None:
             return "Delivery is blocked because the selected project is no longer available."
-        artifacts = await persist_sprint_execution_artifacts(db, project, planned_features)
+        artifacts = await persist_sprint_execution_artifacts(
+            db, project, planned_features, chat_session_id=session_id
+        )
         first_task = artifacts.get("tasks", [None])[0] if artifacts.get("tasks") else None
         first_task_id = str(getattr(first_task, "id", "") or "").strip()
         first_task_title = str(getattr(first_task, "title", "") or "").strip()
