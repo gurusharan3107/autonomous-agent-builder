@@ -27,6 +27,22 @@ Before creating any new doc, check here. Per [docs/REFERENCE.md § Control Owner
 | Direction-audit log (skill output) | [INSIGHTS.md](INSIGHTS.md) | Append-only log written by the `goal-audit` skill at `.claude/skills/goal-audit/`. One dated entry per invocation. |
 | This routing map | [INDEX.md](INDEX.md) | What you are reading. |
 
+### Executable governance layer
+
+Project-local skills are the executable side of this framework. Triggered by single-word commands; each owns a workflow that would otherwise cost recurring prompts.
+
+| Skill | Path | Triggers / role |
+| --- | --- | --- |
+| Session entry (primary) | [.claude/skills/start/](../../.claude/skills/start/SKILL.md) | `/start`, "begin", "hi", "where are we", "check AGENTS.md and docs/goal/README.md". Loads framework + STATUS + drift + git log + tactical handoff when fresh. |
+| Session entry (tactical-first) | [.claude/skills/resume-session/](../../.claude/skills/resume-session/SKILL.md) | `/resume-session`. Reads CURRENT.md first, then chains into `start` for the rest. |
+| Session exit | [.claude/skills/save-session/](../../.claude/skills/save-session/SKILL.md) | `/save-session`. Writes tactical checkpoint to `.claude/session-data/CURRENT.md`. |
+| Direction audit | [.claude/skills/goal-audit/](../../.claude/skills/goal-audit/SKILL.md) | "are we aligned?", "audit goals". Writes [INSIGHTS.md](INSIGHTS.md); may reorder [docs/autoresearch/OPTIMIZE_IDEAS.md](../autoresearch/OPTIMIZE_IDEAS.md). |
+| Roadmap audit | [.claude/skills/roadmap-audit/](../../.claude/skills/roadmap-audit/SKILL.md) | "revalidate the roadmap", "audit roadmap vs SDK". Cross-checks ROADMAP against the Claude Agent SDK rubric + live `grep src/`. |
+| Knowledge base | [.claude/skills/knowledge-base/](../../.claude/skills/knowledge-base/SKILL.md) | "refresh the KB", "what's new in SDK". Maintains the global `~/.claude/knowledge/` against upstream SDK changelogs. |
+| Autoresearch loop | [.claude/skills/autoresearch/](../../.claude/skills/autoresearch/SKILL.md) | "run autoresearch", "baseline", "iterate". Single entry + 3 lanes (Baseline / Iterate / Fix); owns [docs/autoresearch/](../autoresearch/) freshness via bundled `freshness_sweep.py`. |
+| Design (anti-AI-slop) | [.claude/skills/hallmark/](../../.claude/skills/hallmark/SKILL.md) | Used to produce `docs/autoresearch/iterations.html` and `autonomous-agent-builder-runtime-explainer.html`. |
+| Repo automation | [.claude/skills/run-gates/](../../.claude/skills/run-gates/SKILL.md), [.claude/skills/new-migration/](../../.claude/skills/new-migration/SKILL.md) | Deterministic slash-command-only skills (disable-model-invocation). Run quality gates / scaffold Alembic migrations. |
+
 ---
 
 ## External Owner Map (the rest of the repo)
@@ -142,13 +158,16 @@ References existing surfaces; doesn't duplicate. [docs/REFERENCE.md](../REFERENC
 | `Workspace/todo-app` | `/home/gurusharangupta/Workspace/todo-app` | Prior validation workspace; reverse-engineering scenarios | Reference for completed sprints; useful for Tier 2.3 reverse-engineering tests. |
 | Fresh managed apps | Created on demand via `builder init` from `/home/gurusharangupta/Builder-Workspace/` | Forward-engineering scenarios (fresh app from scratch) | Bootstrap before any first-product test. |
 
-### Track B (dormant)
+### Track B (ACTIVATING — see autoresearch/README.md)
 
 | Concern | Owner |
 | --- | --- |
-| Autoresearch optimization loop (dormant until prerequisites met) | [docs/autoresearch/README.md](../autoresearch/README.md), [docs/autoresearch/OPTIMIZE.md](../autoresearch/OPTIMIZE.md), [docs/autoresearch/OPTIMIZE_IDEAS.md](../autoresearch/OPTIMIZE_IDEAS.md), [docs/autoresearch/baseline_variance.md](../autoresearch/baseline_variance.md), [docs/autoresearch/fixtures.md](../autoresearch/fixtures.md), [docs/autoresearch/optimize_results.tsv](../autoresearch/optimize_results.tsv) |
+| Autoresearch loop contract docs | [docs/autoresearch/README.md](../autoresearch/README.md), [docs/autoresearch/OPTIMIZE.md](../autoresearch/OPTIMIZE.md), [docs/autoresearch/OPTIMIZE_IDEAS.md](../autoresearch/OPTIMIZE_IDEAS.md), [docs/autoresearch/HARNESS.md](../autoresearch/HARNESS.md), [docs/autoresearch/METRICS.md](../autoresearch/METRICS.md), [docs/autoresearch/COMPARE.md](../autoresearch/COMPARE.md), [docs/autoresearch/baseline_variance.md](../autoresearch/baseline_variance.md), [docs/autoresearch/fixtures.md](../autoresearch/fixtures.md) |
+| Autoresearch lane discipline + folder freshness | [.claude/skills/autoresearch/](../../.claude/skills/autoresearch/SKILL.md) — owns Baseline / Iterate / Fix lanes + bundled `freshness_sweep.py` |
+| Autoresearch runner (5 Python scripts) | [scripts/autoresearch/](../../scripts/autoresearch/) — `run.py`, `baseline.py`, `compare.py`, `loop.py`, `extract_context_breakdown.py` |
+| Autoresearch result artifacts | [docs/autoresearch/optimize_results.tsv](../autoresearch/optimize_results.tsv), [docs/autoresearch/baseline_runs.tsv](../autoresearch/baseline_runs.tsv), [docs/autoresearch/per_prompt_results.tsv](../autoresearch/per_prompt_results.tsv), [docs/autoresearch/iterations.html](../autoresearch/iterations.html), [docs/autoresearch/iterations.json](../autoresearch/iterations.json), [docs/autoresearch/INTROSPECTION.md](../autoresearch/INTROSPECTION.md) |
 
-Track B activation is itself a roadmap milestone: [ROADMAP § M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b). Do not activate before its prerequisites pass.
+Activation status is in [docs/autoresearch/README.md § Status](../autoresearch/README.md#status). Roadmap milestone: [ROADMAP § M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b).
 
 ---
 

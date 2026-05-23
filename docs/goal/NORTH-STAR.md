@@ -48,6 +48,7 @@ Capabilities no plain agent CLI matches. Every epoch in [ROADMAP.md](ROADMAP.md)
 6. **Cost-aware execution as a product property.** Token usage, cache ratios, chunk pressure, avoidable-cost flags are first-class evidence in dashboard + CLI. Optimization is the product's job.
 7. **Voice as a peer operator surface.** Realtime voice (Samantha) is first-class. Voice + chat share state + approval flow.
 8. **Resumability after session drop.** New agent pointed at `docs/goal/` continues from `STATUS.md` alone.
+9. **Executable governance via project-local skills.** Audit, optimization, knowledge-freshness, and session-continuity disciplines live as project-local skills under [.claude/skills/](../../.claude/skills/). They aren't optional tooling — they're how this framework runs. Skills auto-trigger on operator phrases (`/start`, `/goal-audit`, etc.), enforce hard rules mechanically (e.g. autoresearch's `freshness_sweep.py`), and chain into each other so the operator stops being the message bus between disciplines.
 
 ## Non-Goals
 

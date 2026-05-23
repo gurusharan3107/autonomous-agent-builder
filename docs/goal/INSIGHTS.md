@@ -219,3 +219,43 @@ Codebase validation **reduced** the open SDK-lever surface from 14 candidates (G
 
 All validated additions landed in ROADMAP this session (M2.3 × 4 P0 + StopFailure augmentation, M2.4 × 1, M2.5 × 2, M2.6 × 1 + typed-retry refinement, M3.2 × 1 + M3.3 dependency note). No further ROADMAP changes pending from this revalidation. HARD RULE: this entry is manual; no skill ran.
 
+---
+
+## 2026-05-23 — Run #9 (since 30d, 130 Builder-related sessions analyzed)
+<!-- collected_at: 2026-05-23T06:49:29.445183+00:00 -->
+
+### Intent vs current focus
+
+- **Past 30 hours: the operating thread is `.claude/skills/` as the executable discipline layer, not direct ROADMAP execution.** The autoresearch skill was conceived ("now is the right time to create the autoresearch skill in project local .claude/skills using skill creator skill" — 2026-05-22T17:52:20 sess=`d05a2998`), iterated to a single entry + 3 lanes ("my entry point should be the skill only" — 2026-05-23T04:20:13 sess=`bbb15796`; "add ask use question first all the lane to choose, each lane should have its preflight and close out" — T04:22:35; "there can be at max 4 lanes, which holds true everytime not sometimes" — T04:24:36; "Inspect lane is not required" — T04:27:31), and bound to `docs/autoresearch/` freshness ("autoresearch skill is responsible of the docs/autoresearch folder is fully updaated and nothing is stale at all times as part of any lane" — T04:37:04). Project-local save/resume-session rebuilt after the user-global versions broke ("I have you to create project local save-session and resume-session command, save-session basically saves to .claude/session-data/ what we were working on" — 2026-05-23T05:10:58 sess=`bbb15796`).
+- **A cache-break at 2026-05-22T17:43:39 sess=`d05a2998` is a deliberate pivot from M2.3 P0 cluster Tier B execution to autoresearch skill creation.** Surrounding context: `/plan` loaded `can-you-create-a-mighty-spark.md` ("Tier B (M2.3 P0 Cluster): SDK-Grounded Cost + Telemetry Fixes") at T16:14, then T17:52 "before that, i think now is the right time to create the autoresearch skill". When forced to choose, the operator picks durable governance before more shipped code.
+- **Every skill encodes a workflow the user had to drive by hand once.** `knowledge-base`: "I think claude code, claude agents sdk, claude managed agents has a lot to provide, and we only use 10%, you use only those things that comes into your context, i think we need to have solution for [this]" (2026-05-22T07:12:59 sess=`b4395188`) → "can we create a knowledge skill around this which keeps our workflow knowledge updated and maintained with the latest" (T07:53:15). `roadmap-audit`: "the analysis you just did of analyzing the roadmap gaps against the workflow knowledge and validating that against the codebase to provide recommendation and adding new ones to insight" (2026-05-22T10:03:05 sess=`a21043fe`) → "use skill creator skill" (T10:04:09). Pattern: skills crystallize the second time a manual workflow proves valuable; the failure being prevented is context-blindness regression on the next pass.
+- **STATUS Recent Decisions is in honest agreement with the past 24 hours for the *core* execution work.** All three major work items (autoresearch single-entry restructure, freshness sweep bundled script, save/resume-session project-local rebirth) and the M1.3 re-closure (commit `5e05b62`) have entries. No silent drift on shipped code.
+- **M1.4 forward/reverse workspace validation has had no execution activity in 24–48 hours; the operating focus is M3.5 D1 Baseline substrate prep.** No `recent_prompt` in the past 36h names "forward-engineering on fresh workspace" or "reverse-engineering on existing workspace" or M1.4 explicitly; conversely ~20 prompts cluster on autoresearch skill restructure, freshness sweep, extraction debt, `iterations.html` sample-data cleanup, and save/resume-session. STATUS `Current Item In Flight` still reads "M1.4 in progress"; STATUS `Last Update` correctly says "Next: kick off Baseline lane" — the latter is the truer read of the operating lane.
+
+**Alignment verdict:** aligned — STATUS is honest about shipped code; the operating-focus shift from M1.4 to M3.5 substrate prep is implicit in STATUS `Last Update` and explicit in `Recent Decisions`.
+
+**Suggested STATUS.md change:** Update `Current Item In Flight` to: `"M3.5 D1 (N=5 baseline) substrate prep complete — autoresearch single-entry + 3 lanes + freshness sweep + M1.3 re-closure shipped 2026-05-23. M1.4 forward/reverse workspace validation paused pending M3.5 D1 kickoff."` (HARD RULE: skill does not edit.)
+
+**Suggested ROADMAP.md change:** None. M1.4 and M3.5 are both already correctly tracked; the priority signal is a STATUS-level concern, not a ROADMAP restructure.
+
+### Autoresearch focus candidates
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 8 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+**No autoresearch action — system stable.** Ninth consecutive run with `maintain_current_flow` dominating Builder-runtime evidence across 8 analyzed sessions (5 `devpulse` + 1 `todo-app-validation` + 2 `todo-app`). No avoidable cost flags, no expensive agents, no chunk pressure. Per autoresearch Hard Rule 8 (`runtime_aggregates.session_scoped` must be `true`), the post-2026-05-23 telemetry-honesty fix (commit `a3354c2`) means these readings are genuinely session-scoped, not the pre-fix global-aggregate bleed — the `maintain_current_flow` signal is trustworthy in a way it was not before 2026-05-23.
+
+**OPTIMIZE_IDEAS.md actions taken:** none.
+
+**Prior-entry trim:** Run #8 Recommended Action #1 ("Document kb-refresh and hallmark skill creation in STATUS.md Recent Decisions") is partly open — the autoresearch/save-session work landed in Recent Decisions on 2026-05-23, but `knowledge-base` (the renamed successor to `kb-refresh`) and `hallmark` still have no Recent Decisions entry. Prior entry still has open actions; section left unchanged.
+
+### Recommended actions
+
+1. **Surface `.claude/skills/` as a first-class control surface in `docs/goal/`.** None of NORTH-STAR.md / ROADMAP.md / README.md / INDEX.md describe the skill suite as part of the goal framework. Future agents (and the user post-30-day gap) will not know that `autoresearch` / `goal-audit` / `roadmap-audit` / `knowledge-base` / `save-session` / `resume-session` *are* executable governance, not optional tooling. Recommended: one bullet under NORTH-STAR § Differentiators ("Executable governance via project-local skills") + an INDEX.md row pointing to `.claude/skills/`. *Not yet on ROADMAP — genuine documentation gap.*
+2. **Add a 2026-05-23 STATUS Recent Decisions line covering `knowledge-base` + `hallmark` provenance.** Closes the open action from Run #8 #1. One sentence: `knowledge-base` supersedes the `kb-refresh` prototype as the global Claude-tooling KB owner; `hallmark` is a sibling design skill used to build `docs/autoresearch/iterations.html` and the runtime-explainer page. *Not on ROADMAP — STATUS-level documentation closure.*
+3. **Resolve `.claude/skills/autoresearch-workspace/iteration-1/`.** Untracked artifact directory adjacent to the autoresearch skill; not surfaced in any `docs/autoresearch/*` index, not gitignored, no `SKILL.md`. Operator decision needed: track, ignore, or migrate under `docs/autoresearch/`. *Not on ROADMAP — small hygiene gap.*
+4. **No autoresearch action.** Ninth `maintain_current_flow` run on now-session-scoped telemetry. Baseline / Iterate lane choice is the operator's next move, not this audit's. STATUS already says "Next: kick off Baseline lane."
+

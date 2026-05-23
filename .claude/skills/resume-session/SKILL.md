@@ -1,42 +1,79 @@
 ---
 name: resume-session
-description: "Synthesize 'here's where you left off' at session start by reading `.claude/session-data/CURRENT.md` (tactical context from prior session's `save-session`) + `docs/goal/STATUS.md` Current Position + recent git log. Triggers: `/resume-session`, 'resume session', 'continue where I left off', 'pick up where we left off'. Reports state in one message and waits for operator direction. Does NOT auto-execute. Project-local counterpart to `save-session`."
+description: "Tactical-first session-entry skill. Use when the prior session ran /save-session and you want CURRENT.md's tactical context surfaced FIRST. Reads `.claude/session-data/CURRENT.md` (current intent, next action, blockers, learnings), then chains into the `start` skill via the Skill tool so framework + STATUS + drift + git log also load. Both `/resume-session` and `/start` converge to the same fully-loaded state; this skill just changes which block heads the synthesis. Triggers: `/resume-session`, 'resume session', 'continue where I left off', 'pick up where we left off'. Does NOT auto-execute. If `.claude/session-data/CURRENT.md` is missing or >48h old, falls back directly to `start` for the framework-first path."
 allowed-tools: Bash, Read
 ---
 
-# resume-session — pick up where the last session stopped
+# resume-session — tactical-first session entry
 
-Three sources of truth, each carries a different layer:
-
-| Source | Layer | What it tells you |
-|---|---|---|
-| `.claude/session-data/CURRENT.md` | Tactical | Current intent, next action, blockers, mid-session learnings. Written by [`save-session`](../save-session/SKILL.md). |
-| `docs/goal/STATUS.md` Current Position + Recent Decisions | Strategic | Milestone, in-flight item, evidence pointers, recent durable decisions. |
-| `git log --oneline -5` | Audit | What actually shipped recently. |
+Counterpart to [`start`](../start/SKILL.md). When the prior session ran `/save-session`, `CURRENT.md` carries actionable handoff (current intent, next concrete action, open blockers, mid-session learnings) that `docs/goal/STATUS.md` deliberately does not. This skill surfaces that block FIRST, then chains into `start` so framework + STATUS + drift + git log also load. Both entry paths converge on the same fully-loaded state.
 
 ## When to invoke
 
-Operator says `/resume-session`, "resume session", "continue where I left off", "pick up where we left off". Also reasonable on `/clear` recovery when the operator wants to restore context fast.
+- Operator says `/resume-session`, "resume session", "continue where I left off", "pick up where we left off".
+- Operator explicitly knows the prior session ran `/save-session` and wants the tactical layer at the top of the briefing.
 
-## What to do
+**Use `/start` instead** if you don't know whether the prior session saved, or you want framework + STATUS at the top.
 
-1. Read the three sources (Bash for git log; Read tool for the two files).
-2. If `CURRENT.md` doesn't exist, say so plainly — fall back to STATUS Current Position + git log only.
-3. Synthesize ONE message with five sections:
-   - **Where you left off** — pull from `CURRENT.md.working_on` (or STATUS Current Position if CURRENT missing).
-   - **Next action** — verbatim from `CURRENT.md.next_action`.
-   - **Blockers** — if any; otherwise omit the section.
-   - **Recent commits** — 3 lines of `git log --oneline`.
-   - **Mid-session learnings worth remembering** — if any; otherwise omit.
-4. End with: "Ready to proceed?" — wait for operator confirmation. Do **not** auto-execute the next action.
+## Workflow
+
+### Step 1 — Read tactical handoff
+
+```bash
+CURRENT=.claude/session-data/CURRENT.md
+if [ ! -f "$CURRENT" ]; then
+  echo "(no CURRENT.md — falling back to /start for framework-first entry)"
+  exit 0  # signal to skip Step 2's tactical block; Step 3's chain into start still fires
+fi
+
+age_h=$(( ( $(date +%s) - $(stat -c %Y "$CURRENT") ) / 3600 ))
+if [ "$age_h" -ge 48 ]; then
+  echo "(CURRENT.md is ${age_h}h old — too stale; falling back to /start)"
+  exit 0
+fi
+
+echo "--- CURRENT.md (${age_h}h old) ---"
+cat "$CURRENT"
+```
+
+### Step 2 — Print the tactical synthesis block
+
+From the CURRENT.md output, synthesize a compact "**From prior session**" block:
+
+- **Where you left off** — pull from `working_on` (1–3 sentences).
+- **Next action** — verbatim from `next_action`.
+- **Blockers** — if any; otherwise omit.
+- **Mid-session learnings** — if any; otherwise omit.
+
+If `CURRENT.md.time` is more than 24h old, prefix the block with `"(checkpoint is ${age_h}h old — verify against STATUS + git log below)"`.
+
+If Step 1 fell back (missing or >48h stale), skip this block entirely.
+
+### Step 3 — Chain into `start` for framework + STATUS load
+
+Invoke the `start` skill via the Skill tool with no args. `start` will:
+
+- Read `AGENTS.md` + `docs/goal/README.md`.
+- Print STATUS Current Position + Last Update + top Recent Decisions.
+- Run `check_status_drift.py` for drift warnings.
+- Print recent git log.
+- Synthesize its own briefing.
+
+The combined operator-facing output: tactical block (this skill's Step 2) → framework + STATUS briefing (start's synthesis). `start` will independently re-check CURRENT.md in its own Step 3; that's fine — the file is small and the read is cheap. The operator sees one continuous briefing.
+
+### Step 4 — Wait for operator direction
+
+`start` ends with "Suggested next move: … Ready to proceed?". Do not auto-execute the next action. The operator picks the direction.
 
 ## Hard rules
 
-1. **No auto-execution.** This skill is a context-restore briefing, not a kickoff. Operator must say "go" before any tool runs that changes state.
-2. **Terse synthesis.** ≤25 lines total output. The point is fast re-orientation, not a re-read of CURRENT.md verbatim.
-3. **Honest about staleness.** If `CURRENT.md.time` is more than 48h old, flag it: "checkpoint is N days old — STATUS.md and git log are more authoritative on what's current."
-4. **No writes.** This skill reads only. If the operator's next move warrants updating CURRENT.md, that's [`save-session`](../save-session/SKILL.md)'s job at the end of the new session.
+1. **Read-only.** No writes. Drift warnings and tactical block are advisory.
+2. **Always chain into `start`.** Never skip the framework + STATUS load. If CURRENT.md is missing or stale, fall back directly to `start` — never emit a tactical-only briefing.
+3. **Honest about staleness.** Flag CURRENT.md age inline when 24–48h old; ignore when >48h.
+4. **No auto-execution.** Operator must say "go" before any state-changing tool runs.
+5. **Do not duplicate `start`'s logic.** This skill is intentionally thin — Step 1 reads CURRENT.md, Step 2 synthesizes the tactical block, Step 3 delegates everything else.
 
-## Counterpart
+## Counterparts
 
-[`save-session`](../save-session/SKILL.md) writes `.claude/session-data/CURRENT.md` for this skill to read.
+- [`start`](../start/SKILL.md) — primary entry skill; this skill chains into it.
+- [`save-session`](../save-session/SKILL.md) — writes the CURRENT.md this skill reads.

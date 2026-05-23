@@ -109,6 +109,34 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
     shutil.copytree(seed, workspace)
     # Make the working copy writable (seed is read-only).
     subprocess.run(["chmod", "-R", "u+w", str(workspace)], check=True)
+    # The seed (a copy of the devpulse template) uses `master` as its default
+    # branch, but Builder's sprint-merge code hardcodes `git checkout main` at
+    # sprint completion. Without a `main` branch present, every sprint ends in
+    # `phase=blocked` with `verification_status=blocked` and
+    # `sprint_merge_error: "could not check out main"` even when every task,
+    # every gate, and every verification ran green. Caught 2026-05-23 cycle 5:
+    # all 3 tasks `status=done`, every `gate_results.status=pass`, 304 model
+    # API calls, but the sprint never reaches `phase=shipped`, run.py polls to
+    # timeout, watchdog fires.
+    #
+    # Fix: create `main` from the current HEAD if it doesn't exist. Branch must
+    # exist for Builder's merge target; we don't check it out here so the
+    # workspace stays on whatever the seed's HEAD points at (typically master
+    # or a sprint branch).
+    git_env = {"GIT_TERMINAL_PROMPT": "0"}
+    try:
+        existing = subprocess.run(
+            ["git", "-C", str(workspace), "branch", "--list", "main"],
+            capture_output=True, text=True, timeout=5, env=git_env,
+        )
+        if not existing.stdout.strip():
+            subprocess.run(
+                ["git", "-C", str(workspace), "branch", "main"],
+                check=True, timeout=5, env=git_env,
+            )
+    except (subprocess.SubprocessError, OSError):
+        # Seed without git is a setup error elsewhere — let Builder surface it.
+        pass
 
 
 def wait_for_ready(url: str, timeout_s: int = 60) -> None:
@@ -132,37 +160,73 @@ def board_active_phase(port: int) -> str:
     return str(sprint.get("active_phase") or "")
 
 
-def send_chat(port: int, prompt: str) -> str:
+def send_chat(port: int, prompt: str, session_id: str | None = None) -> str:
     r = requests.post(
         f"http://127.0.0.1:{port}/api/agent/chat",
-        json={"message": prompt, "session_id": None},
+        json={"message": prompt, "session_id": session_id},
         timeout=60,
     )
     r.raise_for_status()
     return r.json()["session_id"]
 
 
-def get_pending_question(port: int, session_id: str) -> str | None:
+def get_pending_question(port: int, session_id: str) -> dict | None:
+    # The /api/agent/chat/history endpoint returns ChatHistoryResponse with
+    # `items: list[TimelineItem]`; each TimelineItem has `type` + `status` +
+    # `payload` (see src/autonomous_agent_builder/embedded/server/agent_api_models.py).
+    # Earlier revisions of this harness expected `events` + `state` — that
+    # contract drift made get_pending_question always return None, blocking
+    # all autoresearch runs at the first intake question (caught 2026-05-23
+    # by the skill's hang_watchdog after a 47-min silent stall on fixture A).
+    # Returns the full TimelineItem dict (id + payload) so the caller can
+    # build a contract-compliant ChatRespondRequest without re-fetching.
     r = requests.get(
         f"http://127.0.0.1:{port}/api/agent/chat/history",
         params={"session_id": session_id},
         timeout=30,
     )
     r.raise_for_status()
-    events = r.json().get("events", [])
-    for event in reversed(events):
-        if event.get("type") in ("ask_user_question", "tool_approval_request") and event.get("state") == "pending":
-            return event["id"]
+    items = r.json().get("items", [])
+    for item in reversed(items):
+        if (
+            item.get("type") in ("ask_user_question", "tool_approval_request")
+            and item.get("status") == "pending"
+        ):
+            return item
     return None
 
 
-def send_chat_respond(port: int, session_id: str, request_id: str, answer: str) -> None:
-    payload: dict = {"session_id": session_id, "request_id": request_id}
+def send_chat_respond(port: int, session_id: str, pending_item: dict, answer: str) -> None:
+    # ChatRespondRequest contract (agent_api_models.py): session_id, event_id,
+    # selected_options (list[str] of option labels), custom_text, decision,
+    # reason, updated_input. For ask_user_question with `answer == "recommended"`
+    # we extract the option label at `recommended_index` (default 0) and pass it
+    # as selected_options=[label]. Free-text answers go in custom_text.
+    event_id = pending_item["id"]
+    payload: dict = {"session_id": session_id, "event_id": event_id}
+    question_payload = pending_item.get("payload") or {}
+    options = question_payload.get("options") or []
     if answer == "recommended":
-        payload["decision"] = "allow"
-        payload["option_index"] = 0
+        idx = int(question_payload.get("recommended_index") or 0)
+        if 0 <= idx < len(options):
+            label = options[idx].get("label") if isinstance(options[idx], dict) else str(options[idx])
+            if label:
+                payload["selected_options"] = [label]
+            else:
+                payload["custom_text"] = "recommended"
+        else:
+            payload["custom_text"] = "recommended"
     else:
-        payload["text"] = answer
+        # Try to match `answer` to an option label first (so a fixture's scripted
+        # follow-up like "Notes by their text content." selects that option when
+        # offered); otherwise pass through as custom_text.
+        option_labels = [
+            opt.get("label") if isinstance(opt, dict) else str(opt) for opt in options
+        ]
+        if answer in option_labels:
+            payload["selected_options"] = [answer]
+        else:
+            payload["custom_text"] = answer
     r = requests.post(
         f"http://127.0.0.1:{port}/api/agent/chat/respond",
         json=payload,
@@ -171,7 +235,52 @@ def send_chat_respond(port: int, session_id: str, request_id: str, answer: str) 
     r.raise_for_status()
 
 
+def latest_chat_state(port: int, session_id: str) -> dict:
+    """Return {'running': bool, 'last_event_type': str | None, 'last_assistant_text': str}.
+
+    Probes /api/agent/chat/history and inspects the latest run_status (for the
+    running flag) + the latest assistant_message (for the free-text content).
+    Used by wait_for_question_or_ship to distinguish three terminal states:
+    pending structured question, shipped, or paused-on-free-text-scoping.
+    """
+    r = requests.get(
+        f"http://127.0.0.1:{port}/api/agent/chat/history",
+        params={"session_id": session_id},
+        timeout=30,
+    )
+    r.raise_for_status()
+    items = r.json().get("items", []) or []
+    running = True
+    last_type: str | None = None
+    last_assistant_text = ""
+    for item in reversed(items):
+        last_type = last_type or item.get("type")
+        if item.get("type") == "run_status":
+            payload = item.get("payload") or {}
+            running = bool(payload.get("running", True))
+            break
+    for item in reversed(items):
+        if item.get("type") == "assistant_message":
+            payload = item.get("payload") or {}
+            last_assistant_text = str(payload.get("content") or "")
+            break
+    return {
+        "running": running,
+        "last_event_type": last_type,
+        "last_assistant_text": last_assistant_text,
+    }
+
+
 def wait_for_question_or_ship(port: int, session_id: str, timeout_s: int) -> str:
+    """Poll until one of: structured question pending, board shipped, OR
+    the chat naturally completed without surfacing either (paused on a
+    free-text scoping question). The third outcome — "proceed_needed" — is
+    new in this revision; the harness's outer loop is expected to push the
+    chat forward with a "proceed with reasonable defaults" user_message
+    rather than wait the full per-question timeout. Caught 2026-05-23 by
+    the hang_watchdog when the chat agent's intake path returned a
+    multi-bullet markdown question instead of an ask_user_question event.
+    """
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         try:
@@ -179,6 +288,12 @@ def wait_for_question_or_ship(port: int, session_id: str, timeout_s: int) -> str
                 return "question"
             if board_active_phase(port) == "shipped":
                 return "shipped"
+            state = latest_chat_state(port, session_id)
+            if (
+                not state["running"]
+                and state["last_event_type"] == "assistant_message"
+            ):
+                return "proceed_needed"
         except requests.RequestException:
             pass
         time.sleep(2)
@@ -496,10 +611,21 @@ def main() -> int:
     otel_env = build_otel_env(run_id, args.fixture, args.branch, evidence_dir)
     env = {**os.environ, **otel_env}
 
+    # Critical: do NOT use subprocess.PIPE without a draining thread. Builder's
+    # code-gen agents produce ~MB of stdout during long runs; once the 64KB
+    # pipe buffer fills, builder's main asyncio thread blocks on the next
+    # log write and the entire event loop freezes. Manifested 2026-05-23
+    # cycle 4 as a true (dual-signal) hang after 153 API calls — `process_threads`
+    # showed the main thread in `wchan=pipe_write` plus 6 CLOSE-WAIT sockets
+    # with 216 bytes each stuck in Recv-Q because builder couldn't read them.
+    # Redirect to a log file in the evidence dir so it doesn't block, but is
+    # still inspectable post-mortem.
+    builder_log_path = evidence_dir / "builder_stdout_stderr.log"
+    builder_log_fh = builder_log_path.open("wb")
     builder_proc = subprocess.Popen(
         ["builder", "start", "--port", str(args.port), "--force"],
         cwd=str(workspace), env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        stdout=builder_log_fh, stderr=subprocess.STDOUT,
     )
 
     decision_status = "incomplete"
@@ -528,8 +654,26 @@ def main() -> int:
                 break  # board still not shipped and no pending question
             if outcome == "shipped":
                 break
-            question_id = get_pending_question(args.port, session_id)
-            if question_id is None:
+            if outcome == "proceed_needed":
+                # Chat completed but no structured question + no ship — model
+                # asked free-text scoping questions in an assistant_message.
+                # Push the conversation forward with a default "proceed"
+                # message so the chat agent finalizes scope and creates a Task.
+                # Bounded by max_questions to prevent infinite loops if the
+                # model keeps asking. Pattern caught 2026-05-23 (fixture A:
+                # multi-bullet markdown scoping question, no ask_user_question
+                # event surfaced).
+                send_chat(
+                    args.port,
+                    "Proceed with reasonable defaults for any clarifying "
+                    "questions. Pick the first sensible option for each, "
+                    "create the Task, and start building.",
+                    session_id=session_id,
+                )
+                questions_answered += 1
+                continue
+            pending_item = get_pending_question(args.port, session_id)
+            if pending_item is None:
                 break  # neither shipped nor pending — escape hatch
             # Use the scripted follow-up if one exists for this question index;
             # otherwise default to the fixture's auto-answer (typically
@@ -541,7 +685,7 @@ def main() -> int:
                 follow_up_idx += 1
             else:
                 answer = default_answer
-            send_chat_respond(args.port, session_id, question_id, answer)
+            send_chat_respond(args.port, session_id, pending_item, answer)
             questions_answered += 1
 
         shipped = ship_or_timeout(args.port, fixture["timeout_s"])
@@ -558,6 +702,10 @@ def main() -> int:
             builder_proc.wait(timeout=15)
         except subprocess.TimeoutExpired:
             builder_proc.kill()
+        try:
+            builder_log_fh.close()
+        except OSError:
+            pass
         time.sleep(3)
 
     capture_evidence(workspace, session_id or "", evidence_dir)

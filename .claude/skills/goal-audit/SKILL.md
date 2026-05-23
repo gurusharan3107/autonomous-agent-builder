@@ -83,9 +83,18 @@ python3 scripts/collect.py --since-run > /tmp/goal-audit-data.json 2>/tmp/goal-a
 
 `--since-run` reads the `<!-- collected_at: ... -->` comment from the last INSIGHTS.md entry and passes it as `--since`. Use this when running a follow-up audit in the same session — it shows only new signal since the last entry rather than re-analyzing the full window. Falls back to `7d` if no prior entry exists. The output JSON includes `"since_run_mode": true` when this flag was active.
 
-The collector must be run from the project root so it can read `docs/goal/*` and `docs/autoresearch/OPTIMIZE_IDEAS.md`. If invoked from elsewhere, prefix with `cd <project-root> && ` or pass `--cwd <project-root>`.
+The collector must be run from the project root so it can read `docs/goal/*` and `docs/autoresearch/OPTIMIZE_IDEAS.md`. If invoked from elsewhere, prefix with `cd <project-root> && ` or pass `--cwd <project-run>`.
 
 If the script exits non-zero, read `/tmp/goal-audit-errors.log` and report the blocker to the user. Do not proceed with partial data unless explicitly told to.
+
+Then run the shared drift detector (owned by the `start` skill but consumed here too):
+
+```bash
+python3 .claude/skills/start/scripts/check_status_drift.py --json > /tmp/goal-audit-drift.json 2>/dev/null || echo '{"findings":[]}' > /tmp/goal-audit-drift.json
+cat /tmp/goal-audit-drift.json
+```
+
+Drift findings get incorporated into Section A as deterministic observations (one bullet per finding, citing severity + field + claim + evidence) — alongside the prompt/cache-break inferences. If the script is missing or errors, skip silently; drift detection is best-effort, not blocking.
 
 ### Dry-run mode (preview without writing)
 
@@ -176,10 +185,11 @@ Concrete and scoped. Each item is a single sentence with the rationale. Examples
 
 Before calling Edit on INSIGHTS.md, self-check the draft against the collector JSON:
 
-- Every observation in Section A must cite at least one specific prompt or metric from `session_report.recent_prompts` or `session_report.cache_breaks` (with timestamp and session id). If any observation lacks evidence, delete it or find evidence.
+- Every observation in Section A must cite at least one specific prompt or metric from `session_report.recent_prompts` or `session_report.cache_breaks` (with timestamp and session id), OR a deterministic finding from `/tmp/goal-audit-drift.json`. If any observation lacks evidence, delete it or find evidence.
 - Section B's driver table must match the `aggregated_drivers` counts from the collector JSON exactly. If you cannot find a driver in the JSON, do not list it.
 - The alignment verdict must be `aligned` if Section A has no observations naming a mismatch — do not manufacture drift to feel useful.
 - If `aggregated_drivers.recommended_next_change` is dominated by `maintain_current_flow` and the other two driver streams are empty, Section B's verdict is "no autoresearch action — system stable" and Section C must not propose autoresearch changes.
+- **Recommendation gate.** Every "Suggested STATUS.md change" or "Suggested ROADMAP.md change" line must cite either a NORTH-STAR § Differentiator anchor (e.g. `protects Differentiator #6 — Cost-aware execution`) OR an EVALUATION.md tier (e.g. `unblocks Tier 1 Bar 2`). If a recommendation cannot be tied to an anchor, drop it — that is the mechanical phantom-work filter. Recommendations naming small hygiene fixes (typo, link rot, broken cross-ref) are exempt and may cite `hygiene` instead of an anchor.
 
 Only after these checks pass, proceed to Step 5.
 
@@ -289,16 +299,52 @@ After the new entry is written and OPTIMIZE_IDEAS reorder (if any) lands, perfor
 
 **Self-check before Step 7 (extend the existing self-check):** files edited this run must still be a subset of `{INSIGHTS.md, OPTIMIZE_IDEAS.md}`. The Step 6.5 edit lands on INSIGHTS.md, so the set is unchanged.
 
-### Step 7 — Report back to the user
+### Step 6.6 — Compress old INSIGHTS entries (>14 days, all actions closed)
+
+After Step 6.5 trims the immediately-prior entry, do a second compression pass on entries **older** than that:
+
+1. Walk every `## YYYY-MM-DD — Run #N` header in INSIGHTS.md from oldest to newest.
+2. For each header older than 14 days from today:
+   - If its `### Recommended actions` section starts with `**All actions closed**` (i.e. already trimmed) AND the entry isn't already in the "Closed audit runs" summary table at the top, append a row to that table: `| #N | YYYY-MM-DD | <verdict> | <≤25-word outcome summary, salvaged from the closed-actions line> |` and delete the full entry from the body.
+   - If its `### Recommended actions` section still has open numbered actions, leave it alone — open actions block compression even at >14 days.
+3. Cap the compression at the oldest 3 entries per run to keep the audit trail readable. If more than 3 entries qualify, compress the oldest 3 and leave the newer ones for the next run.
+
+The "Closed audit runs" table at INSIGHTS.md top is the canonical durable home for compressed entries. Git history retains the full prose of every retired entry — the table is just the agent-readable summary.
+
+If no entries qualify for compression, this substep is a no-op — record "no INSIGHTS entries compressed this run" silently (not in the new entry body; chat reply only).
+
+### Step 7 — Report back to the user + self-schedule next run
 
 In your conversation reply (not in the files), summarize:
 - Path to the new INSIGHTS.md entry.
 - Headline alignment verdict.
 - Whether OPTIMIZE_IDEAS.md was reordered (and which item moved).
 - Whether the prior entry's Recommended Actions were trimmed (Step 6.5 outcome: trimmed / already-trimmed / open-actions-remain).
+- Whether any older entries were compressed (Step 6.6 outcome).
 - Top 1-3 recommended actions in one line each.
 
 Keep it under 10 lines. The file is the durable record; chat is the pointer.
+
+#### Self-schedule the next run
+
+After reporting back, call the `CronCreate` deferred tool to schedule the next weekly goal-audit. This is what keeps the cadence honest without the operator having to remember.
+
+Default schedule: weekly on Sunday at 09:00 in the operator's local timezone, with the prompt `"weekly goal-audit run — analyze last 7d"`. The prompt is shaped to match this skill's description so the next firing auto-triggers `goal-audit` via description matching.
+
+```
+CronCreate(
+  schedule: "weekly on Sunday at 09:00",
+  prompt: "weekly goal-audit run — analyze last 7d",
+  description: "Auto-scheduled by goal-audit Step 7. Self-rescheduling chain; safe to delete if cadence needs to change."
+)
+```
+
+Skip the CronCreate call when:
+- The `CronCreate` tool is not available in the current environment (the call would error; report this in the chat reply and ask the operator to schedule manually).
+- A weekly goal-audit cron is already scheduled (check `CronList` first — duplicate schedules are pollution). If `CronList` shows an existing entry matching this prompt, do NOT create a second one.
+- The operator passed `--no-schedule` or explicitly said "don't reschedule" in the invoking prompt.
+
+Self-scheduling is best-effort. The skill's correctness does not depend on the cron firing — the operator can always invoke manually. The cron is a default cadence the operator can override.
 
 ## Driver-to-idea mapping (static)
 
@@ -393,3 +439,10 @@ These are specific traps the model will fall into without being told. They are t
 - `docs/goal/README.md` — the framework this skill audits against.
 - `docs/goal/INSIGHTS.md` — the output file (this skill writes; nothing else does).
 - `docs/autoresearch/OPTIMIZE_IDEAS.md` — the only file this skill may auto-modify.
+
+## Related skills
+
+- [`start`](../start/SKILL.md) — owns `check_status_drift.py` consumed by Step 1 here. The drift script is bundled under `start/scripts/` to keep the cheap session-entry path co-located; this skill borrows it.
+- [`roadmap-audit`](../roadmap-audit/SKILL.md) — companion skill that closes the inverse loop (KB rubric → ROADMAP → live codebase). Both write to INSIGHTS but on different signals: goal-audit uses transcript intent + Builder telemetry; roadmap-audit uses SDK rubric + grep.
+- [`autoresearch`](../autoresearch/SKILL.md) — its OPTIMIZE_IDEAS.md is the only file goal-audit auto-modifies. When this skill reorders the backlog, autoresearch's Iterate lane sees the new top on its next invocation.
+- [`knowledge-base`](../knowledge-base/SKILL.md) — when KB REFRESH detects a new SDK rubric version, the rubric-updated marker triggers roadmap-audit, whose INSIGHTS entry then becomes an input to the next goal-audit run.

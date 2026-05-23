@@ -6,6 +6,8 @@ The single authoritative entry point for any agent working on the Autonomous Age
 
 ## Read order (every session)
 
+**At session entry, type `/start`.** The skill at [.claude/skills/start/](../../.claude/skills/start/SKILL.md) loads the four files below in one pass, runs the STATUS drift check, and folds in the prior session's CURRENT.md when fresh. The list below is what the skill loads and what you reach for if you're reading manually:
+
 1. **README.md** (this file) — operating rules + file map.
 2. **NORTH-STAR.md** — *why*. Mission, three-fold success bar, differentiators vs Codex CLI / Claude Code.
 3. **STATUS.md** — *where you are*. Current epoch, current milestone, in-flight item, next action, blockers, evidence pointers.
@@ -45,7 +47,7 @@ If STATUS is stale or ambiguous, open **RESUME.md** before doing any new work.
 8. **Fix root causes.** SDK-grounded fixes only, per [FIX-STANDARD.md](FIX-STANDARD.md). No workarounds.
 9. **Inspect neighbouring surfaces when testing.** Agent, Voice, Board, Backlog, Metrics, Observability. A change verified only on the touched surface is unverified.
 10. **Memory is bidirectional.** Read repo precedent before fixing; write back when the learning is durable. Invalidate stale memory. `builder memory` runs from the Builder source repo only.
-11. **Autoresearch (Track B) is dormant** until [ROADMAP M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b) prerequisites pass. Don't run it on broken behavior.
+11. **Autoresearch (Track B) is ACTIVATING.** M3.5 D1 (N=5 baseline) unblocked 2026-05-23. The skill at [.claude/skills/autoresearch/](../../.claude/skills/autoresearch/SKILL.md) owns lane discipline (Baseline / Iterate / Fix) and `docs/autoresearch/` freshness. Don't run it on broken behavior.
 12. **A `[x]` isn't closed until pushed.** Tick `[x]` + update STATUS + push the commit. An unpushed `[x]` does not count.
 13. **Commit only on `[x]` close.** Trigger order: update CHANGELOG → tick `[x]` in ROADMAP → update STATUS → one commit covering all related changes → push.
 

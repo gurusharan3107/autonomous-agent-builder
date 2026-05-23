@@ -67,6 +67,34 @@ Do NOT trigger for:
 
 ## Workflow
 
+### Step 0 — SDK-delta early-exit gate
+
+Before doing anything else, check whether the rubric has actually changed since the last audit. If not, skip the run and return a no-op message.
+
+```bash
+# 1. Read the most-recent rubric-updated marker written by knowledge-base
+python3 -c "
+import json, pathlib
+p = pathlib.Path('.claude/skills/knowledge-base/state.json')
+if not p.exists():
+    print(''); raise SystemExit
+d = json.loads(p.read_text() or '{}')
+last = d.get('last_rubric_update', {}).get('claude-agent-sdk-rubric', '')
+print(last)
+" > /tmp/roadmap-audit-rubric-date.txt
+
+# 2. Read the date of the last roadmap-audit INSIGHTS entry
+grep -m 1 'Codebase-grounded revalidation' docs/goal/INSIGHTS.md | head -1 > /tmp/roadmap-audit-last-run.txt
+```
+
+**Decision:**
+
+- If `last_rubric_update` ≤ the date of the most-recent INSIGHTS roadmap-audit entry → **skip**. Print: `"No SDK rubric delta since last audit (rubric: <date>, last audit: <date>). Skipping."` Exit cleanly. Self-schedule a 60-day heartbeat fallback (see Step 8).
+- If `last_rubric_update` > the last audit date, OR the knowledge-base state file is absent (first-ever run), OR the operator explicitly invoked with `--force` → proceed to Step 1.
+- If the rubric has never been ingested (`last_rubric_update` empty) → run `knowledge-base` REFRESH first, then come back. Report this to the operator instead of running blind.
+
+This gate prevents the most common waste of this skill: re-running against an unchanged rubric and generating an identical INSIGHTS entry. The KB-side rubric date is the canonical signal of "is there anything new to audit?".
+
 ### Step 1 — Bootstrap
 
 Read in this order (single pass, no second reads):
@@ -234,6 +262,26 @@ Tell the user:
 - Whether STATUS.md should get a Recent Decisions one-liner (advise; do not write — that's outside this skill's edit scope).
 
 Keep it under 200 words. The INSIGHTS entry has the detail; the chat is the signal.
+
+### Step 9 — Self-schedule the heartbeat fallback
+
+After Step 8 reports back, call `CronCreate` to schedule a 60-day heartbeat fallback. This is the safety net for cases where `knowledge-base` REFRESH doesn't fire (e.g. operator skipping the monthly cron) — the audit still runs at least every 2 months.
+
+```
+CronCreate(
+  schedule: "every 60 days at 10:00",
+  prompt: "roadmap-audit heartbeat — check for SDK rubric delta and revalidate ROADMAP if changed",
+  description: "Auto-scheduled by roadmap-audit Step 9. Heartbeat fallback; the primary trigger is knowledge-base REFRESH detecting a rubric delta."
+)
+```
+
+Skip when:
+- `CronCreate` unavailable (report in chat).
+- A roadmap-audit cron is already scheduled (check `CronList`; refuse duplicates).
+- The Step 0 gate already exited early ("no rubric delta") — the next-firing 24-hour cron set by `knowledge-base` is the primary path; only re-schedule the heartbeat if the audit actually ran.
+- Operator passed `--no-schedule`.
+
+The 60-day cadence is deliberately longer than knowledge-base's 30-day REFRESH cadence so the heartbeat fires only when KB cadence has clearly skipped — not as a primary trigger.
 
 ## Output Examples
 

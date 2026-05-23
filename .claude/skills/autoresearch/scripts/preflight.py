@@ -323,12 +323,42 @@ def gather_hard_checks() -> list[Check]:
         check_path_exists("seed source", SEED_SRC, hard=True, kind="devpulse workspace"),
         check_repo_files("autoresearch contracts (docs/)", REQUIRED_CONTRACTS),
         check_repo_files("autoresearch harness (scripts/)", REQUIRED_HARNESS),
+        check_hang_watchdog_present(),
     ]
+
+
+def check_py_spy_optional() -> Check:
+    """py-spy is optional — hang_watchdog.py works without it but dumps
+    are richer when it's installed (Python stack traces of the stuck builder)."""
+    path = shutil.which("py-spy")
+    if path:
+        return Check("py-spy CLI (optional)", "pass", f"found at {path}")
+    return Check(
+        "py-spy CLI (optional)",
+        "warn",
+        "not on PATH; hang_watchdog dumps will lack Python stacks",
+        fix="pip install --user py-spy (with --break-system-packages on PEP668 systems)",
+    )
+
+
+def check_hang_watchdog_present() -> Check:
+    """The hang_watchdog script is part of the skill — verify it ships
+    alongside the other bundled scripts so a fresh clone is self-sufficient."""
+    path = pathlib.Path(__file__).resolve().parent / "hang_watchdog.py"
+    if path.is_file():
+        return Check("hang_watchdog.py", "pass", f"present at {path}")
+    return Check(
+        "hang_watchdog.py",
+        "fail",
+        f"missing from {path.parent}",
+        fix="re-clone the skill or restore the file from version control",
+    )
 
 
 def gather_soft_checks() -> list[Check]:
     return [
         check_python_module("tiktoken module (optional)", "tiktoken", hard=False),
+        check_py_spy_optional(),
         check_path_exists("seed snapshot", SEED_DST, hard=False, kind="immutable snapshot"),
         check_ports(),
         check_otel_port_holders(),

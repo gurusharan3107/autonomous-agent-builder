@@ -122,6 +122,37 @@ python3 .claude/skills/knowledge-base/scripts/detect_updates.py --commit-state
 
 If new surfaces emerged (e.g., new SDK family), surface to user — DO NOT auto-edit `~/.claude/CLAUDE.md` triggers.
 
+### Phase F — Cross-skill triggers + self-schedule
+
+REFRESH closeout has two responsibilities beyond the KB itself: signal `roadmap-audit` when a rubric changed, and reschedule itself.
+
+**1. Rubric-updated marker for `roadmap-audit`.** For each of the four surface rubrics, after Phase D updates rows: append/update a `"last_rubric_update"` field in `.claude/skills/knowledge-base/state.json` with `{ "<rubric-slug>": "<ISO date>" }`. The `roadmap-audit` skill reads this field on its Step 1 bootstrap and uses it to decide whether the rubric has shifted since its last INSIGHTS entry — if shifted, the audit runs; if not, it short-circuits. This is how SDK signature drift flows from KB refresh → roadmap audit → ROADMAP additions without operator prompting.
+
+**2. Self-schedule the next REFRESH.** Call the `CronCreate` deferred tool to schedule the next monthly REFRESH:
+
+```
+CronCreate(
+  schedule: "monthly on day 1 at 10:00",
+  prompt: "monthly knowledge-base REFRESH — detect upstream deltas and write gap articles",
+  description: "Auto-scheduled by knowledge-base Phase F. Self-rescheduling chain; safe to delete if cadence changes."
+)
+```
+
+Skip the CronCreate call when:
+- `CronCreate` is unavailable in the environment (report in chat, ask operator to schedule manually).
+- A monthly knowledge-base cron is already scheduled (check `CronList` first; refuse duplicates).
+- Operator passed `--no-schedule` or said "don't reschedule".
+
+If the rubric-updated marker was set for any of the four rubrics in this REFRESH, also fire an immediate (next-day) `CronCreate` for `roadmap-audit` so the audit picks up the new rubric promptly:
+
+```
+CronCreate(
+  schedule: "in 24 hours",
+  prompt: "roadmap-audit — KB refresh updated <rubric-slug>; revalidate ROADMAP",
+  description: "Auto-scheduled by knowledge-base after detecting rubric delta on <rubric-slug>."
+)
+```
+
 ## Operation: MAINTAIN
 
 Quarterly cadence — validate the KB's existing state.

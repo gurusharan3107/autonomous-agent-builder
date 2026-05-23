@@ -1,14 +1,10 @@
 # autonomous-agent-builder AGENTS.md
 
-Always read `~/.codex/AGENTS.md` first, then this file.
+Codex: read `~/.codex/AGENTS.md` first, then this file. Claude: routed here by `.claude/CLAUDE.md` when doing dev work on this repo.
 
-This file is the Codex instruction surface for working on
-`autonomous-agent-builder`. Keep it short: triggers, routing, boundaries, and
-dead ends only. Detailed policy belongs in `docs/`, `builder` quality gates,
-or repo memory.
+This file is the primary instruction surface for any agent doing dev work on `autonomous-agent-builder`. Keep it short: triggers, routing, boundaries, and dead ends only. Detailed policy belongs in `docs/`, `builder` quality gates, repo memory, or `.claude/skills/`.
 
-`CLAUDE.md` is the Builder runtime contract for the Claude Agent SDK lane. It is
-product truth for runtime behavior, not the place for Codex operating rules.
+`CLAUDE.md` is the Builder runtime contract for the Claude Agent SDK lane. It is product truth for runtime behavior, not the place for dev-on-source-repo operating rules.
 
 ## Builder Workspace
 
@@ -20,6 +16,10 @@ The canonical workspace for creating apps with this builder is:
 
 Always initialize new apps (`builder init`) from that directory, not from
 this source repo. Run all generated-app lifecycle work from there.
+
+## Session Entry
+
+Type `/start` at session start. Skill at `.claude/skills/start/SKILL.md` loads framework + STATUS Current Position + drift warnings + recent git log + prior CURRENT.md (when fresh) in one pass — replaces the per-session "check AGENTS.md and docs/goal/README.md" re-prompt. Use `/save-session` before exit.
 
 ## Start Here
 
@@ -55,6 +55,7 @@ workflow --docs-dir docs read REFERENCE
 - `docs/quality-gate/` owns pass/fail checks.
 - `builder knowledge` owns repo-local system docs and freshness checks.
 - `builder memory` owns reusable repo corrections, decisions, and patterns.
+- `.claude/skills/` owns executable governance: session entry/exit, audit, optimization, knowledge-freshness. Skills auto-trigger on operator phrases; closeouts self-schedule via `CronCreate`.
 
 Do not move Builder runtime responsibilities into `~/.codex`. Do not copy
 Codex-only guidance into `CLAUDE.md`.
@@ -140,6 +141,19 @@ Full library map (all IDs, surface → library routing, key queries):
   `workflow --docs-dir docs summary system-improvement-loop`.
   Reproduce, trace true owner, fix, and retest.
 
+## Skill Triggers
+
+Project-local skills auto-fire on listed phrases. Use as named entry points; don't rebuild their workflow by hand.
+
+| Skill | Triggers | Purpose |
+|---|---|---|
+| `/start` | session entry, "hi", "where are we", "check AGENTS.md and docs/goal/README.md" | Load framework + STATUS + drift + git log + tactical handoff |
+| `/save-session` | "save session", "checkpoint", context >70% used | Tactical handoff to next session via `.claude/session-data/CURRENT.md` |
+| `/goal-audit` | "are we aligned?", "audit goals", ≥2-day gap | Intent ↔ direction audit; writes `docs/goal/INSIGHTS.md`; may reorder `docs/autoresearch/OPTIMIZE_IDEAS.md` |
+| `/roadmap-audit` | "audit roadmap vs SDK", after KB rubric delta | Cross-check `docs/goal/ROADMAP.md` against KB rubric + live `grep src/` |
+| `/knowledge-base` | "refresh KB", monthly | Maintain `~/.claude/knowledge/` against SDK upstream |
+| `/autoresearch` | "run autoresearch", "baseline", "iterate", "fix the gap" | Three-lane optimization loop (Baseline / Iterate / Fix); owns `docs/autoresearch/` freshness |
+
 ## Product Validation Rules
 
 - Dashboard lifecycle validation is browser-visible. Use Chrome first for the
@@ -197,6 +211,8 @@ builder memory add --type pattern --phase testing ... --json
 
 Memory writes must return passing post-mutation evidence. They do not count as
 lifecycle-validation evidence.
+
+For tactical session handoff — current intent, next action, blockers, mid-session learnings, NOT durable enough for memory or STATUS Recent Decisions — use `/save-session`. `/start` reads the resulting `.claude/session-data/CURRENT.md` on the next session.
 
 ## Dead Ends
 

@@ -172,6 +172,16 @@ docker compose -f scripts/autoresearch/docker-compose.yml up -d
 # 4. Dry-run the runner to confirm wiring
 python3 scripts/autoresearch/run.py --fixture A --branch main --port 9999 --dry-run
 
+# 4b. Launch hang-watchdog in background (skill-owned forensic dump on stall).
+# Detects builder hang within ~3 min instead of burning the full 25-min
+# per-question budget; dumps logs/sessions/py-spy/DB snapshot to
+# /tmp/autoresearch/diagnostics/<UTC-timestamp>-pid<PID>/.
+python3 .claude/skills/autoresearch/scripts/hang_watchdog.py \
+    --idle-seconds 180 --grace-seconds 90 \
+    --dump-root /tmp/autoresearch/diagnostics &
+WATCHDOG_PID=$!
+trap "kill -TERM $WATCHDOG_PID 2>/dev/null" EXIT
+
 # 5. Real N=5 baseline across all five fixtures (~2h wallclock, ~25 model runs, ~$5–10 cost)
 python3 scripts/autoresearch/baseline.py --fixtures A,B,C,D,E --n 5 \
     --evidence-root /tmp/autoresearch/baseline-$(date +%Y-%m-%d)
@@ -200,6 +210,33 @@ python3 .claude/skills/autoresearch/scripts/introspect.py
 # 6. Universal closeout freshness sweep (Hard Rule 2) — final step, refuses lane closure on exit 1.
 python3 .claude/skills/autoresearch/scripts/freshness_sweep.py
 ```
+
+#### Baseline-lane completion notification
+
+After `baseline.py` finishes (success or partial completion), call `PushNotification` with the σ summary so the operator doesn't have to poll. Baseline takes ~2h; a notification on completion is high-value.
+
+```
+PushNotification(
+  title: "Autoresearch Baseline N=5 complete",
+  body: "Fixtures A–E status: <stable|unstable> counts. Composite σ: <per-fixture summary>. Cost: $<actual>."
+)
+```
+
+Skip when `PushNotification` is unavailable.
+
+#### Baseline-lane cross-skill trigger
+
+A fresh σ-floor is the highest-quality input for the next `goal-audit` Section A (Builder telemetry signal). Schedule a goal-audit 24 hours out so the day-after audit reads the new baseline numbers:
+
+```
+CronCreate(
+  schedule: "in 24 hours",
+  prompt: "goal-audit run — analyze last 7d (post-Baseline)",
+  description: "Auto-scheduled by autoresearch Baseline closeout."
+)
+```
+
+Skip when unavailable or when `CronList` already shows a goal-audit cron in the next 48h.
 
 **Do not tick a ROADMAP `[x]` from inside Baseline lane** — Baseline is calibration, not delivery. Tick happens from Iterate lane when a kept iteration ships, or from Fix lane when a contract defect closes.
 
@@ -242,6 +279,13 @@ the existing format:
 ```bash
 # 1. Preview top unattempted idea (read-only)
 grep -A2 "^[0-9]\+\.\s*\*\*" docs/autoresearch/OPTIMIZE_IDEAS.md | head -10
+
+# 1b. Launch hang-watchdog in background (see Baseline lane Step 4b — same contract).
+python3 .claude/skills/autoresearch/scripts/hang_watchdog.py \
+    --idle-seconds 180 --grace-seconds 90 \
+    --dump-root /tmp/autoresearch/diagnostics &
+WATCHDOG_PID=$!
+trap "kill -TERM $WATCHDOG_PID 2>/dev/null" EXIT
 
 # 2. Drive the iteration via loop.py (it prompts mid-flow for the source edit)
 python3 scripts/autoresearch/loop.py --max-iterations 1 --cost-budget-usd 5
@@ -286,6 +330,35 @@ python3 .claude/skills/autoresearch/scripts/introspect.py
 #    policy, and METRICS.md / HARNESS.md / README.md may now describe stale measurements.
 python3 .claude/skills/autoresearch/scripts/freshness_sweep.py
 ```
+
+#### Iterate-lane verdict notification (every verdict — KEEP, DISCARD, CRASH)
+
+After `loop.py` or `compare.py` reports a verdict, call the `PushNotification` deferred tool with the result so the operator doesn't have to poll. The operator's past polling pattern ("is the iteration completed?" twice in 10 minutes) is the explicit signal this is worth automating.
+
+```
+PushNotification(
+  title: "Autoresearch iteration #<N> — <KEEP|DISCARD|CRASH>",
+  body: "run_id=<id>, composite_delta=<%>, branch=autoresearch/iter-N-<ref>"
+)
+```
+
+Skip when `PushNotification` is unavailable in the current environment.
+
+#### Iterate-lane KEEP cross-skill triggers
+
+On a KEEP that ships (merged to main), the kept optimization usually flips an SDK lever or changes prompt shape — both of which change inputs for `roadmap-audit` and require a re-baseline by the next `Baseline` lane invocation. Schedule both via `CronCreate`:
+
+```
+CronCreate(
+  schedule: "in 24 hours",
+  prompt: "roadmap-audit — autoresearch KEEP iteration #<N> flipped an SDK lever; revalidate ROADMAP",
+  description: "Auto-scheduled by autoresearch Iterate KEEP closeout."
+)
+```
+
+Also surface a recommendation in chat: "Iteration #<N> KEEP changed prompt shape; consider running Baseline lane to re-establish σ-floor before the next Iterate run." Do not auto-schedule Baseline — Baseline is a 2-hour, ~$5–10 lane and needs operator consent.
+
+Skip the CronCreate when unavailable, or when `CronList` already shows a roadmap-audit cron scheduled within the next 48h.
 
 **Hard rule:** never hand-edit `optimize_results.tsv decision` columns to fake a keep. The verdict is mechanical — if it crashed it's `crash`, if compare returned `discard` it's `discard`. Re-running is cheaper than carrying a false win into the σ floor.
 

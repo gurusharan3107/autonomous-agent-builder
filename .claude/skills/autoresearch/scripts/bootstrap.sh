@@ -92,7 +92,7 @@ need_requests=$(echo "$PREFLIGHT_JSON" | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
 for c in d['hard'] + d['soft']:
-    if c['name'].startswith(('requests', 'tiktoken')) and c['status'] != 'pass':
+    if c['name'].startswith(('requests', 'tiktoken', 'py-spy')) and c['status'] != 'pass':
         print(c['name'].split()[0])
 ")
 if [[ -n "$need_requests" ]]; then
@@ -120,7 +120,7 @@ if [[ -n "$need_requests" ]]; then
     fi
   done
 else
-  echo "  ✓ requests + tiktoken already installed"
+  echo "  ✓ requests + tiktoken + py-spy already installed"
 fi
 
 # ----- Step 3: seed snapshot -----
