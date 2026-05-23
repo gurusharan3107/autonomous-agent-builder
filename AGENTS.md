@@ -174,7 +174,7 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
 
 ## Codex Productivity Rules
 
-- Docs cost tokens — on write and on every future read. Write tight, cut explanation, sacrifice grammar for brevity. Prefer tables, bullets, and pointers over prose.
+- Docs cost tokens — on write and on every future read. Write tight, cut explanation, sacrifice grammar for brevity. Prefer tables, bullets, and pointers over prose. ROADMAP/CHANGELOG/STATUS entries: lead with the change, one tight sentence per item, `file:line` over prose paragraphs, drop "why this matters" footers. If `git show <sha>` would tell the reader the same thing in 30s, skip it.
 - Prefer deterministic Builder and workflow evidence before model judgment.
 - Keep the main thread on implementation, review, and final integration.
 - Use Codex subagents only when the task is explicitly delegated or the user
