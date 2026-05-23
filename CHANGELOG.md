@@ -7,6 +7,39 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - Autoresearch freshness sweep — bundled discipline script
+
+### Added
+
+- **`.claude/skills/autoresearch/scripts/freshness_sweep.py`** — executable enforcement of Hard Rule 2 ("skill owns `docs/autoresearch/` freshness"). 10 isolated checks (8 hard / 2 soft):
+  - `metrics_documents_session_scoped` — METRICS.md retains the `runtime_aggregates.session_scoped` flag contract.
+  - `logs_emits_session_scoped` — `src/.../cli/commands/logs.py` still emits the key (guards against revert of commit `a3354c2`).
+  - `task_chat_session_id_column` — `src/.../db/models.py` still defines the FK.
+  - `readme_telemetry_honesty_line` — README.md activation block still names the 2026-05-23 line.
+  - `metrics_prompt_count_semantic` — METRICS.md still clarifies `prompt_count` = operator chat turns.
+  - `harness_asserts_session_scoped` — HARNESS.md still asserts the flag is `true`.
+  - `tsv_header_drift_*` — `baseline_runs.tsv` / `optimize_results.tsv` / `per_prompt_results.tsv` headers match `run.py:SESSION_HEADERS` / `PROMPT_HEADERS` exactly.
+  - `iterations_html_markers` — `__ITERATIONS_DATA_START__` / `__ITERATIONS_DATA_END__` intact for `render_iterations.py`.
+  - `baseline_summary_age` (soft) — warns if `baseline_runs_summary.json` is >14d old.
+  - `changelog_lane_activity` (soft) — warns if the latest autoresearch CHANGELOG entry is >30d old (skill-bypass detector).
+
+  Exit 0 clean / 1 hard drift. `--json` emits machine-readable output. Mirrors `preflight.py` pattern.
+
+### Changed
+
+- **`.claude/skills/autoresearch/SKILL.md`** — Universal closeout freshness sweep section replaced with the bundled script's check table + invocation. Each lane's closeout (Baseline step 6, Iterate step 5, Fix step 6) now calls `freshness_sweep.py` and refuses to close on exit 1. Prose-only sweep references removed.
+- **`docs/goal/ROADMAP.md`** — M3.5 line added + ticked `[x]` with check-list evidence.
+- **`docs/goal/STATUS.md`** — Recent Decisions + Last Update reflect the discipline-layer landing.
+
+### Validation
+
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` against today's repo state — exit 0, `docs/autoresearch/ freshness: OK`.
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py --json` — `{"status": "ok", "exit_code": 0, "hard_count": 0, "soft_count": 0, "findings": []}`.
+
+### Notes
+
+- ROADMAP line for this work landed before the script per Hard Rule 1. Ticked `[x]` here as the closing step after sweep verified clean.
+
 ## 2026-05-23 - Autoresearch skill restructure (single entry + 3 lanes + freshness ownership)
 
 ### Changed
