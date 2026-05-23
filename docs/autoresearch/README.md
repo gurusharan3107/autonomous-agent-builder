@@ -92,7 +92,7 @@ An autonomous loop where an agent edits one bounded surface of the Builder, runs
 
 This is **Track B** in our delivery model.
 
-- **Track A** (manual, runs first): fix the operator-facing bugs in `docs/IMPROVEMENTS.md` (IMP-001 through IMP-004 at minimum) the normal SDK-grounded way.
+- **Track A** (manual, runs first): fix the operator-facing bugs IMP-001 through IMP-004 (see git log) the normal SDK-grounded way.
 - **Track B** (this loop, runs second): optimize the Builder's prompt shape, context size, agent use, and runtime policy through the autoresearch loop, only after the baseline can already ship features cleanly.
 
 Running Track B before Track A optimizes around broken behavior. Do not do that.
@@ -101,9 +101,9 @@ Running Track B before Track A optimizes around broken behavior. Do not do that.
 
 Pre-harness prerequisites (verified before Phase C):
 
-- [x] IMP-001 through IMP-004 closed in `docs/IMPROVEMENTS.md` with regression tests. *(closed 2026-05-19, validated 2026-05-22)*
+- [x] IMP-001 through IMP-004 closed with regression tests. *(closed 2026-05-19, validated 2026-05-22)*
 - [x] A fresh devpulse workspace can ship one full feature end-to-end through the Agent page with no operator intervention after approval. *(validated by 8 devpulse tasks reaching `done` status; IMP-012 closeout 2026-05-21)*
-- [x] Three of four `docs/PROGRESS.md` thresholds met by the unmodified baseline (per latest devpulse `builder logs analyze`):
+- [x] Three of four Tier-1 thresholds met by the unmodified baseline (per latest devpulse `builder logs analyze`):
   - `cache_ratio > 5x` after turn 2 every turn — *18019× on session `5dc61748` (2026-05-22)*
   - `chunk_pressure_risk: false` — *confirmed (2026-05-22)*
   - `avoidable_cost_flags: []` — *confirmed (2026-05-22)*

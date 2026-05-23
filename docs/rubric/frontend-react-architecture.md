@@ -175,7 +175,7 @@ find frontend/src -type f \( -name '*.tsx' -o -name '*.ts' \) -print0 | xargs -0
 PYTHONPATH=src pytest tests/test_dashboard_design_system_contract.py tests/test_realtime_voice_frontend_static.py -q
 ```
 
-Browser proof should follow `docs/PLAN.md` and the lifecycle validation
+Browser proof should follow the lifecycle validation
 workflow, including end-to-end feature creation through the Agent page and
 through Voice.
 

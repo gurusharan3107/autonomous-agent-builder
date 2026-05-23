@@ -33,7 +33,7 @@ Those are builder responsibilities.
 ## Mission Alignment
 
 This contract follows
-[MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md):
+~~MISSION.md~~:
 
 - the system owns the real work of the software lifecycle
 - workflow, model, tool, and context choices stay inside one operating
@@ -201,7 +201,7 @@ It should guide later implementation work that:
 
 ## Related Docs
 
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [CLAUDE.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/CLAUDE.md)
 - [documentation-agent.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/documentation-agent.md)
 - [main-commit-reference.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/main-commit-reference.md)

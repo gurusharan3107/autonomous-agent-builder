@@ -44,7 +44,7 @@ The target outcome is:
 - explicit privacy discipline
 - clear owner boundaries between builder-local state and external observability
 
-That aligns with [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md):
+That aligns with ~~MISSION.md~~:
 the builder should choose workflow, model, tools, and execution strategy for
 the user, while leaving behind durable and inspectable state.
 
@@ -573,7 +573,7 @@ For `autonomous-agent-builder` specifically:
 
 ## Related Docs
 
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [claude-agent-sdk-integration.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/claude-agent-sdk-integration.md)
 - [agent-optimization-analysis.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/agent-optimization-analysis.md)
 - [agent-quality.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/agent-quality.md)

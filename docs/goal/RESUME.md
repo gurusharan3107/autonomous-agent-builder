@@ -13,7 +13,7 @@ Product is designed for session continuity. Don't start fresh just because the *
 - User said "continue", "resume", "where did we leave off", "pick up from README/PLAN.md", etc.
 - [STATUS.md](STATUS.md) `Current Item In Flight` ≠ `None`.
 - A checkpoint exists under `.claude/session-data/` and user referenced it.
-- User pointed you at `docs/goal/` or its legacy stubs (`docs/PLAN.md`, `GOAL.md`, `MISSION.md`).
+- User pointed you at `docs/goal/` (canonical surface).
 
 Brand-new question unrelated to the live roadmap → answer directly, skip this protocol.
 
@@ -92,7 +92,7 @@ When:
 
 Mode A/B with concrete step in hand:
 
-- Right surface: `docs/IMPROVEMENTS.md` (IMPs), `docs/SPRINT-PROGRESS.md` (sprint), `.memory/` via `builder memory search` (precedent), `builder knowledge` (system docs).
+- Right surface: git log (history), `.memory/` via `builder memory search` (precedent), `builder knowledge` (system docs).
 - Run end to end with evidence capture.
 - Update STATUS + relevant working doc on every meaningful transition.
 

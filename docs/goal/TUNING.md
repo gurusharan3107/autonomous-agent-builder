@@ -112,7 +112,7 @@ Recurring; encoded as memory (see `builder memory search`). Recognizing them ski
 Durable improvement →
 
 1. Regression test pinning new behavior.
-2. Record in [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) if closing a defect.
+2. Record the defect closure in CHANGELOG + STATUS Recent Decisions.
 3. Memory entry per [FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-durable) if non-obvious.
 4. Update agent in `src/autonomous_agent_builder/agents/definitions.py`.
 5. Update rubric in `docs/rubric/` if boundary changed.

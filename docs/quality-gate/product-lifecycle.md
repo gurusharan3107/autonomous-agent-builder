@@ -14,7 +14,7 @@ expectations:
   - "blocked states preserve task, workspace, approval, provider-limit, and restart evidence"
   - "post-mutation checks prove board/backlog/approval/runtime changes can be retrieved through product surfaces"
 related_docs:
-  - "docs/GOAL.md"
+  - "docs/goal/NORTH-STAR.md"
   - "docs/workflows/autonomous-lifecycle-validation.md"
   - "docs/references/phase-model.md"
   - "docs/quality-gate/verification.md"

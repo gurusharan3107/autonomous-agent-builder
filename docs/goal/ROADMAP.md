@@ -17,7 +17,7 @@ Spine of all work. Non-roadmap work → add to the right epoch first; no ad-hoc.
 
 ### M1.1 — Close the open operator-facing defects
 
-Source: [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md). Each IMP closed with: root cause, SDK-grounded fix, regression test, post-fix evidence, durable memory entry if applicable.
+Each IMP closed with: root cause, SDK-grounded fix, regression test, post-fix evidence, durable memory entry if applicable. History in git log + `.memory/`.
 
 - [x] **IMP-001** — Agent loses original feature request context after intake follow-up. Fixed in `agent_prompt_builders.py` + `chat_turn_prompting.py` + `routes/agent.py`; regression tests in `test_agent_feature_spec_prompt_contracts.py`.
 - [x] **IMP-002** — Gates-first not enforced: 27-turn run before workspace has ruff/pytest infra. Fixed by scaffold commits 1fae0bd, c1a39c8, a88ee2c.

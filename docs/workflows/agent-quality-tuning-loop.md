@@ -16,7 +16,7 @@ single user-visible bug. Typical targets include:
 - unnecessary subagent use
 - weak or missing runtime evidence
 
-The workflow stays aligned to [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md):
+The workflow stays aligned to ~~MISSION.md~~:
 the user should not need to manage workflow, tools, models, or context by hand.
 
 Use [system-improvement-loop.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/workflows/system-improvement-loop.md)
@@ -357,7 +357,7 @@ failure mode.
 
 ## Related Docs
 
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [agent-quality.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/agent-quality.md)
 - [phase-model.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/phase-model.md)
 - [agent-optimization-analysis.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/agent-optimization-analysis.md)

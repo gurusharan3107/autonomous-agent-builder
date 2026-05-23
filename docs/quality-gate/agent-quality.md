@@ -15,7 +15,7 @@ commands:
   - "builder logs analyze --session <id-or-prefix> --json"
   - "builder metrics show --json"
 expectations:
-  - "agent behavior stays aligned with docs/MISSION.md: the system chooses workflow, model, tools, and context strategy so the user does not have to"
+  - "agent behavior stays aligned with docs/goal/NORTH-STAR.md: the system chooses workflow, model, tools, and context strategy so the user does not have to"
   - "quality tuning starts from real builder session evidence rather than intuition or static prompt opinions alone"
   - "the default evidence lane is builder-owned session/history/log analysis; OTEL export strengthens the lane but does not replace builder as the repo-local owner"
   - "context efficiency is evaluated as bounded retrieval, compact machine-readable outputs, and minimal repeated or irrelevant tool work"
@@ -31,7 +31,7 @@ expectations:
   - "quality recommendations map back to canonical owner surfaces such as prompts, phase docs, CLAUDE.md, tool contracts, and agent definitions"
   - "the user should experience one coherent builder product, not a visible pile of SDK/runtime decisions"
 related_docs:
-  - "docs/MISSION.md"
+  - "docs/goal/NORTH-STAR.md"
   - "docs/references/phase-model.md"
   - "docs/references/agent-optimization-analysis.md"
   - "docs/references/runtime-settings.md"
@@ -111,7 +111,7 @@ Load this gate before:
 
 Read:
 
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [phase-model.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/phase-model.md)
 - [agent-optimization-analysis.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/agent-optimization-analysis.md)
 - [claude-agent-sdk.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/claude-agent-sdk.md)
@@ -153,7 +153,7 @@ Confirm that:
 
 ## Related Docs
 
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [phase-model.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/phase-model.md)
 - [agent-optimization-analysis.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/agent-optimization-analysis.md)
 - [runtime-settings.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/runtime-settings.md)

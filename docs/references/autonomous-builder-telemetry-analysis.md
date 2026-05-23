@@ -49,7 +49,7 @@ skill may point to this repo doc when the audit target is
 Start with the owner contracts, then inspect the compact runtime evidence:
 
 ```bash
-docs/GOAL.md
+docs/goal/NORTH-STAR.md
 workflow --docs-dir docs summary claude-agent-sdk-telemetry-observability
 workflow --docs-dir docs summary runtime-switch-dashboard-contract
 builder quality-gate claude-agent-sdk --json
@@ -224,7 +224,7 @@ paths.
 
 ## Related Docs
 
-- [GOAL.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/GOAL.md)
+- ~~GOAL.md~~
 - [builder-cli.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/builder-cli.md)
 - [runtime-settings.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/runtime-settings.md)
 - [deterministic-vs-model-backed-agent-behavior.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/rubric/deterministic-vs-model-backed-agent-behavior.md)

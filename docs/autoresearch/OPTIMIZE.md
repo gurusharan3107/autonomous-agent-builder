@@ -80,7 +80,6 @@ Start conservative. Widen only after the loop produces stable wins.
 
 - `tests/**`
 - `docs/quality-gate/**` (gate definitions)
-- `docs/PROGRESS.md`, `docs/GOAL.md`, `docs/PLAN.md`, `docs/IMPROVEMENTS.md`
 - Readiness checks, gate runners, complexity baselines
 - The devpulse workspace contents (`/home/gurusharangupta/Builder-Workspace/devpulse`)
 - The `.seed/devpulse` snapshot
@@ -103,7 +102,7 @@ Run continuously until one of:
 - Operator interrupts.
 - Cumulative cost exceeds budget set in `optimize_results.tsv` header.
 
-When stopped, write a closeout entry to `docs/PROGRESS.md` summarizing wins and updating the threshold floor.
+When stopped, write a closeout entry to `docs/autoresearch/PROGRESS.md` summarizing wins and updating the threshold floor.
 
 ## Promotion path
 
@@ -113,7 +112,7 @@ When stopped, write a closeout entry to `docs/PROGRESS.md` summarizing wins and 
 
 ## Notes for the agent
 
-- Read `docs/GOAL.md` before each iteration. The Fix standard ordering applies.
+- Read `docs/goal/FIX-STANDARD.md` before each iteration. The Fix standard ordering applies.
 - Read AGENTS.md required triggers if editing files with triggers attached.
 - If you're tempted to edit a forbidden surface, the answer is "no, propose a Track A bug instead."
 - Optimizations must be SDK-grounded. Cite the Claude Agent SDK feature being leveraged (cache control, permissions, hooks, subagents, AskUserQuestion, compaction).

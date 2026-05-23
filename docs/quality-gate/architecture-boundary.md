@@ -22,7 +22,6 @@ expectations:
   - "owner surfaces stay explicit in both docs and code rather than being left to inference"
   - "the user still experiences one coherent builder product instead of choosing runtime and workflow strategy manually"
 related_docs:
-  - "docs/MISSION.md"
   - "docs/claude-agent-sdk-integration.md"
   - "docs/quality-gate/modular-runtime.md"
   - "docs/workflows/architecture-boundary-review.md"
@@ -44,7 +43,7 @@ or implementation boundaries that could blur the existing split across:
 This gate is not the source of truth for that split. Use it to verify that the
 change still matches the owner surfaces in
 [CLAUDE.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/CLAUDE.md),
-[MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md),
+~~MISSION.md~~,
 and
 [claude-agent-sdk-integration.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/claude-agent-sdk-integration.md).
 
@@ -95,7 +94,7 @@ Ask these before claiming the change is correct:
 
 Read:
 
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [CLAUDE.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/CLAUDE.md)
 - [claude-md.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/claude-md.md)
 - [claude-agent-sdk-integration.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/claude-agent-sdk-integration.md)
@@ -119,7 +118,7 @@ Check code when relevant:
 
 ## Related Docs
 
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [claude-md.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/claude-md.md)
 - [claude-agent-sdk-integration.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/claude-agent-sdk-integration.md)
 - [modular-runtime.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/modular-runtime.md)

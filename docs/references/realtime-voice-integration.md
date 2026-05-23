@@ -70,7 +70,7 @@ OpenAI Realtime voice operator layer on the builder Agent page. The operator spe
   recovered for a future retry.
 - **Capability decision** — `VoiceCapabilityDecisionService` runs before
   Agent-page delegation. It returns the structured agreement required by
-  `docs/GOAL.md`: `decision`, `voice_action`, `builder_route`,
+  The structured agreement: `decision`, `voice_action`, `builder_route`,
   `can_execute_now`, `blocker`, `operator_message`, and `evidence_refs`.
   Blocked runtime/provider-limit states and unsupported operator requests are
   reported to the operator without appending Agent-page chat events or starting

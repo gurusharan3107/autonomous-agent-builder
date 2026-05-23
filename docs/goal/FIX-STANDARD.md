@@ -69,7 +69,7 @@ builder lint --complexity-report --json
 
 The test is the durable artifact. Without it the fix silently regresses.
 
-### Step 6 — Record in `docs/IMPROVEMENTS.md`
+### Step 6 — Record (CHANGELOG + STATUS Recent Decisions; per-patch autoresearch in PROGRESS.md)
 
 Entry: symptom, root cause, SDK-grounded solution, evidence (session id, command output, board state), status. Follow IMP-001..IMP-005 format.
 
@@ -110,7 +110,6 @@ Cosmetic / typo / format fixes: overkill — use judgment.
 
 - [README.md § Hard Rules](README.md#hard-rules-non-negotiable) — rule layer.
 - [RESUME.md](RESUME.md) — uses this once item identified.
-- [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) — Step 6 evidence.
 - [docs/workflows/memory-retrieval-guide.md](../workflows/memory-retrieval-guide.md) — Step 0 detail.
 - [docs/workflows/system-improvement-loop.md](../workflows/system-improvement-loop.md) — broader debugging.
 - `.memory/` — corpus Step 0 reads, Step 7 writes.

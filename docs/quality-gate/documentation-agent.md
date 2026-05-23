@@ -19,11 +19,11 @@ expectations:
   - "documentation completion requires bounded verification through normal retrieval and validation paths"
   - "canonical maintained-doc freshness stays anchored to `main`, while non-`main` documentation runs remain advisory-only"
   - "documentation work reports explicit remaining gaps instead of drifting into unrelated cleanup"
-  - "documentation changes stay aligned with docs/MISSION.md and do not push workflow or tool selection burden back to the user"
+  - "documentation changes stay aligned with docs/goal/NORTH-STAR.md and do not push workflow or tool selection burden back to the user"
   - "permission design stays narrow; avoid broad autonomous access when an allowlisted doc/KB surface is enough"
 related_docs:
   - "docs/references/documentation-agent.md"
-  - "docs/MISSION.md"
+  - "docs/goal/NORTH-STAR.md"
   - "docs/quality-gate/architecture-boundary.md"
   - "docs/quality-gate/knowledge-base.md"
 ---
@@ -96,7 +96,7 @@ Load this gate before:
 Read:
 
 - [documentation-agent.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/documentation-agent.md)
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [architecture-boundary.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/architecture-boundary.md)
 - [knowledge-base.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/knowledge-base.md)
 
@@ -126,6 +126,6 @@ Check behavior when relevant:
 ## Related Docs
 
 - [documentation-agent.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/documentation-agent.md)
-- [MISSION.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/MISSION.md)
+- ~~MISSION.md~~
 - [architecture-boundary.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/architecture-boundary.md)
 - [knowledge-base.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/quality-gate/knowledge-base.md)
