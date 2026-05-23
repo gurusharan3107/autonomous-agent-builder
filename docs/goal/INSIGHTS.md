@@ -57,7 +57,7 @@ Builder-runtime evidence across all six runs: `maintain_current_flow` dominated;
 
 ### Recommended actions
 
-**All actions closed.** 10 prevention items absorbed across [ROADMAP](ROADMAP.md) M1.4 / M1.5 / M2.1 / M2.3 / M2.5 / M2.6. Durable SDK-grounded rationale (P0-1…P2-5 patterns) extracted to [`docs/references/coding-agent-prevention.md`](../references/coding-agent-prevention.md).
+**All actions closed.** 10 prevention items absorbed across [ROADMAP](ROADMAP.md) M1.4 / M1.5 / M2.1 / M2.3 / M2.5 / M2.6. Durable SDK-grounded rationale lives in ROADMAP items + git log.
 
 ---
 

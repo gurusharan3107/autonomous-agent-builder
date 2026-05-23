@@ -29,7 +29,7 @@ For how reduced signals should feed tuning recommendations, see
 
 For the end-to-end telemetry analysis loop across builder logs, metrics, voice
 events, app workspaces, and Codex transcript productivity signals, see
-[autonomous-builder-telemetry-analysis.md](/Users/gurusharan/Documents/remote-claude/active/apps/autonomous-agent-builder/docs/references/autonomous-builder-telemetry-analysis.md).
+(retired).
 
 ## Purpose
 
