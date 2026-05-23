@@ -26,7 +26,7 @@ Live state. If it lies, system is blind.
 
 Key files <1500: `summary.py` 540, `orchestrator.py` 1345, `routes/agent.py` 1326, `voice_operator.py` 1471. `builder lint --complexity-report --json`: 0 violations. 6 extraction modules. Sequential single-agent throughout.
 
-Prior: **M1.1** — 8 IMPs closed (full list + IMP-010..013 in [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md)); **M1.2 Claude lane** — devpulse 5/5, $2.08. Re-verify: 79/79 regression tests pass.
+Prior: **M1.1** — 8 IMPs closed (IMP-001..013; see git log); **M1.2 Claude lane** — devpulse 5/5, $2.08. Re-verify: 79/79 regression tests pass.
 
 ---
 
@@ -49,7 +49,7 @@ Prior: **M1.1** — 8 IMPs closed (full list + IMP-010..013 in [docs/IMPROVEMENT
 
 ## Evidence Pointers
 
-Latest authoritative evidence for the current milestone. Replace on milestone advance; durable history → [docs/PROGRESS.md](../PROGRESS.md).
+Latest authoritative evidence for the current milestone. Replace on milestone advance; durable history → git log + `.memory/`.
 
 | Concern | Latest evidence |
 | --- | --- |
@@ -59,8 +59,6 @@ Latest authoritative evidence for the current milestone. Replace on milestone ad
 | Latest metrics snapshot | *TBD — run `builder metrics show --json --full --limit 8` after M1.2 dispatch* |
 | Latest board snapshot | `pending=3 active=0 done=2` (2026-05-21) — `cd /home/gurusharangupta/Builder-Workspace/devpulse && builder board show --json` |
 | Latest complexity report | M1.3 closed 2026-05-21 — 0 violations |
-| Latest IMPs status | [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) — IMP-001..013 resolved |
-| Latest sprint detail | [docs/SPRINT-PROGRESS.md](../SPRINT-PROGRESS.md) |
 | Latest changelog entry | [CHANGELOG.md](../../CHANGELOG.md) |
 
 ---
@@ -129,7 +127,4 @@ One line per durable decision. Keep recent 20; older → `builder memory add` if
 
 **Don't:**
 
-- Write running history (→ [docs/PROGRESS.md](../PROGRESS.md)).
-- Write bug detail (→ [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md)).
-- Write per-sprint task lists (→ [docs/SPRINT-PROGRESS.md](../SPRINT-PROGRESS.md)).
 - Let this file exceed ~120 lines. Compress, archive, delete.

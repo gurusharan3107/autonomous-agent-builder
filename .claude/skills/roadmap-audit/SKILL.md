@@ -30,9 +30,6 @@ Internalize this list before any tool call. The skill is **active** on `docs/goa
 - `docs/goal/RESUME.md`
 - `docs/goal/INDEX.md`
 - `docs/goal/README.md`
-- `docs/IMPROVEMENTS.md`
-- `docs/SPRINT-PROGRESS.md`
-- `docs/PROGRESS.md`
 - `docs/PROMPT.md`
 - any file in `src/` (the skill *reads* the codebase via grep — never edits it)
 

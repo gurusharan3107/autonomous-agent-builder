@@ -53,14 +53,7 @@ References existing surfaces; doesn't duplicate. [docs/REFERENCE.md](../REFERENC
 
 | Legacy file | What it owned | Migration status |
 | --- | --- | --- |
-| [docs/PLAN.md](../PLAN.md) | 10-bullet operating instructions. | **Migrated.** All 10 bullets now live as Hard Rules in [README.md](README.md) (rules 8-12 added in migration). PLAN.md is a deprecation stub pointing here. |
-| [docs/GOAL.md](../GOAL.md) | Primary goal, testing standard, fix standard (steps 0-7), acceptance thresholds, per-agent boundaries, tuning methodology, forbidden operator language, operator scenarios (F1-F10, E1-E9, R1-R3), guiding principles. | **Migrated.** Primary goal → [NORTH-STAR.md](NORTH-STAR.md). Testing standard + thresholds → [EVALUATION.md](EVALUATION.md). Fix standard → [FIX-STANDARD.md](FIX-STANDARD.md). Tuning methodology → [TUNING.md](TUNING.md). Forbidden language + operator scenarios → [OPERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.md). Guiding principles → [NORTH-STAR.md § Agent Working Principles](NORTH-STAR.md#agent-working-principles-always-on). Per-agent boundaries referenced via [docs/rubric/autonomous-builder-agents.md](../rubric/autonomous-builder-agents.md). GOAL.md is a deprecation stub pointing here. |
-| [docs/MISSION.md](../MISSION.md) | Durable product mission and design principles. | **Migrated.** Mission, thesis, principles, non-goals, end state → [NORTH-STAR.md](NORTH-STAR.md). MISSION.md is a deprecation stub. |
-| [docs/PROGRESS.md](../PROGRESS.md) | Historical evidence archive: every shipped fix, every decomposition pass, every dated proof. | **Stays.** [STATUS.md](STATUS.md) is the current state; PROGRESS.md is the audit-trail history. Do not write current state into PROGRESS.md; do not write history into STATUS.md. |
-| [docs/IMPROVEMENTS.md](../IMPROVEMENTS.md) | Active operator-facing bug list (IMP-001 to IMP-005 today). Living document. | **Stays.** [ROADMAP § M1.1](ROADMAP.md#m11--close-the-open-operator-facing-defects) references IMP-NNN items; the bug detail itself stays in IMPROVEMENTS.md. |
-| [docs/SPRINT-PROGRESS.md](../SPRINT-PROGRESS.md) | Per-sprint checklist for the active validation cycle. | **Stays.** Sprint detail stays in SPRINT-PROGRESS.md. ROADMAP.md is longer-arc; SPRINT-PROGRESS.md is the shorter-arc working doc inside the current sprint. |
 | [docs/PROMPT.md](../PROMPT.md) | Operator prompt scripts for SDK-backed Agent and Realtime Voice rubric validation, in both runtime lanes. | **Stays.** [EVALUATION.md § Tier 2.5](EVALUATION.md#25--rubric--quality-gate-pass-bar) and [OPERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.md) cite PROMPT.md as the source for prompt wording during tier runs. |
-| [docs/QUALITY_SCORE.md](../QUALITY_SCORE.md) | Static audit snapshot of code-review/operator-validation rating (last audit 2026-05-15). | **Stays.** Snapshot evidence; reference from STATUS.md when applicable. Not duplicated. |
 | [docs/REFERENCE.md](../REFERENCE.md) | Authoritative doc-type taxonomy and owner map for the whole repo. | **Stays.** This INDEX.md inherits and respects REFERENCE.md's ownership rules. If they diverge, REFERENCE.md wins for non-`docs/goal/` concerns; INDEX.md wins for `docs/goal/` concerns. |
 | [CHANGELOG.md](../../CHANGELOG.md) | Compact reverse-chronological change history. | **Stays.** Reference from STATUS.md when latest changes matter; do not duplicate. |
 
@@ -70,7 +63,7 @@ References existing surfaces; doesn't duplicate. [docs/REFERENCE.md](../REFERENC
 | --- | --- |
 | Claude Agent SDK runtime contract for this repo | [CLAUDE.md](../../CLAUDE.md) |
 | Codex agent operating rules for this repo | [AGENTS.md](../../AGENTS.md) |
-| Project mission (consumed by CLAUDE.md / AGENTS.md and external references) | [docs/MISSION.md](../MISSION.md) (deprecation stub) → [NORTH-STAR.md](NORTH-STAR.md) is the live source |
+| Project mission (consumed by CLAUDE.md / AGENTS.md and external references) | [NORTH-STAR.md](NORTH-STAR.md) |
 
 ### Rubrics (what an agent or capability can do, must ask for, cannot do)
 
@@ -138,7 +131,7 @@ References existing surfaces; doesn't duplicate. [docs/REFERENCE.md](../REFERENC
 | Design language and dashboard visual rules | [docs/design-docs/design-language.md](../design-docs/design-language.md) |
 | Agent page hierarchy | [docs/design-docs/agent-page-hierarchy.md](../design-docs/agent-page-hierarchy.md) |
 | Modular runtime architecture | [docs/design-docs/modular-runtime-architecture.md](../design-docs/modular-runtime-architecture.md) |
-| Knowledge graph / KB UI patterns | [docs/design-docs/knowledge-graph-ui.md](../design-docs/knowledge-graph-ui.md), [docs/design-docs/knowledge-ui-patterns.md](../design-docs/knowledge-ui-patterns.md) |
+| Knowledge graph / KB UI patterns | (removed — design docs orphaned) |
 
 ### Memory and knowledge (durable durable learnings and system docs)
 

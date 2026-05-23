@@ -36,7 +36,7 @@ Use one of these doc types before choosing or creating a doc:
 
 | Type | Location | Owns | Does not own |
 | --- | --- | --- | --- |
-| `objective` | `docs/GOAL.md`, `docs/PLAN.md`, `docs/PROGRESS.md`, `docs/PROMPT.md` | Active goal, execution instructions, proof checklist, and operator prompt scripts | Permanent product architecture, reusable workflow doctrine, or historical analysis |
+| `objective` | `docs/PROMPT.md` + `docs/goal/` | Active goal, execution instructions, proof checklist, and operator prompt scripts | Permanent product architecture, reusable workflow doctrine, or historical analysis |
 | `reference` | `docs/references/` | Stable contracts, architecture facts, schemas, boundaries, and long-lived product semantics | Step-by-step runbooks, dated evidence dumps, or can/cannot behavior rubrics |
 | `workflow` | `docs/workflows/` | Multi-step operating procedures and user-flow validation loops | Stable schema facts, pass/fail gates, or dated measurements |
 | `quality-gate` | `docs/quality-gate/` | Deterministic pass/fail expectations and verification commands for a named surface | Workflow narration, design rationale, or implementation history |
@@ -44,7 +44,6 @@ Use one of these doc types before choosing or creating a doc:
 | `design-doc` | `docs/design-docs/` | Rationale, options, tradeoffs, design language, and proposals | Current canonical runtime, workflow, or policy contracts unless promoted in this map |
 | `analysis` | `docs/analysis/` | Dated findings, measurements, and evidence snapshots | Current policy, current pass/fail rules, or control-owner language |
 | `changelog` | `CHANGELOG.md` | Compact chronological change history for future agents | Current product contracts, workflow rules, proof checklists, or release marketing copy |
-| `source-notes` | `docs/realtime/` or focused reference folders | External API source notes and focused source summaries | Builder integration ownership unless a mapped owner delegates a narrow subsection |
 
 ## Update Rule
 
@@ -62,13 +61,11 @@ Use one of these doc types before choosing or creating a doc:
 
 | Concern | Type | Control owner | Supporting docs | Update guidance |
 | --- | --- | --- | --- | --- |
-| Active Realtime voice acceptance | `objective` | `docs/GOAL.md` | `docs/PROGRESS.md`, `docs/PLAN.md` | Keep acceptance criteria in `GOAL.md`; put proof and status in `PROGRESS.md`. |
-| Operator prompt scripts for Realtime voice and SDK-backed Agent page validation | `objective` | `docs/PROMPT.md` | `docs/GOAL.md`, `docs/PROGRESS.md`, `docs/rubric/realtime-voice-agent-page-agent.md`, `docs/rubric/sdk-backed-agent-page-agent.md` | Keep prompts phrased as operator product language, not implementation calls or agent instructions. |
+| Operator prompt scripts for Realtime voice and SDK-backed Agent page validation | `objective` | `docs/PROMPT.md` | `docs/rubric/realtime-voice-agent-page-agent.md`, `docs/rubric/sdk-backed-agent-page-agent.md` | Keep prompts phrased as operator product language, not implementation calls or agent instructions. |
 | Operator capability limits | `rubric` | `docs/rubric/operator-limits.md` | `docs/rubric/realtime-voice-agent-page-agent.md`, `docs/rubric/sdk-backed-agent-page-agent.md`, `docs/PROMPT.md` | Keep only cannot-do, must-ask, decline, and delegation boundaries here. This rubric is normative; code divergence is a bug or explicit product-decision candidate. |
 | Deterministic versus model-backed Agent behavior | `rubric` | `docs/rubric/deterministic-vs-model-backed-agent-behavior.md` | `docs/rubric/realtime-voice-agent-page-agent.md`, `docs/rubric/sdk-backed-agent-page-agent.md`, `docs/PROMPT.md` | Keep cross-runtime policy here for when Builder should use direct product-state/actions versus model-backed intent analysis. Runtime-specific rubrics may add examples but must not redefine the split. |
 | Autonomous Builder agent catalog and responsibility-derived tool calls | `rubric` | `docs/rubric/autonomous-builder-agents.md` | `src/autonomous_agent_builder/agents/definitions.py`, `docs/rubric/sdk-backed-agent-page-agent.md`, `docs/rubric/realtime-voice-agent-page-agent.md`, `docs/quality-gate/agent-quality.md` | Define each Builder agent's responsibility first, then derive allowed tool calls and permission boundaries from that responsibility. |
-| Product mission and scope | `reference` | `docs/MISSION.md` | `CLAUDE.md`, `AGENTS.md` | Keep mission durable and short; route runtime/Codex instructions to their owning surfaces. |
-| Compact project change history | `changelog` | `CHANGELOG.md` | `docs/PROGRESS.md`, git history, owner docs | Keep entries reverse chronological, compact, and evidence-linked. Do not define active contracts here. |
+| Compact project change history | `changelog` | `CHANGELOG.md` | git history, owner docs | Keep entries reverse chronological, compact, and evidence-linked. Do not define active contracts here. |
 | Doc ownership and placement | `reference` | `docs/REFERENCE.md` | `workflow summary placement`, `workflow read principles --section Execution` | Update this map before adding a new doc type or owner surface. |
 | Phase boundaries | `reference` | `docs/references/phase-model.md` | `docs/references/phases/*.md`, `docs/workflows/autonomous-lifecycle-validation.md` | Put phase semantics in references; keep lifecycle procedure in the workflow. |
 | Autonomous lifecycle validation | `workflow` | `docs/workflows/autonomous-lifecycle-validation.md` | `docs/quality-gate/product-lifecycle.md`, `docs/quality-gate/state-integrity.md` | Keep visible product-flow steps in the workflow; keep pass/fail criteria in gates. |
@@ -85,7 +82,7 @@ Use one of these doc types before choosing or creating a doc:
 | Codex project subagents for repo optimization | `quality-gate` | `docs/quality-gate/codex-subagents.md` | `.codex/agents/`, `.codex/config.toml`, `AGENTS.md`, `docs/quality-gate/agent-quality.md` | Keep Codex-only subagent pass/fail expectations here; do not move them into Claude Agent SDK runtime docs. |
 | SDK-backed Agent page behavior | `rubric` | `docs/rubric/sdk-backed-agent-page-agent.md` | `docs/quality-gate/agent-quality.md` | Rubric owns current can/cannot/must-ask behavior. |
 | Builder CLI contract | `reference` | `docs/references/builder-cli.md` | `docs/quality-gate/builder-cli.md`, `docs/workflow-cli-usage.md` | Stable command contracts live in the reference; gates own pass/fail checks. |
-| Realtime voice integration | `reference` | `docs/references/realtime-voice-integration.md` | `docs/rubric/realtime-voice-agent-page-agent.md`, `docs/realtime/model-prompting.md`, `docs/realtime/manage-cost.md` | Integration policy lives in the reference; Realtime source docs are loaded only for prompt or cost changes. |
+| Realtime voice integration | `reference` | `docs/references/realtime-voice-integration.md` | `docs/rubric/realtime-voice-agent-page-agent.md` | Integration policy lives in the reference; Realtime source docs are loaded only for prompt or cost changes. |
 | Realtime voice agent evaluation | `rubric` | `docs/rubric/realtime-voice-agent-page-agent.md` | `docs/references/realtime-voice-integration.md` | Keep can/cannot/must-ask scenario rubric here, not in implementation docs. |
 | Post-run telemetry analysis | `reference` | `docs/references/autonomous-builder-telemetry-analysis.md` | `docs/references/claude-agent-sdk-telemetry-observability.md`, `docs/quality-gate/agent-quality.md` | Use after Realtime or Agent runs to classify true owner. |
 | Day-0 readiness | `reference` | `docs/references/day-0-readiness.md` | `docs/quality-gate/generated-app-acceptance.md` | Keep readiness contract here; product validation stays in gates/workflows. |
@@ -108,7 +105,7 @@ When reducing duplicate context load, consolidate these clusters first:
 | --- | --- | --- | --- |
 | Runtime and SDK ownership | `docs/references/runtime-settings.md` | `docs/design-docs/modular-runtime-architecture.md`, `docs/references/runtime-switch-dashboard-contract.md` | (none — historical spec removed 2026-05-21) |
 | Agent quality and optimization | Three-way ownership: `docs/references/agent-optimization-analysis.md` (policy contract), `docs/workflows/agent-quality-tuning-loop.md` (procedure), `docs/quality-gate/agent-quality.md` (pass/fail). | none — confirmed three distinct concerns | none |
-| Realtime voice integration and evaluation | Keep separate owners: `docs/references/realtime-voice-integration.md` for integration and `docs/rubric/realtime-voice-agent-page-agent.md` for behavior rubric | `docs/realtime/model-prompting.md`, `docs/realtime/manage-cost.md` | none unless source notes start redefining Builder policy |
+| Realtime voice integration and evaluation | Keep separate owners: `docs/references/realtime-voice-integration.md` for integration and `docs/rubric/realtime-voice-agent-page-agent.md` for behavior rubric | none | none unless source notes start redefining Builder policy |
 | Phase and lifecycle | Keep separate owners: `docs/references/phase-model.md` for semantics and `docs/workflows/autonomous-lifecycle-validation.md` for procedure | `docs/references/phases/*.md` only when they add non-duplicative phase detail | Merge phase child docs into `phase-model.md` if they mostly repeat the same facts |
 
 ## Historical Or Evidence-Only Docs

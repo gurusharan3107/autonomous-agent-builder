@@ -125,5 +125,5 @@ Order roughly by expected impact / cost — agent reads top-down.
 - The loop reads top-down and picks the first idea with `attempts: none`.
 - After an iteration, append a result row in the idea's section: `- Attempted YYYY-MM-DD branch:<id> result:keep|discard composite_delta:<%> notes:<one line>`.
 - New ideas can be added anywhere. Update the rough impact ordering when wins/losses reshape expectations.
-- Ideas that produce stable wins move to `docs/PROGRESS.md` as completed work.
+- Ideas that produce stable wins move to `docs/autoresearch/PROGRESS.md` as completed work.
 - Ideas that fail 3 attempts get marked `exhausted` and stop appearing in the loop.

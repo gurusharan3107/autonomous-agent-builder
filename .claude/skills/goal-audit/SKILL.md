@@ -30,9 +30,6 @@ Before doing anything else, internalize this list. **The skill is advisory for t
 - `docs/goal/RESUME.md`
 - `docs/goal/INDEX.md`
 - `docs/goal/README.md`
-- `docs/IMPROVEMENTS.md`
-- `docs/SPRINT-PROGRESS.md`
-- `docs/PROGRESS.md`
 - `docs/PROMPT.md`
 
 **Why:** these have single control owners (you, the human user). The skill's only edit surfaces are `docs/goal/INSIGHTS.md` (append-only) and `docs/autoresearch/OPTIMIZE_IDEAS.md` (reorder only, per criteria). Drafting "Suggested STATUS.md change: ..." in INSIGHTS is the entire job; applying it is not.

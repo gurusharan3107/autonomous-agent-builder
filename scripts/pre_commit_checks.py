@@ -29,8 +29,6 @@ DOC_OWNER_FILES = {
     "docs/cli-validation.md",
     "docs/workflows/autonomous-lifecycle-validation.md",
     "docs/knowledge.md",
-    "docs/MISSION.md",
-    "docs/QUALITY_SCORE.md",
     "docs/claude-agent-sdk-integration.md",
 }
 CHANGELOG_FILE = "CHANGELOG.md"
