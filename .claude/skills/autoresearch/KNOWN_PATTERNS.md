@@ -424,236 +424,141 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
-## P10 — `/api/agent/chat/respond` returns 400 mid-iteration; iteration crashes
+## P10 — `/api/agent/chat/respond` returns 400; iteration crashes
 
 - **First seen:** 2026-05-23, cycle 10
-- **Wallclock to repro:** ~7 min; iteration completes with `status=crash`
-- **Status:** Fixed (defensive fallback)
+- **Status:** Fixed (defensive break)
 
-**Symptom.** Long after the initial intake — typically after the first
-sprint completes (or fails to ship) — the chat agent surfaces a new
-`ask_user_question` or `tool_approval_request`. The harness's
-`send_chat_respond` POST gets back HTTP 400 ("Select an option or provide
-a custom answer"), `requests.HTTPError` bubbles up, the outer try/except
-in `main()` writes `crash.log` and marks the iteration `decision_status=crash`.
+**Symptom.** `crash.log` contains `400 Client Error: Bad Request for url: .../api/agent/chat/respond`. TSV row `status=crash`.
 
-**Evidence query.**
+**Evidence.** `crash.log` 400 + builder_stdout_stderr.log shows `POST /api/agent/chat/respond HTTP/1.1" 400` near the end.
 
-1. `evidence_dir/crash.log` contains `400 Client Error: Bad Request for url:
-   .../api/agent/chat/respond`.
-2. `builder_stdout_stderr.log` contains
-   `POST /api/agent/chat/respond HTTP/1.1" 400 Bad Request` near the end.
-3. The iteration TSV row has `notes=status=crash`.
+**Why.** Respond handler (`src/.../embedded/server/routes/agent.py:1196-1227`) raises 400 when `selected_options` + `custom_text` both strip to empty, or payload doesn't match the event's contract (e.g., `selected_options` sent for a `tool_approval_request`).
 
-**Why it happens.** The respond endpoint's handler (see
-`src/.../embedded/server/routes/agent.py:1196-1227`) raises 400 if both
-`selected_options` and `custom_text` strip to empty. The harness's
-"recommended" path picks the option at `recommended_index`, but if the
-question's `options` list is malformed (empty, or all options missing
-`label`), the payload defaults to `custom_text="recommended"` — which
-should *not* be empty, but observed instances suggest some questions arrive
-with structure the harness's `send_chat_respond` can't satisfy. Could also
-be `tool_approval_request` events whose contract differs from
-`ask_user_question`.
+**Fix.** `run.py:send_chat_respond` — branch by `pending_item["type"]` (see P11). 400 fallback `break`s cleanly instead of `send_chat`-ing (which causes P11).
 
-**Fix pointer.** `scripts/autoresearch/run.py` `send_chat_respond` — now
-handles `tool_approval_request` separately (sends `decision=allow`). The P10
-`except 400` fallback now breaks the loop cleanly instead of calling
-`send_chat` (which causes P11). See P11 for why `send_chat` fallback was wrong.
-
-**Recurrence prevention.** Any new pending interaction type must be handled
-inside `send_chat_respond` (not via `send_chat` fallback). The P10 catch is
-a last-resort break, not an active recovery path.
+**Prevention.** New pending-interaction types must branch inside `send_chat_respond`. The 400 catch is last-resort, not active recovery.
 
 ---
 
 ## P11 — `send_chat` fallback on 400-respond causes 409 Conflict
 
-- **First seen:** 2026-05-23, cycle 12 (N=5 baseline attempt)
-- **Wallclock to repro:** ~26s; iteration completes with `status=crash`
-- **Status:** Fixed (P11 fix in `send_chat_respond` + corrected P10 fallback)
+- **First seen:** 2026-05-23, cycle 12
+- **Status:** Fixed
 
-**Symptom.** A `tool_approval_request` surfaces mid-iteration. The P10
-fallback calls `send_chat("Continue with reasonable defaults.", session_id=...)`.
-The server rejects with HTTP 409 "This chat session is waiting on the current
-run." `requests.HTTPError` bubbles up; iteration `decision_status=crash`.
+**Symptom.** `crash.log` 409 + builder_stdout shows `POST .../respond" 400` immediately followed by `POST .../chat" 409`. Wallclock < 60s.
 
-**Evidence query.**
+**Why.** `chat/respond` 400 left session with a live reserved run; P10's old `send_chat()` fallback tried to start a NEW turn → 409 from `hub.reserve_run()`.
 
-1. `evidence_dir/crash.log` contains `409 Client Error: Conflict for url:
-   .../api/agent/chat`.
-2. `builder_stdout_stderr.log` contains `POST /api/agent/chat/respond HTTP/1.1"
-   400 Bad Request` immediately followed by `POST /api/agent/chat HTTP/1.1"
-   409 Conflict`.
-3. The iteration TSV row has `notes=status=crash`, `wallclock_s` < 60s.
+**Fix.** `run.py:send_chat_respond` — branch by `pending_item["type"]`: `tool_approval_request` → `decision=allow`+`reason=...`; `ask_user_question` → `selected_options` or non-empty `custom_text` fallback. P10's 400 handler now `break`s (incomplete, not crash).
 
-**Why it happens.** When `chat/respond` returns 400 (because
-`send_chat_respond` built a `selected_options`/`custom_text` payload for a
-`tool_approval_request` event that requires `decision=allow|deny`), the
-session still has a reserved/running turn awaiting the respond answer. The P10
-fallback then calls `send_chat()` which tries to start a NEW turn on the same
-session — blocked with 409 by the `hub.reserve_run()` guard.
-
-**Fix pointer.** `scripts/autoresearch/run.py` `send_chat_respond` — check
-`pending_item["type"]`: if `"tool_approval_request"`, set `payload["decision"]
-= "allow"` and `payload["reason"] = "autoresearch harness: auto-allow"`.
-P10 except-400 fallback changed to `break` (incomplete, not crash) instead of
-`send_chat` (which 409s on an active session).
-
-**Recurrence prevention.** Never call `send_chat()` as a fallback when a
-`chat/respond` fails — the session will have a live run reservation. Always
-resolve pending interactions through `chat/respond` or let the loop break
-cleanly. New interaction types → add a branch in `send_chat_respond` before
-they reach production.
+**Prevention.** Never `send_chat()` as a fallback when `chat/respond` fails — session has a live reservation. Resolve via `chat/respond` or break cleanly.
 
 ---
 
 ## P12 — `feature_correct` always False: wrong metrics key + missing deps + wrong cwd
 
-- **First seen:** 2026-05-23, baseline attempt (post-P11)
-- **Wallclock to repro:** every run; `feature_correct=False` in all TSV rows
-- **Status:** Fixed (3 compounding issues resolved)
+- **First seen:** 2026-05-23, post-P11
+- **Status:** Fixed (3 compounding bugs)
 
-**Symptom.** `feature_correct=False` and `chunk_pressure_risk_false=False` on every shipped iteration despite builder's own testing gate passing.
+**Symptom.** `feature_correct=False` + `chunk_pressure_risk` empty on every shipped row despite Builder's own pytest passing.
 
-**Evidence query.**
+**Why.** Three compounding:
+1. `evaluate_hard_gates` + `write_session_row` read `metrics["optimization"]` but schema is `"optimization_summary"` → `chunk_pressure={}` → `gate_chunk=False` always.
+2. `run_feature_check` ran pytest without `pip install -r requirements.txt` first — seed `.venv` is minimal (no jinja2/httpx) → collection `ModuleNotFoundError`.
+3. pytest cwd was repo, not workspace — `app.main` mounts `StaticFiles(directory="app/static")` relative to cwd → `RuntimeError` at import.
+4. `test_github.py` uses `@pytest.mark.asyncio` but `pytest-asyncio` not in `requirements.txt`.
 
-1. TSV column `feature_correct` = `False` for all rows.
-2. TSV column `chunk_pressure_risk` = empty/null for all rows.
-3. Manual `evaluate_hard_gates` against evidence: `chunk_pressure_risk_false: False`, `feature_correct: False`.
+**Fix.** `run.py`:
+- `evaluate_hard_gates` / `write_session_row`: `metrics.get("optimization_summary") or metrics.get("optimization")`.
+- `run_feature_check`: pip-install `requirements.txt` before pytest; `cwd=workspace`; `--ignore-glob=*test_github*`.
 
-**Why it happens.** Three independent bugs compound:
-
-1. **Wrong metrics key:** `evaluate_hard_gates` and `write_session_row` read `metrics.get("optimization")` but the builder metrics response uses `"optimization_summary"`. Result: `optimization = {}`, `chunk_pressure = {}`, `gate_chunk = False` always.
-2. **Missing deps:** `run_feature_check` runs pytest without installing `requirements.txt` first. Seed `.venv` is minimal (no jinja2, httpx, etc). Collection fails with `ModuleNotFoundError`.
-3. **Wrong cwd:** pytest invoked from repo cwd, not workspace. `app.main` mounts `StaticFiles(directory="app/static")` which resolves relative to cwd → `RuntimeError: Directory 'app/static' does not exist` at import time.
-4. **Missing exclusion:** `test_github.py` async tests use `@pytest.mark.asyncio` but `pytest-asyncio` is not in `requirements.txt` — 3 tests fail every run.
-
-**Fix pointer.** `scripts/autoresearch/run.py`:
-- `evaluate_hard_gates` / `write_session_row`: use `metrics.get("optimization_summary") or metrics.get("optimization")`.
-- `run_feature_check`: `pip install -q -r requirements.txt` before pytest; add `cwd=workspace` to pytest subprocess; add `--ignore-glob=*test_github*`.
-
-**Recurrence prevention.** When adding new evidence captures that read `metrics.json`, verify the key path against a live `builder metrics show --json` response — the schema is `optimization_summary`, not `optimization`. Always run `run_feature_check` with `cwd=workspace` for any repo that mounts static files relative to cwd.
+**Prevention.** Verify metrics-key paths against live `builder metrics show --json`. `run_feature_check` must use `cwd=workspace` for any repo mounting static files relative to cwd.
 
 ---
 
-## P13 — `feature_correct` False: Builder's sprint fast-forward deletes `.venv` from workspace
+## P13 — `feature_correct` False: sprint fast-forward deletes `.venv` from workspace
 
-- **First seen:** 2026-05-23, baseline attempt (post-P12)
-- **Wallclock to repro:** every run; `feature_correct=False` in all TSV rows after P12 fix
+- **First seen:** 2026-05-23, post-P12
 - **Status:** Fixed
 
-**Symptom.** `feature_correct=False` on shipped runs even after P12 fixes; `gate_pass_rate=0.8333` (5/6). PEP 668 error (`--break-system-packages` hint) visible in baseline stderr.
+**Symptom.** Post-P12, `feature_correct=False` persists on shipped runs (`gate_pass_rate=0.8333`, 5/6). Baseline stderr shows `PEP 668` / `break-system-packages`.
 
-**Evidence query.**
+**Why.** Task workspace `/tmp/aab-workspaces/<task_id>` commits `.venv` deletions on the task branch (code-gen creates its own venv there; seed `.venv` shows deleted). `workspace_integrated_fast_forward` merges those into the sprint branch; project workspace `git checkout` then deletes `/tmp/devpulse-<uuid>/.venv`. By `run_feature_check` time, `venv_py` missing → fell back to `sys.executable` (system python3) → PEP 668 → `CalledProcessError` → `False`.
 
-1. TSV column `feature_correct` = `False` for shipped rows.
-2. `gate_pass_rate=0.8333` (5/6), not 6/6.
-3. Baseline stdout/stderr log contains: `"PEP 668"` or `"break-system-packages"` — pip tried the system Python.
+**Fix.** `run.py:run_feature_check` — if `venv_py.exists()` is False, `python3 -m venv .venv` first. Always use `str(venv_py)` (no `sys.executable` fallback).
 
-**Why it happens.** Builder's task workspace at `/tmp/aab-workspaces/<task_id>` commits `.venv` deletions on the task branch (the code-gen creates a fresh venv there and the seed `.venv` shows as deleted). `workspace_integrated_fast_forward` merges those deletions into the sprint branch in the project workspace. When Builder checks out the sprint branch, git applies the `.venv` deletions to the project working tree (`/tmp/devpulse-<uuid>/.venv` disappears). By the time `run_feature_check` runs (after Builder is terminated), `venv_py.exists()` is `False` → falls back to `sys.executable` (system python3) → pip install blocked by PEP 668 → `CalledProcessError` caught → returns `False`.
-
-**Fix pointer.** `scripts/autoresearch/run.py` `run_feature_check`:
-- Before pip install, check `venv_py.exists()`; if missing, `subprocess.run([sys.executable, "-m", "venv", str(workspace / ".venv")], check=True)`.
-- Remove the `else sys.executable` fallback; always use `str(venv_py)` after the venv-creation guard.
-
-**Recurrence prevention.** Never rely on the seed `.venv` surviving the Builder run. The sprint fast-forward deletes it whenever the task branch was created from a commit that tracked `.venv` entries. Always ensure the workspace venv exists before pip/pytest; recreate it if it's gone.
+**Prevention.** Never rely on the seed `.venv` surviving the Builder run.
 
 ---
 
 ## P14 — Direct 409 on `chat/respond`: pending item already auto-handled
 
-- **First seen:** 2026-05-23, baseline A/run-4 (iter 5/5, 14 turns, 504s wallclock)
-- **Wallclock to repro:** sporadic; depends on Builder auto-approving tool requests before harness polls
+- **First seen:** 2026-05-23, baseline A/run-4
 - **Status:** Fixed
 
-**Symptom.** `status=crash`, `gate_pass_rate=0.6667` (4/6), `feature_correct=True`. `crash.log` contains: `HTTPError: 409 Client Error: Conflict for url: http://127.0.0.1:<port>/api/agent/chat/respond`.
+**Symptom.** `crash.log` 409 on `/api/agent/chat/respond` (no prior 400). `feature_correct=True` (P13 held). Wallclock short-to-medium.
 
-**Evidence query.**
+**Why.** Between `get_pending_question` poll and `send_chat_respond` POST, Builder auto-handles the pending event (auto-approve tool, concurrent turn resolves it). Session no longer has a pending question → 409. Existing `except` only caught 400 → 409 re-raised → `decision_status=crash`.
 
-1. `crash.log` → `HTTPError: 409 … /api/agent/chat/respond` (not `send_chat`).
-2. `feature_correct=True` (P13 fix held).
-3. Wallclock short-to-medium; `operator_turns` 10–20.
+**Fix.** `run.py:825-839` `except requests.HTTPError` — add `elif status_code == 409: continue`. NOT `break` (session still running; would prematurely call `ship_or_timeout`).
 
-**Why it happens.** The harness polls `get_pending_question()` and finds a `tool_approval_request` or `ask_user_question` item. Between the poll and the `send_chat_respond()` call, Builder auto-handles the pending event internally (auto-approve tool request, or a concurrent agent turn resolves it). By the time the harness POSTs to `/api/agent/chat/respond`, the session has no active pending question → 409 Conflict. The existing `except` block only catches status 400 (`break`) and re-raises all others, so 409 propagates as an uncaught `HTTPError` → `decision_status = "crash"`.
-
-**Fix pointer.** `scripts/autoresearch/run.py` question-answering loop `except requests.HTTPError` block:
-- Add `elif status_code == 409: continue` — re-enter the poll loop so `wait_for_question_or_ship` reassesses the session. Do NOT `break` (session is still running; `break` would prematurely call `ship_or_timeout`). Do NOT raise (not a fatal error).
-
-**Recurrence prevention.** Any time `send_chat_respond` or `send_chat` can 409, `continue` (not `break`) is the correct recovery when the session is still active. 409 = "wrong moment to respond, poll again." Reserve `break` for 400 = "payload format rejected by the API contract."
+**Prevention.** 409 = "wrong moment to respond, poll again" (continue). 400 = "payload rejected" (break). Never raise either.
 
 ---
 
 ## P15 — Composite formula reads wrong metrics key (composite=0 for every run)
 
-- **First seen:** 2026-05-23, post-P12 fixture-A N=5 baseline closeout
-- **Wallclock to repro:** appears across every baseline + iteration row in the TSV
+- **First seen:** 2026-05-23, post-P12
 - **Status:** Fixed
 
-**Symptom.** Every baseline / iteration row in `docs/autoresearch/baseline_runs.tsv` and `optimize_results.tsv` has `composite=0` despite non-zero `noncached_plus_output_tokens` (column 9), non-zero `wallclock_s`, non-zero `operator_turns`. `baseline_runs_summary.json` shows `status=unstable, stable_runs=0` regardless of how many runs shipped at 6/6. `iterations.html` headline shows `mean=null, stdev=null, fixtures_stable=0`. `INTROSPECTION.md` says "No per-prompt rows yet" with 5+ real runs in the TSV.
+**Symptom.** TSV `composite=0` despite non-zero `noncached_plus_output_tokens` on 6/6 rows. `baseline_runs_summary.json` stays `unstable/stable_runs=0`; `iterations.html` headline `mean=null`.
 
-**Evidence query.**
+**Evidence.** TSV col 17 = 0 where col 9 > 0; `grep 'composite = int' run.py` shows `metrics.get("optimization")`.
 
-1. `baseline_runs.tsv` column 17 (composite) is `0` on rows where column 9 (noncached_plus_output_tokens) is non-zero.
-2. `baseline_runs_summary.json` `status="unstable"` for every fixture with `stable_runs=0` but raw TSV has multiple `gates_passed="6/6"` rows.
-3. `grep 'composite = int' scripts/autoresearch/run.py` shows `metrics.get("optimization")` instead of `metrics.get("optimization_summary")`.
+**Why.** P12 patched `evaluate_hard_gates` to `optimization_summary` but missed the parallel composite site at `run.py:870`. `baseline.py:compute_summary` filters via `if r.get("composite")` → falsy for 0 → empty stable_runs.
 
-**Why it happens.** P12 fixed `evaluate_hard_gates` to read `metrics["optimization_summary"]` (the actual response key) but missed the parallel composite-computation site in `run.py:main`. The wrong key returns empty `{}`, so `noncached_plus_output_tokens` resolves to `0`, the product is `0`, and `baseline.py:compute_summary` filters every row out via `if r.get("composite")` (falsy for 0).
+**Fix.** `run.py:870` — `metrics.get("optimization_summary") or metrics.get("optimization")` (mirrors P12). Backfill existing rows from each `metrics.json` (no re-run).
 
-**Fix pointer.** `scripts/autoresearch/run.py:main` composite calculation:
-- Read `metrics["optimization_summary"]` first with fallback to `metrics["optimization"]` (mirrors P12).
-- Composites in already-written TSV rows can be backfilled deterministically from each run's `metrics.json` without re-running.
-
-**Recurrence prevention.** Any time the metrics-response schema is renamed, grep all references to the old key in the harness. Adding a `freshness_sweep.py` check that the composite-formula site references `optimization_summary` would catch this at lane closeout.
+**Prevention.** Grep all metrics-key references when the schema is renamed. A `freshness_sweep` link between composite site and canonical key would auto-catch this.
 
 ---
 
 ## P16 — Composite formula compounds correlated noise (CV >50%, 2σ-floor negative)
 
-- **First seen:** 2026-05-23, fixture-A N=5 first end-to-end baseline
-- **Wallclock to repro:** appears once σ-floor is computed from any non-tiny baseline
+- **First seen:** 2026-05-23, fixture-A N=5
 - **Status:** Fixed
 
-**Symptom.** Even with composites correctly computed, `baseline_runs_summary.json` shows σ comparable to or larger than μ (CV >50%). `2σ-floor` is negative (μ − 2σ < 0), meaning any candidate beats the noise band — the σ-gate is useless. `iterations.html` fixture card displays the CV pill in red.
+**Symptom.** Composites correctly computed but `stdev ≥ mean/2`, `noise_floor_2sigma < 0` → any candidate beats the band, σ-gate useless. iterations.html fixture CV pill red.
 
-**Evidence query.**
+**Evidence.** Stable runs span an order of magnitude on `composite` while all 6/6. `grep 'composite = ' run.py` shows multiplicative form `tokens × turns × wallclock`.
 
-1. `baseline_runs_summary.json` → for any fixture, `stdev` ≥ `mean / 2`.
-2. `noise_floor_2sigma` is negative.
-3. Examine raw TSV: the 3+ stable runs span an order of magnitude on `composite` despite all hitting `gates_passed="6/6"`.
-4. `grep 'composite = ' scripts/autoresearch/run.py` shows a multiplicative form like `tokens × turns × wallclock`.
+**Why.** Three factors are correlated — a longer fixture run produces more of each. Multiplying compounds variance instead of averaging it. `operator_turns` + `wallclock_seconds` aren't billed; they measure conversation length, not efficiency. Fixture held constant ⇒ only `noncached_plus_output_tokens` matters for cost comparison.
 
-**Why it happens.** The three factors are correlated — a longer fixture run produces more tokens AND more operator turns AND more wallclock. Multiplying them compounds variance instead of averaging it. `operator_turns` and `wallclock_seconds` are not billed and measure "how long the conversation was," not "how efficient the agent was." With the fixture held constant across baseline + iteration runs, the only dimension that matters for cost comparison is tokens — exactly `noncached_plus_output_tokens`.
+**Fix.** `run.py:870` — `composite = int(opt.get("noncached_plus_output_tokens") or 0)`. Drop the `× turns × wallclock`. Update 6 doc sites: `OPTIMIZE.md`, `METRICS.md`, `README.md val_bpb`, `iterations.html` methodology, `baseline.py` docstring.
 
-**Fix pointer.** `scripts/autoresearch/run.py:main`: `composite = int(opt.get("noncached_plus_output_tokens") or 0)`. Drop the `× turns × wallclock` factors. Also update the 6 doc sites: `OPTIMIZE.md`, `METRICS.md`, `README.md val_bpb` row, `iterations.html` methodology paragraph, `baseline.py` docstring.
-
-**Recurrence prevention.** Future composite changes need to (a) declare independence of factors before multiplying; (b) measure post-change CV before declaring the formula sound. If σ/μ stays >30% after N=5, the formula is too noisy regardless of what it claims to measure.
+**Prevention.** New composite formulas: declare factor independence before multiplying; measure CV post-change. σ/μ > 30% after N=5 ⇒ formula too noisy.
 
 ---
 
-## P17 — Fixture `feature_correct=False` on all runs while agent's own pytest passes (seed dep gap)
+## P17 — Fixture `feature_correct=False` on all runs while agent's pytest passes (seed dep gap)
 
-- **First seen:** 2026-05-23, fixture B N=4 baseline (sha=171cd69 + sha=dcd3fd3, all 4 runs)
-- **Wallclock to repro:** appears on every run of a fixture whose code-gen produces tests with a runtime dep not in `requirements.txt`
-- **Status:** Fixed (for pytest-asyncio specifically; general matcher recommended)
+- **First seen:** 2026-05-23, fixture B N=4 across 2 shas
+- **Status:** Fixed (pytest-asyncio specifically; general matcher recommended)
 
-**Symptom.** A specific fixture (here B) has `feature_correct=False` on every baseline run across multiple shas. Other fixtures (A) pass `feature_correct=True` cleanly. Pre-build Builder side: `builder_stdout_stderr.log` shows the agent's own pytest invocation passing all dots (e.g., `python3 -m pytest -x -q ... [100%]`). Post-build harness side: `run_feature_check` returns False.
+**Symptom.** One fixture's runs all show `feature_correct=False` across multiple shas; other fixtures pass. `builder_stdout_stderr.log` shows the agent's own pytest passing inside its `/tmp/aab-workspaces/<task_id>` venv.
 
-**Evidence query.**
+**Evidence.**
+1. ≥3 fixture-X rows `feature_correct=False`, other fixtures `True` on same shas.
+2. `grep '\[100%\]' /tmp/.../X/run-*/builder_stdout_stderr.log` — agent's pytest passed.
+3. Diff seed `pyproject.toml [optional-dependencies] dev` vs `requirements.txt`. Anything required by `[tool.pytest.ini_options]` (e.g., `asyncio_mode="auto"` ⇒ pytest-asyncio) MUST be in `requirements.txt`.
+4. Sanity: clean venv + `pip install -r <seed>/requirements.txt` + harness pytest invocation. Passing-count jump after adding the suspected dep confirms (107 → 139 was the pytest-asyncio signal).
 
-1. `baseline_runs.tsv` fixture-X rows have `feature_correct=False` across ≥3 distinct run_ids and ≥2 distinct shas.
-2. Other fixtures pass `feature_correct=True` on the same shas.
-3. `grep '\[100%\]\|passed' /tmp/autoresearch/baseline-*/X/run-*/builder_stdout_stderr.log` shows the agent's own pytest passing.
-4. Diff `pyproject.toml [project.optional-dependencies] dev` against `requirements.txt`. Look for anything required by `[tool.pytest.ini_options]` (e.g., `asyncio_mode = "auto"` ⇒ pytest-asyncio).
-5. Sanity test: in a clean venv, `pip install -r <seed>/requirements.txt` then `cd <seed> && pytest tests -q --ignore-glob='*playwright*' --ignore-glob='*test_github*'`. Compare the passing-count before vs after adding the suspected dep. A jump (e.g., 107 → 139) confirms missing-plugin diagnosis.
+**Why.** Builder's code-gen agent installs deps ad-hoc in its task workspace. After sprint FF, harness runs `run_feature_check` against project workspace's clean `.venv` rebuilt from `requirements.txt` only. Test-suite deps in `dev` but not `requirements.txt` → tests fail collection silently → exit ≠ 0. Fixture B's "notes with persistence" naturally generates `httpx.AsyncClient + async def test_*` which needs pytest-asyncio; fixture A's sync tests don't.
 
-**Why it happens.** Builder's code-gen agent runs tests in its own `/tmp/aab-workspaces/<task_id>` workspace with whatever deps it pip-installs ad-hoc — its pytest succeeds. After sprint fast-forward, Builder shuts down and the harness runs `run_feature_check` against the project workspace's clean `.venv`, which it rebuilds from `requirements.txt` only. Any test-suite dep declared in `pyproject.toml [optional-dependencies] dev` but missing from `requirements.txt` is absent in the harness's check. Tests that need it (async tests need pytest-asyncio when `asyncio_mode = "auto"`; tests with markers like `@pytest.mark.timeout` need pytest-timeout) silently fail collection → exit code ≠ 0 → `feature_correct=False`.
+**Fix.** Add missing dep to upstream `~/Builder-Workspace/devpulse/requirements.txt`, re-capture seed via `setup_seed.sh`, truncate poisoned baseline rows, document drift in `baseline_variance.md § Seed drift`. Do NOT patch the harness to install dev-deps — hides future seed defects.
 
-The fixture pattern matters: fixture A "button shows current time" generates sync tests, no plugin needed. Fixture B "notes feature with persistence" generates `httpx.AsyncClient + async def test_*` (the natural FastAPI persistence test pattern), which needs pytest-asyncio.
-
-**Fix pointer.** Add the missing dep to the seed's upstream `requirements.txt` (e.g., `pytest-asyncio>=0.23.0`), re-capture seed via `scripts/autoresearch/setup_seed.sh`, truncate poisoned baseline rows, document drift in `docs/autoresearch/baseline_variance.md § Seed drift`. Do NOT patch the harness to install dev-deps — that hides future seed defects.
-
-**Recurrence prevention.** Whenever the seed's `pyproject.toml` lists a pytest plugin or runtime dep in `[project.optional-dependencies] dev`, audit `requirements.txt` for the same line. If a `[tool.pytest.ini_options]` directive (asyncio_mode, timeout, etc.) requires a plugin, that plugin belongs in `requirements.txt` not `dev`. A `freshness_sweep.py` check that lists declared-but-missing pytest plugins would catch this at lane closeout.
+**Prevention.** When seed's `pyproject.toml [tool.pytest.ini_options]` declares a directive (asyncio_mode, timeout, etc), its plugin belongs in `requirements.txt`, not `[optional-dependencies] dev`. A `freshness_sweep` check listing declared-but-missing pytest plugins would auto-catch this.
 
 ---
 

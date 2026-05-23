@@ -17,19 +17,13 @@
 
 ```bash
 python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --json
-# Optional override (see "Stable" semantics below):
+# Exploratory override (real keeps can't ship in this mode):
 python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --allow-unstable-promotion --json
 ```
 
-Hard requirements: `.seed/devpulse` exists; `baseline_runs_summary.json` exists with **every fixture A–E in `status=stable`**; clean git on a branch suitable for cutting `autoresearch/iter-N-<ref>`.
+Hard requirements: `.seed/devpulse` exists; `baseline_runs_summary.json` has **every fixture A–E `status=stable`**; clean git on a branch suitable for `autoresearch/iter-N-<ref>`.
 
-**"Stable" semantics.** A fixture is `status=stable` when `baseline.py:compute_summary` has ≥3 runs at `gates_passed="6/6"` for that fixture and computed real μ + σ + 2σ-floor (per `baseline_runs_summary.json` schema). A fixture is **not stable** when:
-- it's missing entirely from `baseline_runs_summary.json` (`render_iterations.py:parse_baseline` surfaces it as `status=not_measured`), or
-- it's listed with `status="unstable"` (had baseline rows but <3 of them hit gates_passed=6/6).
-
-Either case fails this preflight check at fail severity (per P15/P16/P17-era tightening). Without σ-floors for B–E, `loop.py`'s A→E promotion step has no σ to compare candidate composites against, so any real fixture-A keep gets discarded at the first promotion fixture with `compare.py: "baseline_runs_summary.json missing or fixture unstable"`. Hard Rule 8 ("Wins must promote A→E before merge") is unenforceable without stable σ-floors everywhere.
-
-**`--allow-unstable-promotion` override.** Use only when knowingly iterating against a partial baseline for *exploratory* signal (e.g., debugging the loop end-to-end before committing to the full B–E baseline run). Real keeps cannot ship in this mode — A→E promotion will discard. Document the override use in the iteration's CHANGELOG so the next session understands why the result isn't a real keep.
+**"Stable" = `compute_summary` has ≥3 runs at `gates_passed="6/6"` with μ/σ/2σ-floor.** Both `status="unstable"` (rows exist but <3 at 6/6) and missing-from-summary (`render_iterations.py` reports `not_measured`) fail this check. Without σ-floors B–E, any fixture-A keep is discarded at promotion — Hard Rule 8 unenforceable. `--allow-unstable-promotion` downgrades fail→warn for exploratory iteration; document override use in CHANGELOG.
 
 **Stuck-residue check:** preflight surfaces stuck `/tmp/devpulse-<uuid>/` workspaces and dangling `autoresearch/iter-*` branches from prior crashes. Resolve before proceeding — run `teardown.sh` and clean branches with `git branch -D <branch>`.
 
