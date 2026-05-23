@@ -33,6 +33,7 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parents[4]
 DOCS = REPO / "docs" / "autoresearch"
 OPTIMIZE_TSV = DOCS / "optimize_results.tsv"
+BASELINE_TSV = DOCS / "baseline_runs.tsv"
 BASELINE_SUMMARY = DOCS / "baseline_runs_summary.json"
 OUT_JSON = DOCS / "iterations.json"
 OUT_HTML = DOCS / "iterations.html"
@@ -59,7 +60,7 @@ def read_tsv_rows(path: pathlib.Path) -> list[dict]:
 
 def parse_baseline() -> dict:
     if not BASELINE_SUMMARY.exists():
-        return {
+        bl = {
             "measured_at": None,
             "mean_composite": None,
             "stdev_composite": None,
@@ -67,23 +68,85 @@ def parse_baseline() -> dict:
             "fixtures_stable": 0,
             "fixtures_total": len(PROMO_ORDER),
         }
-    try:
-        data = json.loads(BASELINE_SUMMARY.read_text())
-    except (OSError, json.JSONDecodeError):
-        return parse_baseline_empty()
+    else:
+        try:
+            data = json.loads(BASELINE_SUMMARY.read_text())
+        except (OSError, json.JSONDecodeError):
+            bl = parse_baseline_empty()
+            data = {}
+        else:
+            # Aggregate fixture A's stats as the headline (the cheap-proxy fixture
+            # used for keep/discard decisions); record stable-count across all fixtures.
+            a = data.get("A") or {}
+            stable = sum(1 for v in data.values() if isinstance(v, dict) and v.get("status") == "stable")
+            bl = {
+                "measured_at": dt.date.today().isoformat() if data else None,
+                "mean_composite": a.get("mean"),
+                "stdev_composite": a.get("stdev"),
+                "noise_floor_2sigma": a.get("noise_floor_2sigma"),
+                "fixtures_stable": stable,
+                "fixtures_total": len(PROMO_ORDER),
+            }
 
-    # Aggregate fixture A's stats as the headline (the cheap-proxy fixture
-    # used for keep/discard decisions); record stable-count across all fixtures.
-    a = data.get("A") or {}
-    stable = sum(1 for v in data.values() if isinstance(v, dict) and v.get("status") == "stable")
-    return {
-        "measured_at": dt.date.today().isoformat() if data else None,
-        "mean_composite": a.get("mean"),
-        "stdev_composite": a.get("stdev"),
-        "noise_floor_2sigma": a.get("noise_floor_2sigma"),
-        "fixtures_stable": stable,
-        "fixtures_total": len(PROMO_ORDER),
-    }
+    # Per-fixture detail (A–E) — pulled from summary; "not_measured" when absent.
+    summary = {}
+    try:
+        if BASELINE_SUMMARY.exists():
+            summary = json.loads(BASELINE_SUMMARY.read_text())
+    except (OSError, json.JSONDecodeError):
+        summary = {}
+    fixtures = []
+    for fid in PROMO_ORDER:
+        s = summary.get(fid) or {}
+        if not s:
+            fixtures.append({"id": fid, "status": "not_measured",
+                             "stable_runs": 0, "total_runs": 0,
+                             "mean": None, "stdev": None,
+                             "noise_floor_2sigma": None, "cv_pct": None})
+            continue
+        mean = s.get("mean")
+        stdev = s.get("stdev")
+        cv_pct = (stdev / mean * 100.0) if (mean and stdev is not None) else None
+        fixtures.append({
+            "id": fid,
+            "status": s.get("status") or "unstable",
+            "stable_runs": s.get("stable_runs", 0),
+            "total_runs": s.get("total_runs", 0),
+            "mean": mean,
+            "stdev": stdev,
+            "noise_floor_2sigma": s.get("noise_floor_2sigma"),
+            "cv_pct": round(cv_pct, 1) if cv_pct is not None else None,
+        })
+    bl["fixtures"] = fixtures
+
+    # Per-run detail — read baseline_runs.tsv directly so the page is useful at
+    # baseline-only state (before any Iterate-lane row has landed).
+    bl["runs"] = parse_baseline_runs()
+    return bl
+
+
+def parse_baseline_runs() -> list[dict]:
+    rows = read_tsv_rows(BASELINE_TSV)
+    out = []
+    for r in rows:
+        notes = r.get("notes") or ""
+        m = re.search(r"status=(\w+)", notes)
+        status = m.group(1) if m else ""
+        out.append({
+            "run_id": r.get("run_id"),
+            "fixture": r.get("fixture_id"),
+            "timestamp": r.get("timestamp"),
+            "gates_passed": r.get("gates_passed"),
+            "feature_correct": parse_bool(r.get("feature_correct")),
+            "status": status,
+            "wallclock_s": parse_int(r.get("wallclock_s")),
+            "operator_turns": parse_int(r.get("operator_turns")),
+            "composite": parse_int(r.get("composite")),
+            "noncached_plus_output_tokens": parse_int(r.get("noncached_plus_output_tokens")),
+            "cache_ratio": float(r.get("cache_ratio") or 0) or None,
+            "chunk_pressure_risk": parse_bool(r.get("chunk_pressure_risk")),
+        })
+    return out
 
 
 def parse_baseline_empty() -> dict:

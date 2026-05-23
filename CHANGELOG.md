@@ -7,6 +7,29 @@ does not own product contracts, workflows, or quality gates.
 Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 `Validation`, and `Notes` as needed.
 
+## 2026-05-23 - iterations.html — baseline detail section for baseline-only state
+
+### Added
+
+- **`docs/autoresearch/iterations.html`** — new "Baseline detail" section between headline and iterations. Contains: (1) a 5-column fixture grid (A–E) with status pills (`stable` / `unstable` / `not measured`) + per-fixture stable_runs/total_runs + μ/σ/CV%/2σ-floor when measured; (2) a per-run table (run_id short, fixture, gates_passed, feature_correct, status, operator_turns, wallclock_s, noncached, cache_ratio, composite) for every row in `baseline_runs.tsv`. Page is now informative at baseline-only state instead of showing four stat cards and an empty-iterations message.
+- **CV indicator** — fixture cards color the CV% green (<20%), yellow (20–50%), red (>50%) so the operator sees substrate-variance health at a glance. Current fixture A renders red (77.5%).
+
+### Changed
+
+- **`.claude/skills/autoresearch/scripts/render_iterations.py`** — `parse_baseline()` reads `baseline_runs_summary.json` to emit per-fixture detail (A–E) including `cv_pct` derived from `stdev / mean`. New `parse_baseline_runs()` reads `baseline_runs.tsv` directly so per-run rows render at any state. Payload schema: `baseline.fixtures: [...]` and `baseline.runs: [...]` added alongside the existing aggregate fields.
+
+### Validation
+
+- Regen verified: `iterations.json` contains 5 fixture entries (A stable, B–E not_measured) and 5 baseline run entries with all columns populated.
+- `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` — exit 0 (existing markers preserved).
+
+### Notes
+
+- Section only renders when `baseline.fixtures` or `baseline.runs` is non-empty; the `hidden` attribute on `<section id="baseline-detail">` defaults to hidden so legacy regenerations without the new fields stay clean.
+- HTML template (CSS + render functions) is hand-maintained per `references/artifacts.md`; only the data block between `__ITERATIONS_DATA_START__` / `_END__` markers is regenerator-owned.
+
+---
+
 ## 2026-05-23 - P15 composite formula fix + baseline summary regen + artifacts
 
 ### Fixed

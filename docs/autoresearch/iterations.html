@@ -194,6 +194,83 @@
   }
   footer code { font-size: 12px; }
 
+  /* Baseline detail section — useful at baseline-only state (no iterations yet) */
+  .baseline-detail { margin-bottom: 32px; }
+  .baseline-detail h2 { margin-top: 8px; }
+  .baseline-detail .fixture-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 12px 0 24px;
+  }
+  .baseline-detail .fix-card {
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+  }
+  .baseline-detail .fix-card .fid {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .baseline-detail .fix-card .pill {
+    font-size: 10px;
+    padding: 1px 5px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .baseline-detail .fix-card .pill.stable { background: var(--ink); color: white; border-color: var(--ink); }
+  .baseline-detail .fix-card .pill.unstable { color: var(--crash); border-color: var(--crash); }
+  .baseline-detail .fix-card .pill.not_measured { color: var(--muted); }
+  .baseline-detail .fix-card .stats {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .baseline-detail .fix-card .cv.red { color: var(--crash); }
+  .baseline-detail .fix-card .cv.yellow { color: #8a6a00; }
+  .baseline-detail .fix-card .cv.green { color: var(--keep); }
+  .runs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .runs-table th, .runs-table td {
+    text-align: right;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .runs-table th:first-child, .runs-table td:first-child { text-align: left; }
+  .runs-table th {
+    color: var(--muted);
+    font-weight: normal;
+    font-family: -apple-system, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    border-bottom: 1px solid var(--ink);
+  }
+  .runs-table td.s-shipped { color: var(--keep); }
+  .runs-table td.s-incomplete { color: var(--muted); }
+  .runs-table td.s-crash { color: var(--crash); }
+  .runs-table td.gates-full { font-weight: 600; }
+  .runs-table td.gates-partial { color: var(--crash); }
+  .runs-table caption {
+    text-align: left;
+    color: var(--muted);
+    font-size: 11px;
+    padding-bottom: 6px;
+    caption-side: top;
+    font-family: -apple-system, sans-serif;
+  }
+
   .empty {
     padding: 48px 0;
     text-align: center;
@@ -218,6 +295,8 @@
 
 <svg id="spark" class="spark" viewBox="0 0 900 64" preserveAspectRatio="none" hidden></svg>
 
+<section id="baseline-detail" class="baseline-detail" hidden></section>
+
 <h2>Iterations</h2>
 <section id="iterations"></section>
 
@@ -236,14 +315,194 @@
 //──────────────────────────────────────────────────────────────────────────────
 // __ITERATIONS_DATA_START__
 window.ITERATIONS = {
-  "generated_at": "2026-05-23T14:36:53Z",
+  "generated_at": "2026-05-23T16:22:34Z",
   "baseline": {
     "measured_at": "2026-05-23",
     "mean_composite": 5786513343.333333,
     "stdev_composite": 4486946445.24594,
     "noise_floor_2sigma": -3187379547.1585474,
     "fixtures_stable": 1,
-    "fixtures_total": 5
+    "fixtures_total": 5,
+    "fixtures": [
+      {
+        "id": "A",
+        "status": "stable",
+        "stable_runs": 3,
+        "total_runs": 5,
+        "mean": 5786513343.333333,
+        "stdev": 4486946445.24594,
+        "noise_floor_2sigma": -3187379547.1585474,
+        "cv_pct": 77.5
+      },
+      {
+        "id": "B",
+        "status": "not_measured",
+        "stable_runs": 0,
+        "total_runs": 0,
+        "mean": null,
+        "stdev": null,
+        "noise_floor_2sigma": null,
+        "cv_pct": null
+      },
+      {
+        "id": "C",
+        "status": "not_measured",
+        "stable_runs": 0,
+        "total_runs": 0,
+        "mean": null,
+        "stdev": null,
+        "noise_floor_2sigma": null,
+        "cv_pct": null
+      },
+      {
+        "id": "D",
+        "status": "not_measured",
+        "stable_runs": 0,
+        "total_runs": 0,
+        "mean": null,
+        "stdev": null,
+        "noise_floor_2sigma": null,
+        "cv_pct": null
+      },
+      {
+        "id": "E",
+        "status": "not_measured",
+        "stable_runs": 0,
+        "total_runs": 0,
+        "mean": null,
+        "stdev": null,
+        "noise_floor_2sigma": null,
+        "cv_pct": null
+      }
+    ],
+    "runs": [
+      {
+        "run_id": "ec68b9da-6f02-45e7-851a-ceaf71f0171b",
+        "fixture": "A",
+        "timestamp": "2026-05-23T12:54:27Z",
+        "gates_passed": "6/6",
+        "feature_correct": true,
+        "status": "shipped",
+        "wallclock_s": 1422,
+        "operator_turns": 25,
+        "composite": 8156272050,
+        "noncached_plus_output_tokens": 229431,
+        "cache_ratio": 1572.4646,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "7aea8d3e-04ae-43d9-8943-cdfd99db8a3b",
+        "fixture": "A",
+        "timestamp": "2026-05-23T13:35:32Z",
+        "gates_passed": "4/6",
+        "feature_correct": true,
+        "status": "incomplete",
+        "wallclock_s": 2449,
+        "operator_turns": 25,
+        "composite": 13628868675,
+        "noncached_plus_output_tokens": 222603,
+        "cache_ratio": 3238.6385,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "ba140d79-f288-4e38-b470-28e5c8195c56",
+        "fixture": "A",
+        "timestamp": "2026-05-23T13:42:11Z",
+        "gates_passed": "6/6",
+        "feature_correct": true,
+        "status": "shipped",
+        "wallclock_s": 377,
+        "operator_turns": 9,
+        "composite": 611537355,
+        "noncached_plus_output_tokens": 180235,
+        "cache_ratio": 3564.3966,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "a3e41fb3-58d1-4a12-a70d-33cf9f1ec583",
+        "fixture": "A",
+        "timestamp": "2026-05-23T14:06:29Z",
+        "gates_passed": "6/6",
+        "feature_correct": true,
+        "status": "shipped",
+        "wallclock_s": 1433,
+        "operator_turns": 25,
+        "composite": 8591730625,
+        "noncached_plus_output_tokens": 239825,
+        "cache_ratio": 3012.6993,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "7f24b3bb-7219-43c1-9fa8-ab8d1829f565",
+        "fixture": "A",
+        "timestamp": "2026-05-23T14:15:14Z",
+        "gates_passed": "4/6",
+        "feature_correct": true,
+        "status": "crash",
+        "wallclock_s": 504,
+        "operator_turns": 14,
+        "composite": 1376096400,
+        "noncached_plus_output_tokens": 195025,
+        "cache_ratio": 2034.1084,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "98344624-ba3f-4eb6-8463-f9fb358113fb",
+        "fixture": "B",
+        "timestamp": "2026-05-23T14:40:53Z",
+        "gates_passed": "5/6",
+        "feature_correct": false,
+        "status": "shipped",
+        "wallclock_s": 1515,
+        "operator_turns": 25,
+        "composite": 0,
+        "noncached_plus_output_tokens": 272852,
+        "cache_ratio": 3720.4581,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "bead0650-2f5b-4089-8b62-1d97eee6874f",
+        "fixture": "B",
+        "timestamp": "2026-05-23T15:31:43Z",
+        "gates_passed": "3/6",
+        "feature_correct": false,
+        "status": "incomplete",
+        "wallclock_s": 3030,
+        "operator_turns": 25,
+        "composite": 19971260250,
+        "noncached_plus_output_tokens": 263647,
+        "cache_ratio": 2625.1823,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "3fad9297-5a85-4065-9ab7-b651af7a4d56",
+        "fixture": "B",
+        "timestamp": "2026-05-23T16:00:43Z",
+        "gates_passed": "5/6",
+        "feature_correct": false,
+        "status": "shipped",
+        "wallclock_s": 1713,
+        "operator_turns": 24,
+        "composite": 10880085240,
+        "noncached_plus_output_tokens": 264645,
+        "cache_ratio": 2474.7233,
+        "chunk_pressure_risk": false
+      },
+      {
+        "run_id": "c2d34c5d-f7bd-4abb-92a0-190c74f5d06b",
+        "fixture": "B",
+        "timestamp": "2026-05-23T16:19:18Z",
+        "gates_passed": "5/6",
+        "feature_correct": false,
+        "status": "shipped",
+        "wallclock_s": 1086,
+        "operator_turns": 24,
+        "composite": 5906284848,
+        "noncached_plus_output_tokens": 226607,
+        "cache_ratio": 1274.5474,
+        "chunk_pressure_risk": false
+      }
+    ]
   },
   "iterations": []
 };
@@ -282,7 +541,104 @@ function fmtSigma(n) {
 function render(data) {
   renderHeadline(data);
   renderSparkline(data);
+  renderBaselineDetail(data);
   renderIterations(data);
+}
+
+function renderBaselineDetail(data) {
+  const el = document.getElementById("baseline-detail");
+  const b = data.baseline || {};
+  const fixtures = b.fixtures || [];
+  const runs = b.runs || [];
+  if (!fixtures.length && !runs.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = "";
+
+  const h = document.createElement("h2");
+  h.textContent = "Baseline detail";
+  el.appendChild(h);
+
+  // Fixture grid (A–E)
+  if (fixtures.length) {
+    const grid = document.createElement("div");
+    grid.className = "fixture-grid";
+    fixtures.forEach(f => grid.appendChild(fixtureCard(f)));
+    el.appendChild(grid);
+  }
+
+  // Per-run table
+  if (runs.length) {
+    const table = document.createElement("table");
+    table.className = "runs-table";
+    const cap = document.createElement("caption");
+    cap.textContent = "baseline_runs.tsv — one row per fixture × N call";
+    table.appendChild(cap);
+    const thead = document.createElement("thead");
+    thead.innerHTML = "<tr>"
+      + ["run", "fix", "gates", "feat", "status", "turns", "wall_s",
+         "non-cached", "cache×", "composite"].map(h => "<th>" + h + "</th>").join("")
+      + "</tr>";
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    runs.forEach(r => tbody.appendChild(runRow(r)));
+    table.appendChild(tbody);
+    el.appendChild(table);
+  }
+}
+
+function fixtureCard(f) {
+  const card = document.createElement("div");
+  card.className = "fix-card";
+  const fid = document.createElement("div");
+  fid.className = "fid";
+  const idLabel = document.createElement("span");
+  idLabel.textContent = f.id;
+  const pill = document.createElement("span");
+  pill.className = "pill " + (f.status || "not_measured");
+  pill.textContent = (f.status || "not_measured").replace("_", " ");
+  fid.appendChild(idLabel);
+  fid.appendChild(pill);
+  card.appendChild(fid);
+
+  const stats = document.createElement("div");
+  stats.className = "stats";
+  const lines = [];
+  lines.push(`${f.stable_runs || 0}/${f.total_runs || 0} shipped`);
+  if (f.mean != null) lines.push("μ " + fmtInt(f.mean));
+  if (f.stdev != null) lines.push("σ " + fmtInt(f.stdev));
+  if (f.cv_pct != null) {
+    const cvClass = f.cv_pct > 50 ? "red" : f.cv_pct > 20 ? "yellow" : "green";
+    lines.push("<span class='cv " + cvClass + "'>CV " + f.cv_pct.toFixed(1) + "%</span>");
+  }
+  if (f.noise_floor_2sigma != null) lines.push("2σ floor " + fmtInt(f.noise_floor_2sigma));
+  stats.innerHTML = lines.join("<br>");
+  card.appendChild(stats);
+  return card;
+}
+
+function runRow(r) {
+  const tr = document.createElement("tr");
+  const gates = r.gates_passed || "";
+  const gatesFull = gates.startsWith("6/6");
+  const status = r.status || "";
+  const td = (val, cls) => {
+    const el = document.createElement("td");
+    el.textContent = val;
+    if (cls) el.className = cls;
+    return el;
+  };
+  const runShort = (r.run_id || "").slice(0, 8);
+  tr.appendChild(td(runShort));
+  tr.appendChild(td(r.fixture || ""));
+  tr.appendChild(td(gates, gatesFull ? "gates-full" : "gates-partial"));
+  tr.appendChild(td(r.feature_correct ? "✓" : "✗"));
+  tr.appendChild(td(status, "s-" + status));
+  tr.appendChild(td(r.operator_turns != null ? r.operator_turns : "—"));
+  tr.appendChild(td(r.wallclock_s != null ? r.wallclock_s.toLocaleString() : "—"));
+  tr.appendChild(td(r.noncached_plus_output_tokens != null ? fmtInt(r.noncached_plus_output_tokens) : "—"));
+  tr.appendChild(td(r.cache_ratio != null ? r.cache_ratio.toFixed(1) : "—"));
+  tr.appendChild(td(r.composite != null ? fmtInt(r.composite) : "—"));
+  return tr;
 }
 
 function renderHeadline(data) {
