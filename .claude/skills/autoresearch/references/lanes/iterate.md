@@ -23,7 +23,7 @@ python3 .claude/skills/autoresearch/scripts/preflight.py --recipe 2 --allow-unst
 
 Hard requirements: `.seed/devpulse` exists; `baseline_runs_summary.json` has **every fixture A–E `status=stable`**; clean git on a branch suitable for `autoresearch/iter-N-<ref>`.
 
-**"Stable" = `compute_summary` has ≥3 runs at `gates_passed="6/6"` with μ/σ/2σ-floor.** Both `status="unstable"` (rows exist but <3 at 6/6) and missing-from-summary (`render_iterations.py` reports `not_measured`) fail this check. Without σ-floors B–E, any fixture-A keep is discarded at promotion — Hard Rule 8 unenforceable. `--allow-unstable-promotion` downgrades fail→warn for exploratory iteration; document override use in CHANGELOG.
+**"Stable" = `compute_summary` has ≥3 runs at `gates_passed="6/6"` with μ/σ/2σ-floor.** Both `status="unstable"` (rows exist but <3 at 6/6) and missing-from-summary (`render_iterations.py` reports `not_measured`) fail this check. Without σ-floors B–E, any fixture-A keep is discarded at promotion — Hard Rule 8 unenforceable. `--allow-unstable-promotion` downgrades fail→warn for exploratory iteration; document override use in PROGRESS.md.
 
 **Stuck-residue check:** preflight surfaces stuck `/tmp/devpulse-<uuid>/` workspaces and dangling `autoresearch/iter-*` branches from prior crashes. Resolve before proceeding — run `teardown.sh` and clean branches with `git branch -D <branch>`.
 
@@ -93,13 +93,11 @@ python3 .claude/skills/autoresearch/scripts/introspect.py
 #    > attempted: <decision> (<reason>, YYYY-MM-DD)
 #    loop.py does this automatically; on crash, append manually.
 
-# 4. On KEEP that shipped (merged to main):
-#    - tick the relevant ROADMAP `[x]` if the iteration closed a milestone item.
-#    - update STATUS.md Recent Decisions with composite delta + branch name.
-#    - CHANGELOG entry under "Changed" + "Validation".
-#    - single commit + push.
-#
-#    On DISCARD or CRASH: no roadmap/status changes. Just the closeout regen above.
+# 4. PROGRESS.md entry — one bullet under today's date:
+#    "**Iter #N <idea-ref>** — verdict KEEP|DISCARD|CRASH. composite Δ=<%>vs μ (Δσ=<x>). gates X/6. branch <name>. <reason if discard>."
+#    Schema in docs/autoresearch/PROGRESS.md.
+#    On KEEP that ships (merged to main): also tick ROADMAP M3.5 if the iteration closed
+#    a milestone scope item; STATUS Recent Decisions only if cross-cutting.
 
 # 5. Universal closeout freshness sweep (Hard Rule 2) — final step, refuses lane closure on exit 1.
 #    Especially important on KEEP: shipped optimizations often change prompt shape or runtime

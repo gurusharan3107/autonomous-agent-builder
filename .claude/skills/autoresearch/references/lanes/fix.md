@@ -37,39 +37,34 @@ Follow [`docs/goal/FIX-STANDARD.md`](../../../../../docs/goal/FIX-STANDARD.md): 
 
 ### Closeout — the propagation chain
 
-This is the discipline payload of Fix lane. Every Fix lane closeout MUST do all of:
+Every Fix lane closeout MUST do all of:
 
-1. **ROADMAP tick** — find the relevant `[ ]` line, tick `[x]` with evidence pointer, date `*(YYYY-MM-DD)*`. If no line exists, add one *before* the tick (Hard Rule 2: everything maps to ROADMAP). Common homes: M1.x (defect closure), M2.3 (cost-aware execution / telemetry honesty), M3.5 (autoresearch-loop-internal).
-2. **STATUS.md Recent Decisions** — one line at the top of Recent Decisions: `**YYYY-MM-DD** — <one-sentence what + why + evidence pointer>`. Update `Last Update` field too.
-3. **CHANGELOG entry** — full Added/Changed/Fixed/Validation sections per Keep-a-Changelog. Date heading at top.
-4. **`docs/autoresearch/` contract docs** — if the fix changes a contract the loop depends on:
-   - `README.md` activation block — append a dated line naming the fix.
-   - `METRICS.md` — update the affected row(s) and any source-by-source field listing.
-   - `HARNESS.md` — update composite formula notes, TSV row semantics, or the harness preflight assertions.
-   - `OPTIMIZE.md` / `COMPARE.md` — only if the loop contract itself shifted.
-5. **Truncate poisoned data** — if the fix invalidates prior measurements (e.g., session-scope change means pre-fix baseline σ is no longer comparable), truncate the affected TSVs to header-only so the next Baseline run starts on honest signal. Files:
-   - `docs/autoresearch/baseline_runs.tsv`
-   - `docs/autoresearch/optimize_results.tsv`
-   - `docs/autoresearch/per_prompt_results.tsv`
-   - `docs/autoresearch/baseline_runs_summary.json` (delete; baseline.py will regenerate)
-6. **Run the freshness sweep** — `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py`. Must exit 0 before commit. If it exits 1 with drift the Fix lane itself didn't address, expand the fix scope to cover it (this is the lane that owns drift repair) — do not paper over by skipping the sweep.
-7. **Single commit** — all of the above in one commit per Hard Rule 13 from `docs/goal/README.md`. Message format: `fix(<area>): <one-line summary> (unblocks <next>)`.
-8. **Push** — Hard Rule 12: a `[x]` is not closed until pushed.
-9. **Retire handoff docs** — if a `NEXT-SESSION.md` or similar one-shot doc triggered the Fix, delete it as the last step.
-10. **Tell the operator** which lane to run next. Typically: Baseline if the fix changed prompt shape or aggregate semantics (pre-fix σ-floor invalid); Iterate if the fix was harness-only and prior measurements remain comparable.
+1. **PROGRESS.md entry** — one bullet under today's `## YYYY-MM-DD` header in [`docs/autoresearch/PROGRESS.md`](../../../../../docs/autoresearch/PROGRESS.md). Schema: `**Title** — file:line / sha. Numbers. Status if non-shipped.` See PROGRESS.md § Schema.
+2. **Contract docs** — if the fix changes a contract the loop depends on, update the relevant file:
+   - `docs/autoresearch/README.md` — activation block.
+   - `docs/autoresearch/METRICS.md` — affected row(s).
+   - `docs/autoresearch/HARNESS.md` — composite/TSV/preflight notes.
+   - `docs/autoresearch/OPTIMIZE.md` / `COMPARE.md` — only if loop contract shifted.
+3. **Truncate poisoned data** — if the fix invalidates prior measurements (session-scope change, composite formula change, seed dep change), truncate the affected TSVs to header-only OR truncate only the affected rows. Delete `baseline_runs_summary.json` for full reset. Files: `baseline_runs.tsv`, `optimize_results.tsv`, `per_prompt_results.tsv`, `baseline_runs_summary.json`.
+4. **Freshness sweep** — `python3 .claude/skills/autoresearch/scripts/freshness_sweep.py` must exit 0. Drift outside the Fix scope expands the Fix.
+5. **Single commit** — all of the above in one commit. Subject: `fix(<area>): <one-line summary>` (concise, no template body unless landmark).
+6. **Push** — closeout isn't done until pushed.
+7. **Retire handoff docs** — delete any `NEXT-SESSION.md`-style trigger doc.
+8. **Tell the operator** which lane to run next. Baseline if the fix shifted prompt shape or aggregate semantics (pre-fix σ-floor invalid); Iterate if harness-only.
 
-### Worked example — 2026-05-23 telemetry-honesty fix (commit `a3354c2`)
+**Out of scope for Fix-lane closeout:** ROADMAP `[x]` ticks, STATUS Recent Decisions, CHANGELOG sections — those land in PROGRESS.md per Hard Rule 1. Exception: a fix that touches Builder source AND has non-autoresearch implications (e.g., the M2.3 telemetry-honesty fix that affected non-autoresearch consumers) gets a STATUS Recent Decisions line and a CHANGELOG entry in addition to PROGRESS.md. When in doubt: PROGRESS.md only.
 
-- **Gap named:** `docs/autoresearch/NEXT-SESSION.md` reported `prompt_count=1, agent_name=None` in autoresearch-spawned `analyze.json` despite 50-min runs.
-- **Diagnosis differed from hypothesis.** Handoff blamed chat-event persistence; actual root cause was `_runtime_aggregates()` reading `agent_runs` globally with no session filter.
-- **Layer:** Builder source (`cli/commands/logs.py` + `db/models.py` + `db/session.py` + `services/sprint_execution.py` + `embedded/server/agent_sprint_planning.py`) + harness (`scripts/autoresearch/run.py`) + 1 test file.
-- **Closeout propagation** (this template):
-  - ROADMAP M2.3 line ticked `[x]` with test-name evidence.
-  - STATUS Recent Decisions + Last Update updated.
-  - CHANGELOG dated entry with Added/Changed/Fixed/Validation/Notes.
-  - `docs/autoresearch/README.md` activation block — appended 2026-05-23 telemetry-honesty line.
-  - `docs/autoresearch/METRICS.md` — `prompt_count` row clarified (= operator turns, not model calls); session-scoping flag documented; `by_agent` named as canonical per-agent source.
-  - `docs/autoresearch/HARNESS.md` — composite formula notes added; `session_scoped` assertion added; per-agent TSV-row semantics documented.
+### Worked example — 2026-05-23 P15 composite formula fix (commit `dcd3fd3`)
+
+- **Gap:** every baseline composite landed as 0 after P12; `iterations.html` empty.
+- **Diagnosis:** P12 missed parallel site at `run.py:870` (read `metrics["optimization"]` not `optimization_summary`).
+- **Layer:** harness (`run.py`) + 6 doc sites (`OPTIMIZE.md`, `METRICS.md`, `README.md`, `iterations.html`, `baseline.py`).
+- **Closeout:**
+  - PROGRESS.md entry (one line).
+  - `OPTIMIZE.md`/`METRICS.md`/`README.md` composite line updated.
+  - Backfilled 5 composites from each `metrics.json` (no re-run; no truncation needed).
+  - Freshness sweep exit 0; commit + push.
+  - Next lane: Iterate (P15 was harness-only; σ-floor now defined).
   - TSVs truncated to header-only (pre-fix measurements poisoned).
   - Single commit `a3354c2`, pushed.
   - `NEXT-SESSION.md` retired.

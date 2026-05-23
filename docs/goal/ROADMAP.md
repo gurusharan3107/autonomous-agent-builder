@@ -212,6 +212,8 @@ Defensible "preferred" claim. Canonical task set through Codex CLI, Claude Code,
 
 Source: [docs/autoresearch/](../autoresearch/). Activates only after [autoresearch/README.md](../autoresearch/README.md) prerequisites pass (incl. M1.1 IMP closures + M2.3 cost-aware execution).
 
+**Per-patch / per-run detail: [docs/autoresearch/PROGRESS.md](../autoresearch/PROGRESS.md).** This section keeps milestone-scope items only. Autoresearch skill closeouts (Baseline / Iterate / Fix) write to PROGRESS.md, not here.
+
 - [ ] All Track B prerequisites met (IMP-001 to IMP-004 closed, baseline variance measured, gate-pass rate at 1.0, complexity at 0 violations).
 - [ ] Autoresearch loop produces at least one optimization that survives variance gating and ships.
 - [ ] The loop's optimizations are reflected back into runtime policy (`execution_policy.py`) and prompt shape, not just kept in the experiment results TSV.

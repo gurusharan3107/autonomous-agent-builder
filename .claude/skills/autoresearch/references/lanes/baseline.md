@@ -76,10 +76,11 @@ python3 .claude/skills/autoresearch/scripts/render_iterations.py
 # 3. (Re-)run introspection
 python3 .claude/skills/autoresearch/scripts/introspect.py
 
-# 4. STATUS.md Recent Decisions — append a dated line:
-#    "<DATE> — Baseline N=5 across A–E. σ summary: <per-fixture composite means + σ>. Cost: $X.YZ. Wallclock: Hh Mm."
+# 4. PROGRESS.md entry — one bullet under today's date:
+#    "**Baseline N=5 across A–E** — per-fixture status + μ/σ/2σ-floor. Cost $X.YZ, wallclock Hh Mm. Commit <sha>."
+#    Schema in docs/autoresearch/PROGRESS.md.
 
-# 5. If any fixture status=unstable: re-run just that one with N=10 and document the σ tightening.
+# 5. If any fixture status=unstable: re-run just that one with N=10 and document the σ tightening (in the same PROGRESS.md entry).
 
 # 6. Universal closeout freshness sweep (Hard Rule 2) — final step, refuses lane closure on exit 1.
 python3 .claude/skills/autoresearch/scripts/freshness_sweep.py
@@ -112,6 +113,6 @@ CronCreate(
 
 Skip when unavailable or when `CronList` already shows a goal-audit cron in the next 48h.
 
-**Do not tick a ROADMAP `[x]` from inside Baseline lane** — Baseline is calibration, not delivery. Tick happens from Iterate lane when a kept iteration ships, or from Fix lane when a contract defect closes.
+**Baseline writes to PROGRESS.md, not ROADMAP** — Baseline is calibration, not delivery. No ROADMAP `[x]` from this lane. ROADMAP M3.5 milestone ticks only when the Iterate lane ships a kept change.
 
 ---
