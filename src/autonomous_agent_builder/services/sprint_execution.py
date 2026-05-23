@@ -486,13 +486,11 @@ async def persist_sprint_execution_artifacts(
 
 
 def task_uses_sprint_plan(task: Task) -> bool:
-    payload = _task_sprint_execution(task)
-    return bool(payload.get("skip_task_planning"))
+    return bool(_task_sprint_execution(task).get("skip_task_planning"))
 
 
 def task_uses_sprint_design(task: Task) -> bool:
-    payload = _task_sprint_execution(task)
-    return bool(payload.get("skip_task_design"))
+    return bool(_task_sprint_execution(task).get("skip_task_design"))
 
 
 def sprint_execution_context(task: Task) -> str:
@@ -513,8 +511,7 @@ def sprint_execution_context(task: Task) -> str:
 
 
 def _task_sprint_execution(task: Task) -> dict[str, Any]:
-    depends_on = task.depends_on if isinstance(task.depends_on, dict) else {}
-    payload = depends_on.get(SPRINT_EXECUTION_KEY)
+    payload = task.depends_on.get(SPRINT_EXECUTION_KEY) if isinstance(task.depends_on, dict) else {}
     return payload if isinstance(payload, dict) else {}
 
 

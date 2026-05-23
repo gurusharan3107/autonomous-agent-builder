@@ -114,10 +114,7 @@ def _next_sprint_candidates(features: list[Feature]) -> list[Feature]:
 
 
 def _format_sprint_planning_options(backlog_items: list[Feature]) -> str:
-    lines = []
-    for feature in backlog_items:
-        lines.append(f"- `{feature.id}` · P{feature.priority} · {feature.title}")
-    return "\n".join(lines)
+    return "\n".join(f"- `{f.id}` · P{f.priority} · {f.title}" for f in backlog_items)
 
 
 async def _request_chat_approval(

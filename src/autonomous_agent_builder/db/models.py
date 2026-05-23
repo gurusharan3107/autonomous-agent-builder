@@ -110,13 +110,10 @@ def phase_for_status(status: TaskStatus) -> TaskPhase:
 def set_task_status(task: Task, status: TaskStatus) -> None:
     """Write both status and phase atomically.
 
-    Terminal / off-path statuses (blocked/failed/capability_limit) preserve
-    the task's current phase rather than collapsing it back to planning.
+    Terminal / off-path statuses preserve current phase rather than collapsing to planning.
     """
     task.status = status
     if status in (TaskStatus.BLOCKED, TaskStatus.CAPABILITY_LIMIT, TaskStatus.FAILED):
-        # Preserve current phase on off-path transitions so the UI can still
-        # show where the work was when it stopped.
         return
     task.phase = phase_for_status(status)
 

@@ -1,5 +1,15 @@
 {
   "files": {
+    ".claude/skills/autoresearch/scripts/introspect.py": {
+      "extraction_plan": "Autoresearch tooling: split per-lane introspection (baseline / iterate / fix) into named helper modules under .claude/skills/autoresearch/scripts/ if new lanes are added; tooling, not product code.",
+      "lines": 806,
+      "owner": "autoresearch skill owner"
+    },
+    "scripts/autoresearch/run.py": {
+      "extraction_plan": "Autoresearch tooling: split SESSION_HEADERS / PROMPT_HEADERS schema + per-run harness wiring + reporting into focused helper modules under scripts/autoresearch/ if new lanes are added; tooling, not product code.",
+      "lines": 636,
+      "owner": "autoresearch skill owner"
+    },
     "src/autonomous_agent_builder/agents/definitions.py": {
       "extraction_plan": "Split runtime selection, tool registration, event persistence, and response assembly before adding agent behavior.",
       "lines": 909,
@@ -62,7 +72,7 @@
     },
     "src/autonomous_agent_builder/embedded/server/agent_sprint_planning.py": {
       "extraction_plan": "Continue moving sprint-planning and delivery-approval policy into focused services before adding new sprint planning behavior.",
-      "lines": 500,
+      "lines": 499,
       "owner": "embedded Agent route owner"
     },
     "src/autonomous_agent_builder/embedded/server/agent_board_state.py": {
@@ -252,7 +262,7 @@
     },
     "tests/test_builder_cli_surfaces.py": {
       "extraction_plan": "Move command-family contract tests into focused CLI test files when touching their surfaces; keep this file for shared CLI wiring only.",
-      "lines": 2589,
+      "lines": 2574,
       "owner": "builder CLI contract test owner"
     },
     "tests/test_builder_quality_gate_cli_surface.py": {
