@@ -979,11 +979,135 @@ def match_p19_tool_not_found_hang(
     )
 
 
+def match_p20_orchestrator_livelock(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P20 (2026-05-24): Orchestrator infinite recovery loop after agent
+    failure / hook-blocked polling. Distinct from P18/P19 silent-hang class —
+    Builder *is* writing the DB actively (watchdog correctly does NOT fire).
+    Stuck signal comes from the wall-clock budget instead.
+
+    Symptom: many short `agent_phase_complete agent=chat` events back-to-back
+    with `stop_reason=end_turn`, interspersed with `hook_blocked_bash`
+    warnings. Multiple `embedded_dispatch_followup_selected` for the same
+    task_id. Possibly a `Control request timeout: initialize` or other
+    `agent_unexpected_error` somewhere. Lifecycle bounces between phases
+    (planning ↔ implementation ↔ pr_creation ↔ build_verify) without
+    converging to `done`. ~$0.5–2 burned per iter.
+
+    Root cause: when a Builder agent fails (timeout, hook block, unrecoverable
+    error), the orchestrator's recovery path dispatches another chat agent to
+    "figure out what to do" — but that agent has no way to actually unblock
+    the underlying issue (hook is enforced; SDK error is transient but not
+    retried; etc.), so it ends with stop_reason=end_turn (no useful action)
+    and the orchestrator dispatches yet another chat. Infinite chat→chat
+    recovery loop bounded only by wall-clock budget.
+
+    Confidence signature:
+      - `reason: wall_clock_budget_exceeded` in stuck metadata (watchdog
+        explicitly did not fire — WAL was active)
+      - ≥5 `agent_phase_complete agent=chat` events in the same iter
+      - ≥2 `embedded_dispatch_followup_selected followup_task_id=X` for the
+        same X (lifecycle re-dispatching same task)
+      - hook_blocked_bash warnings present (chat agent kept trying blocked ops)
+      - Possibly `Control request timeout` or `agent_unexpected_error`
+
+    Category: persistent. Auto-retry won't help — the orchestrator's recovery
+    policy will livelock again. Needs source fix in
+    src/autonomous_agent_builder/orchestrator/orchestrator.py: bound the
+    follow-up chat dispatch count per task (e.g., max 3 recovery attempts);
+    transition the task to a `BLOCKED` state requiring operator decision
+    after the cap. Mirrors P18 source-fix pattern: Builder should fail-fast
+    on unrecoverable conditions, not infinite-retry.
+    """
+    stderr = _load_text(dump, "builder_stdout_stderr.log")
+    if not stderr:
+        # Fall back to evidence directory if dump doesn't have the log
+        # (watchdog dumps include partial state; wall-clock-aborts dump zero
+        # forensics because the watchdog didn't fire). For wall-clock-only
+        # stuck, the matcher reads the evidence_dir's main builder log.
+        evidence_dir = stuck.get("evidence_dir") or stuck.get("workspace")
+        if evidence_dir:
+            ed = pathlib.Path(evidence_dir)
+            log_file = ed / "builder_stdout_stderr.log"
+            if log_file.exists():
+                try:
+                    stderr = log_file.read_text(errors="replace")
+                except OSError:
+                    stderr = ""
+    if not stderr:
+        return None
+    # Wall-clock-budget reason is the strongest livelock indicator; without
+    # it, this is probably a different class
+    reason = stuck.get("reason") or ""
+    wall_clock_hit = (reason == "wall_clock_budget_exceeded")
+    # structlog formats events with column padding (`agent_phase_complete<11 spaces>agent=chat`),
+    # so a literal-space match misses. Regex tolerates any whitespace between
+    # the event name and the agent= key.
+    chat_completes = len(re.findall(
+        r"agent_phase_complete\s+agent=chat", stderr
+    ))
+    followup_lines = re.findall(
+        r"embedded_dispatch_followup_selected followup_task_id=(\S+)", stderr
+    )
+    # Same task re-dispatched multiple times signals the livelock
+    from collections import Counter
+    same_task_dispatches = max(Counter(followup_lines).values()) if followup_lines else 0
+    hook_blocks = stderr.count("hook_blocked_bash")
+    sdk_errors = ("Control request timeout" in stderr
+                  or "agent_unexpected_error" in stderr)
+    # Need at least one strong signal + one weaker signal
+    primary = wall_clock_hit or (chat_completes >= 5 and same_task_dispatches >= 2)
+    if not primary:
+        return None
+    if chat_completes < 5 and same_task_dispatches < 2 and hook_blocks == 0:
+        return None
+    evidence: list[str] = [f"{chat_completes} `agent_phase_complete agent=chat` events"]
+    if same_task_dispatches >= 2:
+        evidence.append(f"same task re-dispatched {same_task_dispatches}× via "
+                        f"`embedded_dispatch_followup_selected`")
+    if hook_blocks > 0:
+        evidence.append(f"{hook_blocks} `hook_blocked_bash` warnings "
+                        "(chat agent retrying blocked operations)")
+    if sdk_errors:
+        evidence.append("SDK error or agent_unexpected_error logged "
+                        "(orchestrator recovery path likely triggered)")
+    if wall_clock_hit:
+        evidence.append("wall_clock_budget_exceeded (watchdog correctly did "
+                        "NOT fire — Builder was writing DB actively, just churning)")
+    confidence = 0.9 if (wall_clock_hit and chat_completes >= 5 and same_task_dispatches >= 2) else 0.7
+    return Match(
+        pattern_id="P20",
+        name="Orchestrator infinite recovery loop / agent livelock (persistent)",
+        confidence=confidence,
+        evidence=evidence,
+        fix_pointer=(
+            "src/autonomous_agent_builder/orchestrator/orchestrator.py — "
+            "bound follow-up chat dispatch per task. Recommended: track "
+            "recovery_attempts on Task model; cap at 3; transition to BLOCKED "
+            "state with operator-required decision after cap. Mirrors P18's "
+            "fail-fast principle (Builder should escalate, not infinite-retry). "
+            "Also investigate: WHY did the original agent fail in a way that "
+            "needed recovery? `Control request timeout: initialize` suggests "
+            "Claude SDK initialization timing; `hook_blocked_bash` suggests "
+            "chat agent's prompt instructs operations its tool set can't "
+            "perform (similar root cause to P19 — prompt/registry contract drift "
+            "but with hooks instead of tools)."
+        ),
+        category="persistent",
+    )
+
+
 MATCHERS = [
     match_p18_db_lock_transient,      # very specific signature; check FIRST so
                                        # the transient-retry path fires before
                                        # any persistent fallback misclassifies it
     match_p19_tool_not_found_hang,    # also very specific; check before generic
+    match_p20_orchestrator_livelock,  # wall-clock-budget livelock signature
     match_p11_p14_respond_409,        # very specific — check next
     match_p10_respond_400,
     match_p9_sprint_merge_untracked_venv,

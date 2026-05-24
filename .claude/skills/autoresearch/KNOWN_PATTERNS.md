@@ -562,6 +562,33 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
+## P20 — Orchestrator infinite recovery loop / agent livelock (persistent)
+
+- **First seen:** 2026-05-24, A1 sanity baseline after P18+P19 source fixes landed
+- **Status:** Catalogued; source fix needed in `orchestrator.py` recovery-loop budget
+- **Category:** `persistent` — auto-retry won't help; needs follow-up dispatch cap
+
+**Symptom.** Distinct from P18/P19 silent-hang class — Builder is *actively writing* the DB (watchdog correctly does NOT fire). Iter aborts via `wall_clock_budget_exceeded` after ~30 min. Builder log shows 5+ short `agent_phase_complete agent=chat` events back-to-back with `stop_reason=end_turn`, interspersed with `hook_blocked_bash` warnings. Multiple `embedded_dispatch_followup_selected followup_task_id=<X>` for the same X. Phase transitions bounce (planning → implementation → quality_gates → back to planning → …) without converging to `done`. ~$0.5–2 burned per iter on recovery-chat churn.
+
+**Evidence.**
+1. `STUCK_DETECTED.reason == "wall_clock_budget_exceeded"` (key — distinguishes from P18/P19).
+2. `grep -c "agent_phase_complete\s\+agent=chat" <evidence>/builder_stdout_stderr.log` ≥ 5.
+3. Counter of `embedded_dispatch_followup_selected followup_task_id=X` shows ≥ 2 for the same X.
+4. ≥1 `hook_blocked_bash` warning (chat agent kept trying blocked operations).
+5. Often: `Control request timeout: initialize` OR `agent_unexpected_error` somewhere in the log (the failure that triggered the recovery cascade).
+
+**Why.** When a Builder agent fails (SDK timeout, hook block, unrecoverable error), the orchestrator's recovery dispatches another chat agent to figure out what to do — but that agent has no way to actually unblock the underlying issue. It ends with `stop_reason=end_turn` (no useful action) and the orchestrator dispatches yet another chat. Infinite chat→chat recovery loop bounded only by wall-clock budget. Same root-cause family as P18 (no fail-fast in Builder's state machine) but on the recovery path instead of the lifecycle event path.
+
+**Fix (HARNESS — autonomy classification).** `diagnose_hang.py:match_p20_orchestrator_livelock` matches with confidence 0.9 when all 5 evidence predicates fire (0.7 with subset). Reads `evidence_dir/builder_stdout_stderr.log` directly because wall-clock-aborted iters don't have a watchdog dump.
+
+**Fix (BUILDER SOURCE — persistent prevention).** `src/autonomous_agent_builder/orchestrator/orchestrator.py` — bound follow-up chat dispatch per task. Recommended: track `recovery_attempts` on Task model; cap at 3; transition task to `BLOCKED` after cap with operator-required decision. Mirrors P18's fail-fast principle.
+
+Investigate the root cause of each recovery cascade too — the SDK `Control request timeout: initialize` deserves its own typed-retry policy (ROADMAP M2.6).
+
+**Prevention.** Once the source fix lands, autoresearch iters that hit recovery-loop scenarios will fail fast at ~10s × 3 attempts = 30s instead of grinding for 30 min. Catalog matcher remains as defense-in-depth.
+
+---
+
 ## P19 — Builder hangs after `tool_not_found_in_registry` (persistent contract drift)
 
 - **First seen:** 2026-05-24, A1 sanity baseline after P18 source fix
