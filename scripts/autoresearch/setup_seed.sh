@@ -43,23 +43,69 @@ cp -r --reflink=auto "$SRC" "$DST"
 echo "Stripping __pycache__/ directories"
 find "$DST" -type d -name __pycache__ -not -path "*/.venv/*" -exec rm -rf {} + 2>/dev/null || true
 
-# Clear builder runtime state so each baseline run starts with an empty board.
-# The .agent-builder/ layout (observed 2026-05-24): agent_builder.db (+ -shm/-wal
-# sidecars), dashboard/, archive/, runtime/, scripts/, knowledge/, migrations/,
-# config.yaml, onboarding-state.json, readiness.json. Clear execution state
-# (db file + sidecars, logs, sessions, runtime, dashboard cache) but keep
-# config, migrations, and the .agent-builder/ skeleton intact. Builder
-# re-creates the empty DB schema from migrations on next start.
+# Clear builder runtime state so each baseline run starts with an empty board,
+# while preserving the DB FILE so Builder doesn't need `builder init --force`
+# at run start. The .agent-builder/ layout (observed 2026-05-24):
+# agent_builder.db (+ -shm/-wal sidecars), dashboard/, archive/, runtime/,
+# scripts/, knowledge/, migrations/, config.yaml, onboarding-state.json,
+# readiness.json.
+#
+# DB strategy: keep the file (schema intact) but DELETE rows from the tables
+# declared in seed_manifest.json § pristine_invariants.db.must_be_empty_tables.
+# Builder reads the file as-is; rows are 0 from row 1.
+#
+# Removed the journal sidecars (-shm/-wal) because they get rewritten on next
+# DB open; keeping a stale WAL would re-introduce wiped rows.
 if [[ -d "$DST/.agent-builder" ]]; then
-  echo "Clearing .agent-builder execution state; preserving config/migrations"
-  rm -f "$DST/.agent-builder/agent_builder.db" \
-        "$DST/.agent-builder/agent_builder.db-shm" \
+  echo "Wiping .agent-builder DB rows from manifest's must_be_empty_tables"
+  rm -f "$DST/.agent-builder/agent_builder.db-shm" \
         "$DST/.agent-builder/agent_builder.db-wal" 2>/dev/null || true
-  rm -rf "$DST/.agent-builder/db" \
-         "$DST/.agent-builder/logs" \
+  rm -rf "$DST/.agent-builder/logs" \
          "$DST/.agent-builder/sessions" \
          "$DST/.agent-builder/runtime" \
          "$DST/.agent-builder/dashboard" 2>/dev/null || true
+  if [[ -f "$DST/.agent-builder/agent_builder.db" ]]; then
+    # Resolve manifest path relative to this script.
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    MANIFEST="$SCRIPT_DIR/../../.claude/skills/autoresearch/seed_manifest.json"
+    python3 - "$DST/.agent-builder/agent_builder.db" "$MANIFEST" <<'PYEOF'
+import json, pathlib, sqlite3, sys
+db_path, manifest_path = sys.argv[1], sys.argv[2]
+try:
+    m = json.loads(pathlib.Path(manifest_path).read_text())
+    tables = (m.get("pristine_invariants", {}).get("db", {})
+              .get("must_be_empty_tables", []))
+except (OSError, json.JSONDecodeError) as e:
+    print(f"  (manifest read failed: {e}; skipping DB wipe)")
+    sys.exit(0)
+if not tables:
+    print("  (manifest declared no must_be_empty_tables; skipping)")
+    sys.exit(0)
+conn = sqlite3.connect(db_path, timeout=10)
+wiped = []
+try:
+    cur = conn.cursor()
+    for t in tables:
+        try:
+            cur.execute(f"SELECT COUNT(*) FROM {t}")
+            n = cur.fetchone()[0]
+            if n > 0:
+                cur.execute(f"DELETE FROM {t}")
+                wiped.append((t, n))
+        except sqlite3.Error:
+            continue
+    conn.commit()
+finally:
+    conn.close()
+if wiped:
+    total = sum(n for _, n in wiped)
+    print(f"  Wiped {total} rows across {len(wiped)} table(s): "
+          + ", ".join(f"{t}={n}" for t, n in wiped[:6])
+          + ("…" if len(wiped) > 6 else ""))
+else:
+    print("  DB already had empty must_be_empty_tables")
+PYEOF
+  fi
 fi
 
 # Compute snapshot hash (excluding .git internals which churn even for read-only state).

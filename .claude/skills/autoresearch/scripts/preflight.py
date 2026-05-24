@@ -714,10 +714,15 @@ def check_seed_git_clean() -> Check:
     if r.returncode != 0:
         return Check("seed git clean", "warn",
                      f"git status returned {r.returncode}", fix="")
-    # Filter to non-.venv tracked-file changes — .venv churn (.pyc etc.) is noise
+    # Filter noise: .venv churn, .claude workspace, and __pycache__/*.pyc
+    # (bytecode regenerates per pytest run; not part of substrate identity).
+    # Matches seed_verify's filter for consistency.
     dirty = [ln for ln in r.stdout.splitlines()
-             if ln and not ln[3:].startswith(".venv/")
-             and not ln[3:].startswith(".claude/")]
+             if ln
+             and not ln[3:].startswith(".venv/")
+             and not ln[3:].startswith(".claude/")
+             and "__pycache__/" not in ln[3:]
+             and not ln[3:].endswith(".pyc")]
     if dirty:
         return Check("seed git clean", "fail",
                      f"{len(dirty)} tracked file(s) diverge from HEAD: " +

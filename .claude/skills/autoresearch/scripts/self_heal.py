@@ -582,9 +582,16 @@ def run_self_heal(
     if files_fix.get("applied") or files_fix.get("proposed_questions"):
         return files_fix
 
-    # 3. Seed uncommitted working tree — auto-commit only if no other
-    # substrate-identity violations are present (otherwise the commit just
-    # pollutes git history further). When violations coexist, escalate.
+    # 3. Seed uncommitted working tree — ESCALATE, do not auto-commit.
+    # Auto-committing tracked-file changes (especially deletions of e.g.
+    # __pycache__/*.pyc that setup_seed.sh strips) silently pollutes the
+    # seed's git history with `self_heal: commit ...` commits. That's the
+    # opposite of what we want: substrate identity must remain stable.
+    # First-principles boundary: any tracked-file divergence requires
+    # operator awareness — either re-snapshot (clean recovery) or knowing
+    # acceptance of the new state. The previous fix_seed_uncommitted
+    # auto-apply was an early heuristic, retired here in favour of the
+    # structured escalation contract.
     if (seed_dir / ".git").exists():
         r = subprocess.run(
             ["git", "-C", str(seed_dir), "status", "--porcelain"],
@@ -592,12 +599,62 @@ def run_self_heal(
         )
         if r.returncode == 0:
             dirty = [ln for ln in r.stdout.splitlines()
-                     if ln and not ln[3:].startswith(".venv/")
-                     and not ln[3:].startswith(".claude/")]
+                     if ln
+                     and not ln[3:].startswith(".venv/")
+                     and not ln[3:].startswith(".claude/")
+                     and "__pycache__/" not in ln[3:]
+                     and not ln[3:].endswith(".pyc")]
             if dirty:
-                uncommitted_fix = fix_seed_uncommitted(seed_dir)
-                if uncommitted_fix.get("applied"):
-                    return uncommitted_fix
+                return {
+                    "applied": False,
+                    "pattern": "seed-uncommitted-divergence",
+                    "confidence": "high",
+                    "diagnosis": (
+                        f"seed has {len(dirty)} tracked file(s) diverging "
+                        f"from HEAD. Auto-commit would pollute substrate "
+                        f"history; auto-revert risks losing intentional "
+                        f"changes. Operator decision required."
+                    ),
+                    "evidence": dirty[:10],
+                    "proposed_questions": [
+                        {
+                            "header": "Seed divergence",
+                            "question": (
+                                f"Seed at {seed_dir} has tracked-file "
+                                f"divergence ({len(dirty)} files). "
+                                f"How to recover?"
+                            ),
+                            "options": [
+                                {
+                                    "label": "Re-snapshot from upstream",
+                                    "description": (
+                                        f"Run `{re_snap}` to recapture from "
+                                        f"{upstream}. Cleanest recovery; "
+                                        f"loses any intentional edits to seed."
+                                    ),
+                                },
+                                {
+                                    "label": "Hard-reset seed to HEAD",
+                                    "description": (
+                                        "git reset --hard inside seed; "
+                                        "discards the divergence. Use when "
+                                        "you know the changes are noise."
+                                    ),
+                                },
+                                {
+                                    "label": "Commit the divergence into upstream first",
+                                    "description": (
+                                        "If the changes are intentional, "
+                                        "commit them upstream and re-snapshot "
+                                        "so the seed's HEAD matches what's "
+                                        "actually in working-tree."
+                                    ),
+                                },
+                            ],
+                        },
+                    ],
+                    "detail": "model-backed escalation — substrate divergence requires operator decision",
+                }
 
     # 4. Seed history pollution — model-backed escalation.
     history_esc = detect_seed_history_pollution(seed_dir, manifest)

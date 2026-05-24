@@ -562,6 +562,31 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
+## P18 — Builder hangs on `database is locked` during agent_run lifecycle flush (transient)
+
+- **First seen:** 2026-05-24, A1 sanity baseline after substrate-identity contract landed
+- **Status:** Catalogued + auto-retry; persistent Builder source fix tracked under ROADMAP M2.6 (IMP-010 class)
+- **Category:** `transient` — auto-retry is the autonomous remediation
+
+**Symptom.** Builder's agent completes its work successfully (tests pass, code shipped) but the lifecycle hangs in the active phase. `lane_status` reports the iter as 0/N complete with no progress for ≥3 minutes. `builder_stdout_stderr.log` shows the agent's `agent_phase_complete` event landed, then the next event-flush errored with `sqlite3.OperationalError: database is locked`, then Builder polls `/api/dashboard/board` forever without transitioning.
+
+**Evidence.**
+1. `grep -c "database is locked" <evidence_dir>/builder_stdout_stderr.log` ≥ 2.
+2. `agent_run_lifecycle_flush_error` event in the log immediately after the lock error.
+3. Offending SQL is `INSERT INTO agent_run_events`.
+4. Process threads idle on `do_epoll_wait` or `futex_wait` (Builder waiting, not retrying).
+5. WAL mtime stale ≥ 180s after the lock (hang_watchdog fires).
+
+**Why.** SQLAlchemy session autoflush during `agent_run_events` INSERT races with another writer on the same SQLite WAL. The first writer holds the write lock; the second writer's autoflush raises `OperationalError`; the lifecycle's exception handler logs the flush error but doesn't unwind the phase. Builder's state machine waits for a transition event that can't be written. Same root-cause family as IMP-010 (session rollback during long agent runs) but on a different write path. Builder doesn't fail-fast; it polls forever.
+
+**Fix (HARNESS — transient retry).** `diagnose_hang.py:match_p18_db_lock_transient` matches the signature with confidence 0.95. `baseline.py`'s stuck-iter handler routes `category=transient` to `kill + retry on fresh /tmp/devpulse-<uuid>/` (one retry beyond `MAX_HEAL_ATTEMPTS`). Most runs succeed on retry because the lock contention is non-deterministic. No operator intervention.
+
+**Fix (BUILDER SOURCE — persistent prevention).** Wrap `agent_run_events` INSERT in `session.no_autoflush:` block at `src/autonomous_agent_builder/orchestrator/agent_run_lifecycle.py` (or wherever `agent_run_events` is populated). Alternative: queue events to a single-writer background thread so concurrent agents never contend on the same SQLite connection. Track under ROADMAP M2.6 typed-retry refinement.
+
+**Prevention.** (1) Source patch above eliminates the race. (2) Watchdog + auto-retry catches it in the wild even if the source bug recurs in a future code path. (3) Builder should fail-fast on unhandled flush errors instead of polling — add a phase-level deadline so any phase that doesn't transition within N seconds aborts the task with explicit `STUCK` status visible to harness.
+
+---
+
 ## Pattern entry template
 
 ```markdown

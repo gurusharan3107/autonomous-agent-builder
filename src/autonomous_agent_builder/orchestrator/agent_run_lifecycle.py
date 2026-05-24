@@ -11,7 +11,19 @@ from pathlib import Path
 from typing import Any
 
 import structlog
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# P18 (autoresearch INSIGHTS Run #10 / 2026-05-24): SQLite WAL writer contention
+# can hold the write lock longer than the engine's busy_timeout=15s during agent
+# lifecycle event flushes. The autoflush during merge() raises
+# `OperationalError: database is locked`; the lifecycle phase doesn't transition;
+# Builder polls forever. Retrying the entire commit on a fresh short-lived
+# session usually succeeds because the contending writer has finished. Tuned for
+# 5 attempts × exponential backoff (0.5 → 8.0s) = up to ~15.5s extra wait, which
+# bounds the worst case but typically resolves on attempt 1–2.
+_DB_LOCK_RETRY_ATTEMPTS = 5
+_DB_LOCK_RETRY_BASE_SECONDS = 0.5
 
 from autonomous_agent_builder.agents.definitions import get_agent_definition
 from autonomous_agent_builder.agents.execution_policy import resolve_agent_runtime_policy
@@ -214,24 +226,57 @@ async def run_agent_lifecycle(
         # while doing DB writes every second causes the aiosqlite connection to
         # become invalid ("Can't reconnect until invalid transaction is rolled
         # back") on long runs.
+        #
+        # P18 (2026-05-24): retry on SQLite `database is locked` with
+        # exponential backoff. SQLite's engine-level busy_timeout (15s) covers
+        # contention within a single statement, but the autoflush during
+        # merge() can race a separately-held write lock; the OperationalError
+        # propagates and previously hung the lifecycle. Retrying the entire
+        # commit on a fresh session usually wins because the contending writer
+        # has finished.
         async with db_write_lock:
-            try:
-                async with get_session_factory()() as update_db:
-                    for obj in objects:
-                        update_db.add(obj)
-                    # Merge the run object so its latest attribute values
-                    # (output_text, diff_summary, etc.) are persisted.
-                    await update_db.merge(run)
-                    await update_db.flush()
-                    await update_db.commit()
-            except Exception as flush_exc:
+            last_exc: Exception | None = None
+            for attempt in range(_DB_LOCK_RETRY_ATTEMPTS):
+                try:
+                    async with get_session_factory()() as update_db:
+                        for obj in objects:
+                            update_db.add(obj)
+                        # Merge the run object so its latest attribute values
+                        # (output_text, diff_summary, etc.) are persisted.
+                        await update_db.merge(run)
+                        await update_db.flush()
+                        await update_db.commit()
+                    last_exc = None
+                    break  # success
+                except OperationalError as oe:
+                    msg = str(oe).lower()
+                    if "database is locked" in msg and attempt + 1 < _DB_LOCK_RETRY_ATTEMPTS:
+                        last_exc = oe
+                        backoff = _DB_LOCK_RETRY_BASE_SECONDS * (2 ** attempt)
+                        _log.warning(
+                            "agent_run_lifecycle_db_lock_retry",
+                            agent_name=agent_name,
+                            task_id=task.id,
+                            attempt=attempt + 1,
+                            max_attempts=_DB_LOCK_RETRY_ATTEMPTS,
+                            backoff_seconds=backoff,
+                        )
+                        await asyncio.sleep(backoff)
+                        continue
+                    # Either not a lock error, or out of retries — escalate.
+                    last_exc = oe
+                    break
+                except Exception as flush_exc:
+                    last_exc = flush_exc
+                    break
+            if last_exc is not None:
                 _log.error(
                     "agent_run_lifecycle_flush_error",
                     agent_name=agent_name,
                     task_id=task.id,
-                    error=str(flush_exc),
+                    error=str(last_exc),
                 )
-                raise
+                raise last_exc
             await publish_board_snapshot()
 
     async def record_output_chunk(delta: str) -> None:

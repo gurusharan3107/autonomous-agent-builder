@@ -54,6 +54,20 @@ class Match:
     confidence: float
     evidence: list[str]
     fix_pointer: str
+    # Category drives how the autoresearch loop reacts when this pattern fires:
+    #   transient  — flaky failure mode (DB lock, port race, network blip).
+    #                Caller should kill stuck process + retry iter, no operator
+    #                involvement required.
+    #   persistent — real defect in Builder source or harness contract. Cannot
+    #                be retried away; needs Fix-lane code change. Caller should
+    #                emit SELF_HEAL_ESCALATION with the pattern's fix_pointer
+    #                as the proposed remediation.
+    #   substrate  — seed/workspace identity issue. Run self_heal substrate
+    #                fixes first; if still stuck, re-snapshot via setup_seed.sh.
+    #   unknown    — matched on weak signals; treat as persistent for safety.
+    # Default is "persistent" so matchers added before this field landed
+    # remain safe (no accidental auto-retry).
+    category: str = "persistent"
 
 
 # -- Artifact loaders ---------------------------------------------------------
@@ -810,8 +824,90 @@ def match_p17_seed_dep_gap(
     )
 
 
+def match_p18_db_lock_transient(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P18 (2026-05-24): Builder hangs after `sqlite3.OperationalError: database
+    is locked` during `agent_run_events` INSERT (autoflush race).
+
+    Symptom: Builder's agent did its work successfully (tests pass, code shipped),
+    but the lifecycle's `INSERT INTO agent_run_events` flush hit a SQLite WAL
+    lock contention. The flush raises OperationalError; the state-machine
+    doesn't transition past the current phase; Builder sits idle polling
+    `/api/dashboard/board` forever. Same root cause class as IMP-010 (SQLAlchemy
+    session rollback during long agent runs) but the surface is the new agent_run
+    event stream rather than task status.
+
+    Confidence signature:
+      - `database is locked` in builder_stdout_stderr.log (or builder_logs_error)
+      - `agent_run_lifecycle_flush_error` OR `sdk_query_error cause='database is locked'`
+      - Optional: `INSERT INTO agent_run_events` in the offending SQL
+      - Optional: thread idle on epoll/futex (Builder waiting for nothing)
+
+    Category: transient. The lock itself is a flake from WAL writer contention;
+    a fresh Builder start on a fresh workspace copy typically succeeds. Caller
+    should kill stuck process + retry the iter without operator involvement.
+    """
+    # Probe artifacts available from a watchdog dump
+    stderr = _load_text(dump, "builder_stdout_stderr.log")
+    if not stderr:
+        # Watchdog dumps don't always carry the stdout file; fall back to
+        # builder_logs_error.json (also captured by the watchdog).
+        errs = _load_json(dump, "builder_logs_error.json")
+        if isinstance(errs, dict):
+            stderr = json.dumps(errs)
+        elif isinstance(errs, list):
+            stderr = json.dumps(errs)
+    if not stderr:
+        return None
+    has_lock = "database is locked" in stderr
+    has_flush_err = ("agent_run_lifecycle_flush_error" in stderr
+                     or "sdk_query_error" in stderr)
+    if not (has_lock and has_flush_err):
+        return None
+    evidence: list[str] = []
+    lock_count = stderr.count("database is locked")
+    evidence.append(f"'database is locked' appears {lock_count}× in Builder log")
+    if "agent_run_lifecycle_flush_error" in stderr:
+        evidence.append("agent_run_lifecycle_flush_error logged (lifecycle "
+                        "couldn't write event after lock)")
+    if "INSERT INTO agent_run_events" in stderr:
+        evidence.append("Offending SQL is `INSERT INTO agent_run_events` "
+                        "(autoflush race during lifecycle event write)")
+    if "do_epoll_wait" in threads or "futex_wait" in threads:
+        evidence.append("Process threads idle on epoll/futex (Builder waiting, "
+                        "not actively retrying)")
+    # High confidence when both the lock AND the lifecycle flush error are
+    # present together; partial credit for partial signal.
+    confidence = 0.95 if (lock_count >= 2 and "agent_run_lifecycle_flush_error" in stderr) else 0.7
+    return Match(
+        pattern_id="P18",
+        name="SQLite database-locked during agent_run lifecycle flush (transient)",
+        confidence=confidence,
+        evidence=evidence,
+        fix_pointer=(
+            "Transient: kill Builder + run.py for this iter, retry on a fresh "
+            "workspace copy. The DB lock is from concurrent SQLAlchemy session "
+            "autoflush on the same SQLite WAL; clean restart on a fresh "
+            "/tmp/devpulse-<uuid>/ usually succeeds. If the same iter hits P18 "
+            "twice in a row, escalate as IMP-010-class: needs source fix in "
+            "src/autonomous_agent_builder/orchestrator/agent_run_lifecycle.py "
+            "(session.no_autoflush block around event INSERT, or queue events "
+            "for a single-writer thread). Track under ROADMAP M2.6 typed-retry."
+        ),
+        category="transient",
+    )
+
+
 MATCHERS = [
-    match_p11_p14_respond_409,        # very specific — check first
+    match_p18_db_lock_transient,      # very specific signature; check FIRST so
+                                       # the transient-retry path fires before
+                                       # any persistent fallback misclassifies it
+    match_p11_p14_respond_409,        # very specific — check next
     match_p10_respond_400,
     match_p9_sprint_merge_untracked_venv,
     match_p6_sprint_merge_venv,
