@@ -154,7 +154,12 @@ def check_docker_jaeger() -> Check:
                      fix="install docker (one-time): curl -fsSL https://get.docker.com | sudo sh; "
                          "sudo usermod -aG docker $USER; sudo chmod 666 /var/run/docker.sock")
     # docker info distinguishes "daemon down" from "no socket access"
-    info_proc = subprocess.run([docker, "info"], capture_output=True, timeout=5)
+    try:
+        info_proc = subprocess.run([docker, "info"], capture_output=True, timeout=5)
+    except subprocess.TimeoutExpired:
+        return Check("docker + Jaeger (optional)", "warn",
+                     "docker info timed out — daemon may be hung",
+                     fix="sudo service docker restart (or skip Jaeger; Path A still works)")
     if info_proc.returncode != 0:
         err = info_proc.stderr.decode("utf-8", errors="replace").lower()
         if "permission denied" in err or "cannot connect" in err:
@@ -437,23 +442,28 @@ def check_no_inflight_lane() -> Check:
 
 
 def gather_recipe_checks(recipe: int, allow_unstable: bool = False) -> list[Check]:
+    """Recipe-specific preflight. The substrate identity contract
+    (seed_manifest.json) is checked by `check_seed_manifest_conformance`
+    which subsumes the older ad-hoc seed checks. The legacy checks
+    (`check_seed_pytest_collect`, `check_seed_git_clean`) are retained as
+    defense-in-depth — they may catch failure shapes the manifest doesn't
+    yet declare. `check_harness_contracts` validates the Builder CLI/API
+    output shapes the harness consumes (P1–P15 class)."""
     if recipe in (2, 3):
         seed = check_path_exists("seed snapshot (required for recipe)", SEED_DST, hard=True,
                                   kind="immutable snapshot")
         baseline = check_baseline_summary(recipe, allow_unstable=allow_unstable)
-        # Iterate lanes also need seed pytest-collect + git-clean — they ride on
-        # the same fragile feature_check path baseline does.
         return [check_no_inflight_lane(), seed, baseline,
                 check_tsv_schema_alignment(), check_workspace_stack(),
+                check_seed_manifest_conformance(),
+                check_harness_contracts(),
+                # Legacy probes — defense-in-depth alongside manifest verifier
                 check_seed_pytest_collect(), check_seed_git_clean()]
     if recipe == 1:
-        # Recipe 1 produces the seed and baseline; we still want to catch the
-        # schema-drift and stack-mismatch bugs early, before a 10-minute run
-        # discovers them the painful way. P17 (2026-05-23) added the
-        # pytest-collect + git-clean probes after a $5 / 1.5h doomed-iter burn
-        # caused by seed .venv missing jinja2 + uncommitted requirements.txt.
         return [check_no_inflight_lane(), check_baseline_summary(1),
                 check_tsv_schema_alignment(), check_workspace_stack(),
+                check_seed_manifest_conformance(),
+                check_harness_contracts(),
                 check_seed_pytest_collect(), check_seed_git_clean()]
     return []
 
@@ -583,6 +593,95 @@ def check_seed_pytest_collect() -> Check:
                  f"pytest --collect-only OK against {tests_dir.name}/")
 
 
+def check_seed_manifest_conformance() -> Check:
+    """Run seed_verify.py against the manifest. Single source of truth for
+    substrate identity — subsumes ad-hoc checks (deps, db pollution,
+    forbidden files, forbidden commit subjects). When this fails, self_heal
+    can usually remediate deterministically (db wipe, file rm, dep install)
+    or escalate model-backed (history pollution requires re-snapshot decision).
+    """
+    seed_verify = pathlib.Path(__file__).resolve().parent / "seed_verify.py"
+    if not seed_verify.exists():
+        return Check("seed manifest conformance", "warn",
+                     f"seed_verify.py missing at {seed_verify}",
+                     fix="restore the skill from version control")
+    try:
+        r = subprocess.run(
+            [sys.executable, str(seed_verify), "--json"],
+            capture_output=True, text=True, timeout=180,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return Check("seed manifest conformance", "warn",
+                     f"seed_verify.py failed to run: {type(exc).__name__}",
+                     fix="run manually: python3 .claude/skills/autoresearch/scripts/seed_verify.py")
+    try:
+        report = json.loads(r.stdout)
+    except (ValueError, json.JSONDecodeError):
+        # Subprocess crashed or wrote to stderr only; surface that so it's debuggable.
+        err_tail = (r.stderr or "")[-300:]
+        return Check("seed manifest conformance", "warn",
+                     f"seed_verify.py produced non-JSON output (exit={r.returncode}); "
+                     f"stderr tail: {err_tail}",
+                     fix="run manually: python3 .claude/skills/autoresearch/scripts/seed_verify.py")
+    overall = report.get("overall", "warn")
+    if overall == "pass":
+        n = len([f for f in report.get("findings", []) if f.get("status") == "pass"])
+        return Check("seed manifest conformance", "pass",
+                     f"all {n} substrate invariants satisfied")
+    failures = [f for f in report.get("findings", []) if f.get("status") == "fail"]
+    detail = "; ".join(f"{f['clause']}: {f.get('detail', '')[:80]}" for f in failures[:3])
+    hint = "; ".join(set(f.get("remediation_hint", "") for f in failures
+                          if f.get("remediation_hint")))[:300]
+    return Check("seed manifest conformance",
+                 "fail" if overall == "fail" else "warn",
+                 f"{len(failures)} substrate violation(s): {detail}",
+                 fix=f"run self_heal.py to auto-remediate where catalogued; "
+                     f"escalate via AskUserQuestion for substrate-identity issues. "
+                     f"Hints: {hint}" if hint else
+                     "run python3 .claude/skills/autoresearch/scripts/seed_verify.py for details")
+
+
+def check_harness_contracts() -> Check:
+    """Run test_harness_contracts.py against Builder CLI surfaces. Catches
+    output-shape drift before any iter burns tokens (covers P1–P15 class)."""
+    script = pathlib.Path(__file__).resolve().parent / "test_harness_contracts.py"
+    if not script.exists():
+        return Check("harness ↔ builder contracts", "warn",
+                     f"test_harness_contracts.py missing at {script}",
+                     fix="restore the skill from version control")
+    try:
+        r = subprocess.run(
+            [sys.executable, str(script), "--json"],
+            capture_output=True, text=True, timeout=180,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return Check("harness ↔ builder contracts", "warn",
+                     f"contract script failed to run: {type(exc).__name__} "
+                     f"(may be slow when Builder is active on the workspace)",
+                     fix="run manually: python3 .claude/skills/autoresearch/scripts/test_harness_contracts.py")
+    try:
+        report = json.loads(r.stdout)
+    except (ValueError, json.JSONDecodeError):
+        return Check("harness ↔ builder contracts", "warn",
+                     f"non-JSON output: {r.stdout[:200]}", fix="")
+    overall = report.get("overall", "warn")
+    if overall == "pass":
+        n = len([x for x in report.get("results", []) if x.get("status") == "pass"])
+        return Check("harness ↔ builder contracts", "pass",
+                     f"all {n} contract(s) match manifest declarations")
+    fails = [x for x in report.get("results", []) if x.get("status") == "fail"]
+    if not fails and overall == "warn":
+        return Check("harness ↔ builder contracts", "warn",
+                     "some contracts skipped (likely no sample session_id available)",
+                     fix="")
+    detail = "; ".join(f"{x['contract']}: {x.get('detail', '')[:80]}" for x in fails[:3])
+    hints = "; ".join(set(x.get("remediation_hint", "") for x in fails
+                           if x.get("remediation_hint")))[:300]
+    return Check("harness ↔ builder contracts", "fail",
+                 f"{len(fails)} contract violation(s): {detail}",
+                 fix=hints or "update harness consumers in scripts/autoresearch/run.py")
+
+
 def check_seed_git_clean() -> Check:
     """P17 (2026-05-23): seed's git status must be clean (HEAD == working tree).
 
@@ -605,11 +704,13 @@ def check_seed_git_clean() -> Check:
     try:
         r = subprocess.run(
             ["git", "-C", str(SEED_DST), "status", "--porcelain"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, timeout=30,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
         return Check("seed git clean", "warn",
-                     f"git status failed: {type(exc).__name__}", fix="")
+                     f"git status failed: {type(exc).__name__} "
+                     f"(seed may be under heavy I/O — Builder running?)",
+                     fix="retry when seed I/O is quiet")
     if r.returncode != 0:
         return Check("seed git clean", "warn",
                      f"git status returned {r.returncode}", fix="")

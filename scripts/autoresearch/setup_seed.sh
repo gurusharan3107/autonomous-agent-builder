@@ -37,11 +37,29 @@ echo "Snapshotting $SRC → $DST"
 mkdir -p "$(dirname "$DST")"
 cp -r --reflink=auto "$SRC" "$DST"
 
+# Strip Python bytecode caches. These churn on every pytest run and create
+# false "tracked file divergence" signals in seed_verify. Source files are
+# what matter for substrate identity; .pyc regenerates per Python invocation.
+echo "Stripping __pycache__/ directories"
+find "$DST" -type d -name __pycache__ -not -path "*/.venv/*" -exec rm -rf {} + 2>/dev/null || true
+
 # Clear builder runtime state so each baseline run starts with an empty board.
-# The .agent-builder/ directory layout: db/, config.json (kept), logs/ (cleared).
+# The .agent-builder/ layout (observed 2026-05-24): agent_builder.db (+ -shm/-wal
+# sidecars), dashboard/, archive/, runtime/, scripts/, knowledge/, migrations/,
+# config.yaml, onboarding-state.json, readiness.json. Clear execution state
+# (db file + sidecars, logs, sessions, runtime, dashboard cache) but keep
+# config, migrations, and the .agent-builder/ skeleton intact. Builder
+# re-creates the empty DB schema from migrations on next start.
 if [[ -d "$DST/.agent-builder" ]]; then
-  echo "Clearing .agent-builder runtime state (db, logs); preserving config.json"
-  rm -rf "$DST/.agent-builder/db" "$DST/.agent-builder/logs" "$DST/.agent-builder/sessions" 2>/dev/null || true
+  echo "Clearing .agent-builder execution state; preserving config/migrations"
+  rm -f "$DST/.agent-builder/agent_builder.db" \
+        "$DST/.agent-builder/agent_builder.db-shm" \
+        "$DST/.agent-builder/agent_builder.db-wal" 2>/dev/null || true
+  rm -rf "$DST/.agent-builder/db" \
+         "$DST/.agent-builder/logs" \
+         "$DST/.agent-builder/sessions" \
+         "$DST/.agent-builder/runtime" \
+         "$DST/.agent-builder/dashboard" 2>/dev/null || true
 fi
 
 # Compute snapshot hash (excluding .git internals which churn even for read-only state).

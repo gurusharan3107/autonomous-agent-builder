@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "description": "Substrate identity contract for autoresearch fixtures. Single source of truth for what 'pristine seed' means. preflight + self_heal both read this; any drift in the seed against any invariant blocks the loop. Edit when re-capturing seed (add new allowed deps) or when a new past-agent artifact pattern surfaces (add to forbidden_*).",
+  "seed_dir": "~/.seed/devpulse",
+  "upstream_source": "~/Builder-Workspace/devpulse",
+  "re_snapshot_command": "bash scripts/autoresearch/setup_seed.sh",
+  "pristine_invariants": {
+    "git": {
+      "working_tree_must_be_clean": true,
+      "forbidden_commit_subject_patterns": [
+        ".*current time button",
+        ".*current time display button",
+        ".*homepage button to display current time",
+        ".*time display button on homepage",
+        ".*Display.*loading spinner",
+        ".*Add.*loading spinner",
+        ".*notes feature",
+        "^feat: Add notes$",
+        ".*Add github auth",
+        ".*Add GitHub auth",
+        ".*Add export",
+        ".*Wire persistence for Add ",
+        ".*Implement core .* for Add ",
+        ".*Cover persistence and tests for Add ",
+        ".*Verify Add .* for shipping"
+      ],
+      "max_total_commits": 200,
+      "comment": "Match by past-pollution FEATURE NAMES, not agent-template phrasings alone. The agent uses templates like 'Implement core ... for X' / 'Verify X for shipping' for BOTH legitimate fixture-A baseline (X = 'Developer Pulse Dashboard - MVP') and past pollution (X = 'Add current time button', 'Display loading spinner', etc.). Patterns here target the specific past-fixture feature names observed in pollution incidents. Add a new pattern when a new fixture's feature-name leaks into the seed. The 'Add ' prefix narrows agent-template matches to past-fixture additions (B/C/D/E features that should NOT exist in the pristine seed; A's dashboard is the baseline)."
+    },
+    "deps": {
+      "venv_required_modules": [
+        "fastapi",
+        "pydantic",
+        "pytest",
+        "pytest_asyncio",
+        "httpx",
+        "jinja2",
+        "uvicorn"
+      ],
+      "pytest_must_collect": true,
+      "comment": "Modules from upstream ~/Builder-Workspace/devpulse/requirements.txt. These must be importable in the seed .venv for pytest --collect-only to succeed before any fixture B-E iter. Source: P17 incident (jinja2 + pytest_asyncio missing burned $5/1.5h). Fixture features that ADD persistence (sqlalchemy, alembic) pull those in per-task; they are not pristine-required."
+    },
+    "db": {
+      "relative_path": ".agent-builder/agent_builder.db",
+      "must_be_empty_tables": [
+        "agent_run_events",
+        "agent_runs",
+        "chat_events",
+        "chat_messages",
+        "chat_sessions",
+        "gate_results",
+        "design_documents",
+        "tasks",
+        "sprints",
+        "workspaces",
+        "features"
+      ],
+      "comment": "Builder execution-state tables that must be empty in pristine state. Populated by prior agent runs (P18: 53 agent_runs found). restore_seed in run.py wipes these; manifest verifies."
+    },
+    "files": {
+      "forbidden_path_patterns": [
+        "test_loading_spinner.py",
+        "tests/test_loading_spinner.py",
+        "app/static/time_button.js",
+        "tests/test_current_time.py",
+        "app/static/notes_*.js",
+        "app/static/github_auth*.js"
+      ],
+      "comment": "Files left by prior fixture-A/B/C iterations. If present in seed, the agent sees a feature already implemented and the fixture test is invalid."
+    }
+  },
+  "contract_surfaces": {
+    "comment": "Builder CLI surfaces the harness (scripts/autoresearch/run.py) consumes. Drift here = silent failures in harness (P1-P15 class). Verified by test_harness_contracts.py. ONLY runnable when invoked from an initialized Builder workspace; from source repo (no .agent-builder/), contract tests skip with `not_in_workspace`.",
+    "preflight_workspace_check": {
+      "command_argv": ["builder", "doctor", "--json"],
+      "required_top_keys": ["ok"],
+      "skip_remaining_if_not_ok": true,
+      "comment": "Run first; if doctor reports ok:false, skip remaining contract tests (caller is not in a Builder workspace)."
+    },
+    "builder_board_show": {
+      "command_argv": ["builder", "board", "show", "--json", "--full"],
+      "required_top_keys": ["pending", "active", "review", "done", "blocked", "counts"],
+      "comment": "run.py:430 reads board state for gate_pass_rate. Top-level keys are column names; 'counts' aggregates."
+    },
+    "builder_metrics_show": {
+      "command_argv": ["builder", "metrics", "show", "--json", "--full"],
+      "required_top_keys": ["total_cost", "total_tokens", "optimization_summary", "gate_pass_rate"],
+      "comment": "run.py:870 (P15 fix) reads metrics['optimization_summary'] for composite formula. Top-level keys are flat metric names."
+    },
+    "builder_logs_error": {
+      "command_argv": ["builder", "logs", "--error", "--compact", "--json"],
+      "skip_top_key_check_if_ok_false": true,
+      "comment": "run.py:433 reads error tail. May return {ok:false} when no errors exist or workspace lacks log volume; that's fine."
+    },
+    "builder_logs_analyze": {
+      "command_argv_template": ["builder", "logs", "analyze", "--session", "{session_id}", "--full", "--json"],
+      "required_top_keys": ["runtime_aggregates", "cache_ratio", "optimization_summary"],
+      "required_runtime_aggregates_keys": ["session_scoped", "by_agent", "top_cost_drivers"],
+      "session_scoped_must_be": true,
+      "comment": "M2.3 session-scoping invariant; harness gates against this. session_scoped MUST be true (post-2026-05-23 commit a3354c2)."
+    },
+    "builder_backlog_task_list": {
+      "command_argv": ["builder", "backlog", "task", "list", "--json"],
+      "required_top_keys": ["ok", "results", "count"],
+      "comment": "Standard Builder envelope: {ok, status, results, ...}. 'results' is the task array."
+    }
+  }
+}

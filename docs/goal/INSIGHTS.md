@@ -259,3 +259,167 @@ All validated additions landed in ROADMAP this session (M2.3 × 4 P0 + StopFailu
 3. **Resolve `.claude/skills/autoresearch-workspace/iteration-1/`.** Untracked artifact directory adjacent to the autoresearch skill; not surfaced in any `docs/autoresearch/*` index, not gitignored, no `SKILL.md`. Operator decision needed: track, ignore, or migrate under `docs/autoresearch/`. *Not on ROADMAP — small hygiene gap.*
 4. **No autoresearch action.** Ninth `maintain_current_flow` run on now-session-scoped telemetry. Baseline / Iterate lane choice is the operator's next move, not this audit's. STATUS already says "Next: kick off Baseline lane."
 
+---
+
+## 2026-05-24 — Run #11 (since 30d; doc-gap retrospective — which mistakes were avoidable with better AGENTS.md / SKILL.md rules)
+<!-- collected_at: 2026-05-24T06:45:00.000000+00:00 -->
+
+### Intent vs current focus
+
+- **Operator request is a doc-gap audit: "analyze session using goal audit, to know which mistakes happened were avoidable only if AGENTS.md or any other doc were updated with certain items."** (2026-05-24, current session). This is the second retrospective pass — Run #10 taxonomized failures by *recovery type* (deterministic vs model-backed); Run #11 taxonomizes by *prevention surface* (which doc was missing what rule that would have blocked the mistake pre-execution).
+- **STATUS alignment: M3.5 substrate repair thread active; preflight/self-heal/seed-verify shipped.** Run #10 Action #2 (seed git-history check) is CLOSED — `seed_verify.py` implements `forbidden_commit_subject_patterns` via `git log --format=%s --all`, and `preflight.py:recipe 1` calls `seed_verify.py`. Run #10 Action #3 (contract regression tests) is HALF-CLOSED — `test_harness_contracts.py` exists (12 734 bytes) but is untracked (not committed). Actions 1, 4, 5 remain OPEN.
+- **No new execution work since Run #10.** No new git commits beyond the P18 fix (commit `35a3ae4`). Operator is in a deliberate governance pass before re-starting the B–E baseline.
+
+**Alignment verdict:** **aligned** — STATUS reflects reality; doc-gap retrospective is deliberate governance, not misdirection.
+
+**Suggested STATUS.md change:** Add Recent Decisions line: `"2026-05-24 — Doc-gap retrospective (Run #11) landed in INSIGHTS.md. 5 prevention gaps identified: AGENTS.md missing harness-contract-first trigger + subprocess-capture rule; autoresearch SKILL.md missing composite-metric Hard Rule + analyze.json attribution warning; Run #10 Action #2 now confirmed closed (seed_verify.py). test_harness_contracts.py untracked — commit needed."` (HARD RULE: skill does not edit.)
+
+**Suggested ROADMAP.md change:** none — the doc fixes are AGENTS.md/SKILL.md hygiene; not ROADMAP-scope feature work.
+
+### Autoresearch focus candidates
+
+761 sessions, 83h active, cache 98.2% across 30d. 15 Builder-related sessions in driver scope.
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 15 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+**No autoresearch action — system stable.** Eleventh consecutive run with `maintain_current_flow` dominating. Builder runtime unaffected by the autoresearch harness repairs (correct: harness tests *Builder behavior*, not Builder's own cost pattern).
+
+**OPTIMIZE_IDEAS.md actions taken:** none.
+
+**Prior-entry trim (Run #10):** Actions 1, 4, 5 still open per above — prior entry left unchanged.
+
+### Doc-gap taxonomy — mistakes avoidable with better rules
+
+Cross-map of P1–P18 + CURRENT blocker against docs that existed at incident time.
+
+| Gap | Doc that was missing | Failures caused | Now remediated? |
+|---|---|---|---|
+| No "harness-contract-first" Required Trigger | AGENTS.md § Required Triggers | P1–P15 (8 patches, Class C) | Partially — `test_harness_contracts.py` exists but not wired into AGENTS.md as a trigger |
+| No "subprocess stderr capture" coding rule | AGENTS.md § Codex Productivity Rules | Class B silent failures (3+ iters invisible) | Code fixed (`feature_check.log`); NO doc encodes the rule |
+| No "per-iter abort on gate failure" Hard Rule in SKILL.md | autoresearch SKILL.md | 3 doomed iters $5/1.5h (Class E) | YES — Hard Rule 11 |
+| No "seed capture protocol" checklist | autoresearch SKILL.md | P17 (missing deps), P18 (stale DB), CURRENT (git history) | YES — Hard Rules 12/13 + seed_manifest.json |
+| No "composite metric single-dimension" principle | autoresearch SKILL.md | P16 CV=77.5% (Class D) | Code fixed (P16); NO Hard Rule encodes it |
+| No "analyze.json attribution limit" warning | autoresearch SKILL.md Dead Ends / AGENTS.md | Ongoing telemetry blind spot (OPEN gap) | NO — only in memory as OPEN |
+| No "in-flight process check at skill entry" rule | autoresearch SKILL.md | Operator had to manually kill loop (Class B) | YES — SKILL.md "Before anything" section |
+
+**Two gaps remain completely un-encoded in any doc**: subprocess stderr capture rule (AGENTS.md) and the composite-metric single-dimension principle (SKILL.md). Every future agent on this repo can repeat both mistakes.
+
+### Recommended actions
+
+1. **Add subprocess stderr capture rule to AGENTS.md § Codex Productivity Rules.** Exact text: "Subprocess calls in harness, CI, and scripts: always use `capture_output=True`; write combined stdout+stderr to a named evidence file (`evidence_dir/feature_check.log` pattern). Never rely on `-q` flags or inherited fds on external tools called from non-interactive contexts." — caused Class B silent failures across multiple iters. Not on ROADMAP — genuine AGENTS.md gap. *Protects Differentiator #6 (cost-aware execution — silent failures are invisible cost drivers).*
+2. **Add composite-metric Hard Rule to autoresearch SKILL.md § Hard Rules.** "Hard Rule 15: Composite must be a single uncorrelated dimension. Never multiply time × count × rate — correlated products amplify CV and produce negative/useless σ-floors. When in doubt: single metric is correct." Caused P16 (CV=77.5%, 2σ-floor=-3.19e9). Currently only in PROGRESS.md. Not on ROADMAP — genuine SKILL.md gap. *Protects Differentiator #6.*
+3. **Add analyze.json attribution warning to autoresearch SKILL.md Dead Ends.** "analyze.json for sessions spawned by the autoresearch harness shows `prompt_count=1, agent_name=unknown` — this is a known Builder product gap (chat_session_id not threaded from harness into Builder DB). Do not use these fields for per-session cost attribution until the gap is fixed (tracked in memory as OPEN)." Not on ROADMAP — genuine SKILL.md gap. *Protects Differentiator #6.*
+4. **Add "harness-contract-first" Required Trigger to AGENTS.md.** "Before writing any external script/harness that calls `builder` CLI: run the command live once, verify output shape, add field assertions to `.claude/skills/autoresearch/scripts/test_harness_contracts.py`. Never write extraction code against CLI output without a shape assertion that runs in `preflight.py --recipe 1`." Caused P1–P15 (8 of 18 patches; whole Class C). Not on ROADMAP. *Protects Differentiator #6.*
+5. **Commit `test_harness_contracts.py` (untracked).** Run #10 Action #3 half-complete — file exists but git shows `?? .claude/skills/autoresearch/scripts/test_harness_contracts.py`. A file that prevents the whole P1–P15 class should be committed before re-baseline. *Already tracked as M3.5; commit closes it.*
+
+---
+
+## 2026-05-24 — Run #10 (since 30d, 760 sessions, 18 autoresearch patches analyzed; mistake-class audit + deterministic-vs-model-backed recovery taxonomy)
+<!-- collected_at: 2026-05-24T05:46:06.096018+00:00 -->
+
+### Intent vs current focus
+
+- **Operator request is an explicit meta-audit: "where were mistakes made in autoresearch, what is the best way to recover, what type of issue requires deterministic script vs model-backed intelligence."** Prompt (2026-05-24T05:43:27, sess=`current`). This is a deliberate pause to categorize failure modes before restarting the B–E baseline, not a routine goal check.
+- **Past 48 hours: entirely autoresearch substrate repair.** Session arc on 2026-05-23: `"what happened with the autoresearch baseline?"` (T13:56) → `"then what happened as part of baseline (B1-5)"` (T16:47) → `"i only cancelled since some fix was applied, can we run the baseline from fixture B?"` (T19:03) → `"yes cancel the inflight baseline, fix the issues"` (T21:03). Operator had to manually kill poll loops (T17:37–17:50) and cancel the run after it became clear the substrate was still polluted. ~$5 / 1.5h burned on 3 doomed iters before P17–P18 surfaced.
+- **Process-awareness gap surfaced explicitly.** Operator: `"why were you not aware of this run?"` (T17:40) and `"i dont think start and save session requires process awareness, its the autoresearch skill"` (T17:42). Result: `lane_status.py` + `check_no_inflight_lane` preflight shipped to give the skill eyes on the OS. But the current blocker (seed git history pollution) still requires an operator-led re-snapshot decision that no script can make.
+- **STATUS accurately reflects M3.5 substrate-prep focus.** Alignment confirmed by STATUS `Current Item In Flight` + `Last Update`. No quiet drift.
+- **Blocker not yet on ROADMAP as a concrete `[ ]` item.** Seed git history pollution (7+ `feat: Add current time button` commits baked into HEAD) is described in CURRENT.md and PROGRESS.md but has no ROADMAP line or explicit decision record in STATUS Recent Decisions.
+
+**Alignment verdict:** **aligned** — STATUS reflects reality; operator's audit request is deliberate governance, not misdirection.
+
+**Suggested STATUS.md change:** Add Recent Decisions line: `"2026-05-24 — Autoresearch mistake-class audit landed (Run #10). Seed git history pollution identified as current structural blocker; requires operator-led re-snapshot decision (recapture from ~/Builder-Workspace/devpulse upstream vs hard-reset seed to pristine revision). 18 patches in 2 days confirmed the harness self-heals known gaps but cannot recover from substrate-identity failures — those need operator decision."` (HARD RULE: skill does not edit.)
+
+**Suggested ROADMAP.md change:** Add one `[ ]` item under M3.5: `"Seed re-snapshot: verify seed git HEAD is pristine (0 past-agent commits in log) before any B–E baseline run. Decision: recapture from ~/Builder-Workspace/devpulse vs hard-reset seed to pre-agent revision."` Not yet on roadmap — genuine gap.
+
+### Autoresearch focus candidates
+
+Builder telemetry (60 sessions analyzed across 11 workspaces):
+
+| Stream | Value | Sessions | OPTIMIZE_IDEAS map |
+| --- | --- | --- | --- |
+| recommended_next_change | `maintain_current_flow` | 60 | no action |
+| avoidable_cost_flags | *(empty)* | 0 | — |
+| agent_names_with_avoidable_tokens | *(empty)* | 0 | — |
+
+Builder runtime is stable. The autoresearch harness (not Builder itself) was the source of all 18 patches. Builder `maintain_current_flow` continues because the autoresearch loop tests Builder's *behavior*, not its cost pattern — those are separate concerns.
+
+**OPTIMIZE_IDEAS.md actions taken:** none — no driver met reorder threshold.
+
+**Prior-entry trim:** Run #9 Recommended Actions: #1 (`.claude/skills/` as first-class surface in docs/goal/) — open; #2 (STATUS Recent Decisions for knowledge-base + hallmark) — open; #3 (autoresearch-workspace/iteration-1/ orphan) — open. Prior entry has open actions; section left unchanged.
+
+### Mistake-class taxonomy + recovery routing
+
+This run's primary output is a classification of the 18 autoresearch patches by failure type and recovery mechanism. Source: `docs/autoresearch/PROGRESS.md` patches P1–P18 + CURRENT.md blocker.
+
+#### Class A — Environment / Substrate Identity (highest cost class: $5+/1.5h on 3 doomed iters)
+
+| Patch | Root cause | Recovery type |
+|---|---|---|
+| P17: pytest-asyncio in working-tree but not HEAD | Seed captured after manual dep tweak; git clean didn't check | **Deterministic** — `check_seed_git_clean` preflight (now shipped) |
+| P17: seed .venv missing jinja2 | Seed .venv not pre-populated; pip install ran but workspace was later overwritten | **Deterministic** — `check_seed_pytest_collect` preflight (now shipped) |
+| P18: seed DB carries stale Builder state | `restore_seed` copied DB without wiping 11 tables | **Deterministic** — SQL DELETE on 11 tables (now shipped); schema-level, no judgment needed |
+| **CURRENT: seed git history carries past-agent commits** | Seed captured AFTER prior fixture-A runs, not from pristine upstream | **Model-backed** — no script can determine "which revision is pristine"; requires operator to decide: hard-reset to pre-agent sha vs recapture from `~/Builder-Workspace/devpulse` |
+
+**Rule:** if the check is "does file/dep/row X exist?" → deterministic. If the check is "is this the right version of reality?" → model-backed (requires intent + history reasoning).
+
+#### Class B — Observability Blindness (caused silent failures to go undetected for multiple iters)
+
+| Patch | Root cause | Recovery type |
+|---|---|---|
+| Silent stderr from subprocess | `subprocess.check_output` + `-q` flag; stderr inherited parent's fd | **Deterministic** — `run.py:run_feature_check` now writes `feature_check.log` with explicit stdout+stderr capture |
+| No per-phase forensic trail | Evidence dirs not created until P-fix iteration | **Deterministic** — `evidence_dir/` per iter + `feature_check.log` pattern |
+| In-flight lane not visible to skill | `ps -ef` not checked at session entry | **Deterministic** — `lane_status.py` + `check_no_inflight_lane` preflight (now shipped) |
+| analyze.json: prompt_count=1, agent_name=unknown for autoresearch-spawned sessions | Builder's session attribution doesn't scope by spawn context | **Model-backed** — requires tracing how `chat_session_id` flows from autoresearch harness into Builder; can't be a grep |
+
+**Rule:** if the fix is "capture this output surface" → deterministic. If the fix is "understand why this attribution is missing" → model-backed.
+
+#### Class C — Data Contract Drift (caused 0-composite results or wrong gate verdicts)
+
+| Patch | Root cause | Recovery type |
+|---|---|---|
+| P12: gate_pass_rate used wrong Builder CLI command | `builder board show` vs `builder task list`; different output shape | **Deterministic** — contract test asserting CLI output field exists |
+| P15: metrics key `metrics["optimization"]` not `metrics["optimization_summary"]` | P12 fix missed a parallel site in run.py | **Deterministic** — unit test asserting key name at extraction point |
+| P11: multiple similar schema mismatches (P1–P10) | Builder API/CLI contract drifted across versions with no harness-side tests | **Deterministic** — integration contract test suite against real Builder output; these all had binary assertions |
+
+**Rule:** if the failure is "key X exists in JSON" or "CLI output has field Y" → deterministic. The whole class is detectable with `assert` or `jq`.
+
+#### Class D — Statistical Measurement Error (caused useless 2σ-floor)
+
+| Patch | Root cause | Recovery type |
+|---|---|---|
+| P16: composite = noncached × operator_turns × wallclock → CV=77.5%, 2σ-floor negative | Correlated dimensions multiply noise; product of 3 metrics amplifies variance | **Model-backed** — required statistical reasoning: "what am I trying to minimize?" and "which dimensions are correlated?". Answer (single metric: `noncached_plus_output_tokens`) was not derivable from a test or script. |
+
+**Rule:** formula selection is a judgment call about measurement intent → always model-backed.
+
+#### Class E — Autonomy Gap (caused 3 doomed iters + manual operator cancellation)
+
+| Patch | Root cause | Recovery type |
+|---|---|---|
+| Per-iter abort missing | baseline.py ran all N iters even when feature_correct=False | **Deterministic** — strict per-iter gate in `baseline.py` (now shipped); threshold is binary (feature_correct ≠ True → abort) |
+| Self-heal for known patterns (missing-module, uncommitted-working-tree) | These patterns are mechanical; safe to auto-fix | **Deterministic** — `self_heal.py` pattern catalog with pip-install + git-commit remediations (now shipped) |
+| Self-heal for unknown patterns | New pattern, no catalog entry → `applied=False`, operator investigates | **Model-backed** — "is this pattern safe to auto-heal?" requires model judgment; false fixes are worse than no fix (stated explicitly in `self_heal.py` docstring) |
+| Seed re-snapshot policy | Seed identity question cannot be delegated to a script | **Model-backed** — requires operator + model to inspect git history, pick pristine revision, and re-snapshot |
+
+**Rule for autonomy boundary:** if the remediation has a known-good mechanical path (install X, delete Y rows, abort at threshold T) → deterministic. If the remediation requires "is this situation one I know how to fix safely?" → the model decides whether to apply or escalate.
+
+### The meta-rule (applies across all classes)
+
+**Deterministic script** = the predicate is enumerable at write-time (value exists, count ≥ N, key present, command exits 0). Safe to run headlessly for $0. False positives are caught by the next check; false negatives from a broken script are bounded.
+
+**Model-backed intelligence** = the predicate requires understanding *intent* or *context* (which revision is pristine, is this pattern safe to auto-heal, what should the composite measure). No script can express "what was the intended baseline state before any agent touched it." False negatives here mean the agent applies a plausible-looking but wrong fix — cost is unbounded.
+
+**When in doubt, don't auto-fix.** `self_heal.py`'s `applied=False` path is correct behavior, not a bug. The operator loop exists precisely for situations where the predicate isn't deterministic.
+
+### Recommended actions
+
+1. **Operator decision: seed re-snapshot path.** Either `cd ~/.seed/devpulse && git log --oneline` to find the last clean sha → `git reset --hard <sha>` → re-capture, OR recopy from `~/Builder-Workspace/devpulse` if that workspace is pristine. This is a model-backed decision (Class A, CURRENT blocker). *Not on ROADMAP — add as explicit `[ ]` item under M3.5 per Suggested ROADMAP.md change above.*
+2. **Add seed git-history preflight to Recipe 1.** `check_seed_git_clean` catches working-tree dirtiness but not *history* pollution (past-agent commits in git log). Add a companion `check_seed_git_log_clean` probe: `git log --oneline | grep -c "^[a-f0-9]* feat:"` — if count > expected (0 for fixture B/C/D/E), warn and block. Deterministic; $0. *Not yet in preflight.py — genuine gap.*
+3. **Add contract regression tests for harness-to-Builder API shape.** Classes B and C (8 of 18 patches) were all binary assertion failures against Builder CLI/API output. A `test_harness_contracts.py` that runs `builder task list`, `builder logs analyze`, `builder board show` against the live seed and asserts key shapes catches the whole class before any iter burns tokens. Deterministic; should run as part of `preflight.py:Recipe 1`. *Not yet tracked on ROADMAP.*
+4. **Surface analyze.json attribution gap to Builder maintainers.** `prompt_count=1, agent_name=unknown` for autoresearch-spawned sessions blocks per-agent cost attribution (original telemetry gap from NEXT-SESSION.md). This is model-backed diagnosis — needs a traced investigation of `chat_session_id` flow from harness into Builder DB. *Not yet on ROADMAP; was noted in memory as OPEN.*
+5. **Run `baseline.py --fixtures A --n 1` as autonomy-stack sanity check before re-snapshot.** Confirms self-heal + per-iter gate + preflight stack works end-to-end on fixture A (already stable). $1 / ~5min. If it completes clean, that's evidence the substrate tooling is correct and only the seed identity is wrong. *Next concrete action per CURRENT.md.*
+
+

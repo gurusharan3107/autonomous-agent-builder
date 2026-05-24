@@ -203,14 +203,41 @@ def main() -> int:
                     hints.append(f"{ev}/analyze.json+metrics.json+board.json")
                 if result.get("decision_status") != "shipped":
                     hints.append(f"{ev}/builder_stdout_stderr.log+crash.log")
+
+                # When self_heal returned structured escalation, surface the
+                # proposed_questions and confidence so the calling agent can
+                # decide whether to apply a candidate fix, extend the catalog,
+                # or escalate to operator via AskUserQuestion — instead of
+                # forcing a blind abort.
+                escalation = {
+                    "type": "self_heal_escalation",
+                    "fixture": fixture,
+                    "iter": i + 1,
+                    "evidence_dir": str(ev),
+                    "pattern": heal.get("pattern"),
+                    "confidence": heal.get("confidence", "low"),
+                    "diagnosis": heal.get("diagnosis", heal.get("detail", "")),
+                    "evidence": heal.get("evidence", []),
+                    "proposed_questions": heal.get("proposed_questions", []),
+                    "inspect_files": hints,
+                    "remaining_iters_skipped": remaining,
+                }
+                # Machine-readable marker on its own line so the calling agent
+                # can parse it deterministically from baseline stdout/stderr.
+                print("SELF_HEAL_ESCALATION " + json.dumps(escalation),
+                      file=sys.stderr)
                 print(
                     f"[baseline] ABORT — fixture={fixture} iter={i+1}/{args.n} "
                     f"imperfect after {attempt+1} self_heal attempt(s). "
                     f"Saved ~{remaining} more iters. "
                     f"Inspect: {'; '.join(hints)}. "
-                    f"Extend self_heal pattern catalog at "
-                    f".claude/skills/autoresearch/scripts/self_heal.py, "
-                    f"or re-run with --allow-imperfect-iter if flake is acceptable.",
+                    f"Pattern={heal.get('pattern')!r}, "
+                    f"confidence={heal.get('confidence','low')!r}, "
+                    f"{len(heal.get('proposed_questions', []))} proposed_question(s). "
+                    f"Calling agent: parse SELF_HEAL_ESCALATION line above and "
+                    f"surface via AskUserQuestion, OR extend self_heal pattern "
+                    f"catalog at .claude/skills/autoresearch/scripts/self_heal.py, "
+                    f"OR re-run with --allow-imperfect-iter if flake is acceptable.",
                     file=sys.stderr,
                 )
                 aborted = True
