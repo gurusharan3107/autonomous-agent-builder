@@ -562,6 +562,29 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
+## P21 — Builder graceful-shutdown hook flood after wall-clock SIGTERM (budget_exhausted)
+
+- **First seen:** 2026-05-24, fixture A iter 1/5 first full baseline
+- **Wallclock to repro:** Fires whenever an iter exceeds `DEFAULT_ITER_WALL_CLOCK_SECONDS=1800`
+- **Status:** Catalogued + matcher added (2026-05-24). Underlying cause may be P18b DB lock in `dispatch_background_error`.
+
+**Symptom.** Iter aborts via `wall_clock_budget_exceeded`. Builder log ends with 100+ `Error in hook callback hook_N: ... error: Stream closed` or `error: Tool permission stream closed before response received`. Immediately preceded by `INFO: Shutting down` / `INFO: Waiting for background tasks to complete`. No watchdog dump (Builder was actively writing, watchdog never fired). Earlier in the same log: `dispatch_background_error database is locked` for multiple tasks.
+
+**Evidence query.**
+
+1. `STUCK_DETECTED.reason == "wall_clock_budget_exceeded"` (or synthesized by baseline.py).
+2. `INFO:     Shutting down` in `builder_stdout_stderr.log`.
+3. ≥5 `Error in hook callback hook_` + `error: Stream closed` (or `Tool permission stream closed`) in builder log — always come **after** the shutdown line.
+4. Optional P18b precursor: `dispatch_background_error` + `database is locked` earlier in the same log.
+
+**Why it happens.** `baseline.py` sends `SIGTERM` to the Builder server when the 1800s iter budget expires. Uvicorn begins graceful shutdown and awaits in-flight background tasks (Claude Code CLI agent subprocesses). Those subprocesses have pending hook permission requests; the hook server's stdin/stdout pipe closes on shutdown, so every pending `sendRequest` call throws `Error("Stream closed")`. Each `Error in hook callback` is logged but not fatal — it's normal graceful-shutdown behavior. The builder log floods with these errors while uvicorn waits. The iter ran long because tasks failed and restarted (P18b DB lock), or the fixture task is genuinely complex for a 30-minute budget.
+
+**Fix pointer.** Not a Builder source bug. Two contributing factors: (1) **P18b** — `dispatch_background_error` DB lock at `src/autonomous_agent_builder/api/routes/dispatch.py:_run_dispatch_step` line ~197 (`await db.commit()`). The outermost dispatch commit is not retry-wrapped like P18's `persist_realtime_run_update`. Fix: add `OperationalError("database is locked")` retry loop in `_run_dispatch_step`, same exponential-backoff pattern as P18. (2) If P18b fixed and iter still times out, increase `DEFAULT_ITER_WALL_CLOCK_SECONDS` in `scripts/autoresearch/baseline.py` (e.g., to 2700s for fixtures with multi-task sprints).
+
+**Prevention.** The matcher now fires reliably on this pattern (baseline.py writes synthetic STUCK_DETECTED.json, matcher checks for shutdown + hook flood). P18b DB lock retry would eliminate the task-failure restart cascade that inflates iter time.
+
+---
+
 ## P20 — Orchestrator infinite recovery loop / agent livelock (persistent)
 
 - **First seen:** 2026-05-24, A1 sanity baseline after P18+P19 source fixes landed

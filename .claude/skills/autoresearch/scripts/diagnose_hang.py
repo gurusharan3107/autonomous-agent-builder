@@ -979,6 +979,98 @@ def match_p19_tool_not_found_hang(
     )
 
 
+def match_p21_hook_stream_closed(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P21 (2026-05-24): Builder server graceful-shutdown hook flood after
+    wall-clock budget SIGTERM.
+
+    Symptom: baseline.py sends SIGTERM when the 1800s iter budget expires.
+    Uvicorn starts graceful shutdown (`INFO: Shutting down` / `INFO: Waiting
+    for background tasks to complete`). In-flight Claude Code CLI subprocesses
+    still have pending hook permission requests; their control stream closes on
+    shutdown, producing: `Error in hook callback hook_N: ... error: Stream
+    closed` or `error: Tool permission stream closed before response received`.
+    These flood the builder log (100+ occurrences) while uvicorn awaits all
+    background tasks. Iter aborts via `wall_clock_budget_exceeded`. No watchdog
+    dump (watchdog detects silent stall; active-logging Builder doesn't stall).
+
+    Category: budget_exhausted. Not a true hang — Builder was making progress
+    throughout. The iter simply ran longer than the 1800s budget. Check for
+    earlier P18b DB lock errors (`dispatch_background_error database is locked`)
+    in the same log; those cause tasks to fail and restart, adding time.
+
+    Source-fixed 2026-05-24: baseline.py now writes a synthetic STUCK_DETECTED.json
+    to evidence_dir when wall_clock budget fires with no watchdog dump, allowing
+    this matcher to run.
+    """
+    stderr = _load_text(dump, "builder_stdout_stderr.log")
+    if not stderr:
+        evidence_dir = stuck.get("evidence_dir") or stuck.get("workspace")
+        if evidence_dir:
+            ed = pathlib.Path(evidence_dir)
+            log_file = ed / "builder_stdout_stderr.log"
+            if log_file.exists():
+                try:
+                    stderr = log_file.read_text(errors="replace")
+                except OSError:
+                    stderr = ""
+    if not stderr:
+        return None
+
+    has_shutdown = "INFO:     Shutting down" in stderr
+    has_hook_stream = (
+        "Error in hook callback hook_" in stderr
+        and ("error: Stream closed" in stderr
+             or "Tool permission stream closed" in stderr)
+    )
+    if not (has_shutdown and has_hook_stream):
+        return None
+
+    evidence: list[str] = []
+    stream_closed_count = stderr.count("error: Stream closed") + stderr.count(
+        "Tool permission stream closed"
+    )
+    evidence.append(
+        f"'INFO: Shutting down' found — Builder received SIGTERM from baseline.py"
+        " wall-clock budget enforcement"
+    )
+    evidence.append(
+        f"{stream_closed_count}× hook-stream error(s) after shutdown "
+        "('Stream closed' / 'Tool permission stream closed before response received')"
+    )
+    if "dispatch_background_error" in stderr and "database is locked" in stderr:
+        lock_count = stderr.count("database is locked")
+        evidence.append(
+            f"P18b precursor: {lock_count}× 'database is locked' in "
+            "dispatch_background_error — tasks failed early, extending iter time"
+        )
+    confidence = 0.92 if stream_closed_count >= 5 else 0.7
+    return Match(
+        pattern_id="P21",
+        name="Builder graceful-shutdown hook flood after wall-clock SIGTERM (budget_exhausted)",
+        confidence=confidence,
+        evidence=evidence,
+        fix_pointer=(
+            "Iter exceeded 1800s budget → SIGTERM → hook stream closed. "
+            "Not a source bug in Builder. Investigate WHY the iter ran long: "
+            "(1) Check for 'dispatch_background_error database is locked' earlier "
+            "in the log — P18b DB lock in the dispatch phase transition commit "
+            "causes tasks to fail and restart (fix: add retry in "
+            "src/autonomous_agent_builder/api/routes/dispatch.py:_run_dispatch_step "
+            "for OperationalError, same pattern as P18's persist_realtime_run_update fix); "
+            "(2) The task may be genuinely complex for this fixture — consider "
+            "increasing DEFAULT_ITER_WALL_CLOCK_SECONDS in baseline.py if P18b is fixed "
+            "and the iter still times out."
+        ),
+        category="budget_exhausted",
+    )
+
+
 def match_p20_orchestrator_livelock(
     dump: pathlib.Path,
     stuck: dict,
@@ -1104,6 +1196,7 @@ MATCHERS = [
                                        # the transient-retry path fires before
                                        # any persistent fallback misclassifies it
     match_p19_tool_not_found_hang,    # also very specific; check before generic
+    match_p21_hook_stream_closed,      # wall-clock SIGTERM → hook flood (budget_exhausted)
     match_p20_orchestrator_livelock,  # wall-clock-budget livelock signature
     match_p11_p14_respond_409,        # very specific — check next
     match_p10_respond_400,

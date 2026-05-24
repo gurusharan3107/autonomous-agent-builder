@@ -220,10 +220,20 @@ def run_one_fixture(
                     # Watchdog may still have produced a partial dump even
                     # without flagging STUCK — check one last time.
                     dump = _latest_stuck_dump(dump_root, start_ts)
-                    diagnosis = _invoke_diagnose_hang(dump) if dump else {
-                        "verdict": "unknown",
-                        "error": "wall-clock budget exceeded; no watchdog dump",
-                    }
+                    if dump is None:
+                        # No watchdog dump. Write a synthetic STUCK_DETECTED.json
+                        # to evidence_dir so diagnose_hang.py can run its matchers
+                        # against the builder log (P21: hook stream closed on
+                        # graceful shutdown, P18b: dispatch DB lock, etc.).
+                        synthetic = evidence_dir / "STUCK_DETECTED.json"
+                        synthetic.write_text(json.dumps({
+                            "reason": "wall_clock_budget_exceeded",
+                            "elapsed_seconds": int(time.time() - start_ts),
+                            "evidence_dir": str(evidence_dir),
+                            "synthesized": True,
+                        }))
+                        dump = evidence_dir
+                    diagnosis = _invoke_diagnose_hang(dump)
                     return {
                         "_stuck": True,
                         "dump_dir": str(dump) if dump else "",

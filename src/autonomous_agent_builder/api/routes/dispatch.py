@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -46,6 +49,13 @@ from autonomous_agent_builder.services.task_dispatch_policy import (
     task_status_blocks_dispatch,
 )
 from autonomous_agent_builder.services.task_recovery import recover_failed_task
+
+# P18b (2026-05-24): SQLite WAL writer contention can hold the write lock
+# during the outermost dispatch step commit (`await db.commit()` at the end
+# of _run_dispatch_step). P18's fix covers persist_realtime_run_update; this
+# covers the dispatch phase-transition commit. Same exponential-backoff recipe.
+_DISPATCH_DB_LOCK_RETRY_ATTEMPTS = 5
+_DISPATCH_DB_LOCK_RETRY_BASE_SECONDS = 0.5
 
 router = APIRouter(tags=["dispatch"])
 
@@ -154,61 +164,83 @@ async def _run_dispatch_step(task_id: str, chain_state: DispatchChainState) -> s
     session_factory = get_session_factory()
 
     try:
-        async with session_factory() as db:
-            committed = False
-            try:
-                result = await db.execute(
-                    select(Task)
-                    .where(Task.id == task_id)
-                    .options(
-                        selectinload(Task.feature).selectinload(Feature.project),
-                        selectinload(Task.workspace),
-                        selectinload(Task.agent_runs),
-                        selectinload(Task.approval_gates),
+        for attempt in range(_DISPATCH_DB_LOCK_RETRY_ATTEMPTS):
+            async with session_factory() as db:
+                committed = False
+                try:
+                    result = await db.execute(
+                        select(Task)
+                        .where(Task.id == task_id)
+                        .options(
+                            selectinload(Task.feature).selectinload(Feature.project),
+                            selectinload(Task.workspace),
+                            selectinload(Task.agent_runs),
+                            selectinload(Task.approval_gates),
+                        )
                     )
-                )
-                task = result.scalar_one_or_none()
-                if not task:
-                    log.error("dispatch_task_not_found", task_id=task_id)
-                    return
+                    task = result.scalar_one_or_none()
+                    if not task:
+                        log.error("dispatch_task_not_found", task_id=task_id)
+                        return
 
-                cycle_reason = mark_repeated_dispatch_state(task, chain_state)
-                if cycle_reason:
-                    log.error(
-                        "dispatch_followup_cycle",
-                        task_id=task_id,
-                        status=task.status.value,
-                    )
+                    cycle_reason = mark_repeated_dispatch_state(task, chain_state)
+                    if cycle_reason:
+                        log.error(
+                            "dispatch_followup_cycle",
+                            task_id=task_id,
+                            status=task.status.value,
+                        )
+                        await db.commit()
+                        await publish_board_snapshot(db)
+                        return None
+
+                    orchestrator = Orchestrator(settings, db)
+                    await orchestrator.dispatch(task)
+                    followup = await choose_followup_after_dispatch(db, task)
+                    if followup.action == "dispatch" and followup.task_id:
+                        followup_task_id = followup.task_id
+                        log.info(
+                            "dispatch_followup_selected",
+                            task_id=task_id,
+                            followup_task_id=followup_task_id,
+                            reason=followup.reason,
+                        )
                     await db.commit()
+                    committed = True
                     await publish_board_snapshot(db)
-                    return None
 
-                orchestrator = Orchestrator(settings, db)
-                await orchestrator.dispatch(task)
-                followup = await choose_followup_after_dispatch(db, task)
-                if followup.action == "dispatch" and followup.task_id:
-                    followup_task_id = followup.task_id
-                    log.info(
-                        "dispatch_followup_selected",
-                        task_id=task_id,
-                        followup_task_id=followup_task_id,
-                        reason=followup.reason,
+                    gate_result = await db.execute(
+                        select(ApprovalGate.id).where(ApprovalGate.task_id == task_id)
                     )
-                await db.commit()
-                committed = True
-                await publish_board_snapshot(db)
-
-                gate_result = await db.execute(
-                    select(ApprovalGate.id).where(ApprovalGate.task_id == task_id)
-                )
-                for gate_id in gate_result.scalars():
-                    await publish_approval_snapshot(db, gate_id)
-            except Exception as e:
-                await db.rollback()
-                log.error("dispatch_background_error", task_id=task_id, error=str(e))
-                if not committed:
-                    followup_task_id = None
-                    await _block_failed_dispatch(task_id, _dispatch_failure_reason(e))
+                    for gate_id in gate_result.scalars():
+                        await publish_approval_snapshot(db, gate_id)
+                    break  # success
+                except OperationalError as oe:
+                    await db.rollback()
+                    msg = str(oe).lower()
+                    if "database is locked" in msg and attempt + 1 < _DISPATCH_DB_LOCK_RETRY_ATTEMPTS and not committed:
+                        backoff = _DISPATCH_DB_LOCK_RETRY_BASE_SECONDS * (2 ** attempt)
+                        log.warning(
+                            "dispatch_db_lock_retry",
+                            task_id=task_id,
+                            attempt=attempt + 1,
+                            max_attempts=_DISPATCH_DB_LOCK_RETRY_ATTEMPTS,
+                            backoff_seconds=backoff,
+                        )
+                        await asyncio.sleep(backoff)
+                        continue
+                    log.error("dispatch_background_error", task_id=task_id, error=str(oe))
+                    if not committed:
+                        followup_task_id = None
+                        await _block_failed_dispatch(task_id, _dispatch_failure_reason(oe))
+                    break
+                except Exception as e:
+                    await db.rollback()
+                    log.error("dispatch_background_error", task_id=task_id, error=str(e))
+                    if not committed:
+                        followup_task_id = None
+                        await _block_failed_dispatch(task_id, _dispatch_failure_reason(e))
+                    break
     finally:
         release_dispatch(task_id)
     return followup_task_id
