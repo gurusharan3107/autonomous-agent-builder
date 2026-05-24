@@ -121,6 +121,12 @@ Full library map (all IDs, surface → library routing, key queries):
   `workflow quality-gate cli-for-agents`,
   `builder quality-gate builder-cli --json`, and `builder map`.
   Keep CLI agent-friendly and page-aligned.
+- Writing external code (harness, scripts, tests) that calls `builder` CLI:
+  Run the command live once to see real output, verify field names, and add
+  shape assertions to `.claude/skills/autoresearch/scripts/test_harness_contracts.py`
+  before writing extraction code. Never trust CLI output shape from memory or
+  training data — drift across builder versions caused the entire P1–P15
+  failure class (8 of 18 patches burned before a contract test caught it).
 - Codex subagent changes:
   `builder quality-gate codex-subagents --json` and
   `python3 scripts/check_codex_subagents.py --repo-root .`.
@@ -189,6 +195,11 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
   cost and no remote option fits.
 - Do not add hooks or automations for unstable workflows. First prove the manual
   lane, then automate the narrow repeated edge.
+- Subprocess calls in harness, CI, and scripts: use `capture_output=True` and
+  write combined stdout+stderr to a named evidence file (e.g.
+  `evidence_dir/feature_check.log`). Never rely on `-q` flags or inherited fds
+  on external tools called from non-interactive contexts — silent failures
+  hide the root cause across multiple wasted iterations.
 
 ## Memory And Closeout
 
