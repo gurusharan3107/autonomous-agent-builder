@@ -146,11 +146,32 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
 
     # Repoint projects.repo_url to the ephemeral workspace so sprint merge
     # operates here (and never on the user's upstream).
+    #
+    # P18 (2026-05-24): also wipe stale Builder state from prior sessions
+    # that the seed snapshot carries forward. Before this, the seed DB still
+    # held features/tasks/sprints/chat_sessions from whenever the seed was
+    # captured (e.g., a "GitHub authentication UI" task leaked into every B
+    # fixture iter, blocking the agent and producing decision_status=incomplete
+    # even when pytest passed and feature_correct=True). Result: gate_pass_rate
+    # _full=false on every iter, no matter how clean the rest of the substrate.
+    # Wiping leaves only the projects row (repo_url-repointed above) so each
+    # iter starts from an empty backlog — same product code, fresh execution
+    # state. Order respects child→parent deletion to avoid orphan rows even
+    # if Builder later enables FK enforcement.
     db_path = workspace / ".agent-builder" / "agent_builder.db"
     if db_path.exists():
         try:
             with sqlite3.connect(str(db_path)) as con:
                 con.execute("UPDATE projects SET repo_url=?", (str(workspace),))
+                # Wipe stale execution state; preserve projects + zero-row
+                # config tables (approvals, quality_gates, etc.).
+                for table in (
+                    "agent_run_events", "agent_runs",
+                    "chat_events", "chat_messages", "chat_sessions",
+                    "gate_results", "design_documents",
+                    "tasks", "sprints", "workspaces", "features",
+                ):
+                    con.execute(f"DELETE FROM {table}")
                 con.commit()
         except sqlite3.Error:
             # If the DB is locked / schema differs, surface via Builder logs.
