@@ -749,8 +749,8 @@ def match_p16_high_cv(
             "non-billed factors. With the fixture held constant, the cost "
             "dimension alone (noncached_plus_output_tokens) is the right "
             "composite. See scripts/autoresearch/run.py + 6 doc sites "
-            "(OPTIMIZE.md, METRICS.md, README.md, iterations.html, "
-            "baseline.py docstring, run.py)."
+            "(OPTIMIZE.md, METRICS.md, README.md, autoresearch-explainer.html "
+            "methodology section, baseline.py docstring, run.py)."
         ),
     )
 
@@ -903,10 +903,87 @@ def match_p18_db_lock_transient(
     )
 
 
+def match_p19_tool_not_found_hang(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P19 (2026-05-24): Builder hangs after `tool_not_found_in_registry`
+    warnings for tools listed in an agent's allowed_tools but missing from
+    `_SDK_BUILTINS` / custom_tools in `agents/tool_registry.py`.
+
+    Symptom: agent's prompt template instructs the model to call a tool (e.g.,
+    `AskUserQuestion`, `mcp__builder__task_recover`, `mcp__builder__workspace_scaffold`)
+    but the registry silently dropped that tool at build time, logging
+    `tool_not_found_in_registry`. The model either emits text instead of
+    tool_use (and the lifecycle waits for a tool result that never comes), OR
+    the next chat→chat transition triggers a fresh registry build that drops
+    the same tool again, and the new agent never makes progress. Builder polls
+    `/api/dashboard/board` indefinitely.
+
+    Confidence signature:
+      - `tool_not_found_in_registry` warning(s) in builder_stdout_stderr.log
+      - Followed by silence (no new agent_phase_start / tool_use events)
+      - WAL mtime stale ≥180s (watchdog fired)
+
+    Category: persistent. Auto-retry won't help — the same agent definition
+    + missing schemas will re-trigger the warning. Operator (or Fix lane)
+    must add the missing schemas to `_SDK_BUILTINS` OR remove the tools from
+    the agent's allowed_tools.
+    """
+    stderr = _load_text(dump, "builder_stdout_stderr.log")
+    if not stderr:
+        # Watchdog dumps may not include the raw stdout; fall back to errors
+        errs = _load_json(dump, "builder_logs_error.json")
+        if isinstance(errs, (dict, list)):
+            stderr = json.dumps(errs)
+    if not stderr:
+        return None
+    if "tool_not_found_in_registry" not in stderr:
+        return None
+    # Extract which tools were dropped (regex on the structured log line)
+    missing_tools: list[str] = []
+    for m in re.finditer(r"tool_not_found_in_registry\s+tool=(\S+)", stderr):
+        t = m.group(1)
+        if t not in missing_tools:
+            missing_tools.append(t)
+    if not missing_tools:
+        return None
+    evidence: list[str] = [
+        f"{len(missing_tools)} tool(s) dropped at registry build: {missing_tools[:6]}",
+    ]
+    # Confidence boost when the hung agent had stop_reason=tool_use just before
+    # (lifecycle is waiting for a tool result that won't come)
+    if "stop_reason=tool_use" in stderr:
+        evidence.append("Last agent phase ended with stop_reason=tool_use "
+                        "(lifecycle expecting tool result that will never arrive)")
+    if "do_epoll_wait" in threads or "futex_wait" in threads:
+        evidence.append("Process threads idle on epoll/futex (waiting silently)")
+    confidence = 0.9 if "stop_reason=tool_use" in stderr else 0.7
+    return Match(
+        pattern_id="P19",
+        name="Agent prompt references tools missing from registry (persistent)",
+        confidence=confidence,
+        evidence=evidence,
+        fix_pointer=(
+            "src/autonomous_agent_builder/agents/tool_registry.py:_SDK_BUILTINS — "
+            f"add ToolSchema entries for the dropped tools: {missing_tools}. "
+            "Cross-check src/autonomous_agent_builder/agents/definitions.py to "
+            "confirm the agent intentionally needs these tools (don't paper over "
+            "by removing the prompt instruction — the agent's product behavior "
+            "depends on them). After adding schemas, re-run baseline."
+        ),
+        category="persistent",
+    )
+
+
 MATCHERS = [
     match_p18_db_lock_transient,      # very specific signature; check FIRST so
                                        # the transient-retry path fires before
                                        # any persistent fallback misclassifies it
+    match_p19_tool_not_found_hang,    # also very specific; check before generic
     match_p11_p14_respond_409,        # very specific — check next
     match_p10_respond_400,
     match_p9_sprint_merge_untracked_venv,

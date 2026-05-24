@@ -562,6 +562,35 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
+## P19 — Builder hangs after `tool_not_found_in_registry` (persistent contract drift)
+
+- **First seen:** 2026-05-24, A1 sanity baseline after P18 source fix
+- **Status:** Catalogued + source-fixed; 3 missing schemas (`AskUserQuestion`, `mcp__builder__task_recover`, `mcp__builder__workspace_scaffold`) added to `_SDK_BUILTINS`
+- **Category:** `persistent` — auto-retry won't help; needs schema fix or prompt-list cleanup
+
+**Symptom.** Builder's chat agent's allowed_tools list references tools that don't exist in `_SDK_BUILTINS` or `custom_tools`. At registry build time, `tool_registry.py` logs `tool_not_found_in_registry` warning and **drops the tool silently**, building with fewer tools than declared. But the agent's prompt template *instructs the model* to call those exact tools by name (e.g., "use `AskUserQuestion` for bounded decisions"). The model either emits text instead of tool_use (lifecycle waits for a tool result that never arrives) OR a chat→chat transition triggers a fresh registry build that drops the same tools again, and Builder polls `/api/dashboard/board` forever.
+
+**Evidence.**
+1. `grep "tool_not_found_in_registry" <evidence>/builder_stdout_stderr.log` returns one or more lines.
+2. Last `agent_phase_complete` had `stop_reason=tool_use` (model wanted to invoke a tool).
+3. `tool_registry_built tool_count=N` shows a count less than the agent's declared `allowed_tools` length.
+4. WAL mtime stale ≥180s after the warnings (watchdog fires).
+
+**Why.** Contract drift. Three sources need to agree:
+- `agents/definitions.py` agent `allowed_tools` list
+- `agents/tool_registry.py` `_SDK_BUILTINS` dict
+- The agent's prompt template (which names tools the model should call)
+
+When any one drifts, the others silently degrade. `tool_registry.py:79` logs but doesn't fail-build, and there's no test that asserts every declared `allowed_tool` has a matching schema.
+
+**Fix (SOURCE — persistent prevention).** Add the missing schemas to `_SDK_BUILTINS` so the registry can include them. Implementation locations for the tool functions themselves typically exist already (`routes/agent.py`, `routes/tasks.py`); the schema is the contract that must match.
+
+**Fix (HARNESS — autonomy classification).** `diagnose_hang.py:match_p19_tool_not_found_hang` extracts the dropped tool names from the warning and surfaces them in the `fix_pointer`. Category `persistent` means baseline.py emits `SELF_HEAL_ESCALATION` rather than retrying (no point retrying — same registry build, same drop).
+
+**Prevention.** Add a unit test that walks every agent in `definitions.py`, builds its registry, and asserts `len(registry.tools) == len(agent.allowed_tools)` — i.e., zero drops. That test would catch contract drift before any baseline iter runs.
+
+---
+
 ## P18 — Builder hangs on `database is locked` during agent_run lifecycle flush (transient)
 
 - **First seen:** 2026-05-24, A1 sanity baseline after substrate-identity contract landed

@@ -238,6 +238,29 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
             ToolParam("description", "string", "Short description", required=True),
         ),
     ),
+    # AskUserQuestion is an Anthropic SDK builtin used by chat agents to surface
+    # bounded structured questions to the operator (multi-option cards). The SDK
+    # provides the runtime implementation; declaring its schema here lets the
+    # tool_registry accept it instead of dropping it with
+    # `tool_not_found_in_registry`. Without this entry, agents whose
+    # allowed_tools list includes AskUserQuestion silently lose that capability,
+    # but their prompt templates still instruct the model to call it — which
+    # caused the lifecycle hang catalogued as P19 in
+    # `.claude/skills/autoresearch/KNOWN_PATTERNS.md` (autoresearch INSIGHTS
+    # Run #10 / 2026-05-24 A1 sanity baseline).
+    "AskUserQuestion": ToolSchema(
+        name="AskUserQuestion",
+        description=(
+            "Ask the operator a bounded multi-option question (1-4 questions, "
+            "2-4 options each). Use for structured decisions that need operator "
+            "judgment rather than free-text Q&A."
+        ),
+        params=(
+            ToolParam("questions", "array", "Array of question objects with "
+                                              "question/header/options/multiSelect",
+                       required=True),
+        ),
+    ),
     # ── CLI Tools (builder CLI bridge) ──
     "mcp__builder__board": ToolSchema(
         name="mcp__builder__board",
@@ -270,6 +293,36 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
         name="mcp__builder__task_dispatch",
         description="Dispatch a task through the SDLC pipeline",
         params=(ToolParam("task_id", "string", "Task ID", required=True),),
+    ),
+    # P19 (autoresearch INSIGHTS Run #10 / 2026-05-24): task_recover and
+    # workspace_scaffold are referenced by agent prompt templates + included in
+    # chat agent's allowed_tools (definitions.py:172-174) but were missing from
+    # this registry. Result: `tool_not_found_in_registry` warning at registry
+    # build, tool silently dropped, prompt-instructed model emits text instead
+    # of tool_use → chat→chat lifecycle hang. Schemas added to close the
+    # contract. Server-side implementations live in routes/agent.py + routes/tasks.py.
+    "mcp__builder__task_recover": ToolSchema(
+        name="mcp__builder__task_recover",
+        description=(
+            "Recover a blocked, failed, or capability-limited task by clearing "
+            "its blocked state so the orchestrator can re-dispatch it. Pair with "
+            "mcp__builder__task_dispatch for natural continuation flows."
+        ),
+        params=(ToolParam("task_id", "string", "Task ID to recover", required=True),),
+    ),
+    "mcp__builder__workspace_scaffold": ToolSchema(
+        name="mcp__builder__workspace_scaffold",
+        description=(
+            "Bootstrap a language-aware workspace skeleton for a project. Use "
+            "when the chat agent needs to route workspace setup (e.g., create "
+            "pyproject.toml, package.json, source directories) through Builder "
+            "rather than shelling out."
+        ),
+        params=(
+            ToolParam("project_id", "string", "Project ID", required=True),
+            ToolParam("language", "string",
+                       "Primary language (python, node, etc.)", required=False),
+        ),
     ),
     "mcp__builder__metrics": ToolSchema(
         name="mcp__builder__metrics",
