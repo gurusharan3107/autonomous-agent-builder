@@ -28,11 +28,11 @@ DIAGNOSE_HANG = SKILL_SCRIPTS / "diagnose_hang.py"
 DEFAULT_SEED_DIR = pathlib.Path("/home/gurusharangupta/.seed/devpulse")
 
 # Per-iter wall-clock budget. The hang_watchdog detects silent hangs by WAL
-# mtime at 180s; this wall-clock budget is a fallback safety net for cases
-# where the watchdog itself fails or where Builder is "active" (writing to WAL)
-# but not making progress (e.g., infinite retry loop). 30 min is generous for
-# fixture A's dashboard-MVP rebuild but well below the 47-min worst case from
-# 2026-05-23.
+# mtime at 600s (P22: Sonnet first/second-turn latency can reach 120-180s,
+# so 180s was too tight); this wall-clock budget is a fallback safety net for
+# cases where the watchdog itself fails or where Builder is "active" (writing
+# to WAL) but not making progress (e.g., infinite retry loop). 30 min is
+# generous for fixture A's dashboard-MVP rebuild.
 DEFAULT_ITER_WALL_CLOCK_SECONDS = 1800
 
 # Stuck-dump polling interval — how often baseline.py checks the watchdog's
@@ -61,7 +61,7 @@ def _spawn_hang_watchdog(dump_root: pathlib.Path,
     dump_root.mkdir(parents=True, exist_ok=True)
     cmd = [
         sys.executable, str(HANG_WATCHDOG),
-        "--idle-seconds", "180",
+        "--idle-seconds", "600",  # P22: Sonnet first/second-turn latency can reach 120-180s
         "--grace-seconds", "60",
         "--dump-root", str(dump_root),
     ]

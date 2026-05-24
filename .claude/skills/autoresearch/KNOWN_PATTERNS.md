@@ -562,6 +562,30 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
+## P22 — code-gen Sonnet API latency exceeds watchdog idle threshold (api_latency)
+
+- **First seen:** 2026-05-24, fixture A iter 1/5, second full baseline attempt
+- **Wallclock to repro:** Fires whenever Sonnet's first or inter-turn response time exceeds `--idle-seconds` (was 180s; fixed to 600s)
+- **Status:** Catalogued + matcher added + harness fix applied (2026-05-24)
+
+**Symptom.** Watchdog fires at ~190s (`idle_seconds ≈ 180–300`). Builder log has `agent_phase_start agent=code-gen` (Sonnet model, `effort=high`) but no `agent_phase_complete agent=code-gen`. Optionally: some `mcp__workspace__list_directory` / `mcp__workspace__run_command` calls appear (code-gen made a partial turn) and then stop — the agent was mid-turn waiting for Sonnet's second response. `STUCK_DETECTED.json.idle_seconds ≈ 190`. Not a Builder bug; the watchdog threshold was shorter than Sonnet's observed API latency.
+
+**Evidence query.**
+
+1. `STUCK_DETECTED.json.idle_seconds` in range 120–360.
+2. `STUCK_DETECTED.json.reason != "wall_clock_budget_exceeded"` (real watchdog dump, not synthetic).
+3. `agent=code-gen` in `builder_stdout_stderr.log`.
+4. No `agent_phase_complete agent=code-gen` in builder log.
+5. Optional: `mcp__workspace__list_directory` or `mcp__workspace__run_command` in log (code-gen made ≥1 tool call before second LLM response timed out).
+
+**Why it happens.** `baseline.py` spawns `hang_watchdog.py --idle-seconds 180`. Sonnet's first-turn response to a large implementation prompt (12k+ token context) takes ~120s; the second-turn response after 5 workspace reads takes >180s. The watchdog sees 190s of no WAL writes and fires, triggering SIGTERM to the builder. The iter aborts as `watchdog_dump_detected`. The builder and code-gen agent were healthy; only the harness threshold was wrong.
+
+**Fix pointer.** Harness calibration only: `baseline.py:_spawn_hang_watchdog` — increase `--idle-seconds` from `180` to `600`. This gives Sonnet up to 10 min to respond while still catching true infinite hangs (DB lock loops, port deadlocks, etc.) well within the 1500s per-iter timeout. Landed 2026-05-24.
+
+**Prevention.** If P22 fires again after the 600s fix, check for concurrent builder instances on ports 9876–9877 consuming API quota or bandwidth. Consider reducing the code-gen agent's initial context (e.g., fewer KB articles in the system prompt) to reduce Sonnet's processing time.
+
+---
+
 ## P21 — Builder graceful-shutdown hook flood after wall-clock SIGTERM (budget_exhausted)
 
 - **First seen:** 2026-05-24, fixture A iter 1/5 first full baseline

@@ -979,6 +979,125 @@ def match_p19_tool_not_found_hang(
     )
 
 
+def match_p22_codegen_sonnet_api_latency(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P22 (2026-05-24): code-gen Sonnet agent's LLM API response time exceeds
+    the hang_watchdog idle threshold — false-positive watchdog fire.
+
+    Symptom: baseline.py's hang_watchdog fires after 180s of WAL idle while
+    the Sonnet model is processing a large implementation prompt. Timeline:
+      12:41:37  code-gen agent_phase_start (Sonnet model, effort=high)
+      12:43:39  first code-gen tool call (mcp__workspace__list_directory)
+                → 122s LLM API wait
+      12:44:36  last code-gen tool call; Sonnet processing tool results
+      12:48:16  watchdog fires (190s after last WAL write at 12:45:05)
+
+    Idle period close to threshold (150–360s). No agent_phase_complete for
+    code-gen. The agent was making progress; it simply waited for Sonnet
+    longer than the watchdog allows.
+
+    Root cause: --idle-seconds 180 is shorter than Sonnet's observed first-
+    response latency (~120s) and inter-turn latency (~180s+) on large
+    implementation prompts.
+
+    Fix: increase --idle-seconds in baseline.py:_spawn_hang_watchdog from
+    180 to 600. This accommodates Sonnet's observed latency variance while
+    still catching genuine hangs (infinite DB-lock loops, etc.) well within
+    the 1500s per-iter timeout.
+
+    Category: api_latency. Not a source bug in Builder — baseline.py
+    harness calibration fix only.
+    """
+    idle_seconds = float(stuck.get("idle_seconds", 0))
+    # Only fire if idle is in the "close to threshold" band.
+    # True infinite hangs (DB lock loops, etc.) would persist until the
+    # 1500s iter timeout fires — we'd see idle_seconds ≫ 360.
+    if not (120 <= idle_seconds <= 360):
+        return None
+
+    # P22 fires only for real watchdog dumps, not synthetic wall-clock ones.
+    if stuck.get("reason") == "wall_clock_budget_exceeded" or stuck.get("synthesized"):
+        return None
+
+    # Need builder log to confirm code-gen was active.
+    # The dump is at evidence_dir/stuck_dumps/<UTC>-pid<PID>/; the log is in
+    # evidence_dir/ (dump.parent.parent). Also check stuck.evidence_dir.
+    stderr = _load_text(dump, "builder_stdout_stderr.log")
+    if not stderr:
+        candidates = [
+            dump.parent.parent / "builder_stdout_stderr.log",  # evidence_dir/
+        ]
+        ed_str = stuck.get("evidence_dir")
+        if ed_str:
+            candidates.append(pathlib.Path(ed_str) / "builder_stdout_stderr.log")
+        for log_file in candidates:
+            if log_file.exists():
+                try:
+                    stderr = log_file.read_text(errors="replace")
+                    break
+                except OSError:
+                    pass
+    if not stderr:
+        return None
+
+    if "agent=code-gen" not in stderr:
+        return None
+    # Must not have completed — if it finished, the idle was something else.
+    # Check same-line (log lines are single-line structured JSON).
+    has_codegen_complete = any(
+        "agent_phase_complete" in line and "agent=code-gen" in line
+        for line in stderr.splitlines()
+    )
+    if has_codegen_complete:
+        return None
+
+    evidence: list[str] = []
+    evidence.append(
+        f"idle_seconds={idle_seconds:.1f} — within 120–360s band "
+        "(close to 180s watchdog threshold; consistent with Sonnet API latency)"
+    )
+    evidence.append("'agent=code-gen' found — Sonnet implementation agent was active")
+    evidence.append("no 'agent_phase_complete agent=code-gen' — LLM response still in-flight when watchdog fired")
+
+    codegen_calls = (
+        stderr.count("mcp__workspace__list_directory")
+        + stderr.count("mcp__workspace__run_command")
+        + stderr.count("mcp__workspace__run_tests")
+        + stderr.count("mcp__workspace__run_linter")
+    )
+    if codegen_calls > 0:
+        evidence.append(
+            f"{codegen_calls}× code-gen workspace tool call(s) — agent made progress "
+            "before watchdog fired (second Sonnet response timed out)"
+        )
+        confidence = 0.88
+    else:
+        evidence.append(
+            "no code-gen workspace tool calls — Sonnet first-response latency >180s"
+        )
+        confidence = 0.80
+
+    return Match(
+        pattern_id="P22",
+        name="code-gen Sonnet API latency exceeds watchdog idle threshold (api_latency)",
+        confidence=confidence,
+        evidence=evidence,
+        fix_pointer=(
+            "False-positive watchdog fire: Sonnet LLM response time exceeded 180s idle "
+            "threshold. Fix: increase --idle-seconds from 180 to 600 in "
+            "baseline.py:_spawn_hang_watchdog. "
+            "Verify no concurrent Sonnet sessions on other ports (9876, 9877) are "
+            "consuming API quota/bandwidth and inflating latency."
+        ),
+        category="api_latency",
+    )
+
+
 def match_p21_hook_stream_closed(
     dump: pathlib.Path,
     stuck: dict,
@@ -1020,6 +1139,12 @@ def match_p21_hook_stream_closed(
                 except OSError:
                     stderr = ""
     if not stderr:
+        return None
+
+    # P21 fires only for the wall-clock-budget path (synthetic STUCK_DETECTED.json
+    # written by baseline.py). P22 covers watchdog-triggered SIGTERM where the
+    # code-gen Sonnet response was just slow.
+    if stuck.get("reason") != "wall_clock_budget_exceeded" and not stuck.get("synthesized"):
         return None
 
     has_shutdown = "INFO:     Shutting down" in stderr
@@ -1196,8 +1321,9 @@ MATCHERS = [
                                        # the transient-retry path fires before
                                        # any persistent fallback misclassifies it
     match_p19_tool_not_found_hang,    # also very specific; check before generic
-    match_p21_hook_stream_closed,      # wall-clock SIGTERM → hook flood (budget_exhausted)
-    match_p20_orchestrator_livelock,  # wall-clock-budget livelock signature
+    match_p22_codegen_sonnet_api_latency,  # watchdog false-positive: Sonnet latency > 180s idle
+    match_p21_hook_stream_closed,          # wall-clock SIGTERM → hook flood (budget_exhausted)
+    match_p20_orchestrator_livelock,       # wall-clock-budget livelock signature
     match_p11_p14_respond_409,        # very specific — check next
     match_p10_respond_400,
     match_p9_sprint_merge_untracked_venv,
