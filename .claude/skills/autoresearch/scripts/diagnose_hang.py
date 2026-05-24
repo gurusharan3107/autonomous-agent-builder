@@ -1016,13 +1016,11 @@ def match_p20_orchestrator_livelock(
       - hook_blocked_bash warnings present (chat agent kept trying blocked ops)
       - Possibly `Control request timeout` or `agent_unexpected_error`
 
-    Category: persistent. Auto-retry won't help — the orchestrator's recovery
-    policy will livelock again. Needs source fix in
-    src/autonomous_agent_builder/orchestrator/orchestrator.py: bound the
-    follow-up chat dispatch count per task (e.g., max 3 recovery attempts);
-    transition the task to a `BLOCKED` state requiring operator decision
-    after the cap. Mirrors P18 source-fix pattern: Builder should fail-fast
-    on unrecoverable conditions, not infinite-retry.
+    Category: persistent. Source-fixed 2026-05-24: _phase_quality_gates now
+    caps at 3*max_retries total gate-retry attempts; exceeding the cap
+    transitions the task to BLOCKED (quality_gate_cap_exceeded) rather than
+    re-dispatching indefinitely. If still firing, investigate prompt/tool
+    contract drift in the remediator (P19 pattern).
     """
     stderr = _load_text(dump, "builder_stdout_stderr.log")
     if not stderr:
@@ -1086,17 +1084,16 @@ def match_p20_orchestrator_livelock(
         confidence=confidence,
         evidence=evidence,
         fix_pointer=(
-            "src/autonomous_agent_builder/orchestrator/orchestrator.py — "
-            "bound follow-up chat dispatch per task. Recommended: track "
-            "recovery_attempts on Task model; cap at 3; transition to BLOCKED "
-            "state with operator-required decision after cap. Mirrors P18's "
-            "fail-fast principle (Builder should escalate, not infinite-retry). "
-            "Also investigate: WHY did the original agent fail in a way that "
-            "needed recovery? `Control request timeout: initialize` suggests "
-            "Claude SDK initialization timing; `hook_blocked_bash` suggests "
-            "chat agent's prompt instructs operations its tool set can't "
-            "perform (similar root cause to P19 — prompt/registry contract drift "
-            "but with hooks instead of tools)."
+            "SOURCE-FIXED (2026-05-24): _phase_quality_gates in "
+            "src/autonomous_agent_builder/orchestrator/orchestrator.py now checks "
+            "retry_count >= 3*max_retries before invoking the gate runner; "
+            "transitions to BLOCKED with blocked_reason='quality_gate_cap_exceeded:...' "
+            "when cap is hit. task_recovery.py recovers this state to IMPLEMENTATION "
+            "with retry_count reset to 0. If P20 still fires after deploying this fix, "
+            "investigate: WHY did remediation keep claiming success without converging? "
+            "`hook_blocked_bash` suggests chat agent prompt/tool contract drift (P19 "
+            "pattern); `Control request timeout: initialize` suggests Claude SDK init "
+            "timing."
         ),
         category="persistent",
     )

@@ -64,6 +64,8 @@ def task_is_recoverable(task: Task) -> bool:
             return True
         if blocked_reason.startswith("Dispatch follow-up cycle detected"):
             return True
+        if blocked_reason.startswith("quality_gate_cap_exceeded:"):
+            return True
     return False
 
 
@@ -210,6 +212,11 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
         # infrastructure error" → 409 Recover dead end (FINDING-15/-16).
         return task_status, TaskStatus.IMPLEMENTATION
 
+    if task_status == TaskStatus.BLOCKED.value and blocked_reason.startswith(
+        "quality_gate_cap_exceeded:"
+    ):
+        return task_status, TaskStatus.IMPLEMENTATION
+
     if task_status == TaskStatus.DONE.value and await _latest_verifier_reported_failed_check(
         task, db
     ):
@@ -342,6 +349,8 @@ async def recover_failed_task(task: Task, db: AsyncSession) -> dict[str, str]:
         task.capability_limit_at = None
         task.capability_limit_reason = None
         task.dead_letter_queued_at = None
+        if blocked_reason.startswith("quality_gate_cap_exceeded:"):
+            task.retry_count = 0
         if isinstance(task.depends_on, dict) and "operator_decision" in task.depends_on:
             depends_on = dict(task.depends_on)
             depends_on.pop("operator_decision", None)

@@ -1,134 +1,74 @@
 {
-  "generated_at": "2026-05-23T17:52:12Z",
+  "generated_at": "2026-05-24T09:32:20Z",
   "baseline": {
-    "measured_at": "2026-05-23",
-    "mean_composite": 216497,
-    "stdev_composite": 31830.932942658153,
+    "measured_at": "2026-05-24",
+    "mean": 216497,
+    "stdev": 31830.932942658153,
     "noise_floor_2sigma": 152835.1341146837,
-    "fixtures_stable": 1,
-    "fixtures_total": 5,
-    "fixtures": [
-      {
-        "id": "A",
-        "status": "stable",
-        "stable_runs": 3,
-        "total_runs": 5,
-        "mean": 216497,
-        "stdev": 31830.932942658153,
-        "noise_floor_2sigma": 152835.1341146837,
-        "cv_pct": 14.7
-      },
-      {
-        "id": "B",
-        "status": "not_measured",
-        "stable_runs": 0,
-        "total_runs": 0,
-        "mean": null,
-        "stdev": null,
-        "noise_floor_2sigma": null,
-        "cv_pct": null
-      },
-      {
-        "id": "C",
-        "status": "not_measured",
-        "stable_runs": 0,
-        "total_runs": 0,
-        "mean": null,
-        "stdev": null,
-        "noise_floor_2sigma": null,
-        "cv_pct": null
-      },
-      {
-        "id": "D",
-        "status": "not_measured",
-        "stable_runs": 0,
-        "total_runs": 0,
-        "mean": null,
-        "stdev": null,
-        "noise_floor_2sigma": null,
-        "cv_pct": null
-      },
-      {
-        "id": "E",
-        "status": "not_measured",
-        "stable_runs": 0,
-        "total_runs": 0,
-        "mean": null,
-        "stdev": null,
-        "noise_floor_2sigma": null,
-        "cv_pct": null
-      }
-    ],
-    "runs": [
+    "stable_fixtures": 1,
+    "total_fixtures": 5,
+    "fixture_a_runs_clean": 3,
+    "fixture_a_runs_total": 6,
+    "fixture_a_runs": [
       {
         "run_id": "ec68b9da-6f02-45e7-851a-ceaf71f0171b",
         "fixture": "A",
         "timestamp": "2026-05-23T12:54:27Z",
         "gates_passed": "6/6",
-        "feature_correct": true,
         "status": "shipped",
         "wallclock_s": 1422,
-        "operator_turns": 25,
-        "composite": 229431,
         "noncached_plus_output_tokens": 229431,
-        "cache_ratio": 1572.4646,
-        "chunk_pressure_risk": false
+        "cache_ratio": 1572.4646
       },
       {
         "run_id": "7aea8d3e-04ae-43d9-8943-cdfd99db8a3b",
         "fixture": "A",
         "timestamp": "2026-05-23T13:35:32Z",
         "gates_passed": "4/6",
-        "feature_correct": true,
         "status": "incomplete",
         "wallclock_s": 2449,
-        "operator_turns": 25,
-        "composite": 222603,
         "noncached_plus_output_tokens": 222603,
-        "cache_ratio": 3238.6385,
-        "chunk_pressure_risk": false
+        "cache_ratio": 3238.6385
       },
       {
         "run_id": "ba140d79-f288-4e38-b470-28e5c8195c56",
         "fixture": "A",
         "timestamp": "2026-05-23T13:42:11Z",
         "gates_passed": "6/6",
-        "feature_correct": true,
         "status": "shipped",
         "wallclock_s": 377,
-        "operator_turns": 9,
-        "composite": 180235,
         "noncached_plus_output_tokens": 180235,
-        "cache_ratio": 3564.3966,
-        "chunk_pressure_risk": false
+        "cache_ratio": 3564.3966
       },
       {
         "run_id": "a3e41fb3-58d1-4a12-a70d-33cf9f1ec583",
         "fixture": "A",
         "timestamp": "2026-05-23T14:06:29Z",
         "gates_passed": "6/6",
-        "feature_correct": true,
         "status": "shipped",
         "wallclock_s": 1433,
-        "operator_turns": 25,
-        "composite": 239825,
         "noncached_plus_output_tokens": 239825,
-        "cache_ratio": 3012.6993,
-        "chunk_pressure_risk": false
+        "cache_ratio": 3012.6993
       },
       {
         "run_id": "7f24b3bb-7219-43c1-9fa8-ab8d1829f565",
         "fixture": "A",
         "timestamp": "2026-05-23T14:15:14Z",
         "gates_passed": "4/6",
-        "feature_correct": true,
         "status": "crash",
         "wallclock_s": 504,
-        "operator_turns": 14,
-        "composite": 195025,
         "noncached_plus_output_tokens": 195025,
-        "cache_ratio": 2034.1084,
-        "chunk_pressure_risk": false
+        "cache_ratio": 2034.1084
+      },
+      {
+        "run_id": "41ef5a63-2cf5-41b5-85a8-be91253c8333",
+        "fixture": "A",
+        "timestamp": "2026-05-24T08:34:24Z",
+        "gates_passed": "2/6",
+        "status": "crash",
+        "wallclock_s": 120,
+        "noncached_plus_output_tokens": 0,
+        "cache_ratio": null
       }
     ]
   },

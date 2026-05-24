@@ -27,3 +27,4 @@ b02db562-9e94-41e6-a45b-f6091da5c8c7	1	agent	gate-remediator		0	37	455665	0	4342
 b02db562-9e94-41e6-a45b-f6091da5c8c7	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		6626	0.0	deterministic			{}
 b02db562-9e94-41e6-a45b-f6091da5c8c7	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
 b02db562-9e94-41e6-a45b-f6091da5c8c7	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		30281	0.0	deterministic			{}
+2d6a24b5-a9c0-4494-8124-82321382b5be	0	agent	code-gen		0	0	0	0	0	0	0.0	0	[]		0	0.0	claude			{}

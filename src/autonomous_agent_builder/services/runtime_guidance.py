@@ -549,11 +549,18 @@ def runtime_guidance_contract_status(project_root: Path) -> dict[str, Any]:
             "builder_generated": False,
             "missing_sections": list(_REQUIRED_DAY0_SECTIONS),
             "deterministic_command_slots": False,
+            "commands_filled": False,
+            "unknown_command_count": len(list(_command_labels())),
         }
     text = path.read_text(encoding="utf-8", errors="ignore")
     builder_generated = _builder_generated_marker(kind) in text
     missing_sections = [section for section in _REQUIRED_DAY0_SECTIONS if section not in text]
     command_slots = all(f"- {label}:" in text for label in _command_labels())
+    unknown_command_count = sum(
+        1 for label in _command_labels()
+        if re.search(rf"- {re.escape(label)}:.*`unknown`", text)
+    )
+    commands_filled = command_slots and unknown_command_count == 0
     if not builder_generated:
         return {
             "ok": True,
@@ -565,12 +572,13 @@ def runtime_guidance_contract_status(project_root: Path) -> dict[str, Any]:
             "builder_generated": False,
             "missing_sections": missing_sections,
             "deterministic_command_slots": command_slots,
+            "commands_filled": commands_filled,
+            "unknown_command_count": unknown_command_count,
         }
+    ok = not missing_sections and command_slots
     return {
-        "ok": not missing_sections and command_slots,
-        "status": "generated_contract"
-        if not missing_sections and command_slots
-        else "generated_contract_incomplete",
+        "ok": ok,
+        "status": "generated_contract" if ok else "generated_contract_incomplete",
         "sdk": sdk,
         "kind": kind,
         "expected_path": _runtime_guidance_root_filename(sdk),
@@ -578,6 +586,8 @@ def runtime_guidance_contract_status(project_root: Path) -> dict[str, Any]:
         "builder_generated": True,
         "missing_sections": missing_sections,
         "deterministic_command_slots": command_slots,
+        "commands_filled": commands_filled,
+        "unknown_command_count": unknown_command_count,
     }
 
 

@@ -190,6 +190,7 @@ from autonomous_agent_builder.orchestrator.workspace_integration import (
 )
 from autonomous_agent_builder.orchestrator.workspace_policy import (
     WORKSPACE_COPY_EXCLUDES,
+    is_builder_source_repo,
     next_clean_directory_workspace_path,
 )
 from autonomous_agent_builder.runtime import create_runtime
@@ -650,6 +651,27 @@ class Orchestrator:
         return WorkspaceInfo(path=str(workspace_path), branch="", is_worktree=False)
 
     async def _phase_quality_gates(self, task: Task) -> None:
+        # P20: Steps 1/2 in handle_gate_failure (deterministic + agent remediator)
+        # increment retry_count without checking max_retries, so successful-but-
+        # ineffective remediation creates an unbounded QUALITY_GATES dispatch loop.
+        # After (3 × max_retries) total attempts, block and require operator decision.
+        _cap = 3 * self.gate_handler.max_retries
+        if int(task.retry_count or 0) >= _cap:
+            reason = (
+                f"quality_gate_cap_exceeded: task reached {task.retry_count} gate-retry "
+                f"attempts (cap={_cap}); remediation loop did not converge. "
+                "Operator decision required — inspect gate output and root cause."
+            )
+            set_task_status(task, TaskStatus.BLOCKED)
+            task.blocked_reason = reason
+            log.warning(
+                "quality_gate_cap_exceeded",
+                task_id=task.id,
+                retry_count=task.retry_count,
+                cap=_cap,
+            )
+            await self.db.flush()
+            return
         return await _run_phase_quality_gates_fn(self, task)
 
     async def _workspace_has_task_changes(self, workspace_path: str) -> bool:
@@ -882,6 +904,14 @@ class Orchestrator:
                 task.blocked_reason = integration_error
                 await self.db.flush()
                 return
+            try:
+                project_root = Path(
+                    str(getattr(task.feature.project, "repo_url", "") or "")
+                ).expanduser()
+                if project_root.exists() and not is_builder_source_repo(project_root):
+                    self._refresh_app_runtime_guidance_payload(task, project_root)
+            except Exception:
+                pass
             set_task_status(task, TaskStatus.DONE)
             task.blocked_reason = None
             self._clear_operator_decision_handoff(task)

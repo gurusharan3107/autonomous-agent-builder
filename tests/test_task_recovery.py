@@ -55,6 +55,44 @@ def test_task_is_recoverable_blocked_unknown_reason_returns_false() -> None:
     assert task_is_recoverable(task) is False
 
 
+def test_task_is_recoverable_quality_gate_cap_exceeded_returns_true() -> None:
+    task = _make_task(TaskStatus.BLOCKED, "quality_gate_cap_exceeded: task reached 6 attempts (cap=6); remediation loop did not converge.")
+    assert task_is_recoverable(task) is True
+
+
+@pytest.mark.asyncio
+async def test_recover_failed_task_quality_gate_cap_resets_retry_count() -> None:
+    task = Task(
+        id="task-cap",
+        feature_id="feature-1",
+        title="Gate cap task",
+        description="d",
+        status=TaskStatus.BLOCKED,
+        phase=TaskPhase.IMPLEMENTATION,
+        blocked_reason="quality_gate_cap_exceeded: task reached 6 gate-retry attempts (cap=6); remediation loop did not converge.",
+        retry_count=6,
+    )
+    task.depends_on = None
+
+    db = AsyncMock()
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = None
+    db.execute.return_value = result
+
+    with patch(
+        "autonomous_agent_builder.services.task_recovery._blocked_sprint_merge_error",
+        return_value=None,
+    ), patch(
+        "autonomous_agent_builder.services.task_recovery._has_pr_change_request_gate",
+        return_value=False,
+    ):
+        await recover_failed_task(task, db)
+
+    assert task.status == TaskStatus.IMPLEMENTATION
+    assert task.retry_count == 0
+    assert task.blocked_reason is None
+
+
 @pytest.mark.asyncio
 async def test_recover_failed_task_clears_stale_operator_decision() -> None:
     task = Task(

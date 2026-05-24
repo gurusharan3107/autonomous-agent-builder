@@ -712,7 +712,7 @@ def git_main_sha() -> str:
 def compute_branch_diff_stats(branch: str) -> dict:
     """Run `git diff --shortstat main...<branch>` to get the edit size of an
     iteration. Used by compare.py's `simpler wins ties` rule and surfaced in
-    the iterations.html visualization. Returns zeros on any git failure."""
+    the autoresearch-explainer.html iterations table. Returns zeros on any git failure."""
     base = "main"
     out = {"files_touched": 0, "lines_added": 0, "lines_deleted": 0}
     try:

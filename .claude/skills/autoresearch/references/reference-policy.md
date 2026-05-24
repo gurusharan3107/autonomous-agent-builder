@@ -20,14 +20,14 @@ Do not read `CONTEXT-LEDGER.md` / `SDK-OBSERVABILITY.md` / `GAPS.md` unless exte
 - **Baseline lane:**
   - `docs/autoresearch/baseline_runs.tsv` / `baseline_runs_summary.json` (append-only via baseline.py; never hand-edit rows).
   - `docs/autoresearch/baseline_variance.md` — append observed σ context.
-  - `docs/autoresearch/iterations.json` / `iterations.html` (data block only) — via render_iterations.py.
+  - `docs/autoresearch/iterations.json` (full file) + `autoresearch-explainer.html` (AUTOUPDATE fences only) — via render_iterations.py.
   - `docs/autoresearch/INTROSPECTION.md` — via introspect.py.
   - `docs/autoresearch/PROGRESS.md` — append the closeout entry (Hard Rule 1).
 
 - **Iterate lane:**
   - `docs/autoresearch/OPTIMIZE_IDEAS.md` — add new ideas + attempt markers.
   - `docs/autoresearch/optimize_results.tsv` / `per_prompt_results.tsv` (append-only via run.py / loop.py).
-  - `docs/autoresearch/iterations.json` / `iterations.html` (data block only).
+  - `docs/autoresearch/iterations.json` (full file) + `autoresearch-explainer.html` (AUTOUPDATE fences only).
   - `docs/autoresearch/INTROSPECTION.md`.
   - `docs/autoresearch/PROGRESS.md` — append the verdict entry (Hard Rule 1).
   - **Only on KEEP that ships and closes a milestone scope item:** `docs/goal/ROADMAP.md` (tick `[x]`); cross-cutting decisions also go to `docs/goal/STATUS.md` Recent Decisions.

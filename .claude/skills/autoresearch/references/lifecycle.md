@@ -23,7 +23,7 @@ What the sweep checks (each isolated; one drift doesn't short-circuit the rest):
 | `metrics_prompt_count_semantic` | hard | METRICS.md still clarifies `prompt_count` = operator chat turns. |
 | `harness_asserts_session_scoped` | hard | HARNESS.md still references the `session_scoped` assertion. |
 | `tsv_header_drift_*` | hard | `baseline_runs.tsv` / `optimize_results.tsv` / `per_prompt_results.tsv` headers match `run.py:SESSION_HEADERS` / `PROMPT_HEADERS` exactly. |
-| `iterations_html_markers` | hard | `iterations.html` retains `__ITERATIONS_DATA_START__` / `__ITERATIONS_DATA_END__` markers (regenerator depends on them). |
+| `explainer_autoupdate_fences` | hard | `autoresearch-explainer.html` retains the 4 `<!-- AUTOUPDATE:name v=1 -->...<!-- /AUTOUPDATE:name -->` fences (`baseline-summary`, `baseline-scatter`, `baseline-raw-rows`, `iterations-list`) — `render_iterations.py` rewrites these zones at every closeout. |
 | `baseline_summary_age` | soft | `baseline_runs_summary.json` is no older than 14 days. |
 | `changelog_lane_activity` | soft | Latest autoresearch CHANGELOG entry is no older than 30 days (warns if skill is being bypassed). |
 

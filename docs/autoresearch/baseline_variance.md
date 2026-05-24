@@ -96,3 +96,41 @@ Drift impact:
 - Sanity check post-fix: bare-seed `pytest tests` runs 139 tests vs 107 pre-fix — pytest-asyncio was silently blocking 32 async tests in the seed itself.
 
 Next baseline action: re-baseline fixtures B–E (`baseline.py --fixtures B,C,D,E --n 5`).
+
+## Recorded baselines
+
+Run date: 2026-05-23
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| B | unstable | 0/1 | — | — | — |
+| C | unstable | 0/0 | — | — | — |
+| D | unstable | 0/0 | — | — | — |
+| E | unstable | 0/0 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-24
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| B | unstable | 0/1 | — | — | — |
+| C | unstable | 0/0 | — | — | — |
+| D | unstable | 0/0 | — | — | — |
+| E | unstable | 0/0 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-24
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| A | unstable | 0/1 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-24
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| A | unstable | 0/1 | — | — | — |

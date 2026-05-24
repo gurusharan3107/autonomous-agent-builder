@@ -1,12 +1,32 @@
 {
   "A": {
-    "status": "stable",
-    "stable_runs": 3,
-    "total_runs": 5,
-    "mean": 216497,
-    "stdev": 31830.932942658153,
-    "min": 180235,
-    "max": 239825,
-    "noise_floor_2sigma": 152835.1341146837
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 1,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  },
+  "B": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 1,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  },
+  "C": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 0,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  },
+  "D": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 0,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  },
+  "E": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 0,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
   }
 }

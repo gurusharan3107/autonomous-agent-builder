@@ -440,6 +440,32 @@ class TestDispatchPhases:
         orchestrator._ensure_workspace.assert_awaited_once_with(task)
         orchestrator._workspace_has_task_changes.assert_awaited_once_with(str(healed_workspace))
 
+    async def test_quality_gates_cap_exceeded_blocks_task(self, orchestrator):
+        cap = 3 * orchestrator.gate_handler.max_retries
+        task = _make_task(TaskStatus.QUALITY_GATES)
+        task.retry_count = cap
+
+        await orchestrator._phase_quality_gates(task)
+
+        assert task.status == TaskStatus.BLOCKED
+        assert task.blocked_reason is not None
+        assert task.blocked_reason.startswith("quality_gate_cap_exceeded:")
+        assert str(cap) in task.blocked_reason
+        orchestrator.db.flush.assert_awaited()
+
+    async def test_quality_gates_below_cap_runs_normally(self, orchestrator, tmp_path):
+        cap = 3 * orchestrator.gate_handler.max_retries
+        task = _make_task(TaskStatus.QUALITY_GATES, workspace_path=str(tmp_path))
+        task.retry_count = cap - 1
+
+        orchestrator._ensure_workspace = AsyncMock()
+        orchestrator._workspace_has_task_changes = AsyncMock(return_value=False)
+        orchestrator.gate_handler.handle_gate_failure = AsyncMock()
+
+        await orchestrator._phase_quality_gates(task)
+
+        assert task.status == TaskStatus.QUALITY_GATES
+
     async def test_pr_creation_reprovisions_missing_workspace_before_evidence_collection(
         self, orchestrator, tmp_path
     ):
