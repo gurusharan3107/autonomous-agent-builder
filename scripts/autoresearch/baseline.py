@@ -533,13 +533,26 @@ def main() -> int:
                     }
                     print("SELF_HEAL_ESCALATION " + json.dumps(escalation),
                           file=sys.stderr)
+                    # Persist to evidence_root for deterministic post-baseline
+                    # discovery. SKILL.md Hard Rule 14: the calling agent MUST
+                    # check this file after baseline exits; if present, invoke
+                    # AskUserQuestion with proposed_questions BEFORE any other
+                    # action. Avoids the "operator types 'check status'"
+                    # round-trip seen in 2026-05-24 A1 runs.
+                    try:
+                        escalation_file = evidence_root / "SELF_HEAL_ESCALATION.json"
+                        escalation_file.write_text(json.dumps(escalation, indent=2))
+                        print(f"[baseline] escalation persisted: {escalation_file}",
+                              file=sys.stderr)
+                    except OSError:
+                        pass  # best-effort; stderr marker is canonical source
                     print(
                         f"[baseline] ABORT — fixture={fixture} iter={i+1}/{args.n} "
                         f"stuck after {attempt+1} attempt(s). category={category!r}. "
                         f"Saved ~{remaining} more iters. Calling agent should "
-                        f"parse SELF_HEAL_ESCALATION line above and surface via "
-                        f"AskUserQuestion, OR extend pattern catalog at "
-                        f".claude/skills/autoresearch/scripts/diagnose_hang.py "
+                        f"parse SELF_HEAL_ESCALATION.json in evidence-root and "
+                        f"surface via AskUserQuestion, OR extend pattern catalog "
+                        f"at .claude/skills/autoresearch/scripts/diagnose_hang.py "
                         f"+ KNOWN_PATTERNS.md, OR re-run with "
                         f"--allow-imperfect-iter if flake is acceptable.",
                         file=sys.stderr,
@@ -599,6 +612,15 @@ def main() -> int:
                 # can parse it deterministically from baseline stdout/stderr.
                 print("SELF_HEAL_ESCALATION " + json.dumps(escalation),
                       file=sys.stderr)
+                # Persist to evidence_root for deterministic post-baseline
+                # discovery (SKILL.md Hard Rule 14).
+                try:
+                    escalation_file = evidence_root / "SELF_HEAL_ESCALATION.json"
+                    escalation_file.write_text(json.dumps(escalation, indent=2))
+                    print(f"[baseline] escalation persisted: {escalation_file}",
+                          file=sys.stderr)
+                except OSError:
+                    pass  # best-effort; stderr marker is canonical source
                 print(
                     f"[baseline] ABORT — fixture={fixture} iter={i+1}/{args.n} "
                     f"imperfect after {attempt+1} self_heal attempt(s). "

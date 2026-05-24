@@ -457,6 +457,7 @@ def gather_recipe_checks(recipe: int, allow_unstable: bool = False) -> list[Chec
                 check_tsv_schema_alignment(), check_workspace_stack(),
                 check_seed_manifest_conformance(),
                 check_harness_contracts(),
+                check_agent_registry_contract(),
                 # Legacy probes — defense-in-depth alongside manifest verifier
                 check_seed_pytest_collect(), check_seed_git_clean()]
     if recipe == 1:
@@ -464,6 +465,7 @@ def gather_recipe_checks(recipe: int, allow_unstable: bool = False) -> list[Chec
                 check_tsv_schema_alignment(), check_workspace_stack(),
                 check_seed_manifest_conformance(),
                 check_harness_contracts(),
+                check_agent_registry_contract(),
                 check_seed_pytest_collect(), check_seed_git_clean()]
     return []
 
@@ -639,6 +641,47 @@ def check_seed_manifest_conformance() -> Check:
                      f"escalate via AskUserQuestion for substrate-identity issues. "
                      f"Hints: {hint}" if hint else
                      "run python3 .claude/skills/autoresearch/scripts/seed_verify.py for details")
+
+
+def check_agent_registry_contract() -> Check:
+    """Run tests/test_agent_registry_contract.py — asserts every agent's
+    declared tools have ToolSchema entries in _SDK_BUILTINS. P19 (autoresearch
+    INSIGHTS Run #10 / 2026-05-24) cost ~$0.50 + 21 min wallclock to surface
+    via a real baseline; this preflight catches the same class in <2s for $0.
+
+    The harness invokes pytest as a subprocess (the test imports Builder
+    modules, which the harness is forbidden from doing per Hard Rule 3).
+    """
+    test_file = REPO / "tests" / "test_agent_registry_contract.py"
+    if not test_file.exists():
+        return Check("agent registry contract", "warn",
+                     f"test file missing at {test_file}",
+                     fix="restore from version control")
+    try:
+        r = subprocess.run(
+            ["python3", "-m", "pytest", str(test_file), "-q", "--no-header"],
+            capture_output=True, text=True, timeout=60, cwd=str(REPO),
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return Check("agent registry contract", "warn",
+                     f"pytest invocation failed: {type(exc).__name__}",
+                     fix="run manually: python3 -m pytest tests/test_agent_registry_contract.py")
+    if r.returncode == 0:
+        # Pull "N passed" from pytest output for a useful detail
+        import re as _re
+        m = _re.search(r"(\d+) passed", r.stdout)
+        n = m.group(1) if m else "?"
+        return Check("agent registry contract", "pass",
+                     f"{n} parametric assertions passed — zero contract drift")
+    # Test failure — surface the assertion messages for actionability
+    failure_tail = "\n".join(
+        ln for ln in (r.stdout or "").splitlines()
+        if "AssertionError" in ln or "FAILED" in ln or "missing from" in ln
+    )[:500]
+    return Check("agent registry contract", "fail",
+                 f"agent.tools references missing schemas (P19-class)",
+                 fix=f"Run `python3 -m pytest tests/test_agent_registry_contract.py -v` "
+                     f"for details. Excerpt: {failure_tail[:300]}")
 
 
 def check_harness_contracts() -> Check:
