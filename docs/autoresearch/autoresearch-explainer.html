@@ -648,101 +648,25 @@ python scripts/autoresearch/loop.py --idea <span class="hl">4</span> --fixture A
     </table>
 
     <h2 id="data">Live data</h2>
-    <p>The four panels below are <b>auto-updated by <code>render_iterations.py</code></b> at every lane closeout. Everything else on this page is hand-curated. Last updated: P26-05-24T09:28:21Z</span>.</p>
+    <p>All panels render from the embedded data snapshot. Run <code>render_iterations.py</code> after each lane closeout to refresh the snapshot.</p>
 
-    <h3>Baseline summary — Fixture A</h3>
-    <p>The current baseline. Clean runs against fixture A on commit <code>2599d3b35a07</code>. The 2σ floor is the bar every candidate must beat.</p>
+    <h3>Fixture status</h3>
+    <div id="panel-fixture-grid"></div>
 
-    <!-- AUTOUPDATE:baseline-summary v=1 -->
-<div class="stats">
-  <div class="stat"><div class="num">29,859</div><div class="lab">μ (mean)</div></div>
-  <div class="stat"><div class="num">7,628</div><div class="lab">σ (stdev)</div></div>
-  <div class="stat"><div class="num">14,602</div><div class="lab">μ − 2σ floor</div></div>
-  <div class="stat"><div class="num">8 / 11</div><div class="lab">runs clean</div></div>
-</div>
-<!-- /AUTOUPDATE:baseline-summary -->
+    <h3>Baseline — gate fixture</h3>
+    <p>Each dot is one baseline run for the gate fixture (stable fixture with the highest usable 2σ floor). <b>Lower composite = fewer tokens = better.</b> Dots <span style="color:#4a7c59">●</span> below the orange floor line are statistically significant wins; dots <span style="color:#e07b39">●</span> between floor and mean are marginal; dots <span style="color:#c0392b">●</span> above mean are worse than baseline.</p>
+    <div id="panel-gate-summary"></div>
+    <div id="panel-scatter"></div>
 
-    <h3>Scatter — Fixture A runs vs the 2σ band</h3>
-    <p>Every dot is one fixture-A baseline run. The shaded band is μ ± 2σ. A candidate must land below the orange floor (<code>μ − 2σ</code>) to be statistically significant.</p>
-
-    <!-- AUTOUPDATE:baseline-scatter v=1 -->
-<svg viewBox="0 0 640 200" role="img" aria-label="Fixture A baseline runs with 2σ floor" style="width:100%; max-width:720px; margin:12px 0; background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px;">
-  <style>
-    .axis     { stroke: var(--gray-300); stroke-width: 1; }
-    .band     { fill: var(--oat); opacity: 0.35; }
-    .mean     { stroke: var(--gray-500); stroke-width: 1; stroke-dasharray: 4 3; }
-    .floor    { stroke: var(--clay); stroke-width: 1.25; }
-    .point    { fill: var(--clay); }
-    .lab      { font-family: var(--mono); font-size: 9px; fill: var(--gray-500); }
-    .lab-k    { font-family: var(--mono); font-size: 9px; fill: var(--slate); }
-    .lab-cl   { font-family: var(--mono); font-size: 9px; fill: var(--clay); }
-  </style>
-  <rect class="band" x="56" y="170.0" width="544" height="0.0"/>
-  <line class="mean"  x1="56" y1="170.0" x2="600" y2="170.0"/>
-  <line class="floor" x1="56" y1="170.0" x2="600" y2="170.0"/>
-  <line class="axis"  x1="56" y1="20"  x2="56"  y2="170"/>
-  <line class="axis"  x1="56" y1="170" x2="600" y2="170"/>
-  <text class="lab"    x="50" y="173" text-anchor="end">140k</text>
-  <text class="lab"    x="50" y="123" text-anchor="end">190k</text>
-  <text class="lab-k"  x="50" y="174.0" text-anchor="end">μ 30</text>
-  <text class="lab"    x="50" y="23"  text-anchor="end">290k</text>
-  <text class="lab-cl" x="50" y="173.0" text-anchor="end">2σ 15</text>
-      <circle class="point" cx="120" cy="80.57" r="4"/>
-      <circle class="point" cx="220" cy="87.4" r="4"/>
-      <circle class="point" cx="320" cy="129.76" r="4"/>
-      <circle class="point" cx="420" cy="70.17" r="4"/>
-      <circle class="point" cx="520" cy="114.97" r="4"/>
-      <text class="lab" x="120" y="185" text-anchor="middle">r1</text>
-      <text class="lab" x="220" y="185" text-anchor="middle">r2</text>
-      <text class="lab" x="320" y="185" text-anchor="middle">r3</text>
-      <text class="lab" x="420" y="185" text-anchor="middle">r4</text>
-      <text class="lab" x="520" y="185" text-anchor="middle">r5</text>
-  <text class="lab"    x="600" y="35"  text-anchor="end">μ ± 2σ band</text>
-  <text class="lab-cl" x="600" y="105" text-anchor="end">candidates land below</text>
-</svg>
-<!-- /AUTOUPDATE:baseline-scatter -->
-
-    <h3>Raw runs</h3>
+    <h3>All runs</h3>
     <details>
-      <summary>Raw rows — fixture A <span class="where">baseline_runs.tsv</span></summary>
-      <div class="body">
-        <!-- AUTOUPDATE:baseline-raw-rows v=1 -->
-<table style="margin-top:0;">
-  <thead><tr><th>Run</th><th>noncached + output</th><th>cache ratio</th><th>gates</th><th>wallclock</th><th>status</th></tr></thead>
-  <tbody>
-    <tr><td>r1</td><td class="num">229,431</td><td class="num">1572.5</td><td class="num">6/6</td><td class="num">1422 s</td><td class="mono">shipped</td></tr>
-    <tr><td>r2</td><td class="num">222,603</td><td class="num">3238.6</td><td class="num">4/6</td><td class="num">2449 s</td><td class="mono">incomplete</td></tr>
-    <tr><td>r3</td><td class="num">180,235</td><td class="num">3564.4</td><td class="num">6/6</td><td class="num">377 s</td><td class="mono">shipped</td></tr>
-    <tr><td>r4</td><td class="num">239,825</td><td class="num">3012.7</td><td class="num">6/6</td><td class="num">1433 s</td><td class="mono">shipped</td></tr>
-    <tr><td>r5</td><td class="num">195,025</td><td class="num">2034.1</td><td class="num">4/6</td><td class="num">504 s</td><td class="mono">crash</td></tr>
-    <tr><td>r6</td><td class="num">0</td><td class="num">—</td><td class="num">2/6</td><td class="num">120 s</td><td class="mono">crash</td></tr>
-    <tr><td>r7</td><td class="num">21,285</td><td class="num">1168.4</td><td class="num">6/6</td><td class="num">379 s</td><td class="mono">shipped</td></tr>
-    <tr><td>r8</td><td class="num">25,463</td><td class="num">1407.9</td><td class="num">6/6</td><td class="num">422 s</td><td class="mono">shipped</td></tr>
-    <tr><td>r9</td><td class="num">27,205</td><td class="num">1450.5</td><td class="num">6/6</td><td class="num">369 s</td><td class="mono">shipped</td></tr>
-    <tr><td>r10</td><td class="num">39,998</td><td class="num">945.0</td><td class="num">6/6</td><td class="num">542 s</td><td class="mono">shipped</td></tr>
-    <tr><td>r11</td><td class="num">35,344</td><td class="num">149.7</td><td class="num">6/6</td><td class="num">470 s</td><td class="mono">shipped</td></tr>
-  </tbody>
-</table>
-<!-- /AUTOUPDATE:baseline-raw-rows -->
-      </div>
+      <summary>Raw rows by fixture <span class="where">baseline_runs.tsv</span></summary>
+      <div class="body"><div id="panel-raw-rows"></div></div>
     </details>
 
-    <div class="callout">
-      <span class="ico">★</span>
-      <div>Fixtures A and B are stable. C–E still need baseline runs. Until all 5 are stable, Iterate-lane gates on fixture A (2σ-floor=14,602); fixture B has a negative 2σ-floor due to one high-variance run and cannot gate comparisons yet.</div>
-    </div>
-
     <h3>Iterations history</h3>
-    <p>Every Iterate-lane closeout appends one row here. The verdict (KEEP/DISCARD/CRASH) is the gating outcome from <code>compare.py</code>; <code>Δσ</code> is how many standard deviations below baseline the candidate landed.</p>
-
-    <!-- AUTOUPDATE:iterations-list v=1 -->
-<table>
-  <thead><tr><th>#</th><th>Date</th><th>Idea</th><th>Verdict</th><th>Composite</th><th>Δ%</th><th>Δσ</th><th>Gates</th></tr></thead>
-  <tbody>
-    <tr><td colspan="8" style="text-align:center; color:var(--gray-500); padding:18px 12px; font-style:italic;">No iterations recorded yet — run <code>loop.py</code> to populate.</td></tr>
-  </tbody>
-</table>
-<!-- /AUTOUPDATE:iterations-list -->
+    <p>Every Iterate-lane closeout appends a row. Verdict color: <span style="color:#4a7c59;font-weight:600">KEEP</span> = below 2σ floor, <span style="color:#e07b39;font-weight:600">MARGINAL</span> = below mean but above floor, <span style="color:#c0392b;font-weight:600">DISCARD/CRASH</span> = no improvement.</p>
+    <div id="panel-iterations"></div>
 
     <h2 id="ideas">Optimization backlog — top 5 of 11</h2>
     <p>Living backlog in <code>docs/autoresearch/OPTIMIZE_IDEAS.md</code>, ordered by expected impact. All 11 are <code>unattempted</code> at time of writing.</p>
@@ -863,6 +787,254 @@ python scripts/autoresearch/loop.py --idea <span class="hl">4</span> --fixture A
   </main>
 </div>
 
+<script id="autoresearch-data" type="application/json">
+{
+  "generated_at": "2026-05-25T11:36:21Z",
+  "fixtures": {
+    "A": {
+      "status": "stable",
+      "stable_runs": 5,
+      "total_runs": 5,
+      "mean": 29859,
+      "stdev": 7628.344414091435,
+      "floor": 14602.31117181713,
+      "min": 21285,
+      "max": 39998
+    },
+    "B": {
+      "status": "stable",
+      "stable_runs": 4,
+      "total_runs": 5,
+      "mean": 52723.25,
+      "stdev": 29567.72630617151,
+      "floor": -6412.202612343019,
+      "min": 33989,
+      "max": 96625
+    },
+    "C": {
+      "status": "unstable",
+      "stable_runs": 0,
+      "total_runs": 0,
+      "mean": null,
+      "stdev": null,
+      "floor": null,
+      "min": null,
+      "max": null
+    },
+    "D": {
+      "status": "unstable",
+      "stable_runs": 0,
+      "total_runs": 0,
+      "mean": null,
+      "stdev": null,
+      "floor": null,
+      "min": null,
+      "max": null
+    },
+    "E": {
+      "status": "unstable",
+      "stable_runs": 0,
+      "total_runs": 0,
+      "mean": null,
+      "stdev": null,
+      "floor": null,
+      "min": null,
+      "max": null
+    }
+  },
+  "runs": [
+    {
+      "fixture": "A",
+      "run_id": "ec68b9da-6f02-45e7-851a-ceaf71f0171b",
+      "timestamp": "2026-05-23T12:54:27Z",
+      "composite": 229431,
+      "cache_ratio": 1572.5,
+      "gates": "6/6",
+      "wallclock_s": 1422,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "7aea8d3e-04ae-43d9-8943-cdfd99db8a3b",
+      "timestamp": "2026-05-23T13:35:32Z",
+      "composite": 222603,
+      "cache_ratio": 3238.6,
+      "gates": "4/6",
+      "wallclock_s": 2449,
+      "status": "incomplete",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "ba140d79-f288-4e38-b470-28e5c8195c56",
+      "timestamp": "2026-05-23T13:42:11Z",
+      "composite": 180235,
+      "cache_ratio": 3564.4,
+      "gates": "6/6",
+      "wallclock_s": 377,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "a3e41fb3-58d1-4a12-a70d-33cf9f1ec583",
+      "timestamp": "2026-05-23T14:06:29Z",
+      "composite": 239825,
+      "cache_ratio": 3012.7,
+      "gates": "6/6",
+      "wallclock_s": 1433,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "7f24b3bb-7219-43c1-9fa8-ab8d1829f565",
+      "timestamp": "2026-05-23T14:15:14Z",
+      "composite": 195025,
+      "cache_ratio": 2034.1,
+      "gates": "4/6",
+      "wallclock_s": 504,
+      "status": "crash",
+      "feature_correct": true
+    },
+    {
+      "fixture": "B",
+      "run_id": "b02db562-9e94-41e6-a45b-f6091da5c8c7",
+      "timestamp": "2026-05-23T21:57:58Z",
+      "composite": 249667,
+      "cache_ratio": 2689.2,
+      "gates": "4/6",
+      "wallclock_s": 2321,
+      "status": "incomplete",
+      "feature_correct": true
+    },
+    {
+      "fixture": "B",
+      "run_id": "2d6a24b5-a9c0-4494-8124-82321382b5be",
+      "timestamp": "2026-05-24T05:33:08Z",
+      "composite": 6838,
+      "cache_ratio": 1.0,
+      "gates": "3/6",
+      "wallclock_s": 152,
+      "status": "crash",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "41ef5a63-2cf5-41b5-85a8-be91253c8333",
+      "timestamp": "2026-05-24T08:34:24Z",
+      "composite": 0,
+      "cache_ratio": 0.0,
+      "gates": "2/6",
+      "wallclock_s": 120,
+      "status": "crash",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "6706af67-a1e1-4b3f-8f88-fe63efd1efd9",
+      "timestamp": "2026-05-24T19:02:06Z",
+      "composite": 21285,
+      "cache_ratio": 1168.4,
+      "gates": "6/6",
+      "wallclock_s": 379,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "d4f6be7b-1885-4b77-ade0-b61804fed6f2",
+      "timestamp": "2026-05-24T19:09:52Z",
+      "composite": 25463,
+      "cache_ratio": 1407.9,
+      "gates": "6/6",
+      "wallclock_s": 422,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "f2acc391-76c2-49f6-a31f-c000b3ae54be",
+      "timestamp": "2026-05-24T19:16:35Z",
+      "composite": 27205,
+      "cache_ratio": 1450.5,
+      "gates": "6/6",
+      "wallclock_s": 369,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "235a7ec8-0dbb-4693-b84b-3b2808921ded",
+      "timestamp": "2026-05-24T19:26:14Z",
+      "composite": 39998,
+      "cache_ratio": 945.0,
+      "gates": "6/6",
+      "wallclock_s": 542,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "A",
+      "run_id": "215c333d-85d3-4032-b182-1710ac14dbb9",
+      "timestamp": "2026-05-24T19:34:36Z",
+      "composite": 35344,
+      "cache_ratio": 149.7,
+      "gates": "6/6",
+      "wallclock_s": 470,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "B",
+      "run_id": "7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860",
+      "timestamp": "2026-05-25T09:04:07Z",
+      "composite": 36417,
+      "cache_ratio": 420.8,
+      "gates": "6/6",
+      "wallclock_s": 750,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "B",
+      "run_id": "eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074",
+      "timestamp": "2026-05-25T09:45:46Z",
+      "composite": 43862,
+      "cache_ratio": 1929.4,
+      "gates": "6/6",
+      "wallclock_s": 665,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "B",
+      "run_id": "dc3066f9-2a28-43c6-ab94-44bc1dce24cc",
+      "timestamp": "2026-05-25T10:06:49Z",
+      "composite": 96625,
+      "cache_ratio": 410.5,
+      "gates": "6/6",
+      "wallclock_s": 1223,
+      "status": "shipped",
+      "feature_correct": true
+    },
+    {
+      "fixture": "B",
+      "run_id": "4e75c9ea-592e-407c-8570-75ecd4b93bb5",
+      "timestamp": "2026-05-25T10:17:51Z",
+      "composite": 33989,
+      "cache_ratio": 1411.0,
+      "gates": "6/6",
+      "wallclock_s": 619,
+      "status": "shipped",
+      "feature_correct": true
+    }
+  ],
+  "iterations": []
+}
+</script>
+
 <script>
 // Tabs
 document.querySelectorAll("[data-tabs]").forEach(box => {
@@ -890,6 +1062,203 @@ const obs = new IntersectionObserver(entries => {
   const el = document.getElementById(a.getAttribute("href").slice(1));
   if (el) obs.observe(el);
 });
+
+// ── autoresearch data renderer ──────────────────────────────────────────────
+(function() {
+  const dataEl = document.getElementById('autoresearch-data');
+  if (!dataEl) return;
+  let D;
+  try { D = JSON.parse(dataEl.textContent); } catch(e) { return; }
+
+  const fmt = v => (v == null || v === '') ? '—' : (+v).toLocaleString();
+  const fmtPct = v => v == null ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(1) + '%';
+  const fmtSig = v => v == null ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(2) + 'σ';
+  const kfmt = v => v == null ? '—' : (v >= 1000 ? Math.round(v/1000) + 'k' : String(v));
+
+  const COL_GREEN  = '#3a7d44';
+  const COL_ORANGE = '#d4741e';
+  const COL_RED    = '#c0392b';
+  const COL_GRAY   = '#888';
+
+  function gateFixture(fixtures) {
+    let best = null, bestFloor = -Infinity;
+    for (const f of ['A','B','C','D','E']) {
+      const s = fixtures[f];
+      if (!s || s.status !== 'stable') continue;
+      const floor = s.floor ?? -Infinity;
+      if (floor > bestFloor) { bestFloor = floor; best = f; }
+    }
+    return best;
+  }
+
+  function dotColor(composite, mean, floor) {
+    if (!composite || !mean) return COL_GRAY;
+    if (floor > 0 && composite < floor) return COL_GREEN;
+    if (composite < mean) return COL_ORANGE;
+    return COL_RED;
+  }
+
+  function renderFixtureGrid(fixtures) {
+    return ['A','B','C','D','E'].map(f => {
+      const s = fixtures[f] || {status:'unstable', stable_runs:0, total_runs:0};
+      const ok = s.status === 'stable';
+      const floorOk = ok && s.floor > 0;
+      const pill = ok
+        ? `<span style="background:#3a7d44;color:#fff;padding:1px 7px;border-radius:4px;font-size:11px;vertical-align:middle">stable</span>`
+        : `<span style="background:#ddd;color:#666;padding:1px 7px;border-radius:4px;font-size:11px;vertical-align:middle">unstable</span>`;
+      const detail = ok
+        ? `μ = ${fmt(s.mean)} &nbsp; σ = ${fmt(s.stdev)} &nbsp; 2σ floor = <span style="color:${floorOk ? '#3a7d44' : '#c0392b'}">${fmt(s.floor)}${floorOk ? '' : ' (negative — unusable as gate)'}</span> &nbsp; (${s.stable_runs}/${s.total_runs} runs)`
+        : `${s.stable_runs || 0}/${s.total_runs || 0} stable runs — needs ≥ 3 clean runs to gate`;
+      return `<div style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:7px;margin:4px 0;">
+        <b style="font-size:14px">Fixture ${f}</b> ${pill}
+        <div style="font-size:12px;color:var(--gray-500);margin-top:5px;">${detail}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderGateSummary(fixtures, gateFix) {
+    if (!gateFix) return '<p style="color:var(--gray-500);font-style:italic;">No stable fixture yet — run baseline.py first.</p>';
+    const s = fixtures[gateFix];
+    const floorOk = s.floor != null && s.floor > 0;
+    return `<div class="stats">
+      <div class="stat"><div class="num">${fmt(s.mean)}</div><div class="lab">μ baseline mean<br><small>fixture ${gateFix}</small></div></div>
+      <div class="stat"><div class="num">${fmt(s.stdev)}</div><div class="lab">σ stdev</div></div>
+      <div class="stat" style="${floorOk ? 'border-left:3px solid #3a7d44' : 'border-left:3px solid #c0392b'}">
+        <div class="num" style="color:${floorOk ? '#3a7d44' : '#c0392b'}">${fmt(s.floor)}</div>
+        <div class="lab">2σ floor — ${floorOk ? 'beat this to KEEP' : 'negative, unusable'}</div>
+      </div>
+      <div class="stat"><div class="num">${s.stable_runs}/${s.total_runs}</div><div class="lab">stable / total runs</div></div>
+    </div>`;
+  }
+
+  function renderScatter(D, gateFix) {
+    if (!gateFix) return '';
+    const s = D.fixtures[gateFix];
+    const runs = (D.runs || []).filter(r => r.fixture === gateFix && r.composite > 0);
+    if (!runs.length) return '<p style="color:var(--gray-500);font-style:italic;">No runs recorded yet.</p>';
+
+    const mean = s.mean, stdev = s.stdev, floor = s.floor;
+    const vals = runs.map(r => r.composite);
+    const maxV = Math.max(...vals, mean + stdev * 1.5);
+    const minV = Math.max(0, Math.min(...vals, floor > 0 ? floor * 0.8 : mean * 0.6));
+    const pad = (maxV - minV) * 0.15 || maxV * 0.1;
+    const yTop = maxV + pad, yBot = Math.max(0, minV - pad * 0.3);
+    const yRange = yTop - yBot;
+
+    const W = 640, H = 220, lp = 72, rp = 36, tp = 16, bp = 32;
+    const drawW = W - lp - rp, drawH = H - tp - bp;
+    const yp = v => tp + (1 - (v - yBot) / yRange) * drawH;
+    const xp = (i, n) => lp + (i + 0.5) * drawW / Math.max(n, 1);
+
+    const yMean = yp(mean);
+    const yFloor = floor > 0 ? yp(floor) : null;
+    const yBandTop = yp(Math.min(yTop * 0.99, mean + 2 * stdev));
+    const yBandBot = floor > 0 ? yFloor : yp(Math.max(yBot * 1.01, mean - 2 * stdev));
+
+    let svgParts = [];
+
+    // green target zone (below floor)
+    if (yFloor != null) {
+      svgParts.push(`<rect x="${lp}" y="${yFloor.toFixed(1)}" width="${drawW}" height="${(tp+drawH-yFloor).toFixed(1)}" fill="#3a7d44" opacity="0.07"/>`);
+      svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#3a7d44" x="${lp+4}" y="${(yFloor+10).toFixed(1)}">▼ target zone — iteration candidates land here</text>`);
+    }
+
+    // μ±2σ band
+    const bh = (yBandBot - yBandTop).toFixed(1);
+    svgParts.push(`<rect x="${lp}" y="${yBandTop.toFixed(1)}" width="${drawW}" height="${bh}" fill="var(--oat,#f5e9d0)" opacity="0.4"/>`);
+
+    // mean line (dashed)
+    svgParts.push(`<line x1="${lp}" y1="${yMean.toFixed(1)}" x2="${W-rp}" y2="${yMean.toFixed(1)}" stroke="#888" stroke-width="1" stroke-dasharray="5 3"/>`);
+    svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#888" x="${lp-4}" y="${(yMean+3).toFixed(1)}" text-anchor="end">μ ${kfmt(mean)}</text>`);
+
+    // floor line (orange)
+    if (yFloor != null) {
+      svgParts.push(`<line x1="${lp}" y1="${yFloor.toFixed(1)}" x2="${W-rp}" y2="${yFloor.toFixed(1)}" stroke="${COL_ORANGE}" stroke-width="1.5"/>`);
+      svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="${COL_ORANGE}" x="${lp-4}" y="${(yFloor+3).toFixed(1)}" text-anchor="end">2σ ${kfmt(floor)}</text>`);
+      svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="${COL_ORANGE}" x="${W-rp-4}" y="${(yFloor-3).toFixed(1)}" text-anchor="end">← beat this line</text>`);
+    }
+
+    // axes
+    svgParts.push(`<line x1="${lp}" y1="${tp}" x2="${lp}" y2="${tp+drawH}" stroke="#ccc" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${lp}" y1="${tp+drawH}" x2="${W-rp}" y2="${tp+drawH}" stroke="#ccc" stroke-width="1"/>`);
+
+    // dots
+    runs.forEach((r, i) => {
+      const cx = xp(i, runs.length).toFixed(1);
+      const cy = yp(r.composite).toFixed(1);
+      const col = dotColor(r.composite, mean, floor);
+      const tip = `r${i+1}: ${r.composite.toLocaleString()} tokens | ${r.gates || '?'} gates | ${r.status || '?'} | ${(r.timestamp||'').slice(0,10)}`;
+      svgParts.push(`<circle cx="${cx}" cy="${cy}" r="5" fill="${col}" opacity="0.85"><title>${tip}</title></circle>`);
+      svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#888" x="${cx}" y="${(tp+drawH+12).toFixed(1)}" text-anchor="middle">r${i+1}</text>`);
+    });
+
+    // "lower is better" label
+    svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#aaa" x="${lp+6}" y="${(tp+10).toFixed(1)}">↑ higher (more tokens = worse)</text>`);
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:720px;background:var(--paper,#fff);border:1.5px solid var(--gray-300,#ddd);border-radius:10px;margin:8px 0;">${svgParts.join('')}</svg>
+<div style="font-size:11px;color:#666;margin:4px 0 12px;">
+  <span style="color:${COL_GREEN}">●</span> below 2σ floor = significant win (KEEP) &nbsp;
+  <span style="color:${COL_ORANGE}">●</span> between floor and mean = marginal &nbsp;
+  <span style="color:${COL_RED}">●</span> above mean = worse than baseline &nbsp;
+  <span style="color:#888">—— </span> dashed = μ mean &nbsp; <span style="color:${COL_ORANGE}">—— </span> solid = 2σ floor
+</div>`;
+  }
+
+  function renderRawRows(D) {
+    const fixtures = ['A','B','C','D','E'].filter(f => (D.runs||[]).some(r => r.fixture === f));
+    if (!fixtures.length) return '<p style="color:var(--gray-500);font-style:italic;">No runs yet.</p>';
+    return fixtures.map(f => {
+      const fRuns = (D.runs||[]).filter(r => r.fixture === f);
+      const mean = D.fixtures[f]?.mean;
+      const floor = D.fixtures[f]?.floor;
+      const rows = fRuns.map((r, i) => {
+        const gp = r.gates || '—', gateOk = gp.startsWith('6/');
+        const dotCol = dotColor(r.composite, mean, floor);
+        return `<tr>
+          <td class="mono">r${i+1}</td>
+          <td class="num"><span style="color:${dotCol}">●</span> ${r.composite ? r.composite.toLocaleString() : '—'}</td>
+          <td class="num">${r.cache_ratio ? (+r.cache_ratio).toFixed(1) : '—'}</td>
+          <td class="num" style="color:${gateOk ? '#3a7d44' : '#c0392b'}">${gp}</td>
+          <td class="num">${r.wallclock_s ? r.wallclock_s + ' s' : '—'}</td>
+          <td class="mono">${r.status || '—'}</td>
+        </tr>`;
+      }).join('');
+      return `<div style="margin-bottom:16px;"><b>Fixture ${f}</b>
+        <table style="margin-top:4px;">
+          <thead><tr><th>Run</th><th>tokens (composite)</th><th>cache ratio</th><th>gates</th><th>wallclock</th><th>status</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`;
+    }).join('');
+  }
+
+  function renderIterations(iterations) {
+    if (!iterations || !iterations.length) return `<table><thead><tr><th>#</th><th>Date</th><th>Idea</th><th>Verdict</th><th>Composite</th><th>Δ%</th><th>Δσ</th><th>Gates</th></tr></thead><tbody><tr><td colspan="8" style="text-align:center;color:var(--gray-500);padding:18px;font-style:italic;">No iterations yet — run loop.py to populate.</td></tr></tbody></table>`;
+    const rows = [...iterations].reverse().map(it => {
+      const v = (it.verdict || 'pending').toLowerCase();
+      const c = v === 'keep' ? COL_GREEN : (v === 'pending' ? COL_GRAY : COL_RED);
+      return `<tr>
+        <td class="mono">#${it.index}</td>
+        <td class="mono">${it.date || '—'}</td>
+        <td>${it.ref || '—'}</td>
+        <td class="mono" style="color:${c};font-weight:600">${v.toUpperCase()}</td>
+        <td class="num">${fmt(it.composite)}</td>
+        <td class="num">${fmtPct(it.delta_pct)}</td>
+        <td class="num">${fmtSig(it.delta_sigma)}</td>
+        <td class="num">${it.gates || '—'}</td>
+      </tr>`;
+    }).join('');
+    return `<table><thead><tr><th>#</th><th>Date</th><th>Idea</th><th>Verdict</th><th>Composite</th><th>Δ%</th><th>Δσ</th><th>Gates</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  // Render all panels
+  const gateFix = gateFixture(D.fixtures || {});
+  const el = id => document.getElementById(id);
+  if (el('panel-fixture-grid')) el('panel-fixture-grid').innerHTML = renderFixtureGrid(D.fixtures || {});
+  if (el('panel-gate-summary')) el('panel-gate-summary').innerHTML = renderGateSummary(D.fixtures || {}, gateFix);
+  if (el('panel-scatter'))      el('panel-scatter').innerHTML      = renderScatter(D, gateFix);
+  if (el('panel-raw-rows'))     el('panel-raw-rows').innerHTML     = renderRawRows(D);
+  if (el('panel-iterations'))   el('panel-iterations').innerHTML   = renderIterations(D.iterations || []);
+})();
 </script>
 </body>
 </html>
