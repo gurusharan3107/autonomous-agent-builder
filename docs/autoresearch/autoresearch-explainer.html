@@ -789,7 +789,7 @@ python scripts/autoresearch/loop.py --idea <span class="hl">4</span> --fixture A
 
 <script id="autoresearch-data" type="application/json">
 {
-  "generated_at": "2026-05-25T12:05:13Z",
+  "generated_at": "2026-05-25T12:10:53Z",
   "fixtures": {
     "A": {
       "status": "stable",
@@ -1138,14 +1138,15 @@ const obs = new IntersectionObserver(entries => {
     if (!runs.length) return '<p style="color:var(--gray-500);font-style:italic;">No runs recorded yet.</p>';
 
     const mean = s.mean, stdev = s.stdev, floor = s.floor;
-    const vals = runs.map(r => r.composite);
-    const maxV = Math.max(...vals, mean + stdev * 1.5);
-    const minV = Math.max(0, Math.min(...vals, floor > 0 ? floor * 0.8 : mean * 0.6));
-    // centre the mean line by using equal span above and below it
-    const span = Math.max(maxV - mean, mean - minV);
-    const pad = span * 0.15 || maxV * 0.1;
-    const yTop = mean + span + pad;
-    const yBot = Math.max(0, mean - span - pad);
+
+    // Fixed ±2.5σ domain anchors the mean at the exact vertical centre.
+    // Any dot beyond the cap is drawn at the boundary with an ↑/↓ label
+    // showing the real value — the chart never rescales to accommodate outliers.
+    const SIGMA_CAP = 2.5;
+    const halfSpan = SIGMA_CAP * stdev;
+    const pad = halfSpan * 0.18;
+    const yTop = mean + halfSpan + pad;
+    const yBot = Math.max(0, mean - halfSpan - pad);
     const yRange = yTop - yBot;
 
     const W = 640, H = 220, lp = 72, rp = 36, tp = 16, bp = 32;
@@ -1153,10 +1154,14 @@ const obs = new IntersectionObserver(entries => {
     const yp = v => tp + (1 - (v - yBot) / yRange) * drawH;
     const xp = (i, n) => lp + (i + 0.5) * drawW / Math.max(n, 1);
 
-    const yMean = yp(mean);
+    const yMean  = yp(mean);
     const yFloor = floor > 0 ? yp(floor) : null;
-    const yBandTop = yp(Math.min(yTop * 0.99, mean + 2 * stdev));
-    const yBandBot = floor > 0 ? yFloor : yp(Math.max(yBot * 1.01, mean - 2 * stdev));
+    // band clipped to chart bounds
+    const yBandTop = yp(Math.min(yTop - pad * 0.5, mean + 2 * stdev));
+    const yBandBot = floor > 0 ? yFloor : yp(Math.max(yBot + pad * 0.5, mean - 2 * stdev));
+
+    // cap threshold (top of visible area, minus a small inset for the label)
+    const capY = tp + 12;
 
     let svgParts = [];
 
@@ -1170,7 +1175,7 @@ const obs = new IntersectionObserver(entries => {
     const bh = (yBandBot - yBandTop).toFixed(1);
     svgParts.push(`<rect x="${lp}" y="${yBandTop.toFixed(1)}" width="${drawW}" height="${bh}" fill="var(--oat,#f5e9d0)" opacity="0.4"/>`);
 
-    // mean line (dashed)
+    // mean line (dashed) — always at the vertical midpoint
     svgParts.push(`<line x1="${lp}" y1="${yMean.toFixed(1)}" x2="${W-rp}" y2="${yMean.toFixed(1)}" stroke="#888" stroke-width="1" stroke-dasharray="5 3"/>`);
     svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#888" x="${lp-4}" y="${(yMean+3).toFixed(1)}" text-anchor="end">μ ${kfmt(mean)}</text>`);
 
@@ -1185,25 +1190,39 @@ const obs = new IntersectionObserver(entries => {
     svgParts.push(`<line x1="${lp}" y1="${tp}" x2="${lp}" y2="${tp+drawH}" stroke="#ccc" stroke-width="1"/>`);
     svgParts.push(`<line x1="${lp}" y1="${tp+drawH}" x2="${W-rp}" y2="${tp+drawH}" stroke="#ccc" stroke-width="1"/>`);
 
-    // dots
-    runs.forEach((r, i) => {
-      const cx = xp(i, runs.length).toFixed(1);
-      const cy = yp(r.composite).toFixed(1);
+    // cap boundary marker — dashed red line at top + label
+    const cappedRuns = (D.runs || []).filter(r => r.fixture === gateFix && r.composite > yTop);
+    if (cappedRuns.length) {
+      svgParts.push(`<line x1="${lp}" y1="${capY}" x2="${W-rp}" y2="${capY}" stroke="${COL_RED}" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`);
+      svgParts.push(`<text font-family="var(--mono)" font-size="8" fill="${COL_RED}" x="${W-rp-4}" y="${(capY-2).toFixed(1)}" text-anchor="end" opacity="0.7">> ${kfmt(yTop)} — capped</text>`);
+    }
+
+    // dots — outliers drawn at cap boundary with value label
+    const runs_filtered = (D.runs || []).filter(r => r.fixture === gateFix && r.composite > 0);
+    runs_filtered.forEach((r, i) => {
+      const isCapped = r.composite > yTop;
+      const drawY = isCapped ? capY : yp(r.composite);
+      const cx = xp(i, runs_filtered.length).toFixed(1);
+      const cy = drawY.toFixed(1);
       const col = dotColor(r.composite, mean, floor);
-      const tip = `r${i+1}: ${r.composite.toLocaleString()} tokens | ${r.gates || '?'} gates | ${r.status || '?'} | ${(r.timestamp||'').slice(0,10)}`;
-      svgParts.push(`<circle cx="${cx}" cy="${cy}" r="5" fill="${col}" opacity="0.85"><title>${tip}</title></circle>`);
+      const tip = `r${i+1}: ${r.composite.toLocaleString()} tokens | ${r.gates || '?'} gates | ${r.status || '?'} | ${(r.timestamp||'').slice(0,10)}${isCapped ? ' (above chart range)' : ''}`;
+      svgParts.push(`<circle cx="${cx}" cy="${cy}" r="5" fill="${col}" opacity="${isCapped ? 0.5 : 0.85}"><title>${tip}</title></circle>`);
+      if (isCapped) {
+        svgParts.push(`<text font-family="var(--mono)" font-size="8" fill="${col}" x="${cx}" y="${(parseFloat(cy)-7).toFixed(1)}" text-anchor="middle" opacity="0.8">↑${kfmt(r.composite)}</text>`);
+      }
       svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#888" x="${cx}" y="${(tp+drawH+12).toFixed(1)}" text-anchor="middle">r${i+1}</text>`);
     });
 
     // "lower is better" label
-    svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#aaa" x="${lp+6}" y="${(tp+10).toFixed(1)}">↑ higher (more tokens = worse)</text>`);
+    svgParts.push(`<text font-family="var(--mono)" font-size="9" fill="#aaa" x="${lp+6}" y="${(tp+drawH-4).toFixed(1)}">↓ lower is better (fewer tokens)</text>`);
 
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:720px;background:var(--paper,#fff);border:1.5px solid var(--gray-300,#ddd);border-radius:10px;margin:8px 0;">${svgParts.join('')}</svg>
 <div style="font-size:11px;color:#666;margin:4px 0 12px;">
   <span style="color:${COL_GREEN}">●</span> below 2σ floor = significant win (KEEP) &nbsp;
   <span style="color:${COL_ORANGE}">●</span> between floor and mean = marginal &nbsp;
-  <span style="color:${COL_RED}">●</span> above mean = worse than baseline &nbsp;
-  <span style="color:#888">—— </span> dashed = μ mean &nbsp; <span style="color:${COL_ORANGE}">—— </span> solid = 2σ floor
+  <span style="color:${COL_RED}">●</span> above mean = worse &nbsp;
+  <span style="color:#888">—— </span> dashed grey = μ mean &nbsp; <span style="color:${COL_ORANGE}">—— </span> solid orange = 2σ floor &nbsp;
+  <span style="color:${COL_RED}">- - </span> dashed red = cap (> μ+2.5σ, shown as ↑Nk)
 </div>`;
   }
 
