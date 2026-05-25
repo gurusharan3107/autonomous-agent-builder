@@ -161,9 +161,11 @@ def _check_workspace_ready(spec: dict) -> tuple[bool, str]:
     ok, data = _parse_json(out)
     if not ok:
         return False, f"builder doctor returned non-JSON: {out[:100]}"
-    if data.get("ok") is True:
+    # builder doctor always returns ok:true (command success); use passed:true
+    # to distinguish an initialised workspace from a non-initialised one.
+    if data.get("ok") is True and data.get("passed") is True:
         return True, "workspace ready"
-    return False, f"doctor.ok={data.get('ok')} ({data.get('status', '?')})"
+    return False, f"doctor.ok={data.get('ok')} passed={data.get('passed')} ({data.get('status', '?')})"
 
 
 def _assert_generic(name: str, spec: dict) -> dict:
@@ -227,6 +229,9 @@ def test_all(manifest_path: pathlib.Path, sample_session_id: str | None) -> dict
     # Iterate over remaining surfaces.
     for name, spec in surfaces.items():
         if name == "preflight_workspace_check":
+            continue
+        if not isinstance(spec, dict):
+            # Manifest may contain non-contract keys (e.g. "comment" strings); skip.
             continue
         if not workspace_ok and spec.get("command_argv_template"):
             # Skip session-scoped contracts unless we have a sample session id
