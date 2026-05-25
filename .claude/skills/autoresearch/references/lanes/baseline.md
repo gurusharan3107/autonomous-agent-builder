@@ -70,19 +70,17 @@ Required, every time — even on partial completion:
 cat docs/autoresearch/baseline_runs_summary.json
 # Tier-1 acceptance: every fixture status="stable", composite σ < 25% of mean.
 
-# 2. Regenerate the visual map
-python3 .claude/skills/autoresearch/scripts/render_iterations.py
-
-# 3. (Re-)run introspection
+# 2. (Re-)run introspection
 python3 .claude/skills/autoresearch/scripts/introspect.py
 
-# 4. PROGRESS.md entry — one bullet under today's date:
+# 3. PROGRESS.md entry — one bullet under today's date:
 #    "**Baseline N=5 across A–E** — per-fixture status + μ/σ/2σ-floor. Cost $X.YZ, wallclock Hh Mm. Commit <sha>."
 #    Schema in docs/autoresearch/PROGRESS.md.
 
-# 5. If any fixture status=unstable: re-run just that one with N=10 and document the σ tightening (in the same PROGRESS.md entry).
+# 4. If any fixture status=unstable: re-run just that one with N=10 and document the σ tightening (in the same PROGRESS.md entry).
 
-# 6. Universal closeout freshness sweep (Hard Rule 2) — final step, refuses lane closure on exit 1.
+# 5. Universal closeout freshness sweep (Hard Rule 2) — final step, refuses lane closure on exit 1.
+#    Also auto-refreshes the explainer HTML data block (render_iterations.py runs inside sweep).
 python3 .claude/skills/autoresearch/scripts/freshness_sweep.py
 ```
 

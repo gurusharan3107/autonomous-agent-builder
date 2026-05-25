@@ -83,23 +83,21 @@ python3 scripts/autoresearch/compare.py --fixture A --candidate-run <run_id>
 Required, every time — kept OR discarded OR crashed:
 
 ```bash
-# 1. Regenerate visual map
-python3 .claude/skills/autoresearch/scripts/render_iterations.py
-
-# 2. Re-run introspection (does the loop pay for itself?)
+# 1. Re-run introspection (does the loop pay for itself?)
 python3 .claude/skills/autoresearch/scripts/introspect.py
 
-# 3. OPTIMIZE_IDEAS.md — confirm the idea's attempt marker was appended:
+# 2. OPTIMIZE_IDEAS.md — confirm the idea's attempt marker was appended:
 #    > attempted: <decision> (<reason>, YYYY-MM-DD)
 #    loop.py does this automatically; on crash, append manually.
 
-# 4. PROGRESS.md entry — one bullet under today's date:
+# 3. PROGRESS.md entry — one bullet under today's date:
 #    "**Iter #N <idea-ref>** — verdict KEEP|DISCARD|CRASH. composite Δ=<%>vs μ (Δσ=<x>). gates X/6. branch <name>. <reason if discard>."
 #    Schema in docs/autoresearch/PROGRESS.md.
 #    On KEEP that ships (merged to main): also tick ROADMAP M3.5 if the iteration closed
 #    a milestone scope item; STATUS Recent Decisions only if cross-cutting.
 
-# 5. Universal closeout freshness sweep (Hard Rule 2) — final step, refuses lane closure on exit 1.
+# 4. Universal closeout freshness sweep (Hard Rule 2) — final step, refuses lane closure on exit 1.
+#    Also auto-refreshes the explainer HTML data block (render_iterations.py runs inside sweep).
 #    Especially important on KEEP: shipped optimizations often change prompt shape or runtime
 #    policy, and METRICS.md / HARNESS.md / README.md may now describe stale measurements.
 python3 .claude/skills/autoresearch/scripts/freshness_sweep.py

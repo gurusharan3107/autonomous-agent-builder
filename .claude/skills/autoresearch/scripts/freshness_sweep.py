@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -218,28 +219,34 @@ def check_harness_asserts_session_scoped() -> Finding | None:
     return None
 
 
-def check_explainer_autoupdate_fences() -> Finding | None:
-    """The explainer carries 4 fenced regions render_iterations.py rewrites.
+def check_explainer_data_block() -> Finding | None:
+    """The explainer carries a single <script id="autoresearch-data"> block.
 
-    Without all four, lane closeout cannot refresh live data. Hard drift.
+    render_iterations.py (called automatically by this sweep) writes this block.
+    If it's missing or contains invalid JSON, live data panels will be blank.
     """
     path = DOCS / "autoresearch-explainer.html"
     if not path.exists():
         return None  # OK; explainer not yet authored.
     text = _read(path)
-    required = ("baseline-summary", "baseline-scatter", "baseline-raw-rows", "iterations-list")
-    missing = []
-    for name in required:
-        if (f"AUTOUPDATE:{name}" not in text) or (f"/AUTOUPDATE:{name}" not in text):
-            missing.append(name)
-    if missing:
+    m = re.search(r'<script\s+id="autoresearch-data"[^>]*>(.*?)</script>', text, re.DOTALL)
+    if not m:
         return Finding(
-            "explainer_autoupdate_fences",
+            "explainer_data_block_missing",
             "hard",
-            f"autoresearch-explainer.html missing AUTOUPDATE fences: {', '.join(missing)}",
-            "render_iterations.py rewrites these named regions at every lane closeout. "
-            "Without them, baseline data and iteration history cannot be refreshed. "
-            "Restore the fences (see html-artifact skill: references/auto-update-regions.md).",
+            'autoresearch-explainer.html missing <script id="autoresearch-data"> block.',
+            "Run render_iterations.py to inject the data block. "
+            "If the block was deleted, restore it with: "
+            '<script id="autoresearch-data" type="application/json">{}</script>',
+        )
+    try:
+        json.loads(m.group(1))
+    except Exception as exc:
+        return Finding(
+            "explainer_data_block_invalid",
+            "hard",
+            f'autoresearch-explainer.html data block contains invalid JSON: {exc}',
+            "Run render_iterations.py to re-inject valid data.",
         )
     return None
 
@@ -305,7 +312,7 @@ CHECKS = [
     check_readme_telemetry_honesty_line,
     check_metrics_prompt_count_semantic,
     check_harness_asserts_session_scoped,
-    check_explainer_autoupdate_fences,
+    check_explainer_data_block,
     check_baseline_summary_age,
     check_changelog_recent_lane_activity,
 ]
@@ -321,10 +328,33 @@ def run_all() -> list[Finding]:
     return findings
 
 
+def _refresh_explainer(quiet: bool = False) -> None:
+    """Run render_iterations.py to refresh the HTML data block before checking."""
+    render_script = SCRIPT.parent / "render_iterations.py"
+    if not render_script.exists():
+        return
+    result = subprocess.run(
+        [sys.executable, str(render_script)],
+        capture_output=True, text=True,
+    )
+    if not quiet:
+        if result.returncode == 0:
+            print("  render_iterations.py: data block refreshed")
+        else:
+            print(f"  render_iterations.py: failed (exit {result.returncode})")
+            if result.stderr.strip():
+                print("    " + result.stderr.strip().splitlines()[0])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    parser.add_argument("--skip-refresh", action="store_true",
+                        help="Skip the automatic render_iterations.py refresh.")
     args = parser.parse_args()
+
+    if not args.skip_refresh:
+        _refresh_explainer(quiet=args.json)
 
     findings = run_all()
     hard = [f for f in findings if f.severity == "hard"]
