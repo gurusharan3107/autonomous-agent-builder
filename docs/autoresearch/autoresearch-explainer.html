@@ -789,7 +789,7 @@ python scripts/autoresearch/loop.py --idea <span class="hl">4</span> --fixture A
 
 <script id="autoresearch-data" type="application/json">
 {
-  "generated_at": "2026-05-25T11:44:48Z",
+  "generated_at": "2026-05-25T12:05:13Z",
   "fixtures": {
     "A": {
       "status": "stable",
@@ -1141,8 +1141,11 @@ const obs = new IntersectionObserver(entries => {
     const vals = runs.map(r => r.composite);
     const maxV = Math.max(...vals, mean + stdev * 1.5);
     const minV = Math.max(0, Math.min(...vals, floor > 0 ? floor * 0.8 : mean * 0.6));
-    const pad = (maxV - minV) * 0.15 || maxV * 0.1;
-    const yTop = maxV + pad, yBot = Math.max(0, minV - pad * 0.3);
+    // centre the mean line by using equal span above and below it
+    const span = Math.max(maxV - mean, mean - minV);
+    const pad = span * 0.15 || maxV * 0.1;
+    const yTop = mean + span + pad;
+    const yBot = Math.max(0, mean - span - pad);
     const yRange = yTop - yBot;
 
     const W = 640, H = 220, lp = 72, rp = 36, tp = 16, bp = 32;
