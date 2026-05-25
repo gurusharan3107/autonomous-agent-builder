@@ -729,7 +729,7 @@ python scripts/autoresearch/loop.py --idea <span class="hl">4</span> --fixture A
 
     <div class="callout">
       <span class="ico">★</span>
-      <div>Fixtures B–E are not yet stable. The full N = 25 baseline is the next gate before broad iteration; until then, single-fixture comparisons against A are the operating mode.</div>
+      <div>Fixtures A and B are stable. C–E still need baseline runs. Until all 5 are stable, Iterate-lane gates on fixture A (2σ-floor=14,602); fixture B has a negative 2σ-floor due to one high-variance run and cannot gate comparisons yet.</div>
     </div>
 
     <h3>Iterations history</h3>
@@ -854,7 +854,7 @@ python scripts/autoresearch/loop.py --idea <span class="hl">4</span> --fixture A
       <dd>Because the measurement infrastructure must be more reliable than the thing being measured. The loop establishes that the measurement is trustworthy first (baseline + gates + self-heal). Autonomous source edits come after the loop has proven it can detect real change without human review.</dd>
 
       <dt>What happens if a fixture's σ is unreliable?</dt>
-      <dd>The fixture is marked <code>unstable</code> in <code>baseline_runs_summary.json</code> and excluded from comparisons until it has ≥ 3 clean runs. As of this writing only fixture A is stable; B–E need more runs before broad iteration.</dd>
+      <dd>The fixture is marked <code>unstable</code> in <code>baseline_runs_summary.json</code> and excluded from comparisons until it has ≥ 3 clean runs. As of this writing fixtures A and B are stable; C–E need more runs before broad iteration.</dd>
 
       <dt>How does self-heal differ from the Fix lane?</dt>
       <dd><code>self_heal.py</code> patches 5 catalogued patterns deterministically with no LLM calls (1 fix + 1 retry cap). Everything else escalates to the Fix lane — a human-driven source patch path, typically against the harness, the seed, or telemetry, not the Builder itself.</dd>
