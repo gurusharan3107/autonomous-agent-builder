@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,6 +13,8 @@ from sqlalchemy.orm import selectinload
 from autonomous_agent_builder.backlog_items import backlog_item_reaches_board
 from autonomous_agent_builder.db.models import (
     Feature,
+    Sprint,
+    SprintPhase,
     Task,
     TaskStatus,
     set_task_status,
@@ -21,6 +24,8 @@ from autonomous_agent_builder.services.provider_limits import (
     provider_limit_is_ready,
     provider_limit_target_status,
 )
+
+log = structlog.get_logger()
 
 DISPATCHABLE_STATUSES = {
     TaskStatus.PENDING,
@@ -46,6 +51,80 @@ class FollowupDecision:
     action: str
     reason: str
     task_id: str | None = None
+
+
+async def _maybe_mark_sprint_stalled(
+    db: AsyncSession,
+    failed_task: Task,
+) -> bool:
+    """Detect and resolve sprint implementation deadlock (P23).
+
+    When a task fails and the owning sprint still shows phase=implementation
+    with no tasks left in active dispatch states, the orchestrator will never
+    re-enter the dispatch loop. Transition the sprint to phase=blocked so the
+    session reaches a terminal state the harness and dashboard can evaluate.
+
+    Stall condition: all sprint tasks are in {failed, pending, done} AND at
+    least one is failed AND at least one is pending (blocked by failed deps).
+    Skips if any task is still actively dispatching or waiting on a recoverable
+    state (capability_limit, review_pending, blocked).
+    """
+    result = await db.execute(
+        select(Sprint).where(Sprint.phase == SprintPhase.IMPLEMENTATION)
+    )
+    sprints = result.scalars().all()
+
+    sprint: Sprint | None = None
+    for s in sprints:
+        if failed_task.feature_id in (s.approved_feature_ids or []):
+            sprint = s
+            break
+    if sprint is None:
+        return False
+
+    task_ids = sprint.generated_task_ids or []
+    if not task_ids:
+        return False
+
+    result = await db.execute(select(Task).where(Task.id.in_(task_ids)))
+    sprint_tasks = result.scalars().all()
+    if not sprint_tasks:
+        return False
+
+    # Only fire when every task is in a terminal-or-waiting state.
+    # Any active, blocked, or capability-limited task has a path to progress.
+    _TERMINAL_OR_WAITING = {TaskStatus.FAILED, TaskStatus.PENDING, TaskStatus.DONE}
+    for task in sprint_tasks:
+        ts = task.status if isinstance(task.status, TaskStatus) else TaskStatus(str(task.status))
+        if ts not in _TERMINAL_OR_WAITING:
+            return False
+
+    failed_ids = [
+        t.id for t in sprint_tasks
+        if (t.status if isinstance(t.status, TaskStatus) else TaskStatus(str(t.status))) == TaskStatus.FAILED
+    ]
+    pending_ids = [
+        t.id for t in sprint_tasks
+        if (t.status if isinstance(t.status, TaskStatus) else TaskStatus(str(t.status))) == TaskStatus.PENDING
+    ]
+    if not failed_ids or not pending_ids:
+        return False
+
+    sprint.phase = SprintPhase.BLOCKED
+    sprint.verification_status = "blocked"
+    sprint.verification_evidence = {
+        "blocked_reason": "all_active_tasks_failed",
+        "failed_task_ids": failed_ids,
+        "pending_task_ids": pending_ids,
+    }
+    await db.flush()
+    log.info(
+        "sprint_implementation_stall_detected",
+        sprint_id=sprint.id,
+        failed_count=len(failed_ids),
+        pending_count=len(pending_ids),
+    )
+    return True
 
 
 async def choose_followup_after_dispatch(
@@ -79,6 +158,8 @@ async def choose_followup_after_dispatch(
                 reason=f"same_task_next_phase_{completed_status.value}",
                 task_id=completed_task.id,
             )
+        if completed_status == TaskStatus.FAILED:
+            await _maybe_mark_sprint_stalled(db, completed_task)
         return FollowupDecision(action="idle", reason=f"task_status_{completed_status.value}")
 
     provider_task = await _recover_ready_provider_limit_task(

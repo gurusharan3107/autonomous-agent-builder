@@ -8,6 +8,8 @@ from autonomous_agent_builder.db.models import (
     Feature,
     FeatureStatus,
     Project,
+    Sprint,
+    SprintPhase,
     Task,
     TaskPhase,
     TaskStatus,
@@ -225,3 +227,89 @@ async def test_choose_followup_recovers_ready_provider_limit_task(test_db) -> No
         assert decision.task_id == limited.id
         assert limited.status == TaskStatus.IMPLEMENTATION
         assert limited.provider_limit is None
+
+
+@pytest.mark.asyncio
+async def test_choose_followup_marks_sprint_blocked_when_all_tasks_failed(test_db) -> None:
+    """P23: sprint stays in implementation after all active tasks fail → must go blocked."""
+    _, factory = test_db
+    async with factory() as db:
+        project = Project(name="Sprint stall test", language="python")
+        db.add(project)
+        await db.flush()
+        feature = Feature(
+            project_id=project.id,
+            title="GitHub auth",
+            status=FeatureStatus.SPRINT_PLANNED,
+        )
+        db.add(feature)
+        await db.flush()
+        # Three tasks that all failed integration
+        failed1 = Task(feature_id=feature.id, title="Set up domain model", status=TaskStatus.FAILED)
+        failed2 = Task(feature_id=feature.id, title="Build UI shell", status=TaskStatus.FAILED)
+        failed3 = Task(feature_id=feature.id, title="Implement core behavior", status=TaskStatus.FAILED)
+        # Two tasks still pending (blocked by failed deps)
+        pending1 = Task(feature_id=feature.id, title="Wire persistence", status=TaskStatus.PENDING)
+        pending2 = Task(feature_id=feature.id, title="Verify feature", status=TaskStatus.PENDING)
+        db.add_all([failed1, failed2, failed3, pending1, pending2])
+        await db.flush()
+
+        sprint = Sprint(
+            project_id=project.id,
+            label="Sprint 2",
+            phase=SprintPhase.IMPLEMENTATION,
+            approved_feature_ids=[feature.id],
+            generated_task_ids=[failed1.id, failed2.id, failed3.id, pending1.id, pending2.id],
+        )
+        db.add(sprint)
+        await db.flush()
+
+        # Simulate the last failed task completing build_verify → FAILED
+        decision = await choose_followup_after_dispatch(db, failed3)
+
+        assert decision.action == "idle"
+        assert decision.reason == "task_status_failed"
+        # Sprint must have transitioned to blocked
+        assert sprint.phase == SprintPhase.BLOCKED
+        assert sprint.verification_status == "blocked"
+        assert sprint.verification_evidence is not None
+        assert sprint.verification_evidence["blocked_reason"] == "all_active_tasks_failed"
+        assert set(sprint.verification_evidence["failed_task_ids"]) == {failed1.id, failed2.id, failed3.id}
+        assert set(sprint.verification_evidence["pending_task_ids"]) == {pending1.id, pending2.id}
+
+
+@pytest.mark.asyncio
+async def test_choose_followup_does_not_mark_sprint_stalled_when_task_in_progress(test_db) -> None:
+    """P23 guard: sprint should NOT go blocked while another task is still dispatching."""
+    _, factory = test_db
+    async with factory() as db:
+        project = Project(name="In-progress guard", language="python")
+        db.add(project)
+        await db.flush()
+        feature = Feature(
+            project_id=project.id,
+            title="Notes feature",
+            status=FeatureStatus.SPRINT_PLANNED,
+        )
+        db.add(feature)
+        await db.flush()
+        failed = Task(feature_id=feature.id, title="Failed task", status=TaskStatus.FAILED)
+        in_prog = Task(feature_id=feature.id, title="Still running", status=TaskStatus.IMPLEMENTATION)
+        pending = Task(feature_id=feature.id, title="Blocked pending", status=TaskStatus.PENDING)
+        db.add_all([failed, in_prog, pending])
+        await db.flush()
+
+        sprint = Sprint(
+            project_id=project.id,
+            label="Sprint 2",
+            phase=SprintPhase.IMPLEMENTATION,
+            approved_feature_ids=[feature.id],
+            generated_task_ids=[failed.id, in_prog.id, pending.id],
+        )
+        db.add(sprint)
+        await db.flush()
+
+        await choose_followup_after_dispatch(db, failed)
+
+        # Sprint must remain in implementation — in_prog task is still running
+        assert sprint.phase == SprintPhase.IMPLEMENTATION
