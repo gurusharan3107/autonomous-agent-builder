@@ -562,6 +562,31 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
+## P23 — Sprint implementation deadlock — orchestrator quiesces after tasks fail (persistent)
+
+- **First seen:** 2026-05-25, fixture B iter 1/5, third full baseline attempt
+- **Wallclock to repro:** ~1668s (watchdog fires at 600s idle after last task marks failed)
+- **Status:** Catalogued + matcher added (2026-05-25). Source fix needed in orchestrator.
+
+**Symptom.** Watchdog fires at ~606s idle (`idle_seconds ≈ 600–700`). Sprint 2 is in `phase=implementation`. Builder dispatched `_phase_build_verify` for the last in-flight task; that task transitioned to `status=failed phase=integration`. After that DB write, Builder made no further dispatch attempt — it only responded to `GET /api/dashboard/board` polls for 605s. 3/5 sprint tasks are `failed`, 2/5 are `pending/planning` (blocked by the failed deps). Sprint never transitions to `blocked/shipped/failed`.
+
+**Evidence query.**
+
+1. `STUCK_DETECTED.json.idle_seconds >= 550` (above the 600s watchdog threshold).
+2. `STUCK_DETECTED.json.reason != "wall_clock_budget_exceeded"` (real watchdog dump).
+3. DB `sprints` table: at least one sprint with `phase='implementation'`.
+4. DB `tasks` table: ≥1 task `status='failed'`, ≥1 task `status='pending'`, 0 tasks not in {failed, pending, done}.
+5. Builder log: last `dispatch_phase` line mentions `_phase_build_verify`; no subsequent `dispatch_followup_selected` or `dispatch_background_start`.
+6. Builder log: `GET /api/dashboard/board` flood (harness polling; orchestrator silent).
+
+**Why it happens.** The orchestrator's `_phase_build_verify` determines the task failed integration checks and marks it `failed`. But there is no code path that, after a task fails, asks "are there still pending tasks in this sprint that need dispatching?" or "is the sprint now in a stuck state?" The orchestrator exits the dispatch coroutine and the uvicorn event loop keeps running — responding to HTTP polls — but never re-enters the dispatch path for the pending tasks.
+
+**Fix pointer.** Source fix in `src/autonomous_agent_builder/orchestrator/orchestrator.py`: after any task transitions to `failed`, add a sprint-stall check — if sprint.phase=`implementation` and all tasks are either `failed` or `pending` (none `in_progress`), transition sprint to `phase=blocked` with `blocked_reason='all_active_tasks_failed'`. This gives the harness a terminal state to evaluate against. Alternatively, `task_recovery.py` can detect and re-dispatch `failed/integration` tasks with incremented `retry_count`.
+
+**Prevention.** Add a periodic sprint-stall detector in the orchestrator's background tick (if any). After every task phase transition to `failed`, explicitly check if any sibling tasks need dispatching or if the sprint has reached a stall state.
+
+---
+
 ## P22 — code-gen Sonnet API latency exceeds watchdog idle threshold (api_latency)
 
 - **First seen:** 2026-05-24, fixture A iter 1/5, second full baseline attempt

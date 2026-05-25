@@ -1098,6 +1098,144 @@ def match_p22_codegen_sonnet_api_latency(
     )
 
 
+def match_p23_sprint_implementation_deadlock(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P23 (2026-05-25): Sprint in 'implementation' state with all active tasks
+    failed — orchestrator quiesces and never dispatches remaining/recovery work.
+
+    Symptom: baseline.py's hang_watchdog fires after 600s+ of WAL idle.
+    Timeline:
+      19:52:02  dispatch_background_start → _phase_build_verify for task X
+      19:52:12  task X transitions to status=failed phase=integration (DB write)
+      20:02:18  watchdog fires (605.7s after last WAL activity)
+
+    Builder kept responding to GET /api/dashboard/board polls but made no
+    further dispatch attempts. Sprint remains in status='implementation' with
+    3/5 tasks failed and 2/5 pending (blocked by failed deps). Never transitions
+    to blocked/shipped/failed.
+
+    Root cause: Orchestrator has no handler for "all in-flight sprint tasks
+    reached failed state while sprint still shows implementation." It exits the
+    dispatch loop and waits for a signal that never comes.
+
+    Confidence signature:
+      - idle_seconds >= 550 (above the 600s watchdog threshold; P22 covers 120-360s)
+      - Real watchdog dump (not synthetic wall-clock budget)
+      - DB: sprint with status='implementation'
+      - DB: ≥1 task status='failed', ≥1 task status='pending', 0 tasks in-progress
+      - Builder log: last dispatch_phase was _phase_build_verify; board poll flood after
+
+    Category: persistent. Source fix needed in orchestrator.
+    """
+    idle_seconds = float(stuck.get("idle_seconds", 0))
+    # P23 fires at 550+s. P22 covers 120-360s. Both are mutually exclusive.
+    if idle_seconds < 550:
+        return None
+    # Real watchdog dump only — not synthetic wall-clock abort (P21 covers that).
+    if stuck.get("reason") == "wall_clock_budget_exceeded" or stuck.get("synthesized"):
+        return None
+    if con is None:
+        return None
+
+    try:
+        # Sprint table uses 'phase' (not 'status') — shipped/implementation/blocked
+        sprints = list(con.execute(
+            "SELECT id, phase FROM sprints WHERE phase='implementation' LIMIT 1"
+        ))
+    except sqlite3.Error:
+        return None
+    if not sprints:
+        return None
+
+    try:
+        tasks = list(con.execute("SELECT id, status, title FROM tasks ORDER BY created_at"))
+    except sqlite3.Error:
+        return None
+    if not tasks:
+        return None
+
+    failed_tasks = [t for t in tasks if t["status"] == "failed"]
+    pending_tasks = [t for t in tasks if t["status"] == "pending"]
+    done_tasks = [t for t in tasks if t["status"] == "done"]
+    in_progress = [t for t in tasks
+                   if t["status"] not in ("failed", "pending", "done")]
+
+    if not failed_tasks or in_progress:
+        return None
+    if not pending_tasks:
+        return None
+
+    evidence: list[str] = [
+        f"sprint phase=implementation (never transitioned to blocked/shipped/failed)",
+        f"{len(failed_tasks)} task(s) status=failed: "
+        f"{[t['title'][:40] for t in failed_tasks[:3]]}",
+        f"{len(pending_tasks)} task(s) status=pending (blocked by failed deps)",
+        f"{len(done_tasks)} task(s) done — partial sprint progress before stall",
+        f"idle_seconds={idle_seconds:.1f} (watchdog fired at 600s threshold)",
+    ]
+
+    # Check builder log for the quiescence signature
+    stderr = _load_text(dump, "builder_stdout_stderr.log")
+    if not stderr:
+        candidates = [dump.parent.parent / "builder_stdout_stderr.log"]
+        ed_str = stuck.get("evidence_dir")
+        if ed_str:
+            candidates.append(pathlib.Path(ed_str) / "builder_stdout_stderr.log")
+        for log_file in candidates:
+            if log_file.exists():
+                try:
+                    stderr = log_file.read_text(errors="replace")
+                    break
+                except OSError:
+                    pass
+
+    log_confidence_boost = False
+    if stderr:
+        has_build_verify = any(
+            "dispatch_phase" in line and "_phase_build_verify" in line
+            for line in stderr.splitlines()
+        )
+        if has_build_verify:
+            evidence.append("last dispatch_phase was _phase_build_verify")
+            log_confidence_boost = True
+        board_flood = stderr.count("GET /api/dashboard/board") > 20
+        if board_flood:
+            evidence.append(
+                "board poll flood after quiescence "
+                "(harness polling; orchestrator making no dispatches)"
+            )
+            log_confidence_boost = True
+
+    confidence = 0.90 if log_confidence_boost else 0.75
+    return Match(
+        pattern_id="P23",
+        name="Sprint implementation deadlock — orchestrator quiesces after tasks fail (persistent)",
+        confidence=confidence,
+        evidence=evidence,
+        fix_pointer=(
+            "Builder product bug: when all in-flight sprint tasks reach "
+            "status=failed and remaining tasks are pending/blocked, the "
+            "orchestrator makes no further dispatch attempt and no terminal "
+            "sprint transition. Fix options: "
+            "(1) Post-dispatch check in "
+            "src/autonomous_agent_builder/orchestrator/orchestrator.py — "
+            "after a task transitions to failed, if sprint.status='implementation' "
+            "and no tasks are in_progress, transition sprint to status='blocked' "
+            "with blocked_reason='all_active_tasks_failed'; "
+            "(2) Or: task_recovery.py detects failed/integration tasks in an "
+            "implementation sprint and re-dispatches with incremented retry_count. "
+            "Either way, the sprint must reach a terminal state so the harness "
+            "can evaluate the gate and not wait forever."
+        ),
+        category="persistent",
+    )
+
+
 def match_p21_hook_stream_closed(
     dump: pathlib.Path,
     stuck: dict,
@@ -1321,8 +1459,9 @@ MATCHERS = [
                                        # the transient-retry path fires before
                                        # any persistent fallback misclassifies it
     match_p19_tool_not_found_hang,    # also very specific; check before generic
-    match_p22_codegen_sonnet_api_latency,  # watchdog false-positive: Sonnet latency > 180s idle
-    match_p21_hook_stream_closed,          # wall-clock SIGTERM → hook flood (budget_exhausted)
+    match_p23_sprint_implementation_deadlock,  # 600+s idle: sprint=implementation, all tasks failed
+    match_p22_codegen_sonnet_api_latency,      # watchdog false-positive: Sonnet latency 120-360s idle
+    match_p21_hook_stream_closed,              # wall-clock SIGTERM → hook flood (budget_exhausted)
     match_p20_orchestrator_livelock,       # wall-clock-budget livelock signature
     match_p11_p14_respond_409,        # very specific — check next
     match_p10_respond_400,
