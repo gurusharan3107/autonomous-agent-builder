@@ -170,3 +170,11 @@ Run date: 2026-05-24
 | C | unstable | 0/0 | — | — | — |
 | D | unstable | 0/0 | — | — | — |
 | E | unstable | 0/0 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-25
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| B | stable | 4/5 | 52723 | 29568 | -6412 |

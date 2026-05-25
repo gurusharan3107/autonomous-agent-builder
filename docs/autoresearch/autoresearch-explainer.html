@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How autoresearch works in autonomous-agent-builder</title>
+<style>
+  :root {
+    --ivory:   #FAF9F5;
+    --paper:   #FFFFFF;
+    --slate:   #141413;
+    --clay:    #D97757;
+    --clay-d:  #B85C3E;
+    --oat:     #E3DACC;
+    --olive:   #788C5D;
+    --rust:    #B04A3F;
+    --gray-150:#F0EEE6;
+    --gray-300:#D1CFC5;
+    --gray-500:#87867F;
+    --gray-700:#3D3D3A;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: clip; }
+  body {
+    background: var(--ivory);
+    color: var(--gray-700);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    padding: 56px 24px 120px;
+  }
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 56px;
+  }
+  @media (max-width: 920px) { .page { grid-template-columns: 1fr; } nav.toc { display: none; } }
+
+  /* ── nav ──────────────────────────────── */
+  nav.toc {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+    font-size: 13px;
+  }
+  nav.toc .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-bottom: 12px;
+  }
+  nav.toc a {
+    display: block;
+    padding: 5px 0 5px 12px;
+    border-left: 2px solid var(--gray-300);
+    color: var(--gray-700);
+    text-decoration: none;
+  }
+  nav.toc a:hover { color: var(--slate); border-color: var(--slate); }
+  nav.toc a.active { color: var(--slate); border-color: var(--clay); }
+  nav.toc a.l2 { padding-left: 24px; font-size: 12.5px; color: var(--gray-500); }
+  nav.toc .files {
+    margin-top: 28px;
+    border-top: 1px solid var(--gray-300);
+    padding-top: 16px;
+  }
+  nav.toc .files code {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+    padding: 3px 0;
+    background: none;
+  }
+
+  /* ── header ───────────────────────────── */
+  header { margin-bottom: 12px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(28px, 4vw, 36px);
+    color: var(--slate);
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+    line-height: 1.15;
+  }
+  h1 em { font-style: italic; color: var(--clay); }
+  .tldr {
+    border: 1.5px solid var(--gray-300);
+    border-left: 3px solid var(--clay);
+    border-radius: 10px;
+    background: var(--paper);
+    padding: 16px 18px;
+    margin-bottom: 8px;
+    max-width: 720px;
+  }
+  .tldr b { color: var(--slate); }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--slate);
+    margin: 44px 0 14px;
+    scroll-margin-top: 24px;
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--slate);
+    margin: 22px 0 8px;
+  }
+  p { margin-bottom: 12px; max-width: 720px; }
+  code { font-family: var(--mono); font-size: 13px; color: var(--slate); background: var(--gray-150); padding: 1px 5px; border-radius: 4px; }
+
+  /* ── metric tiles ─────────────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 20px 0 8px;
+    max-width: 720px;
+  }
+  .stat {
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    background: var(--paper);
+    padding: 14px 16px;
+  }
+  .stat .num {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--slate);
+    letter-spacing: -0.01em;
+  }
+  .stat .num .unit { font-size: 12px; color: var(--gray-500); margin-left: 2px; }
+  .stat .lab {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-top: 4px;
+  }
+
+  /* ── collapsible ─────────────────────── */
+  details {
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    background: var(--paper);
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--slate);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "▸";
+    color: var(--clay);
+    font-family: var(--sans);
+    font-size: 12px;
+    transition: transform 120ms;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  summary .step {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+    letter-spacing: 0.04em;
+  }
+  summary .where {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+    margin-left: auto;
+  }
+  details .body { padding: 0 16px 18px; }
+  details .body p { font-size: 14px; }
+  details .body code { font-size: 12.5px; }
+
+  /* ── tabs ─────────────────────────────── */
+  .tabs {
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    background: var(--paper);
+    margin: 14px 0 8px;
+    overflow: hidden;
+  }
+  .tabbar {
+    display: flex;
+    border-bottom: 1px solid var(--gray-300);
+    background: var(--gray-150);
+  }
+  .tabbar button {
+    appearance: none;
+    border: none;
+    background: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--gray-500);
+    padding: 10px 16px;
+    cursor: pointer;
+    border-right: 1px solid var(--gray-300);
+    letter-spacing: 0.04em;
+  }
+  .tabbar button.on {
+    background: var(--paper);
+    color: var(--slate);
+    border-bottom: 2px solid var(--clay);
+    margin-bottom: -1px;
+  }
+  .tabpane { display: none; padding: 18px 20px; }
+  .tabpane.on { display: block; }
+  .tabpane h3 { margin-top: 0; }
+  .tabpane .meta {
+    display: flex;
+    gap: 18px;
+    margin: 4px 0 14px;
+    flex-wrap: wrap;
+  }
+  .tabpane .meta span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+    letter-spacing: 0.04em;
+  }
+  .tabpane .meta b { color: var(--slate); font-weight: 500; }
+  .tabpane ol { padding-left: 20px; font-size: 14px; max-width: 640px; }
+  .tabpane ol li { margin-bottom: 6px; }
+  .tabpane pre {
+    margin-top: 12px;
+    padding: 14px 16px;
+    background: var(--gray-150);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--slate);
+    overflow-x: auto;
+  }
+  .hl { color: var(--clay); }
+  .cm { color: var(--gray-500); }
+
+  /* ── callout ──────────────────────────── */
+  .callout {
+    display: flex;
+    gap: 12px;
+    border: 1.5px solid var(--oat);
+    background: rgba(227,218,204,0.35);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 18px 0;
+    font-size: 14px;
+    max-width: 720px;
+  }
+  .callout .ico { color: var(--clay); font-weight: 600; }
+
+  /* ── tables ──────────────────────────── */
+  table {
+    width: 100%;
+    max-width: 720px;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13.5px;
+    background: var(--paper);
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--gray-300);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    background: var(--gray-150);
+    font-weight: 500;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.mono { font-family: var(--mono); font-size: 12px; color: var(--slate); }
+  td.num  { font-family: var(--mono); font-size: 12px; color: var(--slate); text-align: right; white-space: nowrap; }
+
+  /* ── two-col can/cant ─────────────────── */
+  .twocol {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 14px 0;
+    max-width: 720px;
+  }
+  @media (max-width: 720px) { .twocol { grid-template-columns: 1fr; } }
+  .col {
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    background: var(--paper);
+    padding: 14px 16px;
+  }
+  .col h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .col.can h4 { color: var(--olive); }
+  .col.cant h4 { color: var(--rust); }
+  .col ul { list-style: none; }
+  .col li {
+    font-size: 13.5px;
+    padding: 3px 0 3px 18px;
+    position: relative;
+  }
+  .col.can li::before  { content: "✓"; color: var(--olive); position: absolute; left: 0; font-weight: 600; }
+  .col.cant li::before { content: "✗"; color: var(--rust);  position: absolute; left: 0; font-weight: 600; }
+
+  /* ── file tree ────────────────────────── */
+  pre.tree {
+    background: var(--paper);
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--slate);
+    overflow-x: auto;
+    max-width: 720px;
+  }
+  pre.tree .dim { color: var(--gray-500); }
+  pre.tree .hl  { color: var(--clay); }
+
+  /* ── faq ──────────────────────────────── */
+  dl.faq { margin-top: 8px; max-width: 720px; }
+  dl.faq dt {
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--slate);
+    margin-top: 18px;
+  }
+  dl.faq dd { font-size: 14px; margin: 4px 0 0; }
+
+  /* ── reduced motion ──────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── side nav ── -->
+  <nav class="toc">
+    <div class="label">On this page</div>
+    <a href="#tldr">TL;DR</a>
+    <a href="#when">When to reach for it</a>
+    <a href="#benefits">Benefits</a>
+    <a href="#loop">The 5-step loop</a>
+    <a href="#loop" class="l2">1. Edit</a>
+    <a href="#loop" class="l2">2. Run</a>
+    <a href="#loop" class="l2">3. Measure</a>
+    <a href="#loop" class="l2">4. Compare (2σ)</a>
+    <a href="#loop" class="l2">5. Keep / Discard</a>
+    <a href="#lanes">The three lanes</a>
+    <a href="#arch">Architecture</a>
+    <a href="#gates">The six hard gates</a>
+    <a href="#data">Live data</a>
+    <a href="#data" class="l2">Baseline summary</a>
+    <a href="#data" class="l2">Scatter</a>
+    <a href="#data" class="l2">Raw runs</a>
+    <a href="#data" class="l2">Iterations history</a>
+    <a href="#ideas">Optimization backlog</a>
+    <a href="#patterns">Failure patterns</a>
+    <a href="#scope">Can / cannot do</a>
+    <a href="#tree">File map</a>
+    <a href="#faq">FAQ</a>
+    <div class="files">
+      <div class="label">Files this reads</div>
+      <code>scripts/autoresearch/run.py</code>
+      <code>scripts/autoresearch/baseline.py</code>
+      <code>scripts/autoresearch/compare.py</code>
+      <code>scripts/autoresearch/loop.py</code>
+      <code>.claude/skills/autoresearch/</code>
+      <code>docs/autoresearch/OPTIMIZE_IDEAS.md</code>
+      <code>docs/autoresearch/baseline_runs.tsv</code>
+    </div>
+  </nav>
+
+  <!-- ── main ── -->
+  <main>
+    <header>
+      <div class="eyebrow">Research &amp; Learning · feature summary</div>
+      <h1>How <em>autoresearch</em> works in <code>autonomous-agent-builder</code></h1>
+      <div class="tldr" id="tldr">
+        <b>TL;DR</b> — Autoresearch is an autonomous optimization loop (inspired by Karpathy's autoresearch methodology) that improves the Builder's prompt/context assembly through systematic code-generation testing. Each iteration makes a bounded source edit, runs 5 scripted fixtures against a live Builder workspace, measures <code>noncached_plus_output_tokens</code>, and keeps or discards the change based on a 2σ noise floor. The core philosophy: <i>rapid autonomous iteration at small scale beats big runs at slow cadence.</i>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="num">25<span class="unit">runs</span></div><div class="lab">Baseline N = 5 × 5</div></div>
+        <div class="stat"><div class="num">6<span class="unit">gates</span></div><div class="lab">Hard pass/fail</div></div>
+        <div class="stat"><div class="num">11<span class="unit">ideas</span></div><div class="lab">In the backlog</div></div>
+        <div class="stat"><div class="num">18<span class="unit">patterns</span></div><div class="lab">Auto-caught</div></div>
+        <div class="stat"><div class="num">$5–10</div><div class="lab">Baseline cost</div></div>
+      </div>
+    </header>
+
+    <h2 id="when">When to reach for autoresearch — and when not to</h2>
+    <p>Autoresearch is for one job: <i>changing prompt/context assembly and proving the change is real before keeping it.</i> Everything else is the wrong tool.</p>
+
+    <div class="twocol">
+      <div class="col can">
+        <h4>Use it when</h4>
+        <ul>
+          <li>You suspect the Builder is wasting tokens on prompt/context assembly</li>
+          <li>You have a bounded source edit to test (single file, single behavioural change)</li>
+          <li>You want a 2σ-significance verdict, not a feel-good before/after vibe</li>
+          <li>The change is measurable in <code>noncached_plus_output_tokens</code> on at least one fixture</li>
+          <li>You already have a stable baseline — or you're willing to run one ($5–10, ~2 h)</li>
+          <li>You're prepared to discard the edit if the loop says <code>DISCARD</code>, no matter how clean it looked in dev</li>
+        </ul>
+      </div>
+      <div class="col cant">
+        <h4>Don't reach for it when</h4>
+        <ul>
+          <li>You're shipping a user feature — wrong lane, use the Builder dashboard</li>
+          <li>The change isn't visible in billed tokens (UX polish, validation logic, error messages)</li>
+          <li>You have no clean baseline and don't have ~2 h + $5–10 to establish one</li>
+          <li>You want to refactor — the loop demands one behavioural change at a time</li>
+          <li>The change spans multiple files in non-prompt code paths</li>
+          <li>You're debugging — use <code>builder logs analyze</code>, not the optimization loop</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div><b>Mental model.</b> Autoresearch is a microscope, not a hammer. It exists to detect signal smaller than the noise floor of one-off runs. If the change you're testing is obvious — saves 50% of tokens, breaks a gate, etc. — you don't need autoresearch. If the change might save 5–15% and you can't tell whether it's real, you do.</div>
+    </div>
+
+    <h2 id="benefits">Benefits — what the loop buys you</h2>
+    <p>Five concrete things you get from putting an edit through autoresearch instead of shipping it on a hunch.</p>
+
+    <div class="stats">
+      <div class="stat"><div class="num">2σ</div><div class="lab">Significance floor — refuses noise as signal</div></div>
+      <div class="stat"><div class="num">$0</div><div class="lab">Preflight checks before any token is spent</div></div>
+      <div class="stat"><div class="num">6 gates</div><div class="lab">Block any cheap-but-broken candidate</div></div>
+      <div class="stat"><div class="num">5 patterns</div><div class="lab">Auto-healed, no LLM, no operator</div></div>
+      <div class="stat"><div class="num">Full audit</div><div class="lab">Every run captured in TSV + PROGRESS</div></div>
+    </div>
+
+    <table>
+      <thead><tr><th>Benefit</th><th>Without autoresearch</th><th>With autoresearch</th></tr></thead>
+      <tbody>
+        <tr><td><b>Significance</b></td><td>Run twice, eyeball the delta, ship if it feels better</td><td>2σ floor on N = 5 baseline; KEEP/DISCARD verdict is mechanical</td></tr>
+        <tr><td><b>Reproducibility</b></td><td>"It was fine on my machine" — different worktree state, different dev token</td><td>Immutable seed, scripted fixture, identical conditions every run</td></tr>
+        <tr><td><b>Cheap validation</b></td><td>Spend tokens finding out the env was broken</td><td>Preflight runs 8 hard + 5 soft checks for $0 before any spend</td></tr>
+        <tr><td><b>Recovery</b></td><td>Manual triage when a run crashes</td><td><code>self_heal.py</code> auto-fixes 5 known patterns deterministically</td></tr>
+        <tr><td><b>Audit trail</b></td><td>"I think we tried that two weeks ago"</td><td>Every run + verdict + diff in <code>baseline_runs.tsv</code> + <code>PROGRESS.md</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="loop">The five-step loop</h2>
+    <p>Each iteration of the <i>Iterate</i> lane is one trip around these five steps. Expand each to see what runs and where. The whole loop takes 10–30 minutes per iteration depending on the fixture.</p>
+
+    <details open>
+      <summary><span class="step">1</span> Make a bounded source edit <span class="where">operator-edit</span></summary>
+      <div class="body">
+        <p>The loop pauses for the operator to edit exactly one of six allowed files in the prompt/context assembly path. The edit must be bounded — a single behavioural change, not a refactor — so any composite-metric delta is attributable. v1 cannot edit code itself; this is the only step that requires a human.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="step">2</span> Run a fixture against a live Builder workspace <span class="where">scripts/autoresearch/run.py</span></summary>
+      <div class="body">
+        <p>Copies the immutable seed (<code>~/.seed/devpulse</code>) to a fresh worktree, starts a Builder process, drives one scripted fixture prompt (A–E) over the HTTP API, waits for <code>shipped</code> or a 1500&nbsp;s timeout, then runs <code>npm build</code> and the test suite. Telemetry is captured per-session.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="step">3</span> Measure billed tokens via session telemetry <span class="where">builder logs analyze --session</span></summary>
+      <div class="body">
+        <p>The composite metric is <code>noncached_plus_output_tokens</code> — non-cached input plus output. Cached reads are free and excluded. This is the single optimization target. A prior multi-dimensional formula was retired in P16 (CV = 77.5% &rarr; 14.7% on single dimension).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="step">4</span> 2σ comparison vs baseline <span class="where">scripts/autoresearch/compare.py</span></summary>
+      <div class="body">
+        <p>The candidate must beat <code>μ − 2σ</code> of the baseline distribution to be statistically significant. <code>compare.py</code> also evaluates the six hard gates. Any single gate failure flips the verdict to <code>DISCARD</code> regardless of composite delta.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="step">5</span> Keep, discard, or fix <span class="where">scripts/autoresearch/loop.py</span></summary>
+      <div class="body">
+        <p><code>KEEP</code> → promote fixture A's win to fixtures B–E for confirmation. <code>DISCARD</code> → revert the source edit, mark the idea attempted. <code>CRASH</code> → bail to the Fix lane to patch the harness or seed. State is persisted to <code>docs/autoresearch/PROGRESS.md</code>.</p>
+      </div>
+    </details>
+
+    <h2 id="lanes">The three lanes</h2>
+    <p>Every autoresearch session enters one lane. The skill asks via <code>AskUserQuestion</code> at <code>/start</code> unless the operator names a lane explicitly.</p>
+
+    <div class="tabs" data-tabs>
+      <div class="tabbar">
+        <button class="on" data-t="0">Baseline</button>
+        <button data-t="1">Iterate</button>
+        <button data-t="2">Fix</button>
+      </div>
+
+      <div class="tabpane on">
+        <h3>Establish the noise floor</h3>
+        <div class="meta">
+          <span>Duration · <b>~2 h</b></span>
+          <span>Cost · <b>$5–10</b></span>
+          <span>N · <b>5 fixtures × 5 runs = 25</b></span>
+        </div>
+        <p>Required before any iteration. Without σ you can't tell signal from noise.</p>
+        <ol>
+          <li>Preflight (recipe 1) — 8 hard + 5 soft checks for $0</li>
+          <li><code>baseline.py --fixtures A,B,C,D,E --n 5</code></li>
+          <li>Per-fixture μ, σ, and 2σ-floor written to <code>baseline_runs_summary.json</code></li>
+          <li>Each fixture marked <code>stable</code> only when ≥ 3 clean runs land</li>
+          <li>Closeout: render_iterations.py + freshness_sweep.py + PROGRESS.md entry</li>
+        </ol>
+<pre><span class="cm"># Required entry command</span>
+python scripts/autoresearch/baseline.py \
+  --fixtures <span class="hl">A,B,C,D,E</span> --n <span class="hl">5</span> --output docs/autoresearch/</pre>
+      </div>
+
+      <div class="tabpane">
+        <h3>Pick an idea, edit, verdict</h3>
+        <div class="meta">
+          <span>Duration · <b>10–30 min / iter</b></span>
+          <span>Prerequisite · <b>Baseline stable</b></span>
+          <span>Lane · <b>Karpathy loop</b></span>
+        </div>
+        <p>The hot loop. Top unattempted idea from <code>OPTIMIZE_IDEAS.md</code>, operator makes the source edit, fixture A runs, 2σ verdict decides.</p>
+        <ol>
+          <li><code>loop.py</code> picks the top unattempted idea</li>
+          <li>Loop pauses for the operator's bounded edit</li>
+          <li><code>run.py</code> executes fixture A end-to-end</li>
+          <li><code>compare.py</code> emits <code>KEEP</code> / <code>DISCARD</code> / <code>CRASH</code></li>
+          <li><code>KEEP</code> → promote A's win to B–E. <code>DISCARD</code> → revert &amp; mark attempted</li>
+        </ol>
+<pre><span class="cm"># Entry — picks the top idea automatically</span>
+python scripts/autoresearch/loop.py --fixture <span class="hl">A</span>
+
+<span class="cm"># Or target a specific idea</span>
+python scripts/autoresearch/loop.py --idea <span class="hl">4</span> --fixture A</pre>
+      </div>
+
+      <div class="tabpane">
+        <h3>Patch a defect the loop surfaced</h3>
+        <div class="meta">
+          <span>Trigger · <b>Loop can't patch itself</b></span>
+          <span>Examples · <b>contract violation, schema drift, telemetry gap</b></span>
+        </div>
+        <p>The escape hatch when the loop hits a measurement defect or harness-contract violation it can't auto-heal. Patches go to source, not to the loop.</p>
+        <ol>
+          <li>Identify the gap from <code>compare.py CRASH</code> evidence</li>
+          <li>Confirm <code>self_heal.py</code> can't address it (5 known patterns only)</li>
+          <li>Source patch + test + re-snapshot seed if needed</li>
+          <li>Re-baseline the affected fixtures before resuming Iterate</li>
+          <li>Closeout: PROGRESS.md entry tagged <code>fix</code></li>
+        </ol>
+      </div>
+    </div>
+
+    <h2 id="arch">Architecture — five core, five support</h2>
+    <p>Ten scripts; nothing else. Each has a single responsibility and produces durable evidence (TSV, JSON, or PROGRESS entry).</p>
+
+    <h3>Core (in execution order)</h3>
+    <table>
+      <thead><tr><th style="width:32%">Script</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">scripts/autoresearch/run.py</td><td>Atomic fixture runner. Copy seed → start Builder → drive HTTP API with fixture prompt → wait for <code>shipped</code> or 1500s timeout → npm build + test → capture metrics → append TSV row.</td></tr>
+        <tr><td class="mono">scripts/autoresearch/baseline.py</td><td>N = 5 × 5 driver. Sequences run.py over fixtures A–E, computes per-fixture μ/σ/2σ-floor, writes <code>baseline_runs_summary.json</code>.</td></tr>
+        <tr><td class="mono">scripts/autoresearch/compare.py</td><td>Verdict engine. Evaluates 6 hard gates + composite delta vs noise floor. Emits <code>KEEP</code> / <code>DISCARD</code> / <code>CRASH</code>.</td></tr>
+        <tr><td class="mono">scripts/autoresearch/loop.py</td><td>Karpathy loop. Picks idea → pauses for operator edit → runs fixture A → compares → decides → promotes A→E or rewinds.</td></tr>
+        <tr><td class="mono">.claude/skills/autoresearch/scripts/preflight.py</td><td>Gatekeeper. 8 hard + 5 soft checks for $0 before any token is spent.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Support</h3>
+    <table>
+      <thead><tr><th style="width:32%">Script</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">.../skills/autoresearch/scripts/self_heal.py</td><td>Deterministic fix for 5 catalogued failure patterns. No LLM calls. One fix + one retry cap.</td></tr>
+        <tr><td class="mono">.../skills/autoresearch/scripts/seed_verify.py</td><td>Validates immutable seed substrate against <code>seed_manifest.json</code>.</td></tr>
+        <tr><td class="mono">.../skills/autoresearch/scripts/test_harness_contracts.py</td><td>Builder API contract tests. $0, ~2s.</td></tr>
+        <tr><td class="mono">scripts/autoresearch/hang_watchdog.py</td><td>Detects stalled iterations in ~3 min vs the 25-min wallclock-timeout burn.</td></tr>
+        <tr><td class="mono">scripts/autoresearch/render_iterations.py</td><td>Renders <code>iterations.html</code> dashboard from PROGRESS + TSV evidence.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div><b>Seed is immutable.</b> <code>~/.seed/devpulse</code> is the substrate every run starts from — never modified, copied fresh per run. If a worktree gets polluted, <code>self_heal.py</code> rewinds it; if the seed itself drifts, <code>seed_verify.py</code> blocks the loop and bumps to the Fix lane.</div>
+    </div>
+
+    <h2 id="gates">The six hard gates</h2>
+    <p>Each run must pass all six. A single failure flips <code>compare.py</code> to <code>DISCARD</code> regardless of composite delta. No "almost passed" — the gates exist precisely to refuse runs that look cheap but ship something broken.</p>
+
+    <table>
+      <thead><tr><th>Gate</th><th>Pass condition</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">cache_ratio</td><td class="mono">&gt; 5×</td><td>Caching is working; non-cached tokens reflect real new work.</td></tr>
+        <tr><td class="mono">chunk_pressure_risk</td><td class="mono">false</td><td>No context-pressure signals — the assembly is healthy.</td></tr>
+        <tr><td class="mono">avoidable_cost_flags</td><td class="mono">[ ]</td><td>No telemetry-flagged waste (Builder's own optimization hints).</td></tr>
+        <tr><td class="mono">gate_pass_rate</td><td class="mono">= 1.0</td><td>Every Builder phase-gate passed (planning, design, quality, etc.).</td></tr>
+        <tr><td class="mono">feature_correct</td><td class="mono">true</td><td>The fixture's feature acceptance check passed.</td></tr>
+        <tr><td class="mono">full_ship</td><td class="mono">true</td><td>Builder reached <code>shipped</code> status — not <code>incomplete</code>, <code>crash</code>, or timeout.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="data">Live data</h2>
+    <p>The four panels below are <b>auto-updated by <code>render_iterations.py</code></b> at every lane closeout. Everything else on this page is hand-curated. Last updated: P26-05-24T09:28:21Z</span>.</p>
+
+    <h3>Baseline summary — Fixture A</h3>
+    <p>The current baseline. Clean runs against fixture A on commit <code>2599d3b35a07</code>. The 2σ floor is the bar every candidate must beat.</p>
+
+    <!-- AUTOUPDATE:baseline-summary v=1 -->
+<div class="stats">
+  <div class="stat"><div class="num">29,859</div><div class="lab">μ (mean)</div></div>
+  <div class="stat"><div class="num">7,628</div><div class="lab">σ (stdev)</div></div>
+  <div class="stat"><div class="num">14,602</div><div class="lab">μ − 2σ floor</div></div>
+  <div class="stat"><div class="num">8 / 11</div><div class="lab">runs clean</div></div>
+</div>
+<!-- /AUTOUPDATE:baseline-summary -->
+
+    <h3>Scatter — Fixture A runs vs the 2σ band</h3>
+    <p>Every dot is one fixture-A baseline run. The shaded band is μ ± 2σ. A candidate must land below the orange floor (<code>μ − 2σ</code>) to be statistically significant.</p>
+
+    <!-- AUTOUPDATE:baseline-scatter v=1 -->
+<svg viewBox="0 0 640 200" role="img" aria-label="Fixture A baseline runs with 2σ floor" style="width:100%; max-width:720px; margin:12px 0; background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px;">
+  <style>
+    .axis     { stroke: var(--gray-300); stroke-width: 1; }
+    .band     { fill: var(--oat); opacity: 0.35; }
+    .mean     { stroke: var(--gray-500); stroke-width: 1; stroke-dasharray: 4 3; }
+    .floor    { stroke: var(--clay); stroke-width: 1.25; }
+    .point    { fill: var(--clay); }
+    .lab      { font-family: var(--mono); font-size: 9px; fill: var(--gray-500); }
+    .lab-k    { font-family: var(--mono); font-size: 9px; fill: var(--slate); }
+    .lab-cl   { font-family: var(--mono); font-size: 9px; fill: var(--clay); }
+  </style>
+  <rect class="band" x="56" y="170.0" width="544" height="0.0"/>
+  <line class="mean"  x1="56" y1="170.0" x2="600" y2="170.0"/>
+  <line class="floor" x1="56" y1="170.0" x2="600" y2="170.0"/>
+  <line class="axis"  x1="56" y1="20"  x2="56"  y2="170"/>
+  <line class="axis"  x1="56" y1="170" x2="600" y2="170"/>
+  <text class="lab"    x="50" y="173" text-anchor="end">140k</text>
+  <text class="lab"    x="50" y="123" text-anchor="end">190k</text>
+  <text class="lab-k"  x="50" y="174.0" text-anchor="end">μ 30</text>
+  <text class="lab"    x="50" y="23"  text-anchor="end">290k</text>
+  <text class="lab-cl" x="50" y="173.0" text-anchor="end">2σ 15</text>
+      <circle class="point" cx="120" cy="80.57" r="4"/>
+      <circle class="point" cx="220" cy="87.4" r="4"/>
+      <circle class="point" cx="320" cy="129.76" r="4"/>
+      <circle class="point" cx="420" cy="70.17" r="4"/>
+      <circle class="point" cx="520" cy="114.97" r="4"/>
+      <text class="lab" x="120" y="185" text-anchor="middle">r1</text>
+      <text class="lab" x="220" y="185" text-anchor="middle">r2</text>
+      <text class="lab" x="320" y="185" text-anchor="middle">r3</text>
+      <text class="lab" x="420" y="185" text-anchor="middle">r4</text>
+      <text class="lab" x="520" y="185" text-anchor="middle">r5</text>
+  <text class="lab"    x="600" y="35"  text-anchor="end">μ ± 2σ band</text>
+  <text class="lab-cl" x="600" y="105" text-anchor="end">candidates land below</text>
+</svg>
+<!-- /AUTOUPDATE:baseline-scatter -->
+
+    <h3>Raw runs</h3>
+    <details>
+      <summary>Raw rows — fixture A <span class="where">baseline_runs.tsv</span></summary>
+      <div class="body">
+        <!-- AUTOUPDATE:baseline-raw-rows v=1 -->
+<table style="margin-top:0;">
+  <thead><tr><th>Run</th><th>noncached + output</th><th>cache ratio</th><th>gates</th><th>wallclock</th><th>status</th></tr></thead>
+  <tbody>
+    <tr><td>r1</td><td class="num">229,431</td><td class="num">1572.5</td><td class="num">6/6</td><td class="num">1422 s</td><td class="mono">shipped</td></tr>
+    <tr><td>r2</td><td class="num">222,603</td><td class="num">3238.6</td><td class="num">4/6</td><td class="num">2449 s</td><td class="mono">incomplete</td></tr>
+    <tr><td>r3</td><td class="num">180,235</td><td class="num">3564.4</td><td class="num">6/6</td><td class="num">377 s</td><td class="mono">shipped</td></tr>
+    <tr><td>r4</td><td class="num">239,825</td><td class="num">3012.7</td><td class="num">6/6</td><td class="num">1433 s</td><td class="mono">shipped</td></tr>
+    <tr><td>r5</td><td class="num">195,025</td><td class="num">2034.1</td><td class="num">4/6</td><td class="num">504 s</td><td class="mono">crash</td></tr>
+    <tr><td>r6</td><td class="num">0</td><td class="num">—</td><td class="num">2/6</td><td class="num">120 s</td><td class="mono">crash</td></tr>
+    <tr><td>r7</td><td class="num">21,285</td><td class="num">1168.4</td><td class="num">6/6</td><td class="num">379 s</td><td class="mono">shipped</td></tr>
+    <tr><td>r8</td><td class="num">25,463</td><td class="num">1407.9</td><td class="num">6/6</td><td class="num">422 s</td><td class="mono">shipped</td></tr>
+    <tr><td>r9</td><td class="num">27,205</td><td class="num">1450.5</td><td class="num">6/6</td><td class="num">369 s</td><td class="mono">shipped</td></tr>
+    <tr><td>r10</td><td class="num">39,998</td><td class="num">945.0</td><td class="num">6/6</td><td class="num">542 s</td><td class="mono">shipped</td></tr>
+    <tr><td>r11</td><td class="num">35,344</td><td class="num">149.7</td><td class="num">6/6</td><td class="num">470 s</td><td class="mono">shipped</td></tr>
+  </tbody>
+</table>
+<!-- /AUTOUPDATE:baseline-raw-rows -->
+      </div>
+    </details>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div>Fixtures B–E are not yet stable. The full N = 25 baseline is the next gate before broad iteration; until then, single-fixture comparisons against A are the operating mode.</div>
+    </div>
+
+    <h3>Iterations history</h3>
+    <p>Every Iterate-lane closeout appends one row here. The verdict (KEEP/DISCARD/CRASH) is the gating outcome from <code>compare.py</code>; <code>Δσ</code> is how many standard deviations below baseline the candidate landed.</p>
+
+    <!-- AUTOUPDATE:iterations-list v=1 -->
+<table>
+  <thead><tr><th>#</th><th>Date</th><th>Idea</th><th>Verdict</th><th>Composite</th><th>Δ%</th><th>Δσ</th><th>Gates</th></tr></thead>
+  <tbody>
+    <tr><td colspan="8" style="text-align:center; color:var(--gray-500); padding:18px 12px; font-style:italic;">No iterations recorded yet — run <code>loop.py</code> to populate.</td></tr>
+  </tbody>
+</table>
+<!-- /AUTOUPDATE:iterations-list -->
+
+    <h2 id="ideas">Optimization backlog — top 5 of 11</h2>
+    <p>Living backlog in <code>docs/autoresearch/OPTIMIZE_IDEAS.md</code>, ordered by expected impact. All 11 are <code>unattempted</code> at time of writing.</p>
+
+    <details>
+      <summary>#1 · Improve prompt-cache hit rate <span class="where">expected: large</span></summary>
+      <div class="body"><p>Reorder shared preamble and system prompt so cache prefixes match across phase boundaries. <code>cache_ratio</code> on fixture A still sits around 1500–3500× — there is room to widen.</p></div>
+    </details>
+    <details>
+      <summary>#2 · Add a Builder board-state tool <span class="where">expected: large</span></summary>
+      <div class="body"><p>Give agents a structured "what does the board look like" tool instead of having them re-derive state from chat history every turn.</p></div>
+    </details>
+    <details>
+      <summary>#3 · Use AskUserQuestion for intake <span class="where">expected: medium</span></summary>
+      <div class="body"><p>Replace free-form clarifying-question turns with the structured <code>AskUserQuestion</code> tool — fewer tokens, more reliable parsing.</p></div>
+    </details>
+    <details>
+      <summary>#4 · Compact knowledge-base retrieval <span class="where">expected: medium</span></summary>
+      <div class="body"><p>Default to <code>summary</code> + <code>search</code> over full <code>read</code> for builder-knowledge queries. Quantify the input-token reduction across a baseline run.</p></div>
+    </details>
+    <details>
+      <summary>#5 · Conditional observability output <span class="where">expected: medium</span></summary>
+      <div class="body"><p>Suppress the deterministic observability dump on phases where it doesn't change behaviour. Currently emitted every turn regardless of relevance.</p></div>
+    </details>
+
+    <h2 id="patterns">Failure patterns — 18 known classes</h2>
+    <p>P1–P18 are documented failure classes the loop pre-catches via preflight, seed_verify, or contract tests — or auto-heals via <code>self_heal.py</code>. Five are auto-healable; the rest block the loop and escalate to the Fix lane.</p>
+
+    <table>
+      <thead><tr><th>Pattern</th><th>Caught by</th><th>Class</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">P1–P5</td><td class="mono">preflight.py</td><td>Environment / dependency drift</td></tr>
+        <tr><td class="mono">P6–P9</td><td class="mono">self_heal.py</td><td>Auto-healable — DB pollution, forbidden files, stale port, missing deps, lock file</td></tr>
+        <tr><td class="mono">P10–P12</td><td class="mono">seed_verify.py</td><td>Seed manifest drift</td></tr>
+        <tr><td class="mono">P13–P15</td><td class="mono">test_harness_contracts.py</td><td>Builder API contract violation</td></tr>
+        <tr><td class="mono">P16</td><td class="mono">composite-metric redesign</td><td>Multi-dim composite had CV = 77.5% → single-dim 14.7%</td></tr>
+        <tr><td class="mono">P17</td><td class="mono">hang_watchdog.py</td><td>Stalled iteration ≠ slow iteration</td></tr>
+        <tr><td class="mono">P18</td><td class="mono">restore_seed wipes Builder state</td><td>Stale Builder state from a prior crash polluted fresh runs</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="scope">What it can and cannot do</h2>
+    <div class="twocol">
+      <div class="col can">
+        <h4>Can</h4>
+        <ul>
+          <li>Measure composite metric repeatably across 5 fixtures</li>
+          <li>Run N = 5 baseline to establish σ-floor</li>
+          <li>Auto-heal 5 catalogued failure patterns deterministically</li>
+          <li>Session-scoped telemetry (post M2.3 fix)</li>
+          <li>Per-agent token attribution</li>
+          <li>Enforce lane structure with mandatory preflight + freshness sweep</li>
+          <li>Apply six hard gates on every run</li>
+        </ul>
+      </div>
+      <div class="col cant">
+        <h4>Cannot (yet)</h4>
+        <ul>
+          <li>Edit source code itself — v1 pauses for operator</li>
+          <li>Run full ship-cycle validation automatically</li>
+          <li>Merge approved optimizations autonomously</li>
+          <li>Per-message granularity telemetry</li>
+          <li>Path B (source-level context attribution)</li>
+          <li>Handle unknown error signatures — escalates to human</li>
+          <li>Recover from tracked-file changes / git pollution without re-snapshot</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="tree">File map</h2>
+    <p>The three locations autoresearch touches. Everything else in the repo is out of scope for the loop.</p>
+
+    <pre class="tree"><span class="dim">autonomous-agent-builder/</span>
+├── <span class="hl">docs/autoresearch/</span>          <span class="dim"># durable evidence + backlog</span>
+│   ├── PROGRESS.md            <span class="dim"># lane closeouts</span>
+│   ├── OPTIMIZE_IDEAS.md      <span class="dim"># 11 hypotheses, ordered</span>
+│   ├── baseline_runs.tsv      <span class="dim"># every run, one row</span>
+│   ├── baseline_runs_summary.json
+│   ├── per_prompt_results.tsv
+│   ├── iterations.html        <span class="dim"># rendered dashboard</span>
+│   └── NEXT-SESSION.md        <span class="dim"># handoff</span>
+│
+├── <span class="hl">scripts/autoresearch/</span>      <span class="dim"># 5 core scripts</span>
+│   ├── run.py                 <span class="dim"># atomic fixture runner</span>
+│   ├── baseline.py            <span class="dim"># N = 5 driver</span>
+│   ├── compare.py             <span class="dim"># 2σ verdict</span>
+│   ├── loop.py                <span class="dim"># Karpathy loop</span>
+│   ├── hang_watchdog.py
+│   └── render_iterations.py
+│
+└── <span class="hl">.claude/skills/autoresearch/</span>  <span class="dim"># skill router + harness checks</span>
+    ├── SKILL.md
+    ├── scripts/
+    │   ├── preflight.py       <span class="dim"># 8 hard + 5 soft checks</span>
+    │   ├── self_heal.py       <span class="dim"># 5 deterministic fixes</span>
+    │   ├── seed_verify.py     <span class="dim"># manifest check</span>
+    │   └── test_harness_contracts.py
+    └── seed_manifest.json     <span class="dim"># immutable seed contract</span></pre>
+
+    <h2 id="faq">FAQ</h2>
+    <dl class="faq">
+      <dt>Why <code>noncached_plus_output_tokens</code> instead of a richer composite?</dt>
+      <dd>The earlier composite (token × operator_turns × wallclock_s) had a coefficient of variation of 77.5% — too noisy to detect real improvements. The single-dimension billed-token metric dropped CV to 14.7% (P16). Lower is better; cached reads are free and excluded because they don't bill.</dd>
+
+      <dt>Why a 2σ floor specifically?</dt>
+      <dd>A 1σ improvement happens by chance ~16% of the time on a normal distribution; 2σ ~2.3%. With 11 ideas in the backlog, a 1σ bar would accept noise as signal multiple times before the season is out. 2σ is the cheapest defensible bar.</dd>
+
+      <dt>Why does v1 pause for the operator's edit?</dt>
+      <dd>Because the measurement infrastructure must be more reliable than the thing being measured. The loop establishes that the measurement is trustworthy first (baseline + gates + self-heal). Autonomous source edits come after the loop has proven it can detect real change without human review.</dd>
+
+      <dt>What happens if a fixture's σ is unreliable?</dt>
+      <dd>The fixture is marked <code>unstable</code> in <code>baseline_runs_summary.json</code> and excluded from comparisons until it has ≥ 3 clean runs. As of this writing only fixture A is stable; B–E need more runs before broad iteration.</dd>
+
+      <dt>How does self-heal differ from the Fix lane?</dt>
+      <dd><code>self_heal.py</code> patches 5 catalogued patterns deterministically with no LLM calls (1 fix + 1 retry cap). Everything else escalates to the Fix lane — a human-driven source patch path, typically against the harness, the seed, or telemetry, not the Builder itself.</dd>
+    </dl>
+
+  </main>
+</div>
+
+<script>
+// Tabs
+document.querySelectorAll("[data-tabs]").forEach(box => {
+  const btns  = box.querySelectorAll(".tabbar button");
+  const panes = box.querySelectorAll(".tabpane");
+  btns.forEach((b, i) => b.addEventListener("click", () => {
+    btns.forEach(x => x.classList.remove("on"));
+    panes.forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    panes[i].classList.add("on");
+  }));
+});
+
+// TOC active-link via IntersectionObserver
+const links = document.querySelectorAll("nav.toc a[href^='#']");
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle("active",
+        l.getAttribute("href") === "#" + e.target.id));
+    }
+  });
+}, { rootMargin: "-40% 0px -50% 0px" });
+[...links].forEach(a => {
+  const el = document.getElementById(a.getAttribute("href").slice(1));
+  if (el) obs.observe(el);
+});
+</script>
+</body>
+</html>

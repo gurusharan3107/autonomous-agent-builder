@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-05-24T09:32:20Z",
+  "generated_at": "2026-05-25T11:17:08Z",
   "baseline": {
-    "measured_at": "2026-05-24",
-    "mean": 216497,
-    "stdev": 31830.932942658153,
-    "noise_floor_2sigma": 152835.1341146837,
-    "stable_fixtures": 1,
+    "measured_at": "2026-05-25",
+    "mean": 29859,
+    "stdev": 7628.344414091435,
+    "noise_floor_2sigma": 14602.31117181713,
+    "stable_fixtures": 2,
     "total_fixtures": 5,
-    "fixture_a_runs_clean": 3,
-    "fixture_a_runs_total": 6,
+    "fixture_a_runs_clean": 8,
+    "fixture_a_runs_total": 11,
     "fixture_a_runs": [
       {
         "run_id": "ec68b9da-6f02-45e7-851a-ceaf71f0171b",
@@ -69,6 +69,56 @@
         "wallclock_s": 120,
         "noncached_plus_output_tokens": 0,
         "cache_ratio": null
+      },
+      {
+        "run_id": "6706af67-a1e1-4b3f-8f88-fe63efd1efd9",
+        "fixture": "A",
+        "timestamp": "2026-05-24T19:02:06Z",
+        "gates_passed": "6/6",
+        "status": "shipped",
+        "wallclock_s": 379,
+        "noncached_plus_output_tokens": 21285,
+        "cache_ratio": 1168.43
+      },
+      {
+        "run_id": "d4f6be7b-1885-4b77-ade0-b61804fed6f2",
+        "fixture": "A",
+        "timestamp": "2026-05-24T19:09:52Z",
+        "gates_passed": "6/6",
+        "status": "shipped",
+        "wallclock_s": 422,
+        "noncached_plus_output_tokens": 25463,
+        "cache_ratio": 1407.8761
+      },
+      {
+        "run_id": "f2acc391-76c2-49f6-a31f-c000b3ae54be",
+        "fixture": "A",
+        "timestamp": "2026-05-24T19:16:35Z",
+        "gates_passed": "6/6",
+        "status": "shipped",
+        "wallclock_s": 369,
+        "noncached_plus_output_tokens": 27205,
+        "cache_ratio": 1450.4771
+      },
+      {
+        "run_id": "235a7ec8-0dbb-4693-b84b-3b2808921ded",
+        "fixture": "A",
+        "timestamp": "2026-05-24T19:26:14Z",
+        "gates_passed": "6/6",
+        "status": "shipped",
+        "wallclock_s": 542,
+        "noncached_plus_output_tokens": 39998,
+        "cache_ratio": 944.9622
+      },
+      {
+        "run_id": "215c333d-85d3-4032-b182-1710ac14dbb9",
+        "fixture": "A",
+        "timestamp": "2026-05-24T19:34:36Z",
+        "gates_passed": "6/6",
+        "status": "shipped",
+        "wallclock_s": 470,
+        "noncached_plus_output_tokens": 35344,
+        "cache_ratio": 149.7411
       }
     ]
   },
