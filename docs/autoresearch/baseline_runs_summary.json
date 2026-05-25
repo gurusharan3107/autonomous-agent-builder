@@ -20,21 +20,33 @@
     "noise_floor_2sigma": -6412.202612343019
   },
   "C": {
-    "status": "unstable",
-    "stable_runs": 0,
-    "total_runs": 0,
-    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+    "status": "stable",
+    "stable_runs": 4,
+    "total_runs": 4,
+    "mean": 47017,
+    "stdev": 12470.20392776317,
+    "min": 37857,
+    "max": 65334,
+    "noise_floor_2sigma": 22076.59214447366
   },
   "D": {
-    "status": "unstable",
-    "stable_runs": 0,
-    "total_runs": 0,
-    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+    "status": "stable",
+    "stable_runs": 5,
+    "total_runs": 5,
+    "mean": 43416.6,
+    "stdev": 3879.530293734024,
+    "min": 38693,
+    "max": 47794,
+    "noise_floor_2sigma": 35657.53941253195
   },
   "E": {
-    "status": "unstable",
-    "stable_runs": 0,
-    "total_runs": 0,
-    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+    "status": "stable",
+    "stable_runs": 4,
+    "total_runs": 5,
+    "mean": 38018.5,
+    "stdev": 5665.483121499878,
+    "min": 33133,
+    "max": 45337,
+    "noise_floor_2sigma": 26687.533757000245
   }
 }

@@ -1395,8 +1395,13 @@ def match_p20_orchestrator_livelock(
       - `reason: wall_clock_budget_exceeded` in stuck metadata (watchdog
         explicitly did not fire — WAL was active)
       - ≥5 `agent_phase_complete agent=chat` events in the same iter
-      - ≥2 `embedded_dispatch_followup_selected followup_task_id=X` for the
-        same X (lifecycle re-dispatching same task)
+      - ≥3 occurrences of the same (followup_task_id, reason) pair — i.e. the
+        same task dispatched to the same phase 3+ times (livelock). Threshold is
+        max_retries+1 (default 2+1=3): gate_feedback allows up to 2 QG retries,
+        so count=2 is normal; count≥3 means remediation isn't converging. NOTE:
+        a task appearing with different reasons (impl→QG→PR→build) is normal
+        lifecycle — matcher counts (task_id, reason) pairs not raw task_id counts
+        to avoid false-positives on high-task-count runs that exhaust wall_clock.
       - hook_blocked_bash warnings present (chat agent kept trying blocked ops)
       - Possibly `Control request timeout` or `agent_unexpected_error`
 
@@ -1433,25 +1438,35 @@ def match_p20_orchestrator_livelock(
     chat_completes = len(re.findall(
         r"agent_phase_complete\s+agent=chat", stderr
     ))
-    followup_lines = re.findall(
-        r"embedded_dispatch_followup_selected followup_task_id=(\S+)", stderr
+    # Extract (task_id, reason) pairs. Normal lifecycle has each task appear once per
+    # phase (impl→QG→PR→build — all different reasons), so counting raw task_id
+    # appearances produces false positives on high-task-count runs. Count
+    # (task_id, reason) pairs instead: a livelock shows the same phase dispatched
+    # 2+ times for the same task; normal progression has each pair appear exactly once.
+    followup_pairs = re.findall(
+        r"embedded_dispatch_followup_selected followup_task_id=(\S+) reason=(\S+)", stderr
     )
-    # Same task re-dispatched multiple times signals the livelock
     from collections import Counter
-    same_task_dispatches = max(Counter(followup_lines).values()) if followup_lines else 0
+    same_task_dispatches = max(Counter(followup_pairs).values()) if followup_pairs else 0
     hook_blocks = stderr.count("hook_blocked_bash")
     sdk_errors = ("Control request timeout" in stderr
                   or "agent_unexpected_error" in stderr)
-    # Need at least one strong signal + one weaker signal
-    primary = wall_clock_hit or (chat_completes >= 5 and same_task_dispatches >= 2)
+    # wall_clock_hit alone is not sufficient — a run with many tasks (each progressing
+    # normally through up to max_retries=2 gate retries) can exhaust the budget without
+    # any livelock. Require same-phase re-dispatch ≥ 3 (one beyond max_retries boundary)
+    # or an SDK error. ≥ 2 is normal: gate_feedback allows 2 retries per task.
+    _LIVELOCK_THRESHOLD = 3
+    primary = (wall_clock_hit and (same_task_dispatches >= _LIVELOCK_THRESHOLD or sdk_errors)) or (
+        chat_completes >= 5 and same_task_dispatches >= _LIVELOCK_THRESHOLD
+    )
     if not primary:
         return None
-    if chat_completes < 5 and same_task_dispatches < 2 and hook_blocks == 0:
+    if chat_completes < 5 and same_task_dispatches < _LIVELOCK_THRESHOLD and hook_blocks == 0:
         return None
     evidence: list[str] = [f"{chat_completes} `agent_phase_complete agent=chat` events"]
-    if same_task_dispatches >= 2:
-        evidence.append(f"same task re-dispatched {same_task_dispatches}× via "
-                        f"`embedded_dispatch_followup_selected`")
+    if same_task_dispatches >= _LIVELOCK_THRESHOLD:
+        evidence.append(f"same (task, phase) pair dispatched {same_task_dispatches}× via "
+                        f"`embedded_dispatch_followup_selected` (same phase repeated)")
     if hook_blocks > 0:
         evidence.append(f"{hook_blocks} `hook_blocked_bash` warnings "
                         "(chat agent retrying blocked operations)")

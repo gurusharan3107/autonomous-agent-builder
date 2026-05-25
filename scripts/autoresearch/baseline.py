@@ -33,7 +33,7 @@ DEFAULT_SEED_DIR = pathlib.Path("/home/gurusharangupta/.seed/devpulse")
 # cases where the watchdog itself fails or where Builder is "active" (writing
 # to WAL) but not making progress (e.g., infinite retry loop). 30 min is
 # generous for fixture A's dashboard-MVP rebuild.
-DEFAULT_ITER_WALL_CLOCK_SECONDS = 1800
+DEFAULT_ITER_WALL_CLOCK_SECONDS = 2400
 
 # Stuck-dump polling interval — how often baseline.py checks the watchdog's
 # dump-root for new STUCK_DETECTED.json files. 15s is short enough to react

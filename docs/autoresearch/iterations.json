@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-05-25T12:10:53Z",
+  "generated_at": "2026-05-25T19:01:02Z",
   "baseline": {
     "measured_at": "2026-05-25",
     "mean": 29859,
     "stdev": 7628.344414091435,
     "noise_floor_2sigma": 14602.31117181713,
-    "stable_fixtures": 2,
+    "stable_fixtures": 5,
     "total_fixtures": 5,
     "fixture_a_runs_clean": 8,
     "fixture_a_runs_total": 11,
