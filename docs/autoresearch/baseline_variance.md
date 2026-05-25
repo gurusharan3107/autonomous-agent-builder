@@ -146,3 +146,27 @@ Run date: 2026-05-24
 | C | unstable | 0/0 | — | — | — |
 | D | unstable | 0/0 | — | — | — |
 | E | unstable | 0/0 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-24
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| A | unstable | 0/1 | — | — | — |
+| B | unstable | 0/0 | — | — | — |
+| C | unstable | 0/0 | — | — | — |
+| D | unstable | 0/0 | — | — | — |
+| E | unstable | 0/0 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-24
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| A | stable | 5/5 | 29859 | 7628 | 14602 |
+| B | unstable | 0/1 | — | — | — |
+| C | unstable | 0/0 | — | — | — |
+| D | unstable | 0/0 | — | — | — |
+| E | unstable | 0/0 | — | — | — |
