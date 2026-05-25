@@ -705,9 +705,33 @@ def match_p16_high_cv(
     threads: str,
     sockets: str,
 ) -> Match | None:
-    """P16: σ/μ > 0.5 in baseline_runs_summary.json → 2σ-floor non-discriminating."""
-    del stuck, con, threads, sockets  # substrate matcher reads repo state, not dump
+    """P16: σ/μ > 0.5 in baseline_runs_summary.json → 2σ-floor non-discriminating.
+
+    Guards:
+    1. Only fires at high confidence when the composite formula is still the broken
+       product formula.  If run.py already uses `noncached_plus_output_tokens` as
+       the sole composite (P16's own fix), high CV reflects task-level variance,
+       not a formula defect — confidence drops to 0.3 (below match threshold).
+    2. When STUCK_DETECTED.json carries a `fixture` key, only the current fixture's
+       CV is checked; historical high-CV on other fixtures (e.g. B's outlier iter)
+       must not classify an unrelated hang as P16-persistent.
+    """
+    del con, threads, sockets  # substrate matcher reads repo state, not dump
+    current_fixture = (stuck or {}).get("fixture")
     repo = _repo_root_from_dump(dump)
+
+    # Guard 1: if the formula is already fixed, P16 is irrelevant.
+    run_py = repo / "scripts" / "autoresearch" / "run.py"
+    formula_fixed = False
+    if run_py.exists():
+        try:
+            src = run_py.read_text(encoding="utf-8")
+            formula_fixed = (
+                'composite = int(opt.get("noncached_plus_output_tokens")' in src
+            )
+        except OSError:
+            pass
+
     summary = repo / "docs" / "autoresearch" / "baseline_runs_summary.json"
     if not summary.exists():
         return None
@@ -718,6 +742,9 @@ def match_p16_high_cv(
     high_cv = []
     for fid, stats in data.items():
         if not isinstance(stats, dict):
+            continue
+        # Guard 2: scope to the current fixture when known.
+        if current_fixture and fid != current_fixture:
             continue
         mean = stats.get("mean")
         stdev = stats.get("stdev")
@@ -730,10 +757,12 @@ def match_p16_high_cv(
         return None
     high_cv.sort(key=lambda t: -t[3])
     fid, mean, stdev, cv = high_cv[0]
+    # Formula already fixed → high CV is task variance, not a source defect.
+    confidence = 0.3 if formula_fixed else 0.9
     return Match(
         pattern_id="P16",
         name="Composite formula compounds correlated noise (CV>50%)",
-        confidence=0.9,
+        confidence=confidence,
         evidence=[
             f"baseline_runs_summary.json fixture {fid}: μ={int(mean)} σ={int(stdev)} CV={cv*100:.1f}%",
             (
@@ -1454,8 +1483,74 @@ def match_p20_orchestrator_livelock(
     )
 
 
+def match_p24_stale_port_session_mismatch(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P24: stale builder on port → run.py tracks session_id from wrong instance.
+
+    Symptom: a previous builder process was occupying the baseline port when the
+    current iter started.  run.py connected, obtained a session_id from the old
+    builder, then started polling that session against the fresh builder that
+    replaced it.  The fresh builder has no chat sessions (DB shows chat_sessions=0,
+    builder_sessions.json shows sessions=[]), so every history poll returns an
+    empty response indefinitely.  No agent runs are ever dispatched; idle timer
+    expires and watchdog fires.
+
+    Confidence signature:
+      - builder_sessions.json shows sessions=[]  (fresh builder, no session yet)
+      - agent_builder.db chat_sessions table has 0 rows
+      - idle_seconds > 500 (full watchdog window burned waiting for missing session)
+
+    Category: transient.  Kill any builder still on the target port and re-run
+    the iter; run.py will get a fresh session_id from the correct instance.
+    Fix: `ss -tlnp 'sport = :<port>'` → kill the PID → rerun baseline.
+    """
+    del threads, sockets
+    # Check builder_sessions.json for empty sessions list
+    sessions_data = _load_json(dump, "builder_sessions.json")
+    if not isinstance(sessions_data, dict):
+        return None
+    if sessions_data.get("sessions") or sessions_data.get("count", 0) != 0:
+        return None  # sessions exist — different hang
+    # Check DB chat_sessions = 0
+    if con is not None:
+        try:
+            row = con.execute("SELECT count(*) FROM chat_sessions").fetchone()
+            if row and row[0] != 0:
+                return None
+        except Exception:
+            pass
+    # Check idle_seconds long enough that port contention is plausible
+    idle = stuck.get("idle_seconds", 0)
+    if idle < 400:
+        return None
+    port = stuck.get("builder_port", "?")
+    return Match(
+        pattern_id="P24",
+        name="Stale-port session mismatch — run.py tracked wrong builder instance",
+        confidence=0.88,
+        evidence=[
+            f"builder_sessions.json: sessions=[] (no active session on this builder)",
+            f"chat_sessions table: 0 rows — builder never received a valid session",
+            f"idle_seconds={idle:.0f}s — full watchdog window burned on empty polls",
+            f"port={port} — likely occupied by a prior builder at baseline start",
+        ],
+        fix_pointer=(
+            f"Kill any builder still on port {port}: "
+            f"`ss -tlnp 'sport = :{port}'` → kill the PID. "
+            "Then re-run: `python3 scripts/autoresearch/baseline.py --fixtures <X> --n 5`. "
+            "Preflight warns when ports are in use; treat that as a hard blocker."
+        ),
+    )
+
+
 MATCHERS = [
-    match_p18_db_lock_transient,      # very specific signature; check FIRST so
+    match_p24_stale_port_session_mismatch,  # check FIRST: sessions=0 + long idle → port conflict
+    match_p18_db_lock_transient,      # very specific signature; check early so
                                        # the transient-retry path fires before
                                        # any persistent fallback misclassifies it
     match_p19_tool_not_found_hang,    # also very specific; check before generic
