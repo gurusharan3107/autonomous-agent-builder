@@ -1498,6 +1498,128 @@ def match_p20_orchestrator_livelock(
     )
 
 
+def match_p25_build_verify_silent_dispatch(
+    dump: pathlib.Path,
+    stuck: dict,
+    con: sqlite3.Connection | None,
+    threads: str,
+    sockets: str,
+) -> Match | None:
+    """P25 (2026-05-25): build_verify phase dispatched but agent never starts.
+
+    Symptom: `dispatch_phase=build_verify` (+ `dispatch_background_start`) fires
+    but `agent_phase_start` never follows for that phase.  Builder idles until
+    watchdog fires (~600s).  py_spy dump is 0 bytes (process dead or unreachable).
+    `sprint_branch_ff_merged_to_main` absent.
+
+    Two observed variants:
+    - Orchestrator path (E/run-2): code-gen → QG → pr_creation → build_verify →
+      silence → process dies.
+    - Chat-agent path (C/run-1): chat calls task_dispatch → dispatch_background_start
+      + dispatch_phase=build_verify in background → chat completes its own turn →
+      silence (build_verify subprocess never launches).
+
+    Confidence signature:
+      - `dispatch_phase.*build_verify` present
+      - No `agent_phase_start` after the last such line
+      - `sprint_branch_ff_merged_to_main` absent
+      - idle_seconds ≥ 450
+      - py_spy dump file is 0 bytes (optional; strengthens confidence)
+
+    Category: persistent.  Root cause unknown (silent background-task launch failure
+    in the Builder's async dispatch layer).  Use --allow-imperfect-iter until source
+    fixed.  Observed ~12% incidence on multi-task fixtures C and E.
+    """
+    del threads, sockets
+    # Load builder log: try dump dir, then evidence_dir from stuck metadata,
+    # then dump.parent.parent (evidence dir for real watchdog dumps where
+    # workspace= is the devpulse dir, not the harness evidence dir).
+    stderr = _load_text(dump, "builder_stdout_stderr.log")
+    if not stderr:
+        candidates = []
+        evidence_dir = stuck.get("evidence_dir") or stuck.get("workspace")
+        if evidence_dir:
+            candidates.append(pathlib.Path(evidence_dir) / "builder_stdout_stderr.log")
+        # dump is <evidence_dir>/stuck_dumps/<timestamp>/; grandparent is evidence_dir
+        candidates.append(dump.parent.parent / "builder_stdout_stderr.log")
+        for log_file in candidates:
+            if log_file.exists():
+                try:
+                    stderr = log_file.read_text(errors="replace")
+                    break
+                except OSError:
+                    continue
+    if not stderr:
+        return None
+
+    # Must have at least one build_verify dispatch
+    if not re.search(r"dispatch_phase\s+phase=_phase_build_verify", stderr):
+        return None
+
+    # Find position of last dispatch_phase=build_verify
+    last_bv_match = None
+    for m in re.finditer(r"dispatch_phase\s+phase=_phase_build_verify", stderr):
+        last_bv_match = m
+    if last_bv_match is None:
+        return None
+
+    tail = stderr[last_bv_match.end():]
+
+    # Core check: no agent_phase_start after the last build_verify dispatch
+    if re.search(r"agent_phase_start", tail):
+        return None  # build_verify agent did start — different hang class
+
+    # Sprint never merged AFTER the last build_verify dispatch.
+    # (Earlier tasks may have merged normally — check tail only.)
+    if "sprint_branch_ff_merged_to_main" in tail:
+        return None
+
+    # Idle long enough for a full watchdog window
+    idle = stuck.get("idle_seconds", 0)
+    if idle < 450:
+        return None
+
+    # Optional: py_spy dump empty (strengthens confidence)
+    py_spy_empty = False
+    py_spy = dump / "py_spy_dump.txt"
+    if py_spy.exists():
+        try:
+            py_spy_empty = py_spy.stat().st_size == 0
+        except OSError:
+            pass
+
+    evidence: list[str] = [
+        "dispatch_phase=build_verify present in log",
+        "no agent_phase_start after last build_verify dispatch",
+        f"idle_seconds={idle:.0f}s — full watchdog window expired",
+        "sprint_branch_ff_merged_to_main absent — sprint never completed",
+    ]
+    if py_spy_empty:
+        evidence.append("py_spy_dump.txt is 0 bytes — process unreachable at dump time")
+
+    confidence = 0.85 if py_spy_empty else 0.75
+
+    return Match(
+        pattern_id="P25",
+        name="build_verify silent dispatch failure — agent never starts after phase dispatched",
+        confidence=confidence,
+        evidence=evidence,
+        fix_pointer=(
+            "Root cause: Builder's background-task runner silently fails to spawn the "
+            "build_verify agent subprocess (OOM, SDK init failure, worker thread crash). "
+            "Two investigation paths: "
+            "(1) Background dispatch entrypoint — add explicit error logging + "
+            "fail-fast when dispatch_background_start completes without "
+            "agent_phase_start within ~60s. "
+            "(2) orchestrator.py follow-up logic — when chat agent calls task_dispatch "
+            "for build_verify but background start fails, surface BLOCKED state instead "
+            "of silently waiting. "
+            "Workaround: --allow-imperfect-iter in baseline runs."
+        ),
+        category="persistent",
+    )
+
+
 def match_p24_stale_port_session_mismatch(
     dump: pathlib.Path,
     stuck: dict,
@@ -1569,6 +1691,7 @@ MATCHERS = [
                                        # the transient-retry path fires before
                                        # any persistent fallback misclassifies it
     match_p19_tool_not_found_hang,    # also very specific; check before generic
+    match_p25_build_verify_silent_dispatch,   # build_verify dispatched, agent never starts
     match_p23_sprint_implementation_deadlock,  # 600+s idle: sprint=implementation, all tasks failed
     match_p22_codegen_sonnet_api_latency,      # watchdog false-positive: Sonnet latency 120-360s idle
     match_p21_hook_stream_closed,              # wall-clock SIGTERM → hook flood (budget_exhausted)

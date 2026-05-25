@@ -562,6 +562,37 @@ lands, the skill-side workaround in `restore_seed` is the safety net.
 
 ---
 
+## P25 — build_verify silent dispatch failure — agent never starts after phase dispatched (persistent)
+
+- **First seen:** 2026-05-25, E/run-2 and C/run-1 during C/D/E N=5 baseline
+- **Wallclock to repro:** ~600–700s (watchdog fires; idle from last WAL write ≥550s)
+- **Status:** Catalogued; root cause unknown; source investigation needed
+
+**Symptom.** `dispatch_phase=build_verify` fires (and `dispatch_background_start` fires immediately after), but `agent_phase_start agent=build-verifier` **never appears**. Builder goes idle; watchdog fires 600s+ later. py_spy dump is 0 bytes in both observed incidents (Builder process unresponsive or dead by dump time). `sprint_branch_ff_merged_to_main` absent — sprint never merged.
+
+Two observed variants:
+- **(E/run-2)** Orchestrator path: code-gen completes → QG passes → pr_creation (instant) → `dispatch_phase=build_verify` → silence → process dies.
+- **(C/run-1)** Chat-agent path: chat agent calls `mcp__builder__task_dispatch` → `dispatch_background_start` + `dispatch_phase=build_verify` in background → chat agent continues and completes its own turn → silence (build_verify background process never launches).
+
+**Evidence.**
+1. `grep "dispatch_phase.*build_verify" <evidence>/builder_stdout_stderr.log` returns ≥1 line.
+2. No `agent_phase_start` appears after the **last** `dispatch_phase=build_verify` line.
+3. `idle_seconds` ≥ 550 (full watchdog window).
+4. py_spy dump is empty (0 bytes) — process was unreachable at dump time.
+5. `sprint_branch_ff_merged_to_main` absent from log — sprint never completed.
+
+**Why (hypothesis).** The `dispatch_background_start` spawns the build_verify agent as an async background task. If the Builder's background task runner fails silently (out of memory during subprocess spawn, SDK init failure not propagated, worker thread crash), the orchestrator has no mechanism to detect the failure and never dispatches a follow-up. The main event loop continues serving HTTP board polls (which is why no error is logged) until the board poll loop itself dies (E/run-2 variant) or the orchestrator waits indefinitely for the background result (C/run-1 variant).
+
+**Fix (HARNESS — autonomy classification).** `diagnose_hang.py:match_p25_build_verify_silent_dispatch` matches with confidence 0.85 when all 5 evidence predicates fire. Reads `evidence_dir/builder_stdout_stderr.log` directly (same fallback path as P20 since this can occur with a watchdog dump that has an empty py_spy file).
+
+**Fix (BUILDER SOURCE — investigation needed).** Two paths to investigate:
+- `src/autonomous_agent_builder/agents/execution_policy.py` or the background-dispatch entrypoint: add explicit error logging + retry or fail-fast when `dispatch_background_start` completes without a corresponding `agent_phase_start` within N seconds.
+- `src/autonomous_agent_builder/orchestrator/orchestrator.py`: the follow-up-dispatch logic after a chat agent completes its turn (C/run-1 variant) — if `task_dispatch` was called for build_verify but the background process didn't start, the orchestrator should detect the missing `agent_phase_start` and re-dispatch or surface a BLOCKED state.
+
+**Prevention.** Until source-fixed, use `--allow-imperfect-iter` in baseline runs. Two occurrences across 16 E+C runs = ~12% incidence on multi-task fixtures. Worth root-causing before Iterate lane to avoid burning tokens on doomed iters.
+
+---
+
 ## P23 — Sprint implementation deadlock — orchestrator quiesces after tasks fail (persistent)
 
 - **First seen:** 2026-05-25, fixture B iter 1/5, third full baseline attempt
