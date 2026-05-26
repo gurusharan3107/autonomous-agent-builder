@@ -174,14 +174,18 @@ def gates_passed_count(row: dict) -> int:
 def group_iterations(rows: list[dict], baseline: dict) -> list[dict]:
     grouped: dict[int, list[dict]] = {}
     for r in rows:
-        idx, _ = derive_iteration_index(extract_branch(r.get("notes")) or "")
+        # Branch is the authoritative source (dedicated TSV column); fall back
+        # to legacy `branch=<name>` prefix in notes for rows written by older
+        # loop.py versions that didn't populate the column.
+        branch_val = r.get("branch") or extract_branch(r.get("notes")) or ""
+        idx, _ = derive_iteration_index(branch_val)
         if idx is not None:
             grouped.setdefault(idx, []).append(r)
     out = []
     for idx in sorted(grouped.keys()):
         rows_i = sorted(grouped[idx], key=lambda r: r.get("timestamp") or "")
         primary = next((r for r in rows_i if r.get("fixture_id") == "A"), rows_i[0])
-        branch = extract_branch(primary.get("notes")) or ""
+        branch = primary.get("branch") or extract_branch(primary.get("notes")) or ""
         _, ref = derive_iteration_index(branch)
         composite = parse_int(primary.get("composite"))
         mean = baseline.get("mean")
