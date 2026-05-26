@@ -1,1 +1,2 @@
 run_id	timestamp	branch	idea_ref	files_touched	lines_added	lines_deleted	fixture_id	noncached_plus_output_tokens	cache_ratio	chunk_pressure_risk	avoidable_cost_flags	gate_pass_rate	feature_correct	wallclock_s	operator_turns	composite	composite_delta_pct	gates_passed	decision	notes
+272e3916-a140-41b9-b2d2-62276d2f3be1	2026-05-26T09:55:44Z	autoresearch/iter-1-idea3	idea3	378	20056	46795	A	30594	1312.6043	False	[]	1.0	True	472.71	10	30594	2.46	6/6	discard	sha=b2de2d741d58 status=shipped

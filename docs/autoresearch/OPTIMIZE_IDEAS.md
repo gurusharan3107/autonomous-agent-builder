@@ -35,7 +35,8 @@ Order roughly by expected impact / cost — agent reads top-down.
 - **SDK basis**: `AskUserQuestion` tool — designed for structured product questions, not free-text dumps.
 - **Files**: `agents/execution_policy.py`, agent route forward-engineering prompt.
 - **Dependency**: Track A fix for IMP-001 should land first or be combined with this.
-- **Attempts**: none.
+- **Attempts**:
+  - Attempted 2026-05-26 branch:autoresearch/iter-1-idea3 result:discard composite_delta:+2.46% notes:Turns reduced 13→10 but output tokens unchanged (~22.5K chat output vs ~24.7K baseline); prompt change traded turn reduction for more verbose per-turn output; net effect zero within noise.
 
 ---
 

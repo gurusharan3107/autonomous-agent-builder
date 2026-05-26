@@ -4,6 +4,10 @@ Per-patch / per-run / per-decision log for the autoresearch loop. ROADMAP `M3.5`
 
 Skill closeouts (Baseline / Iterate / Fix) write here, not to ROADMAP / CHANGELOG / STATUS § Recent Decisions. Cross-cutting decisions still land in STATUS / ROADMAP.
 
+## 2026-05-26
+
+- **Iter #1 idea3 (single-batch AskUserQuestion intake)** — verdict DISCARD. composite Δ=+2.46% vs μ (30,594 vs 29,859). Δσ=+0.02σ. gates 6/6. branch autoresearch/iter-1-idea3. Turns reduced 13→10 (chat output ~22.5K vs ~24.7K baseline, −9%), but composite unchanged because per-turn output tokens increased (single-shot AGREEMENT + FEATURE_SPEC_JSON emit is more verbose than multi-turn). Reduction in turn count was insufficient to offset per-turn verbosity. Root insight: to beat 14,602 threshold, need to reduce total output tokens by ~51%; chat intake turn reduction alone achieves ~9%. Next candidate must target post-intake chat phases (delivery approval, board navigation) or reduce per-turn output token volume.
+
 ## 2026-05-25
 
 - **P26 fix — `_check_workspace_ready` false-pass: `ok` → `ok AND passed`** — `test_harness_contracts.py:164,233`. `builder doctor --json` always returns `ok:true` (command success); workspace gate checked only `ok` so contract tests ran from `~/.seed/devpulse` (not initialized), failed spuriously, and blocked recipe-2 preflight. Fix: (1) `_check_workspace_ready` now requires `passed:true` in addition to `ok:true`; (2) `test_all` loop guards non-dict entries in `contract_surfaces` (surfaced because `workspace_ok=False` branch was newly reachable). 5/5 new regression tests in `tests/test_harness_contracts_workspace_check.py`. Recipe-2 preflight: `overall:warn` (all recipe-specific pass; contracts correctly skip when no workspace). Freshness sweep clean. **Next lane: Iterate** (harness-only fix; σ-floor valid).
