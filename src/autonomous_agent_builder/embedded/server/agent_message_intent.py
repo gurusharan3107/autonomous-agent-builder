@@ -225,6 +225,7 @@ AGENT_EVIDENCE_REQUEST_PATTERNS = (
     "bounded recovery",
     "recovery plan",
     "recovery step",
+    "recovery action",
     "safe operator plan",
     "classify the issue",
     "proposed steps",

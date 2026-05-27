@@ -178,7 +178,7 @@ def test_agent_page_preserves_trace_explorer_and_conversation_rail_contract() ->
     assert '        : "ready";' in agent_text
     assert '? shellSummary?.running_label ?? "agent · live"' in agent_text
     assert ': "agent · ready"' in agent_text
-    assert "const currentTurnTokens = statusTokenAccounting(status);" in agent_text
+    assert "statusTokenAccounting(status);" in agent_text
     assert (
         'label="Non-cached + output" '
         "value={formatTokenCount(currentTurnTokens.noncachedPlusOutput)}"

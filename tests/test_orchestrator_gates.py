@@ -469,7 +469,7 @@ class TestKnowledgeLifecycleContext:
 
         template_vars = orchestrator._run_agent.await_args.args[2]
         assert template_vars["design_context"] == (
-            "Use private bookmark records and profile tab navigation."
+            "Design: Use private bookmark records and profile tab navigation.\n"
         )
 
     async def test_implementation_phase_receives_latest_gate_feedback(self, orchestrator):
@@ -1480,7 +1480,7 @@ class TestAgentRunRecording:
     """Test _run_agent records AgentRun to DB."""
 
     async def test_run_agent_saves_agent_run(
-        self, orchestrator, mock_db, mock_sdk
+        self, orchestrator, mock_db, mock_sdk, test_db
     ):
         task = _make_task(TaskStatus.PENDING)
         result = await orchestrator._run_agent(
@@ -1502,7 +1502,7 @@ class TestAgentRunRecording:
         assert added_runs[0].agent_name == "planner"
         assert added_runs[0].cost_usd > 0
 
-    async def test_run_agent_passes_role_effort_to_runtime(self, orchestrator):
+    async def test_run_agent_passes_role_effort_to_runtime(self, orchestrator, test_db):
         task = _make_task(TaskStatus.PENDING)
         runtime = MagicMock()
         runtime.run = AsyncMock(return_value=RunResult(session_id="sess-effort"))
@@ -1525,7 +1525,7 @@ class TestAgentRunRecording:
         assert runtime.run.await_args.kwargs["effort"] == "high"
 
     async def test_run_agent_error_returns_error_result(
-        self, orchestrator, mock_db
+        self, orchestrator, mock_db, test_db
     ):
         task = _make_task(TaskStatus.PENDING)
 

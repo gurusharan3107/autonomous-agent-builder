@@ -342,6 +342,7 @@ async def test_run_claude_sdk_prompt_uses_builder_source_env_not_onecli(
     assert captured["options_kwargs"]["system_prompt"] == {
         "type": "preset",
         "preset": "claude_code",
+        "exclude_dynamic_sections": True,
     }
     assert captured["options_kwargs"]["setting_sources"] == ["project"]
     assert captured["options_kwargs"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "builder-token"

@@ -307,7 +307,7 @@ async def test_board_remaining_prompt_uses_model_backed_status_lane(
     assert "No Board tasks are currently tracked." in content
 
 @pytest.mark.asyncio
-async def test_continue_building_auto_answers_recommended_next_feature(
+async def test_continue_building_shows_question_to_user_without_auto_answer(
     monkeypatch, test_db, tmp_path
 ):
     _, factory = test_db
@@ -346,21 +346,15 @@ async def test_continue_building_auto_answers_recommended_next_feature(
             },
             {},
         )
-        updated_input = getattr(permission, "updated_input", None) or getattr(
-            permission,
-            "updatedInput",
-            None,
-        )
-        assert updated_input["answers"]["Which feature should we implement next?"] == (
-            "Session List UI"
-        )
+        # Questions are no longer auto-answered — permission is granted to ask the user.
+        assert getattr(permission, "behavior", "") == "allow"
         return RunResult(
             session_id="sdk-session-auto-question",
             cost_usd=0.01,
             tokens_input=4,
             tokens_output=4,
             num_turns=1,
-            output_text="Continuing with Session List UI.",
+            output_text="Which feature should we implement next?",
         )
 
     monkeypatch.setattr(
@@ -384,14 +378,11 @@ async def test_continue_building_auto_answers_recommended_next_feature(
         history_payload, _ = await _wait_for_history_item(
             client,
             session_id,
-            "assistant_message",
+            "ask_user_question",
         )
-        for _ in range(20):
-            if history_payload["status"]["running"] is False:
-                break
-            await asyncio.sleep(0.05)
-            history_payload = (
-                await client.get("/api/agent/chat/history", params={"session_id": session_id})
-            ).json()
 
-    assert not any(item["type"] == "ask_user_question" for item in history_payload["items"])
+    question_item = next(
+        item for item in history_payload["items"] if item["type"] == "ask_user_question"
+    )
+    assert question_item["status"] == "pending"
+    assert question_item["payload"]["question"] == "Which feature should we implement next?"

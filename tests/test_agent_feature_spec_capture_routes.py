@@ -164,7 +164,7 @@ async def test_todo_app_improvement_prompt_uses_model_and_captures_feature(
     features = features_response.json()["features"]
     created = next(feature for feature in features if feature["title"] == "Todo filters and counts")
     assert "filter the todo list" in created["description"]
-    assert "Ready for Builder to start now" in assistant_item["payload"]["content"]
+    assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]
     assert "Tell me to build it" not in assistant_item["payload"]["content"]
 
 @pytest.mark.asyncio
@@ -376,7 +376,7 @@ async def test_natural_confirmation_routes_saved_feature_to_sprint_planning(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "Ready for Builder to start now" in item["payload"].get("content", ""),
+            predicate=lambda item: "I captured that improvement as" in item["payload"].get("content", ""),
         )
 
         second = await client.post(

@@ -75,6 +75,9 @@ from autonomous_agent_builder.embedded.server.agent_chat_events import (
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
     update_request_event as _update_request_event,
 )
+from autonomous_agent_builder.embedded.server.agent_chat_events import (
+    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
+)
 from autonomous_agent_builder.embedded.server.agent_chat_result_publisher import (
     _publish_agent_run_error_result,
     _publish_provider_limit_result,

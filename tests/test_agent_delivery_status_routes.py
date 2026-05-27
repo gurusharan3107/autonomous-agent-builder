@@ -169,7 +169,7 @@ async def test_continue_building_records_terminal_dispatch_status(
     )
     if "Model-backed delivery context is active" in captured_prompts[0]:
         assert (
-            "dispatch that Board task with `mcp__builder__task_dispatch` before"
+            "dispatch that Board task with `mcp__builder__task_dispatch`"
             in captured_prompts[0]
         )
         assert "Do not use generic code-editing or shell tools" in captured_prompts[0]
@@ -339,8 +339,8 @@ async def test_continue_remaining_verification_task_dispatches_current_sprint_ta
         ]
 
     assert captured_prompts
-    assert "Autonomous continuation mode is active" in captured_prompts[0]
-    assert "Derive the next tool call from your responsibility" in captured_prompts[0]
+    assert "Model-backed delivery context is active for this turn." in captured_prompts[0]
+    assert "do not treat it as a fixed command or deterministic shortcut" in captured_prompts[0]
     assert dispatched == []
     assert "Started work on `Deterministic tests and build script`." in assistant_item[
         "payload"

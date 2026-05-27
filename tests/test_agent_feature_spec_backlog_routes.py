@@ -183,7 +183,7 @@ async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
     assert tasks == []
     assert dispatched == []
     assert "I captured that improvement as `Post bookmarks`." in assistant_item["payload"]["content"]
-    assert "Ready for Builder to start now" in assistant_item["payload"]["content"]
+    assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]
 
 @pytest.mark.asyncio
 async def test_chat_saved_feature_delivery_followup_routes_through_sprint_backlog_and_queue_approval(
@@ -419,4 +419,4 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
     assert tasks == []
     assert dispatched == []
     assert "I captured that improvement as `Private Post Bookmarks`." in assistant_item["payload"]["content"]
-    assert "Ready for Builder to start now" in assistant_item["payload"]["content"]
+    assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]

@@ -513,7 +513,7 @@ async def test_sprint_completion_rebases_sprint_branch_when_main_diverged(tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_sprint_completion_blocks_modified_app_checkout(tmp_path, orchestrator):
+async def test_sprint_completion_stashes_modified_app_checkout_and_merges(tmp_path, orchestrator):
     repo = tmp_path / "repo"
     _init_repo(repo)
     (repo / "package.json").write_text('{"scripts":{"test":"node --test"}}\n', encoding="utf-8")
@@ -532,9 +532,10 @@ async def test_sprint_completion_blocks_modified_app_checkout(tmp_path, orchestr
 
     error = await orchestrator._maybe_ff_merge_sprint_branch(sprint, repo)
 
-    assert error is not None
-    assert "local app checkout still has tracked non-guidance changes" in error
-    assert "M package.json" in error
+    # Dirty tracked paths are stashed so the sprint merge can proceed.
+    assert error is None
+    stash_list = _git(repo, "stash", "list").stdout
+    assert stash_list.strip(), "expected stash entry for stashed package.json"
 
 
 @pytest.mark.asyncio

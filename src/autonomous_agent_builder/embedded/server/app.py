@@ -88,11 +88,14 @@ def _init_database(app: FastAPI, db_path: Path) -> None:
         app: FastAPI application
         db_path: Path to SQLite database file
     """
+    import autonomous_agent_builder.db.session as _session_mod
     from autonomous_agent_builder.db.session import close_db, get_engine
 
     # Set database URL for this server instance
     db_url = f"sqlite+aiosqlite:///{db_path}"
     os.environ["DB_URL_OVERRIDE"] = db_url
+    # Ensure the database directory exists before the engine tries to connect.
+    db_path.parent.mkdir(parents=True, exist_ok=True)
 
     @app.on_event("startup")
     async def startup():
@@ -104,6 +107,11 @@ def _init_database(app: FastAPI, db_path: Path) -> None:
             parse_local_endpoint,
         )
 
+        # Reset the cached engine so the new DB_URL_OVERRIDE is used.
+        # Without this, a stale engine from a previous app instance would be
+        # reused when TestClient triggers lifespan for test_embedded_server_app.
+        _session_mod._engine = None
+        _session_mod._session_factory = None
         # Trigger engine creation
         get_engine()
         # Create tables if they don't exist

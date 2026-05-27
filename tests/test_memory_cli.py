@@ -535,7 +535,7 @@ def test_builder_verify_execute_runs_command_proof(monkeypatch, tmp_path):
                 code="echo_proof",
                 surface="general",
                 proof_type="unit_tests",
-                command="python -c 'print(\"ok\")'",
+                command="python3 -c 'print(\"ok\")'",
                 why="test execution path",
             )
         ],
