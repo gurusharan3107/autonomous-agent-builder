@@ -22,9 +22,6 @@ def _intent(**overrides):
         "dispatchable_task_exists": False,
         "ready_delivery_feature_exists": False,
         "explicit_sprint_planning_intent": False,
-        "read_only_status_requested": False,
-        "documentation_intent_requested": False,
-        "feature_spec_message_requested": False,
         "feature_delivery_message_requested": False,
         "feature_delivery_confirmed": False,
         "session_has_saved_feature_for_delivery": False,
@@ -34,6 +31,14 @@ def _intent(**overrides):
     }
     values.update(overrides)
     return resolve_chat_turn_intent(**values)
+
+
+def test_model_backed_delivery_context_always_true_for_chat() -> None:
+    intent = _intent()
+
+    assert intent.model_backed_delivery_context_requested is True
+    assert intent.sprint_planning_requested is False
+    assert intent.feature_spec_requested is False
 
 
 def test_dispatchable_work_uses_model_backed_delivery_context() -> None:
@@ -153,4 +158,4 @@ async def test_route_wrapper_routes_saved_feature_delivery_followup(
 
     assert intent.feature_delivery_followup_requested is True
     assert intent.sprint_planning_requested is False
-    assert intent.model_backed_delivery_context_requested is False
+    assert intent.model_backed_delivery_context_requested is True

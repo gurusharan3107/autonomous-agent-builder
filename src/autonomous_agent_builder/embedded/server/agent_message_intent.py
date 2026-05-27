@@ -393,11 +393,31 @@ def message_requests_autonomous_continuation(user_message: str) -> bool:
     )
 
 
+_IMPLEMENTATION_EXCLUSION_TOKENS = {
+    "implement",
+    "fix",
+    "create",
+    "dispatch",
+    "update",
+    "add",
+    "build",
+    "ship",
+    "deliver",
+    "change",
+    "write",
+    "refactor",
+}
+
+
 def message_requests_read_only_status(user_message: str) -> bool:
     if message_requires_agent_evidence(user_message):
         return False
     tokens = set(normalize_planning_token(user_message).split())
     if not tokens:
+        return False
+    # Implementation-flavored messages are not read-only even when they mention
+    # "status" or "backlog" (e.g. "update the backlog item status to done").
+    if tokens & _IMPLEMENTATION_EXCLUSION_TOKENS:
         return False
     return bool(tokens & READ_ONLY_STATUS_INTENT_TOKENS) and bool(
         tokens & READ_ONLY_STATUS_SCOPE_TOKENS

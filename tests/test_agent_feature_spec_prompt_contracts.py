@@ -38,7 +38,7 @@ def test_forward_engineering_first_product_prompt_requires_user_specific_intake(
     assert "Do not cap the total interview at one question or one structured request" in prompt
     assert "exactly 3 suggested `options`" in prompt
     assert "fourth path as an inline custom-answer text box" in prompt
-    assert "Do not convert a first product idea directly into `Ready for Builder to start now`" in prompt
+    assert "Do not skip product tailoring by jumping straight to delivery approval." in prompt
     assert "request_user_input" in prompt
 
 def test_first_product_prompt_is_not_delivery_continuation() -> None:

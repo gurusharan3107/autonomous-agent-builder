@@ -352,6 +352,19 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
         params=(ToolParam("item_id", "string", "Backlog item ID", required=True),),
         read_only=True,
     ),
+    "mcp__builder__backlog_item_update": ToolSchema(
+        name="mcp__builder__backlog_item_update",
+        description=(
+            "Update a typed backlog item's status, title, or other fields. "
+            "Use to sync stale status (e.g. mark a feature 'done' when all its tasks have shipped)."
+        ),
+        params=(
+            ToolParam("item_id", "string", "Backlog item ID", required=True),
+            ToolParam("status", "string", "New status (e.g. done, backlog, sprint_planned)", required=False),
+            ToolParam("title", "string", "New title", required=False),
+            ToolParam("description", "string", "New description", required=False),
+        ),
+    ),
     "mcp__builder__kb_search": ToolSchema(
         name="mcp__builder__kb_search",
         description="Search knowledge base documents",

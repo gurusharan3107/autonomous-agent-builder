@@ -162,6 +162,7 @@ async def _publish_successful_chat_result(
 ) -> None:
     visible_response = result.output_text or "No response from agent"
     start_sprint_scope_after_response = False
+    feature_captured = False
     if agent_name == "init-project-chat":
         visible_response, feature_payload = _extract_feature_list_payload(
             project_root, visible_response
@@ -205,10 +206,8 @@ async def _publish_successful_chat_result(
             async with session_factory() as db:
                 feature = await _persist_feature_spec(db, feature_spec_payload)
             if feature is not None:
-                save_note = (
-                    f"I captured that improvement as `{feature.title}`. "
-                    "Ready for Builder to start now, or should I hold?"
-                )
+                feature_captured = True
+                save_note = f"I captured that improvement as `{feature.title}`."
                 visible_response = (
                     f"{visible_response}\n\n{save_note}".strip() if visible_response else save_note
                 )
@@ -240,11 +239,16 @@ async def _publish_successful_chat_result(
         ),
     )
     await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
+    # force=feature_captured bypasses the model-intent text heuristic intentionally:
+    # the publisher owns the delivery question whenever a feature spec is persisted,
+    # regardless of what the model's text said. The answer is handled by
+    # _continue_after_delivery_permission_question at the application layer.
     permission_question = await _append_persisted_delivery_permission_question_if_needed(
         session_id,
         assistant_event_id=assistant_event.id,
         response_text=visible_response,
         hub=hub,
+        force=feature_captured,
     )
     if permission_question is None:
         await _append_voice_final_summary_if_needed(

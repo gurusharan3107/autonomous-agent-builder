@@ -16,9 +16,6 @@ from autonomous_agent_builder.embedded.server.agent_documentation_context import
 from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
     FEATURE_LIST_MARKER as _FEATURE_LIST_MARKER,
 )
-from autonomous_agent_builder.embedded.server.agent_message_intent import (
-    message_requests_autonomous_continuation as _message_requests_autonomous_continuation,
-)
 from autonomous_agent_builder.embedded.server.documentation_routing import (
     DOCUMENTATION_AGENT_AUTO_APPROVE_TOOLS as _DOCUMENTATION_AGENT_AUTO_APPROVE_TOOLS,
 )
@@ -91,34 +88,14 @@ def _general_chat_prompt(
     forward_engineering_context: bool = False,
 ) -> str:
     question_guidance = _question_tool_guidance(runtime_sdk)
+    _normalized_sdk = str(runtime_sdk or "")
+    _question_tool = (
+        "request_user_input"
+        if _normalized_sdk.startswith("codex") or _normalized_sdk == "openai_agents"
+        else "AskUserQuestion"
+    )
     continuation_guidance = ""
-    if _message_requests_autonomous_continuation(user_message):
-        continuation_guidance = (
-            "\n\nAutonomous continuation mode is active for this turn.\n"
-            "- Treat the user's message as a request to keep the build moving, not as a request "
-            "for a status report or menu.\n"
-            "- First inspect Builder-owned Board/task state with `mcp__builder__board`, "
-            "`mcp__builder__task_show`, or `mcp__builder__task_status`.\n"
-            "- Derive the next tool call from your responsibility as the Agent page operator: "
-            "recover blocked work, dispatch ready work, or ask a bounded clarification.\n"
-            "- If exactly one blocked, failed, or capability-limited Board task is the next "
-            "blocking item, call `mcp__builder__task_recover` for that task and then "
-            "`mcp__builder__task_dispatch` to continue it.\n"
-            "- If there is an active or pending dispatchable task, call "
-            "`mcp__builder__task_dispatch` for that exact task.\n"
-            "- Dispatch ONE task at a time. Never call `mcp__builder__task_dispatch` for "
-            "multiple tasks in the same turn. Wait for the response before dispatching the next.\n"
-            "- If workspace scaffold is in progress (`mcp__builder__workspace_scaffold` was "
-            "called and has not yet returned `scaffold_ready`), do not call "
-            "`mcp__builder__task_dispatch` until scaffold completes.\n"
-            "- Do not ask the user which listed feature to build when the board already gives "
-            "a deterministic next task by status and priority.\n"
-            "- Ask the user only for genuinely missing product direction, credentials, external "
-            "approval, or another decision that cannot be inferred from repo state.\n"
-            "- If multiple tasks could be recovered or dispatched, use `AskUserQuestion` instead "
-            "of guessing.\n"
-        )
-    elif model_backed_delivery_context:
+    if model_backed_delivery_context:
         continuation_guidance = (
             "\n\nModel-backed delivery context is active for this turn.\n"
             "- The user's message must be interpreted by you, the selected runtime model; do not "
@@ -127,19 +104,25 @@ def _general_chat_prompt(
             "action, and choose any needed tool chain. Useful surfaces include Board/task state, "
             "task detail/status, and dispatch, but you choose which tools to call and in what "
             "order.\n"
+            "- First inspect Builder-owned Board/task state with `mcp__builder__board`, "
+            "`mcp__builder__task_show`, or `mcp__builder__task_status` to determine what is "
+            "pending, blocked, or ready to dispatch.\n"
+            "- If exactly one blocked, failed, or capability-limited Board task is the next "
+            "blocking item, call `mcp__builder__task_recover` for that task and then "
+            "`mcp__builder__task_dispatch` to continue it.\n"
             "- If Builder Board evidence shows a pending or otherwise dispatchable task for the "
-            "approved sprint, dispatch that Board task with `mcp__builder__task_dispatch` before "
-            "any source edits, shell commands, tests, or generated-app changes. The task pipeline "
-            "owns implementation, verification, integration, and closeout evidence.\n"
+            "approved sprint, dispatch that Board task with `mcp__builder__task_dispatch`.\n"
             "- Dispatch ONE task at a time. Never call `mcp__builder__task_dispatch` for "
             "multiple tasks in the same turn — wait for each response before dispatching the next.\n"
             "- Do not use generic code-editing or shell tools to implement approved sprint work "
             "directly from this chat turn; that bypasses Board synchronization and pollutes the "
             "user-facing lifecycle.\n"
+            "- Do not ask the user which listed feature to build when the board already gives "
+            "a deterministic next task by status and priority.\n"
             "- The product goal is to continue the approved delivery without asking the operator "
             "for task IDs, backlog terms, sprint terms, or lifecycle terminology.\n"
             "- If the next product action is still ambiguous after bounded Builder evidence, use "
-            "`AskUserQuestion` with plain product wording.\n"
+            f"`{_question_tool}` with plain product wording.\n"
         )
     forward_guidance = ""
     if forward_engineering_context:
@@ -171,8 +154,8 @@ def _general_chat_prompt(
             "workflow, what data matters, what outcome the user wants to see first, privacy or "
             "persistence expectations, and the product tone or interaction style. Do not ask for "
             "technical implementation details unless they materially affect the user experience.\n"
-            "- Do not convert a first product idea directly into `Ready for Builder to start now` "
-            "approval. Approval belongs after the product is tailored enough to describe the first "
+            "- Do not skip product tailoring by jumping straight to delivery approval. "
+            "Approval belongs after the product is tailored enough to describe the first "
             "shippable scope in user terms.\n"
         )
     prompt = (

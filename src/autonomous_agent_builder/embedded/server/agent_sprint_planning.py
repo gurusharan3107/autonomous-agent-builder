@@ -186,8 +186,9 @@ async def append_persisted_delivery_permission_question_if_needed(
     assistant_event_id: str,
     response_text: str,
     hub: ChatSessionHub,
+    force: bool = False,
 ) -> ChatEvent | None:
-    if not agent_chat_transcript.assistant_requests_delivery_permission(response_text):
+    if not force and not agent_chat_transcript.assistant_requests_delivery_permission(response_text):
         return None
     session_factory = get_session_factory()
     async with session_factory() as db:

@@ -111,8 +111,22 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "tool is granted). If no Builder MCP covers the request, surface it via "
             "`AskUserQuestion` or by explaining the blocker in product language to the "
             "operator — never invent permissions, shell hacks, or write hooks.\n"
+            "DISPATCH DISCIPLINE: For any request that requires code changes, file writes, "
+            "new features, or bug fixes — use at most 3 Read/Grep/Glob turns to confirm "
+            "scope, then immediately call `mcp__builder__task_dispatch`. Never spend more "
+            "than 3 exploration turns before dispatching. Exhaustive codebase exploration "
+            "before dispatch wastes your turn budget; the dispatched task runs in a full "
+            "coding lane with Bash/Write/Edit and has its own budget to explore.\n"
+            "QUESTION RULE — MANDATORY: You MUST use the `AskUserQuestion` tool for every "
+            "decision, confirmation, or clarification you need from the operator. NEVER write "
+            "a question as plain text prose (e.g. 'Ready for Builder to start now, or should "
+            "I hold?'). Plain-text questions render as dead text in the dashboard — the "
+            "operator has no button to answer and is stuck. Use `AskUserQuestion` with "
+            "concrete option labels (e.g. 'Start now', 'Hold'). This is non-negotiable.\n"
             "Use builder_backlog_item_list or builder_backlog_item_show for typed backlog "
             "items such as feature, improvement, optimization, and incident entries. "
+            "Use mcp__builder__backlog_item_update to fix stale backlog item statuses "
+            "(e.g. marking a feature 'done' when all its tasks have shipped). "
             "Do not treat the task board as the backlog.\n"
             "Use builder_kb_search to find relevant documentation.\n"
             "Use builder_memory_search to recall past decisions.\n"
@@ -166,6 +180,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "mcp__builder__memory_add",
             "mcp__builder__backlog_item_list",
             "mcp__builder__backlog_item_show",
+            "mcp__builder__backlog_item_update",
             "mcp__builder__task_list",
             "mcp__builder__task_show",
             "mcp__builder__task_status",
@@ -188,7 +203,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "mcp__builder__task_status",
         ),
         model="haiku",
-        max_turns=15,
+        max_turns=20,
         max_budget_usd=2.00,
     ),
     "init-project-chat": AgentDefinition(

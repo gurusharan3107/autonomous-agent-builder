@@ -366,6 +366,30 @@ def build_default_mcp_servers(
             project_root=resolved_project_root,
         )
 
+    @tool(
+        "backlog_item_update",
+        "Update a typed backlog item's status, title, or description. Use to sync stale status (e.g. mark a feature 'done' when all its tasks have shipped).",
+        {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "string"},
+                "status": {"type": "string"},
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+            },
+            "required": ["item_id"],
+            "additionalProperties": False,
+        },
+    )
+    async def backlog_item_update(args: dict[str, Any]) -> dict:
+        return await builder_tool_service.builder_backlog_item_update(
+            args["item_id"],
+            status=args.get("status"),
+            title=args.get("title"),
+            description=args.get("description"),
+            project_root=resolved_project_root,
+        )
+
     @tool("kb_search", "Search project knowledge base documents.", _KB_SEARCH_SCHEMA)
     async def kb_search(args: dict[str, Any]) -> dict:
         return await builder_tool_service.builder_kb_search(

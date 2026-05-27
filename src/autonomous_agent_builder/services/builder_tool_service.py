@@ -855,6 +855,33 @@ async def builder_backlog_item_show(
         return _error_payload(str(exc), exit_code=exc.exit_code, detail=exc.detail)
 
 
+async def builder_backlog_item_update(
+    item_id: str,
+    *,
+    status: str | None = None,
+    title: str | None = None,
+    description: str | None = None,
+    project_root: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if status is not None:
+        payload["status"] = status
+    if title is not None:
+        payload["title"] = title
+    if description is not None:
+        payload["description"] = description
+    if not payload:
+        return _error_payload("No fields to update", exit_code=1)
+    try:
+        data = await _api_request("PUT", f"/backlog/items/{item_id}", json_body=payload, project_root=project_root)
+        compact = _compact_backlog_item_detail(data) if isinstance(data, dict) else {"raw": data}
+        compact["ok"] = True
+        compact["updated"] = True
+        return _mcp_text_payload(compact)
+    except BuilderToolServiceError as exc:
+        return _error_payload(str(exc), exit_code=exc.exit_code, detail=exc.detail)
+
+
 async def builder_kb_search(
     query: str,
     doc_type: str = "",

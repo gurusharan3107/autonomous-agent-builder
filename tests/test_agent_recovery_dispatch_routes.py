@@ -196,7 +196,7 @@ async def test_recover_and_keep_going_uses_model_to_recover_and_dispatch(
 
     assert runtime_prompts
     assert "mcp__builder__task_recover" in runtime_prompts[0]
-    assert "Derive the next tool call from your responsibility" in runtime_prompts[0]
+    assert "Model-backed delivery context is active for this turn." in runtime_prompts[0]
     assert any(
         item["type"] == "tool_result"
         and item["payload"].get("tool_name") == "mcp__builder__task_recover"
@@ -353,7 +353,7 @@ async def test_plain_keep_going_lets_model_recover_and_dispatch_blocked_task(
 
     assert runtime_prompts
     assert "mcp__builder__task_recover" in runtime_prompts[0]
-    assert "Derive the next tool call from your responsibility" in runtime_prompts[0]
+    assert "Model-backed delivery context is active for this turn." in runtime_prompts[0]
     assert not any(item["type"] == "tool_approval_request" for item in history_payload["items"])
     assert any(
         item["type"] == "tool_result"

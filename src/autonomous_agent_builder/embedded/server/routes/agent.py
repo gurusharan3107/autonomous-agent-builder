@@ -118,12 +118,6 @@ from autonomous_agent_builder.embedded.server.agent_message_intent import (
     message_requests_feature_delivery as _message_requests_feature_delivery,
 )
 from autonomous_agent_builder.embedded.server.agent_message_intent import (
-    message_requests_feature_spec as _message_requests_feature_spec,
-)
-from autonomous_agent_builder.embedded.server.agent_message_intent import (
-    message_requests_read_only_status as _message_requests_read_only_status,
-)
-from autonomous_agent_builder.embedded.server.agent_message_intent import (
     message_requests_sprint_planning as _message_requests_sprint_planning,
 )
 from autonomous_agent_builder.embedded.server.agent_observability_context import (
@@ -282,9 +276,6 @@ async def _resolve_chat_turn_intent(
         dispatchable_task_exists=dispatchable_task_exists,
         ready_delivery_feature_exists=ready_delivery_feature_exists,
         explicit_sprint_planning_intent=explicit_sprint_planning_intent,
-        read_only_status_requested=_message_requests_read_only_status(user_message),
-        documentation_intent_requested=_message_has_documentation_intent(user_message),
-        feature_spec_message_requested=_message_requests_feature_spec(user_message),
         feature_delivery_message_requested=_message_requests_feature_delivery(user_message),
         feature_delivery_confirmed=_message_confirms_feature_delivery(user_message),
         session_has_saved_feature_for_delivery=_session_has_saved_feature_for_delivery(session),
@@ -337,10 +328,7 @@ async def _handle_chat_tool_event(
         event_type == "tool_result"
         and state.agent_name == "chat"
         and tool_name == "mcp__builder__task_dispatch"
-        and (
-            _message_requests_autonomous_continuation(state.user_message)
-            or state.model_backed_delivery_context_requested
-        )
+        and state.model_backed_delivery_context_requested
     ):
         dispatch_payload = _extract_tool_text_payload(tool_response)
         if dispatch_payload.get("status") == "dispatched":
@@ -426,23 +414,6 @@ async def _authorize_chat_tool(
         for question in input_data.get("questions", []):
             display_question = agent_chat_transcript.operator_safe_question_payload(question)
             options = display_question.get("options", []) or []
-            try:
-                recommended_index = int(question.get("recommendedIndex", 0) or 0)
-            except (TypeError, ValueError):
-                recommended_index = 0
-            if (
-                state.agent_name == "chat"
-                and state.active_specialist is None
-                and not state.feature_spec_requested
-                and _message_requests_autonomous_continuation(state.user_message)
-                and not _message_requests_ambiguous_continuation(state.user_message)
-                and 0 <= recommended_index < len(options)
-            ):
-                recommended_option = options[recommended_index]
-                answers[str(question.get("question", ""))] = str(
-                    recommended_option.get("label", "")
-                ).strip()
-                continue
             question_event = await _append_chat_event(
                 state.session_id,
                 event_type="ask_user_question",
@@ -572,20 +543,13 @@ async def _authorize_chat_tool(
     if (
         state.agent_name == "chat"
         and state.active_specialist is None
-        and (
-            (
-                tool_name
-                in {
-                    "mcp__builder__task_dispatch",
-                    "mcp__builder__task_recover",
-                }
-                and _message_requests_autonomous_continuation(state.user_message)
-            )
-            or (
-                tool_name == "mcp__builder__task_dispatch"
-                and state.model_backed_delivery_context_requested
-            )
-        )
+        and state.model_backed_delivery_context_requested
+        and tool_name
+        in {
+            "mcp__builder__task_dispatch",
+            "mcp__builder__task_recover",
+            "mcp__builder__backlog_item_update",
+        }
     ):
         return _permission_allow(input_data)
 

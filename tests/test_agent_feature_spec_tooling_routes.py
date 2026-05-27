@@ -244,5 +244,5 @@ async def test_chat_feature_spec_follow_up_stays_in_feature_backlog_lane(
     assert "When there are a few clear choices, use AskUserQuestion" in captured_prompts[1]
     assert "continue the interview until the first implementation scope has no obvious gaps" in captured_prompts[1]
     assert "I captured that improvement as `Private Post Bookmarking`." in assistant_item["payload"]["content"]
-    assert "Ready for Builder to start now" in assistant_item["payload"]["content"]
+    assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]
     assert "AGREEMENT:" not in assistant_item["payload"]["content"]

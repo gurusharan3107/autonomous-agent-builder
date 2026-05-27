@@ -251,7 +251,7 @@ def update_item(
     if not yes:
         render(
             {"item_id": item_id, "action": "update", "confirmed": False, "would_update": payload},
-            lambda _d: f"Would update backlog item {item_id}. Use --yes to confirm.",
+            lambda _: f"Would update backlog item {item_id}. Use --yes to confirm.",
             use_json=json,
         )
         sys.exit(EXIT_SUCCESS)
@@ -280,7 +280,7 @@ def update_item(
 
 @app.command("list")
 def list_items(
-    project: str = typer.Option(..., "--project", help="Project ID."),
+    project: str | None = typer.Option(None, "--project", help="Project ID. Omit to use the first project in the current workspace."),
     item_type: str | None = typer.Option(None, "--type", help="Filter by item type."),
     tag: str | None = typer.Option(None, "--tag", help="Filter by tag."),
     status: str | None = typer.Option(None, help="Filter by status."),
@@ -295,7 +295,21 @@ def list_items(
     if tag:
         params["tag"] = tag
     try:
-        data = client.get(f"/projects/{project}/backlog/items", **params)
+        resolved_project = project
+        if not resolved_project:
+            projects = client.get("/projects/")
+            projects = projects if isinstance(projects, list) else projects.get("items", [])
+            if not projects:
+                emit_error(
+                    "No projects found in this workspace.",
+                    code="no_projects",
+                    hint="Run 'builder init' to initialize a project.",
+                    exit_code=EXIT_FAILURE,
+                    use_json=json,
+                )
+                sys.exit(EXIT_FAILURE)
+            resolved_project = projects[0]["id"]
+        data = client.get(f"/projects/{resolved_project}/backlog/items", **params)
     except AabApiError as exc:
         handle_api_error(exc, use_json=json)
     else:

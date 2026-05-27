@@ -59,9 +59,6 @@ def resolve_chat_turn_intent(
     dispatchable_task_exists: bool,
     ready_delivery_feature_exists: bool,
     explicit_sprint_planning_intent: bool,
-    read_only_status_requested: bool,
-    documentation_intent_requested: bool,
-    feature_spec_message_requested: bool,
     feature_delivery_message_requested: bool,
     feature_delivery_confirmed: bool,
     session_has_saved_feature_for_delivery: bool,
@@ -70,14 +67,8 @@ def resolve_chat_turn_intent(
     review_approval_continuation_requested: bool,
 ) -> ChatTurnIntent:
     chat_without_specialist = agent_name == "chat" and not active_specialist_present
-    model_backed_delivery_context_requested = (
-        chat_without_specialist
-        and dispatchable_task_exists
-        and not explicit_sprint_planning_intent
-        and not read_only_status_requested
-        and not documentation_intent_requested
-        and not feature_spec_message_requested
-    )
+    # Always route to the model — never skip the runtime based on text-match alone.
+    model_backed_delivery_context_requested = chat_without_specialist
     feature_delivery_followup_requested = (
         chat_without_specialist
         and not dispatchable_task_exists

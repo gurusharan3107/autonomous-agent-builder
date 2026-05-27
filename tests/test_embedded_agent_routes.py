@@ -54,9 +54,11 @@ def test_latest_status_marks_running_false_without_active_task():
 
 
 def test_general_chat_prompt_turns_continue_building_into_dispatch_request(tmp_path):
-    prompt = agent_routes._general_chat_prompt(tmp_path, "Continue building my app.")
+    prompt = agent_routes._general_chat_prompt(
+        tmp_path, "Continue building my app.", model_backed_delivery_context=True
+    )
 
-    assert "Autonomous continuation mode is active" in prompt
+    assert "Model-backed delivery context is active for this turn." in prompt
     assert "mcp__builder__board" in prompt
     assert "mcp__builder__task_dispatch" in prompt
     assert "Do not ask the user which listed feature to build" in prompt
