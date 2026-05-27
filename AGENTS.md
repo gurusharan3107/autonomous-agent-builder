@@ -146,6 +146,26 @@ Full library map (all IDs, surface → library routing, key queries):
 - System-wide product improvement or real-user debugging:
   `workflow --docs-dir docs summary system-improvement-loop`.
   Reproduce, trace true owner, fix, and retest.
+- Before committing any behavioral change (condition removed or relaxed,
+  event type swapped, output text changed, function deleted):
+  run `pytest tests/` and ensure green. Test updates belong in the same
+  commit — never commit known failures to fix in a follow-up.
+- Before renaming or removing any user-visible string in production code:
+  `grep -rn "old string" tests/` first — update every assertion that matches
+  in the same commit. Prompt text, event types, dict keys, and log strings
+  all have test assertions; missing one leaves a silent red test.
+- After any import reorganization (moving, extracting, or renaming a module):
+  run `python3 -c "from <changed_module> import <changed_symbol>"` before
+  committing — import errors only surface at test collection time otherwise.
+- When adding `os.environ["X"] = ...` in any non-test file:
+  add `"X"` to the `isolate_runtime_settings` delenv list in
+  `tests/conftest.py` in the same commit — env var side-effects leak into
+  unrelated tests via pydantic BaseSettings reads.
+- Tests that exercise `run_agent_lifecycle` (directly or via `orchestrator._run_agent`)
+  must include the `test_db` fixture — the lifecycle uses `get_session_factory()()`
+  as an intermediate-write side channel that bypasses the `db` parameter.
+- Use `python3` (never bare `python`) in subprocess commands inside tests;
+  `python` is not guaranteed to exist on all Linux environments.
 
 ## Skill Triggers
 
@@ -237,3 +257,8 @@ For tactical session handoff — current intent, next action, blockers, mid-sess
   JSONL user messages.
 - Do not rely on stale counts, inventories, or session-analysis summaries as
   always-loaded rules.
+- Do not edit managed app files directly as operator — all managed-app product
+  work (features, fixes, improvements) must be dispatched through the builder
+  dashboard. Direct file edits in a managed app workspace bypass the builder
+  lifecycle and are invisible to board/backlog state. The operator's write
+  surface is this source repo only.
