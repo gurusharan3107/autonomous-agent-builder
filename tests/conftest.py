@@ -26,6 +26,7 @@ def isolate_runtime_settings(monkeypatch, tmp_path_factory):
     monkeypatch.delenv("RUNTIME_API_BASE_URL", raising=False)
     monkeypatch.delenv("RUNTIME_API_KEY_ENV", raising=False)
     for key in (
+        "DB_URL_OVERRIDE",
         "AAB_CLAUDE_OTEL_ENABLED",
         "AAB_CLAUDE_OTEL_ENDPOINT",
         "AAB_CLAUDE_OTEL_SERVICE_NAME",
