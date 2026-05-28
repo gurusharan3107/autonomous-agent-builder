@@ -1,0 +1,39 @@
+{
+  "skill_name": "create-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a skill called pdf-analyzer that extracts tables from PDF files and outputs them as CSV. I've been doing this manually with pdfplumber and always have to remember the page.extract_tables() call.",
+      "expected_output": "A .claude/skills/pdf-analyzer/ directory with SKILL.md (frontmatter, 5-step workflow, Hard Rules, Gotchas), reference/workflow.md, evals/evals.json with 2+ test cases, and a description that triggers on PDF/table extraction prompts.",
+      "assertions": [
+        ".claude/skills/pdf-analyzer/SKILL.md exists",
+        "SKILL.md contains PREFLIGHT, EXPLORE, AUTHOR, VALIDATE, CLOSEOUT steps",
+        "SKILL.md has a Hard Rules section",
+        "evals/evals.json exists with at least 2 test cases",
+        "description contains trigger phrases related to PDF and tables"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "My webwright skill never activates when I ask it to automate a web form. The description just says 'Automate web tasks'. Can you refine it?",
+      "expected_output": "Updated description in .claude/skills/webwright/SKILL.md that is more specific about trigger conditions, includes proxy phrases like 'fill out', 'submit', 'scrape', and has been tested against should-trigger and should-not-trigger queries.",
+      "assertions": [
+        "SKILL.md description is updated (not the original 'Automate web tasks')",
+        "Updated description is ≤1024 chars",
+        "Updated description contains more specific trigger phrases",
+        "description-testing eval queries were written and pass rate checked"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Audit all skills in .claude/skills/ and tell me which ones have hard findings.",
+      "expected_output": "A report listing each skill, its check results (A01-A12), and a summary of hard vs soft findings. Skills with hard findings are identified.",
+      "assertions": [
+        "Each skill in .claude/skills/ is reported",
+        "Each finding has an ID (A01-A12), PASS/FAIL status",
+        "Hard finding count is reported per skill",
+        "Skills with exit code 1 (hard findings) are clearly flagged"
+      ]
+    }
+  ]
+}

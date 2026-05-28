@@ -56,6 +56,10 @@ workflow --docs-dir docs read REFERENCE
 - `builder knowledge` owns repo-local system docs and freshness checks.
 - `builder memory` owns reusable repo corrections, decisions, and patterns.
 - `.claude/skills/` owns executable governance: session entry/exit, audit, optimization, knowledge-freshness. Skills auto-trigger on operator phrases; closeouts self-schedule via `CronCreate`.
+- Project-local `.claude/skills/` overrides global `~/.claude/skills/`. When
+  a skill with the same name exists in both, always use the project-local
+  version — it encodes repo-specific adaptations the global version lacks.
+  Check `.claude/skills/` before `~/.claude/skills/`.
 
 Do not move Builder runtime responsibilities into `~/.codex`. Do not copy
 Codex-only guidance into `CLAUDE.md`.
@@ -159,6 +163,18 @@ Full library map (all IDs, surface → library routing, key queries):
   add `"X"` to the `isolate_runtime_settings` delenv list in
   `tests/conftest.py` in the same commit — env var side-effects leak into
   unrelated tests via pydantic BaseSettings reads.
+- Before committing skill changes: run `git status` and confirm all skill
+  files are staged — SKILL.md + scripts/ + references/ + evals/ + any new
+  asset. A commit containing only SKILL.md leaves the skill broken for the
+  next agent that tries to run it.
+- No intermediate commits. Commit only when a ROADMAP item is checked off
+  or a fix is complete and verified. Skill evaluation artifacts are exempt
+  (never commit them).
+- Before acting on any goal-audit or roadmap-audit recommendation:
+  `grep -rn "<the claim>" src/` or `builder quality-gate <surface> --json`
+  to confirm the gap still exists in current code. Recommendations are
+  point-in-time; the codebase may have moved on. Acting on a stale
+  recommendation wastes API budget and introduces noise.
 - Use `python3` (never bare `python`) in subprocess commands inside tests.
 - For test isolation traps specific to this repo's DB layer, see repo memory:
   `builder memory search "test isolation" --tag testing`
@@ -175,6 +191,7 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
 | `/roadmap-audit` | "audit roadmap vs SDK", after KB rubric delta | Cross-check `docs/goal/ROADMAP.md` against KB rubric + live `grep src/` |
 | `/knowledge-base` | "refresh KB", monthly | Maintain `~/.claude/knowledge/` against SDK upstream |
 | `/autoresearch` | "run autoresearch", "baseline", "iterate", "fix the gap" | Three-lane optimization loop (Baseline / Iterate / Fix); owns `docs/autoresearch/` freshness |
+| `/self-optimize` | "self-optimize", "what mistakes am I making", "what keeps going wrong", "analyze recurring issues", "why do I keep correcting you", "encode learnings", "self-introspect", ≥3-day gap with unresolved correction entries in memory | Analyze session transcripts + git fix-commit patterns → cluster recurring mistake themes → map to target surfaces → apply operator-approved edits; tracks last-run history to detect recurred patterns |
 
 ## Product Validation Rules
 

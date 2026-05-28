@@ -250,6 +250,7 @@ def _model_for_agent(agent_def: AgentDefinition, settings: Settings) -> str:
     if agent_def.name == "designer":
         return settings.agent.design_model
     if agent_def.name in {
+        "chat",
         "code-gen",
         "init-project-chat",
         "documentation-bridge",
