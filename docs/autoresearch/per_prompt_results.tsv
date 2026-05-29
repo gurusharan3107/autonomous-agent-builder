@@ -1,160 +1,160 @@
-run_id	prompt_index	turn_role	agent_name	phase	context_budget_tokens	tokens_input	tokens_cached	cache_creation_tokens	tokens_output	noncached_plus_output_tokens	cache_ratio	tool_calls_count	tool_names_json	stop_reason	duration_ms	cost_usd	runtime_sdk	model	effort	context_breakdown_json
-ec68b9da-6f02-45e7-851a-ceaf71f0171b	0	agent	code-gen		0	756	2752041	0	34504	0	2752041.0	0	[]		1115063	2.34248405	deterministic			{}
-ec68b9da-6f02-45e7-851a-ceaf71f0171b	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		21068	0.0	deterministic			{}
-ec68b9da-6f02-45e7-851a-ceaf71f0171b	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		18926	0.0	deterministic			{}
-ec68b9da-6f02-45e7-851a-ceaf71f0171b	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-ec68b9da-6f02-45e7-851a-ceaf71f0171b	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		72660	0.0	deterministic			{}
-7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	0	agent	code-gen		0	102	2136302	0	30398	0	2136302.0	0	[]		1288731	1.9474507	deterministic			{}
-7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	1	agent	integration-resolver		0	6	98183	0	2314	0	98183.0	0	[]		33523	0.16714265	deterministic			{}
-7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	2	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	3	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		27387	0.0	deterministic			{}
-ba140d79-f288-4e38-b470-28e5c8195c56	0	agent	code-gen		0	51	637700	0	7498	0	637700.0	0	[]		268106	0.63256625	deterministic			{}
-ba140d79-f288-4e38-b470-28e5c8195c56	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		6362	0.0	deterministic			{}
-ba140d79-f288-4e38-b470-28e5c8195c56	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		4464	0.0	deterministic			{}
-ba140d79-f288-4e38-b470-28e5c8195c56	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-ba140d79-f288-4e38-b470-28e5c8195c56	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		18337	0.0	deterministic			{}
-a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	0	agent	code-gen		0	156	3268498	0	36597	0	3268498.0	0	[]		1148703	2.6578076	deterministic			{}
-a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	1	agent	integration-resolver		0	9	193607	0	2321	0	193607.0	0	[]		43961	0.13976685	deterministic			{}
-a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		22386	0.0	deterministic			{}
-a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		19875	0.0	deterministic			{}
-a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		68384	0.0	deterministic			{}
-7f24b3bb-7219-43c1-9fa8-ab8d1829f565	0	agent	code-gen		0	458	1042808	0	12084	0	1042808.0	0	[]		330793	0.8068272000000002	deterministic			{}
-7f24b3bb-7219-43c1-9fa8-ab8d1829f565	1	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-7f24b3bb-7219-43c1-9fa8-ab8d1829f565	2	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		11881	0.0	deterministic			{}
-b02db562-9e94-41e6-a45b-f6091da5c8c7	0	agent	code-gen		0	179	3984059	0	45398	0	3984059.0	0	[]		1211121	3.0556577	deterministic			{}
-b02db562-9e94-41e6-a45b-f6091da5c8c7	1	agent	gate-remediator		0	37	455665	0	4342	0	455665.0	0	[]		190000	0.27292774999999997	deterministic			{}
-b02db562-9e94-41e6-a45b-f6091da5c8c7	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		6626	0.0	deterministic			{}
-b02db562-9e94-41e6-a45b-f6091da5c8c7	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-b02db562-9e94-41e6-a45b-f6091da5c8c7	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		30281	0.0	deterministic			{}
-2d6a24b5-a9c0-4494-8124-82321382b5be	0	agent	code-gen		0	0	0	0	0	0	0.0	0	[]		0	0.0	claude			{}
-6706af67-a1e1-4b3f-8f88-fe63efd1efd9	0	agent	code-gen		0	50	600109	0	5599	0	600109.0	0	[]		198017	0.5255516499999999	deterministic			{}
-6706af67-a1e1-4b3f-8f88-fe63efd1efd9	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9800	0.0	deterministic			{}
-6706af67-a1e1-4b3f-8f88-fe63efd1efd9	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		9204	0.0	deterministic			{}
-6706af67-a1e1-4b3f-8f88-fe63efd1efd9	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-6706af67-a1e1-4b3f-8f88-fe63efd1efd9	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34323	0.0	deterministic			{}
-d4f6be7b-1885-4b77-ade0-b61804fed6f2	0	agent	code-gen		0	58	783688	0	7538	0	783688.0	0	[]		264877	0.6478812	deterministic			{}
-d4f6be7b-1885-4b77-ade0-b61804fed6f2	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10754	0.0	deterministic			{}
-d4f6be7b-1885-4b77-ade0-b61804fed6f2	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8469	0.0	deterministic			{}
-d4f6be7b-1885-4b77-ade0-b61804fed6f2	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-d4f6be7b-1885-4b77-ade0-b61804fed6f2	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34273	0.0	deterministic			{}
-f2acc391-76c2-49f6-a31f-c000b3ae54be	0	agent	code-gen		0	55	790020	0	7789	0	790020.0	0	[]		223551	0.6099473999999999	deterministic			{}
-f2acc391-76c2-49f6-a31f-c000b3ae54be	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9001	0.0	deterministic			{}
-f2acc391-76c2-49f6-a31f-c000b3ae54be	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8518	0.0	deterministic			{}
-f2acc391-76c2-49f6-a31f-c000b3ae54be	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-f2acc391-76c2-49f6-a31f-c000b3ae54be	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		32424	0.0	deterministic			{}
-235a7ec8-0dbb-4693-b84b-3b2808921ded	0	agent	code-gen		0	58	925141	0	14412	0	925141.0	0	[]		384362	0.90226785	deterministic			{}
-235a7ec8-0dbb-4693-b84b-3b2808921ded	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9365	0.0	deterministic			{}
-235a7ec8-0dbb-4693-b84b-3b2808921ded	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10388	0.0	deterministic			{}
-235a7ec8-0dbb-4693-b84b-3b2808921ded	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-235a7ec8-0dbb-4693-b84b-3b2808921ded	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34727	0.0	deterministic			{}
-215c333d-85d3-4032-b182-1710ac14dbb9	0	agent	code-gen		0	51	827944	0	10616	0	827944.0	0	[]		318728	0.8052443	deterministic			{}
-215c333d-85d3-4032-b182-1710ac14dbb9	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10510	0.0	deterministic			{}
-215c333d-85d3-4032-b182-1710ac14dbb9	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7537	0.0	deterministic			{}
-215c333d-85d3-4032-b182-1710ac14dbb9	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-215c333d-85d3-4032-b182-1710ac14dbb9	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		31143	0.0	deterministic			{}
-7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	0	agent	code-gen		0	55	854700	0	11594	0	854700.0	0	[]		566709	0.9197527499999999	deterministic			{}
-7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		13877	0.0	deterministic			{}
-7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		11443	0.0	deterministic			{}
-7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		39761	0.0	deterministic			{}
-eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	0	agent	code-gen		0	77	1394284	0	16850	0	1394284.0	0	[]		465251	1.07326735	deterministic			{}
-eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		15332	0.0	deterministic			{}
-eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10078	0.0	deterministic			{}
-eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		51361	0.0	deterministic			{}
-dc3066f9-2a28-43c6-ab94-44bc1dce24cc	0	agent	code-gen		0	62	1485384	0	53742	0	1485384.0	0	[]		1041611	1.8292352499999998	deterministic			{}
-dc3066f9-2a28-43c6-ab94-44bc1dce24cc	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		11922	0.0	deterministic			{}
-dc3066f9-2a28-43c6-ab94-44bc1dce24cc	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		14484	0.0	deterministic			{}
-dc3066f9-2a28-43c6-ab94-44bc1dce24cc	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-dc3066f9-2a28-43c6-ab94-44bc1dce24cc	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		38805	0.0	deterministic			{}
-4e75c9ea-592e-407c-8570-75ecd4b93bb5	0	agent	code-gen		0	70	1188690	0	11020	0	1188690.0	0	[]		426455	0.9448294499999998	deterministic			{}
-4e75c9ea-592e-407c-8570-75ecd4b93bb5	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		11263	0.0	deterministic			{}
-4e75c9ea-592e-407c-8570-75ecd4b93bb5	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		18457	0.0	deterministic			{}
-4e75c9ea-592e-407c-8570-75ecd4b93bb5	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-4e75c9ea-592e-407c-8570-75ecd4b93bb5	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		48046	0.0	deterministic			{}
-49cc3a61-6bec-4985-a2e7-bdff39eb687e	0	agent	code-gen		0	67	1373776	0	19963	0	1373776.0	0	[]		649256	1.20417245	deterministic			{}
-49cc3a61-6bec-4985-a2e7-bdff39eb687e	1	agent	gate-remediator		0	30	355007	0	5999	0	355007.0	0	[]		175229	0.27040535	deterministic			{}
-49cc3a61-6bec-4985-a2e7-bdff39eb687e	2	agent	integration-resolver		0	7	124851	0	1945	0	124851.0	0	[]		40600	0.16986105	deterministic			{}
-49cc3a61-6bec-4985-a2e7-bdff39eb687e	3	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		23455	0.0	deterministic			{}
-49cc3a61-6bec-4985-a2e7-bdff39eb687e	4	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		13318	0.0	deterministic			{}
-49cc3a61-6bec-4985-a2e7-bdff39eb687e	5	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-49cc3a61-6bec-4985-a2e7-bdff39eb687e	6	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		62350	0.0	deterministic			{}
-8143a825-0ddd-480b-ae2a-18e6178528a2	0	agent	code-gen		0	59	898034	0	15833	0	898034.0	0	[]		505171	0.9075167999999998	deterministic			{}
-8143a825-0ddd-480b-ae2a-18e6178528a2	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14284	0.0	deterministic			{}
-8143a825-0ddd-480b-ae2a-18e6178528a2	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		11079	0.0	deterministic			{}
-8143a825-0ddd-480b-ae2a-18e6178528a2	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-8143a825-0ddd-480b-ae2a-18e6178528a2	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		49488	0.0	deterministic			{}
-363aaf56-9429-4181-b147-b9bf1534acb4	0	agent	code-gen		0	60	1001839	0	17584	0	1001839.0	0	[]		640683	1.0247399499999998	deterministic			{}
-363aaf56-9429-4181-b147-b9bf1534acb4	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14855	0.0	deterministic			{}
-363aaf56-9429-4181-b147-b9bf1534acb4	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		12135	0.0	deterministic			{}
-363aaf56-9429-4181-b147-b9bf1534acb4	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-363aaf56-9429-4181-b147-b9bf1534acb4	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		54461	0.0	deterministic			{}
-3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	0	agent	code-gen		0	58	950708	0	12908	0	950708.0	0	[]		468261	0.8839906500000001	deterministic			{}
-3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		16611	0.0	deterministic			{}
-3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		11321	0.0	deterministic			{}
-3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		42437	0.0	deterministic			{}
-46cf0d2b-90d1-442a-b799-052e54d355de	0	agent	code-gen		0	54	807519	0	12416	0	807519.0	0	[]		351207	0.8059537500000001	deterministic			{}
-46cf0d2b-90d1-442a-b799-052e54d355de	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		12757	0.0	deterministic			{}
-46cf0d2b-90d1-442a-b799-052e54d355de	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		6844	0.0	deterministic			{}
-46cf0d2b-90d1-442a-b799-052e54d355de	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-46cf0d2b-90d1-442a-b799-052e54d355de	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		35691	0.0	deterministic			{}
-0158dbac-c438-423c-b5cc-db5b21150634	0	agent	code-gen		0	55	869431	0	12051	0	869431.0	0	[]		369116	0.8283830999999999	deterministic			{}
-0158dbac-c438-423c-b5cc-db5b21150634	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		15900	0.0	deterministic			{}
-0158dbac-c438-423c-b5cc-db5b21150634	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7448	0.0	deterministic			{}
-0158dbac-c438-423c-b5cc-db5b21150634	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-0158dbac-c438-423c-b5cc-db5b21150634	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34150	0.0	deterministic			{}
-3ce9f283-1d94-4e4b-a200-91dda7699f88	0	agent	code-gen		0	69	1162628	0	15017	0	1162628.0	0	[]		450647	1.02278365	deterministic			{}
-3ce9f283-1d94-4e4b-a200-91dda7699f88	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9096	0.0	deterministic			{}
-3ce9f283-1d94-4e4b-a200-91dda7699f88	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7034	0.0	deterministic			{}
-3ce9f283-1d94-4e4b-a200-91dda7699f88	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-3ce9f283-1d94-4e4b-a200-91dda7699f88	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		35186	0.0	deterministic			{}
-d9c575f3-3937-42d1-b8bd-1a16cc21e871	0	agent	code-gen		0	53	859904	0	14240	0	859904.0	0	[]		374979	0.8570237500000001	deterministic			{}
-d9c575f3-3937-42d1-b8bd-1a16cc21e871	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		8810	0.0	deterministic			{}
-d9c575f3-3937-42d1-b8bd-1a16cc21e871	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		9240	0.0	deterministic			{}
-d9c575f3-3937-42d1-b8bd-1a16cc21e871	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-d9c575f3-3937-42d1-b8bd-1a16cc21e871	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		36317	0.0	deterministic			{}
-32c61885-2973-49fd-9055-202f94427927	0	agent	code-gen		0	56	983439	0	15665	0	983439.0	0	[]		418043	0.94593095	deterministic			{}
-32c61885-2973-49fd-9055-202f94427927	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10116	0.0	deterministic			{}
-32c61885-2973-49fd-9055-202f94427927	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8464	0.0	deterministic			{}
-32c61885-2973-49fd-9055-202f94427927	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-32c61885-2973-49fd-9055-202f94427927	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		36500	0.0	deterministic			{}
-f7b01f96-9163-4f73-8eda-e8955c644b7b	0	agent	code-gen		0	57	1122086	0	16677	0	1122086.0	0	[]		500616	1.0047036500000002	deterministic			{}
-f7b01f96-9163-4f73-8eda-e8955c644b7b	1	agent	integration-resolver		0	5	72501	0	1723	0	72501.0	0	[]		28820	0.14906855	deterministic			{}
-f7b01f96-9163-4f73-8eda-e8955c644b7b	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10799	0.0	deterministic			{}
-f7b01f96-9163-4f73-8eda-e8955c644b7b	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8215	0.0	deterministic			{}
-f7b01f96-9163-4f73-8eda-e8955c644b7b	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-f7b01f96-9163-4f73-8eda-e8955c644b7b	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		37323	0.0	deterministic			{}
-e753b483-83eb-4ca9-b4e6-9f934f4c5b55	0	agent	code-gen		0	53	749656	0	11066	0	749656.0	0	[]		387928	0.78215645	deterministic			{}
-e753b483-83eb-4ca9-b4e6-9f934f4c5b55	1	agent	integration-resolver		0	8	165376	0	2405	0	165376.0	0	[]		42016	0.13285505	deterministic			{}
-e753b483-83eb-4ca9-b4e6-9f934f4c5b55	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9141	0.0	deterministic			{}
-e753b483-83eb-4ca9-b4e6-9f934f4c5b55	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10228	0.0	deterministic			{}
-e753b483-83eb-4ca9-b4e6-9f934f4c5b55	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-e753b483-83eb-4ca9-b4e6-9f934f4c5b55	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		35538	0.0	deterministic			{}
-083d3a6c-ec08-4061-aa5d-3fe508d0961d	0	agent	code-gen		0	67	1038483	0	11071	0	1038483.0	0	[]		346711	0.85663505	deterministic			{}
-083d3a6c-ec08-4061-aa5d-3fe508d0961d	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		11771	0.0	deterministic			{}
-083d3a6c-ec08-4061-aa5d-3fe508d0961d	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7705	0.0	deterministic			{}
-083d3a6c-ec08-4061-aa5d-3fe508d0961d	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-083d3a6c-ec08-4061-aa5d-3fe508d0961d	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		42754	0.0	deterministic			{}
-102daa9b-5f4f-4941-96c5-09226bf0b8ad	0	agent	code-gen		0	65	1010451	0	11348	0	1010451.0	0	[]		360647	0.8847779	deterministic			{}
-102daa9b-5f4f-4941-96c5-09226bf0b8ad	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		8974	0.0	deterministic			{}
-102daa9b-5f4f-4941-96c5-09226bf0b8ad	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8781	0.0	deterministic			{}
-102daa9b-5f4f-4941-96c5-09226bf0b8ad	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-102daa9b-5f4f-4941-96c5-09226bf0b8ad	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		30814	0.0	deterministic			{}
-722fec6a-5ad7-44f5-a457-4adfda497e6e	0	agent	code-gen		0	74	1351559	0	16740	0	1351559.0	0	[]		549852	1.1421228	deterministic			{}
-722fec6a-5ad7-44f5-a457-4adfda497e6e	1	agent	integration-resolver		0	8	164927	0	1762	0	164927.0	0	[]		40896	0.12230359999999998	deterministic			{}
-722fec6a-5ad7-44f5-a457-4adfda497e6e	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14313	0.0	deterministic			{}
-722fec6a-5ad7-44f5-a457-4adfda497e6e	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10201	0.0	deterministic			{}
-722fec6a-5ad7-44f5-a457-4adfda497e6e	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-722fec6a-5ad7-44f5-a457-4adfda497e6e	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		42700	0.0	deterministic			{}
-3fc48cc0-7f77-4038-a94c-7cddfaec74a7	0	agent	code-gen		0	59	942941	0	11597	0	942941.0	0	[]		545689	0.90317885	deterministic			{}
-3fc48cc0-7f77-4038-a94c-7cddfaec74a7	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		30075	0.0	deterministic			{}
-3fc48cc0-7f77-4038-a94c-7cddfaec74a7	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		16064	0.0	deterministic			{}
-3fc48cc0-7f77-4038-a94c-7cddfaec74a7	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-3fc48cc0-7f77-4038-a94c-7cddfaec74a7	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		68497	0.0	deterministic			{}
-272e3916-a140-41b9-b2d2-62276d2f3be1	0	agent	code-gen		0	59	918192	0	8094	0	918192.0	0	[]		316272	0.7626440499999999	deterministic			{}
-272e3916-a140-41b9-b2d2-62276d2f3be1	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14682	0.0	deterministic			{}
-272e3916-a140-41b9-b2d2-62276d2f3be1	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8850	0.0	deterministic			{}
-272e3916-a140-41b9-b2d2-62276d2f3be1	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic			{}
-272e3916-a140-41b9-b2d2-62276d2f3be1	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		33849	0.0	deterministic			{}
+run_id	prompt_index	turn_role	agent_name	phase	context_budget_tokens	tokens_input	tokens_cached	cache_creation_tokens	tokens_output	noncached_plus_output_tokens	cache_ratio	tool_calls_count	tool_names_json	stop_reason	duration_ms	cost_usd	runtime_sdk	model	effort
+ec68b9da-6f02-45e7-851a-ceaf71f0171b	0	agent	code-gen		0	756	2752041	0	34504	0	2752041.0	0	[]		1115063	2.34248405	deterministic		
+ec68b9da-6f02-45e7-851a-ceaf71f0171b	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		21068	0.0	deterministic		
+ec68b9da-6f02-45e7-851a-ceaf71f0171b	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		18926	0.0	deterministic		
+ec68b9da-6f02-45e7-851a-ceaf71f0171b	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+ec68b9da-6f02-45e7-851a-ceaf71f0171b	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		72660	0.0	deterministic		
+7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	0	agent	code-gen		0	102	2136302	0	30398	0	2136302.0	0	[]		1288731	1.9474507	deterministic		
+7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	1	agent	integration-resolver		0	6	98183	0	2314	0	98183.0	0	[]		33523	0.16714265	deterministic		
+7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	2	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+7aea8d3e-04ae-43d9-8943-cdfd99db8a3b	3	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		27387	0.0	deterministic		
+ba140d79-f288-4e38-b470-28e5c8195c56	0	agent	code-gen		0	51	637700	0	7498	0	637700.0	0	[]		268106	0.63256625	deterministic		
+ba140d79-f288-4e38-b470-28e5c8195c56	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		6362	0.0	deterministic		
+ba140d79-f288-4e38-b470-28e5c8195c56	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		4464	0.0	deterministic		
+ba140d79-f288-4e38-b470-28e5c8195c56	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+ba140d79-f288-4e38-b470-28e5c8195c56	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		18337	0.0	deterministic		
+a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	0	agent	code-gen		0	156	3268498	0	36597	0	3268498.0	0	[]		1148703	2.6578076	deterministic		
+a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	1	agent	integration-resolver		0	9	193607	0	2321	0	193607.0	0	[]		43961	0.13976685	deterministic		
+a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		22386	0.0	deterministic		
+a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		19875	0.0	deterministic		
+a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+a3e41fb3-58d1-4a12-a70d-33cf9f1ec583	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		68384	0.0	deterministic		
+7f24b3bb-7219-43c1-9fa8-ab8d1829f565	0	agent	code-gen		0	458	1042808	0	12084	0	1042808.0	0	[]		330793	0.8068272000000002	deterministic		
+7f24b3bb-7219-43c1-9fa8-ab8d1829f565	1	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+7f24b3bb-7219-43c1-9fa8-ab8d1829f565	2	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		11881	0.0	deterministic		
+b02db562-9e94-41e6-a45b-f6091da5c8c7	0	agent	code-gen		0	179	3984059	0	45398	0	3984059.0	0	[]		1211121	3.0556577	deterministic		
+b02db562-9e94-41e6-a45b-f6091da5c8c7	1	agent	gate-remediator		0	37	455665	0	4342	0	455665.0	0	[]		190000	0.27292774999999997	deterministic		
+b02db562-9e94-41e6-a45b-f6091da5c8c7	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		6626	0.0	deterministic		
+b02db562-9e94-41e6-a45b-f6091da5c8c7	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+b02db562-9e94-41e6-a45b-f6091da5c8c7	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		30281	0.0	deterministic		
+2d6a24b5-a9c0-4494-8124-82321382b5be	0	agent	code-gen		0	0	0	0	0	0	0.0	0	[]		0	0.0	claude		
+6706af67-a1e1-4b3f-8f88-fe63efd1efd9	0	agent	code-gen		0	50	600109	0	5599	0	600109.0	0	[]		198017	0.5255516499999999	deterministic		
+6706af67-a1e1-4b3f-8f88-fe63efd1efd9	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9800	0.0	deterministic		
+6706af67-a1e1-4b3f-8f88-fe63efd1efd9	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		9204	0.0	deterministic		
+6706af67-a1e1-4b3f-8f88-fe63efd1efd9	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+6706af67-a1e1-4b3f-8f88-fe63efd1efd9	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34323	0.0	deterministic		
+d4f6be7b-1885-4b77-ade0-b61804fed6f2	0	agent	code-gen		0	58	783688	0	7538	0	783688.0	0	[]		264877	0.6478812	deterministic		
+d4f6be7b-1885-4b77-ade0-b61804fed6f2	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10754	0.0	deterministic		
+d4f6be7b-1885-4b77-ade0-b61804fed6f2	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8469	0.0	deterministic		
+d4f6be7b-1885-4b77-ade0-b61804fed6f2	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+d4f6be7b-1885-4b77-ade0-b61804fed6f2	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34273	0.0	deterministic		
+f2acc391-76c2-49f6-a31f-c000b3ae54be	0	agent	code-gen		0	55	790020	0	7789	0	790020.0	0	[]		223551	0.6099473999999999	deterministic		
+f2acc391-76c2-49f6-a31f-c000b3ae54be	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9001	0.0	deterministic		
+f2acc391-76c2-49f6-a31f-c000b3ae54be	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8518	0.0	deterministic		
+f2acc391-76c2-49f6-a31f-c000b3ae54be	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+f2acc391-76c2-49f6-a31f-c000b3ae54be	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		32424	0.0	deterministic		
+235a7ec8-0dbb-4693-b84b-3b2808921ded	0	agent	code-gen		0	58	925141	0	14412	0	925141.0	0	[]		384362	0.90226785	deterministic		
+235a7ec8-0dbb-4693-b84b-3b2808921ded	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9365	0.0	deterministic		
+235a7ec8-0dbb-4693-b84b-3b2808921ded	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10388	0.0	deterministic		
+235a7ec8-0dbb-4693-b84b-3b2808921ded	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+235a7ec8-0dbb-4693-b84b-3b2808921ded	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34727	0.0	deterministic		
+215c333d-85d3-4032-b182-1710ac14dbb9	0	agent	code-gen		0	51	827944	0	10616	0	827944.0	0	[]		318728	0.8052443	deterministic		
+215c333d-85d3-4032-b182-1710ac14dbb9	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10510	0.0	deterministic		
+215c333d-85d3-4032-b182-1710ac14dbb9	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7537	0.0	deterministic		
+215c333d-85d3-4032-b182-1710ac14dbb9	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+215c333d-85d3-4032-b182-1710ac14dbb9	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		31143	0.0	deterministic		
+7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	0	agent	code-gen		0	55	854700	0	11594	0	854700.0	0	[]		566709	0.9197527499999999	deterministic		
+7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		13877	0.0	deterministic		
+7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		11443	0.0	deterministic		
+7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+7a2f8c3d-7f4c-4f25-ac66-d212d0e8b860	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		39761	0.0	deterministic		
+eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	0	agent	code-gen		0	77	1394284	0	16850	0	1394284.0	0	[]		465251	1.07326735	deterministic		
+eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		15332	0.0	deterministic		
+eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10078	0.0	deterministic		
+eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+eaf18ffb-d72d-4f0d-a4ab-32bfa35ad074	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		51361	0.0	deterministic		
+dc3066f9-2a28-43c6-ab94-44bc1dce24cc	0	agent	code-gen		0	62	1485384	0	53742	0	1485384.0	0	[]		1041611	1.8292352499999998	deterministic		
+dc3066f9-2a28-43c6-ab94-44bc1dce24cc	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		11922	0.0	deterministic		
+dc3066f9-2a28-43c6-ab94-44bc1dce24cc	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		14484	0.0	deterministic		
+dc3066f9-2a28-43c6-ab94-44bc1dce24cc	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+dc3066f9-2a28-43c6-ab94-44bc1dce24cc	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		38805	0.0	deterministic		
+4e75c9ea-592e-407c-8570-75ecd4b93bb5	0	agent	code-gen		0	70	1188690	0	11020	0	1188690.0	0	[]		426455	0.9448294499999998	deterministic		
+4e75c9ea-592e-407c-8570-75ecd4b93bb5	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		11263	0.0	deterministic		
+4e75c9ea-592e-407c-8570-75ecd4b93bb5	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		18457	0.0	deterministic		
+4e75c9ea-592e-407c-8570-75ecd4b93bb5	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+4e75c9ea-592e-407c-8570-75ecd4b93bb5	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		48046	0.0	deterministic		
+49cc3a61-6bec-4985-a2e7-bdff39eb687e	0	agent	code-gen		0	67	1373776	0	19963	0	1373776.0	0	[]		649256	1.20417245	deterministic		
+49cc3a61-6bec-4985-a2e7-bdff39eb687e	1	agent	gate-remediator		0	30	355007	0	5999	0	355007.0	0	[]		175229	0.27040535	deterministic		
+49cc3a61-6bec-4985-a2e7-bdff39eb687e	2	agent	integration-resolver		0	7	124851	0	1945	0	124851.0	0	[]		40600	0.16986105	deterministic		
+49cc3a61-6bec-4985-a2e7-bdff39eb687e	3	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		23455	0.0	deterministic		
+49cc3a61-6bec-4985-a2e7-bdff39eb687e	4	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		13318	0.0	deterministic		
+49cc3a61-6bec-4985-a2e7-bdff39eb687e	5	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+49cc3a61-6bec-4985-a2e7-bdff39eb687e	6	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		62350	0.0	deterministic		
+8143a825-0ddd-480b-ae2a-18e6178528a2	0	agent	code-gen		0	59	898034	0	15833	0	898034.0	0	[]		505171	0.9075167999999998	deterministic		
+8143a825-0ddd-480b-ae2a-18e6178528a2	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14284	0.0	deterministic		
+8143a825-0ddd-480b-ae2a-18e6178528a2	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		11079	0.0	deterministic		
+8143a825-0ddd-480b-ae2a-18e6178528a2	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+8143a825-0ddd-480b-ae2a-18e6178528a2	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		49488	0.0	deterministic		
+363aaf56-9429-4181-b147-b9bf1534acb4	0	agent	code-gen		0	60	1001839	0	17584	0	1001839.0	0	[]		640683	1.0247399499999998	deterministic		
+363aaf56-9429-4181-b147-b9bf1534acb4	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14855	0.0	deterministic		
+363aaf56-9429-4181-b147-b9bf1534acb4	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		12135	0.0	deterministic		
+363aaf56-9429-4181-b147-b9bf1534acb4	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+363aaf56-9429-4181-b147-b9bf1534acb4	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		54461	0.0	deterministic		
+3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	0	agent	code-gen		0	58	950708	0	12908	0	950708.0	0	[]		468261	0.8839906500000001	deterministic		
+3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		16611	0.0	deterministic		
+3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		11321	0.0	deterministic		
+3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+3c9c27b8-475b-4ee9-b0f6-a7d05a73be11	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		42437	0.0	deterministic		
+46cf0d2b-90d1-442a-b799-052e54d355de	0	agent	code-gen		0	54	807519	0	12416	0	807519.0	0	[]		351207	0.8059537500000001	deterministic		
+46cf0d2b-90d1-442a-b799-052e54d355de	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		12757	0.0	deterministic		
+46cf0d2b-90d1-442a-b799-052e54d355de	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		6844	0.0	deterministic		
+46cf0d2b-90d1-442a-b799-052e54d355de	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+46cf0d2b-90d1-442a-b799-052e54d355de	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		35691	0.0	deterministic		
+0158dbac-c438-423c-b5cc-db5b21150634	0	agent	code-gen		0	55	869431	0	12051	0	869431.0	0	[]		369116	0.8283830999999999	deterministic		
+0158dbac-c438-423c-b5cc-db5b21150634	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		15900	0.0	deterministic		
+0158dbac-c438-423c-b5cc-db5b21150634	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7448	0.0	deterministic		
+0158dbac-c438-423c-b5cc-db5b21150634	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+0158dbac-c438-423c-b5cc-db5b21150634	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		34150	0.0	deterministic		
+3ce9f283-1d94-4e4b-a200-91dda7699f88	0	agent	code-gen		0	69	1162628	0	15017	0	1162628.0	0	[]		450647	1.02278365	deterministic		
+3ce9f283-1d94-4e4b-a200-91dda7699f88	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9096	0.0	deterministic		
+3ce9f283-1d94-4e4b-a200-91dda7699f88	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7034	0.0	deterministic		
+3ce9f283-1d94-4e4b-a200-91dda7699f88	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+3ce9f283-1d94-4e4b-a200-91dda7699f88	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		35186	0.0	deterministic		
+d9c575f3-3937-42d1-b8bd-1a16cc21e871	0	agent	code-gen		0	53	859904	0	14240	0	859904.0	0	[]		374979	0.8570237500000001	deterministic		
+d9c575f3-3937-42d1-b8bd-1a16cc21e871	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		8810	0.0	deterministic		
+d9c575f3-3937-42d1-b8bd-1a16cc21e871	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		9240	0.0	deterministic		
+d9c575f3-3937-42d1-b8bd-1a16cc21e871	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+d9c575f3-3937-42d1-b8bd-1a16cc21e871	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		36317	0.0	deterministic		
+32c61885-2973-49fd-9055-202f94427927	0	agent	code-gen		0	56	983439	0	15665	0	983439.0	0	[]		418043	0.94593095	deterministic		
+32c61885-2973-49fd-9055-202f94427927	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10116	0.0	deterministic		
+32c61885-2973-49fd-9055-202f94427927	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8464	0.0	deterministic		
+32c61885-2973-49fd-9055-202f94427927	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+32c61885-2973-49fd-9055-202f94427927	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		36500	0.0	deterministic		
+f7b01f96-9163-4f73-8eda-e8955c644b7b	0	agent	code-gen		0	57	1122086	0	16677	0	1122086.0	0	[]		500616	1.0047036500000002	deterministic		
+f7b01f96-9163-4f73-8eda-e8955c644b7b	1	agent	integration-resolver		0	5	72501	0	1723	0	72501.0	0	[]		28820	0.14906855	deterministic		
+f7b01f96-9163-4f73-8eda-e8955c644b7b	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		10799	0.0	deterministic		
+f7b01f96-9163-4f73-8eda-e8955c644b7b	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8215	0.0	deterministic		
+f7b01f96-9163-4f73-8eda-e8955c644b7b	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+f7b01f96-9163-4f73-8eda-e8955c644b7b	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		37323	0.0	deterministic		
+e753b483-83eb-4ca9-b4e6-9f934f4c5b55	0	agent	code-gen		0	53	749656	0	11066	0	749656.0	0	[]		387928	0.78215645	deterministic		
+e753b483-83eb-4ca9-b4e6-9f934f4c5b55	1	agent	integration-resolver		0	8	165376	0	2405	0	165376.0	0	[]		42016	0.13285505	deterministic		
+e753b483-83eb-4ca9-b4e6-9f934f4c5b55	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		9141	0.0	deterministic		
+e753b483-83eb-4ca9-b4e6-9f934f4c5b55	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10228	0.0	deterministic		
+e753b483-83eb-4ca9-b4e6-9f934f4c5b55	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+e753b483-83eb-4ca9-b4e6-9f934f4c5b55	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		35538	0.0	deterministic		
+083d3a6c-ec08-4061-aa5d-3fe508d0961d	0	agent	code-gen		0	67	1038483	0	11071	0	1038483.0	0	[]		346711	0.85663505	deterministic		
+083d3a6c-ec08-4061-aa5d-3fe508d0961d	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		11771	0.0	deterministic		
+083d3a6c-ec08-4061-aa5d-3fe508d0961d	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		7705	0.0	deterministic		
+083d3a6c-ec08-4061-aa5d-3fe508d0961d	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+083d3a6c-ec08-4061-aa5d-3fe508d0961d	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		42754	0.0	deterministic		
+102daa9b-5f4f-4941-96c5-09226bf0b8ad	0	agent	code-gen		0	65	1010451	0	11348	0	1010451.0	0	[]		360647	0.8847779	deterministic		
+102daa9b-5f4f-4941-96c5-09226bf0b8ad	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		8974	0.0	deterministic		
+102daa9b-5f4f-4941-96c5-09226bf0b8ad	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8781	0.0	deterministic		
+102daa9b-5f4f-4941-96c5-09226bf0b8ad	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+102daa9b-5f4f-4941-96c5-09226bf0b8ad	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		30814	0.0	deterministic		
+722fec6a-5ad7-44f5-a457-4adfda497e6e	0	agent	code-gen		0	74	1351559	0	16740	0	1351559.0	0	[]		549852	1.1421228	deterministic		
+722fec6a-5ad7-44f5-a457-4adfda497e6e	1	agent	integration-resolver		0	8	164927	0	1762	0	164927.0	0	[]		40896	0.12230359999999998	deterministic		
+722fec6a-5ad7-44f5-a457-4adfda497e6e	2	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14313	0.0	deterministic		
+722fec6a-5ad7-44f5-a457-4adfda497e6e	3	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		10201	0.0	deterministic		
+722fec6a-5ad7-44f5-a457-4adfda497e6e	4	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+722fec6a-5ad7-44f5-a457-4adfda497e6e	5	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		42700	0.0	deterministic		
+3fc48cc0-7f77-4038-a94c-7cddfaec74a7	0	agent	code-gen		0	59	942941	0	11597	0	942941.0	0	[]		545689	0.90317885	deterministic		
+3fc48cc0-7f77-4038-a94c-7cddfaec74a7	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		30075	0.0	deterministic		
+3fc48cc0-7f77-4038-a94c-7cddfaec74a7	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		16064	0.0	deterministic		
+3fc48cc0-7f77-4038-a94c-7cddfaec74a7	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+3fc48cc0-7f77-4038-a94c-7cddfaec74a7	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		68497	0.0	deterministic		
+272e3916-a140-41b9-b2d2-62276d2f3be1	0	agent	code-gen		0	59	918192	0	8094	0	918192.0	0	[]		316272	0.7626440499999999	deterministic		
+272e3916-a140-41b9-b2d2-62276d2f3be1	1	agent	optimization-agent		0	0	0	0	0	0	0.0	0	[]		14682	0.0	deterministic		
+272e3916-a140-41b9-b2d2-62276d2f3be1	2	agent	feature-acceptance-tests		0	0	0	0	0	0	0.0	0	[]		8850	0.0	deterministic		
+272e3916-a140-41b9-b2d2-62276d2f3be1	3	agent	evidence-collector		0	0	0	0	0	0	0.0	0	[]		0	0.0	deterministic		
+272e3916-a140-41b9-b2d2-62276d2f3be1	4	agent	build-verifier		0	0	0	0	0	0	0.0	0	[]		33849	0.0	deterministic		

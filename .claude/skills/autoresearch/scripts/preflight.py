@@ -29,8 +29,6 @@ import shutil
 import socket
 import subprocess
 import sys
-import urllib.error
-import urllib.request
 from dataclasses import dataclass, field
 
 REPO = pathlib.Path(__file__).resolve().parents[4]  # .claude/skills/autoresearch/scripts/preflight.py → repo root
@@ -51,7 +49,6 @@ REQUIRED_HARNESS = [
     "scripts/autoresearch/baseline.py",
     "scripts/autoresearch/compare.py",
     "scripts/autoresearch/loop.py",
-    "scripts/autoresearch/extract_context_breakdown.py",
     "scripts/autoresearch/setup_seed.sh",
 ]
 
@@ -144,139 +141,6 @@ def check_tmp_disk_space() -> Check:
                      fix="free disk space; long N=5 baseline runs may fill /tmp/autoresearch/<run-id>/raw_bodies/")
     except OSError as exc:
         return Check("/tmp disk space", "warn", f"could not stat /tmp ({exc})")
-
-
-def check_docker_jaeger() -> Check:
-    docker = shutil.which("docker")
-    if not docker:
-        return Check("docker + Jaeger (optional)", "warn",
-                     "docker not on PATH — Jaeger UI unavailable; Path A file-OTEL still works",
-                     fix="install docker (one-time): curl -fsSL https://get.docker.com | sudo sh; "
-                         "sudo usermod -aG docker $USER; sudo chmod 666 /var/run/docker.sock")
-    # docker info distinguishes "daemon down" from "no socket access"
-    try:
-        info_proc = subprocess.run([docker, "info"], capture_output=True, timeout=5)
-    except subprocess.TimeoutExpired:
-        return Check("docker + Jaeger (optional)", "warn",
-                     "docker info timed out — daemon may be hung",
-                     fix="sudo service docker restart (or skip Jaeger; Path A still works)")
-    if info_proc.returncode != 0:
-        err = info_proc.stderr.decode("utf-8", errors="replace").lower()
-        if "permission denied" in err or "cannot connect" in err:
-            return Check("docker + Jaeger (optional)", "warn", "docker socket permission denied",
-                         fix="sudo usermod -aG docker $USER && sudo chmod 666 /var/run/docker.sock; "
-                             "then restart shell")
-        return Check("docker + Jaeger (optional)", "warn", "docker daemon unreachable",
-                     fix="sudo service docker start  (or: sudo systemctl start docker)")
-    try:
-        out = subprocess.check_output(
-            [docker, "ps", "--filter", "name=autoresearch-jaeger", "--format", "{{.Status}}"],
-            stderr=subprocess.DEVNULL, timeout=5,
-        ).decode().strip()
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return Check("docker + Jaeger (optional)", "warn", "docker daemon unreachable",
-                     fix="sudo service docker start (Path A file-OTEL still works without Jaeger)")
-    if not out:
-        return Check("docker + Jaeger (optional)", "warn",
-                     "docker reachable; Jaeger container not running",
-                     fix="bash .claude/skills/autoresearch/scripts/bootstrap.sh")
-    # Container exists — verify it's actually reachable on the host, not just
-    # "up" inside its namespace. WSL2 bridge networking has been known to drop
-    # port forwarding even when the container is healthy from docker's view.
-    ui_ok = _http_reachable("http://127.0.0.1:16686", expected_prefixes=("200", "302"))
-    otlp_ok = _http_reachable("http://127.0.0.1:4318/v1/traces",
-                              expected_prefixes=("200", "400", "415"), method="POST",
-                              body=b"{}", content_type="application/json")
-    if ui_ok and otlp_ok:
-        return Check("docker + Jaeger", "pass",
-                     f"container {out}; UI :16686 + OTLP :4318 reachable")
-    return Check("docker + Jaeger", "warn",
-                 f"container {out} but endpoints unreachable "
-                 f"(UI:{'✓' if ui_ok else '✗'} OTLP:{'✓' if otlp_ok else '✗'})",
-                 fix="docker logs autoresearch-jaeger; bootstrap.sh restarts with host networking")
-
-
-def _http_reachable(url: str, *, expected_prefixes: tuple[str, ...] = ("200",),
-                    method: str = "GET", body: bytes | None = None,
-                    content_type: str | None = None, timeout: float = 3.0) -> bool:
-    """Best-effort reachability probe. Returns True iff a response arrived with
-    an HTTP status in `expected_prefixes` (accepts e.g. 400/415 as 'server is
-    there, just rejected our payload')."""
-    try:
-        req = urllib.request.Request(url, method=method, data=body)
-        if content_type:
-            req.add_header("Content-Type", content_type)
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return any(str(resp.status).startswith(p) for p in expected_prefixes)
-    except urllib.error.HTTPError as e:
-        return any(str(e.code).startswith(p) for p in expected_prefixes)
-    except (urllib.error.URLError, TimeoutError, OSError):
-        return False
-
-
-def check_otel_port_holders() -> Check:
-    """Like check_ports() but classifies holders. Builder processes blocking
-    OTEL ports are auto-fixable via bootstrap.sh --auto-free-ports; other
-    listeners need operator action."""
-    held: list[tuple[int, str, str]] = []  # (port, pid, cmd)
-    for port in (4317, 4318, 16686):
-        if check_port_free(port):
-            continue
-        try:
-            out = subprocess.check_output(
-                ["ss", "-tlnp"], stderr=subprocess.DEVNULL, timeout=3
-            ).decode()
-        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            held.append((port, "?", "?"))
-            continue
-        for line in out.splitlines():
-            if f":{port} " in line or f":{port}\t" in line:
-                import re as _re
-                pid_m = _re.search(r"pid=(\d+)", line)
-                cmd_m = _re.search(r'users:\(\("([^"]+)"', line)
-                held.append((port, pid_m.group(1) if pid_m else "?",
-                             cmd_m.group(1) if cmd_m else "?"))
-                break
-    if not held:
-        return Check("OTEL ports (4317/4318/16686)", "pass", "all free")
-    # If Jaeger container is running, attribute "?" holders to it (ss -tlnp
-    # can't see inside Docker namespaces without sudo, so the holder appears
-    # as unknown — but if we know Jaeger is up, that's the expected source).
-    jaeger_up = _jaeger_container_running()
-    builder_holders = [(p, pid, cmd) for p, pid, cmd in held if cmd == "builder"]
-    other_holders = [
-        (p, pid, cmd) for p, pid, cmd in held
-        if cmd not in ("builder", "jaeger", "all-in-one")
-        and not (jaeger_up and cmd == "?")
-    ]
-    detail = "; ".join(f":{p}=pid {pid} ({cmd})" for _, _, _ in [(0, 0, 0)] for p, pid, cmd in held)
-    if builder_holders and not other_holders:
-        return Check("OTEL ports (4317/4318/16686)", "warn",
-                     f"held by builder process(es): {detail}",
-                     fix="bash .claude/skills/autoresearch/scripts/bootstrap.sh --auto-free-ports")
-    if other_holders:
-        return Check("OTEL ports (4317/4318/16686)", "fail",
-                     f"held by non-builder process(es): {detail}",
-                     fix="stop the listed process(es) manually before running the loop")
-    # All holders attributable to Jaeger (or look like it) — that's the
-    # expected steady state after bootstrap.
-    return Check("OTEL ports (4317/4318/16686)", "pass",
-                 f"held by Jaeger container: {detail}" if jaeger_up
-                 else f"held but appears intentional: {detail}")
-
-
-def _jaeger_container_running() -> bool:
-    docker = shutil.which("docker")
-    if not docker:
-        return False
-    try:
-        out = subprocess.check_output(
-            [docker, "ps", "--filter", "name=autoresearch-jaeger", "--format", "{{.Names}}"],
-            stderr=subprocess.DEVNULL, timeout=3,
-        ).decode().strip()
-        return bool(out)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return False
 
 
 def check_git_state() -> Check:
@@ -384,9 +248,7 @@ def gather_soft_checks() -> list[Check]:
         check_py_spy_optional(),
         check_path_exists("seed snapshot", SEED_DST, hard=False, kind="immutable snapshot"),
         check_ports(),
-        check_otel_port_holders(),
         check_tmp_disk_space(),
-        check_docker_jaeger(),
         check_git_state(),
     ]
 

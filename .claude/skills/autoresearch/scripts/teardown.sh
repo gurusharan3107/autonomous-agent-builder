@@ -2,7 +2,6 @@
 # Autoresearch loop teardown — bundled with the autoresearch skill.
 #
 # Shuts down ephemeral session state after a loop run:
-#   - Stops + removes the Jaeger container (if running)
 #   - Cleans up /tmp/devpulse-* workspaces (run.py leftovers if it crashed mid-run)
 #   - Optionally clears /tmp/autoresearch/* evidence (--with-evidence)
 #
@@ -13,22 +12,19 @@
 #   - git state  (operator owns branches)
 #
 # Usage:
-#   bash .claude/skills/autoresearch/scripts/teardown.sh                  # stop Jaeger, clean /tmp/devpulse-*, restore stopped builders
+#   bash .claude/skills/autoresearch/scripts/teardown.sh                  # clean /tmp/devpulse-*, restore stopped builders
 #   bash .claude/skills/autoresearch/scripts/teardown.sh --with-evidence  # also clear /tmp/autoresearch/
-#   bash .claude/skills/autoresearch/scripts/teardown.sh --keep-jaeger    # leave Jaeger running
 #   bash .claude/skills/autoresearch/scripts/teardown.sh --no-restore     # don't restart builders bootstrap stopped
 #   bash .claude/skills/autoresearch/scripts/teardown.sh --dry-run
 
 set -euo pipefail
 
 WITH_EVIDENCE=0
-KEEP_JAEGER=0
 DRY_RUN=0
 NO_RESTORE=0
 for arg in "$@"; do
   case "$arg" in
     --with-evidence) WITH_EVIDENCE=1 ;;
-    --keep-jaeger)   KEEP_JAEGER=1 ;;
     --no-restore)    NO_RESTORE=1 ;;
     --dry-run)       DRY_RUN=1 ;;
     *) echo "Unknown arg: $arg" >&2; exit 2 ;;
@@ -50,34 +46,6 @@ echo "════════════════════════�
 echo "Autoresearch teardown"
 echo "  Mode: $([[ $DRY_RUN -eq 1 ]] && echo dry-run || echo execute)"
 echo "═══════════════════════════════════════════════════════════════════════"
-
-# ----- Jaeger -----
-echo ""
-echo "▸ Jaeger container..."
-if [[ $KEEP_JAEGER -eq 1 ]]; then
-  echo "  Skipped (--keep-jaeger)"
-elif ! command -v docker >/dev/null 2>&1; then
-  echo "  ✓ docker not installed — nothing to stop"
-else
-  COMPOSE="$REPO/scripts/autoresearch/docker-compose.yml"
-  RUNNING=$(docker ps --filter "name=autoresearch-jaeger" --format "{{.Names}}" 2>/dev/null || true)
-  if [[ -z "$RUNNING" ]]; then
-    EXISTS=$(docker ps -a --filter "name=autoresearch-jaeger" --format "{{.Names}}" 2>/dev/null || true)
-    if [[ -z "$EXISTS" ]]; then
-      echo "  ✓ No Jaeger container present"
-    else
-      echo "  Removing stopped Jaeger container..."
-      run docker rm autoresearch-jaeger
-    fi
-  elif [[ -f "$COMPOSE" ]]; then
-    echo "  Stopping Jaeger via docker compose..."
-    run docker compose -f "$COMPOSE" down
-  else
-    echo "  Stopping container directly (docker-compose.yml missing)..."
-    run docker stop autoresearch-jaeger
-    run docker rm autoresearch-jaeger
-  fi
-fi
 
 # ----- /tmp/devpulse-<uuid> workspaces -----
 # Only UUID-suffixed dirs that match run.py's naming convention. This avoids

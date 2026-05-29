@@ -8,7 +8,7 @@ This directory adapts Karpathy's [autoresearch](https://github.com/karpathy/auto
 
 **2026-05-23 — telemetry honesty landed.** `builder logs analyze --session <id>` is now session-scoped via `tasks.chat_session_id` FK (ROADMAP M2.3). `top_cost_drivers`, `cache_ratio`, `cached_tokens`, `raw_token_total`, `noncached_plus_output_tokens` are this session's numbers — not bled across every session in the DB. Analyze payload carries `runtime_aggregates.session_scoped: true` when scoping is active. Per-agent attribution lives in `runtime_aggregates.by_agent` (also session-scoped); per-prompt `prompts[]` keeps its operator-chat-turn semantics. The N=5 baseline σ-floor is now reliable.
 
-The framework is spec-complete and the runner is executable today against the existing Builder CLI commands and `POST /api/agent/chat` / `POST /api/agent/chat/respond` HTTP endpoints. Source-code work that would improve diagnostic resolution is captured in [GAPS.md](GAPS.md).
+The framework is spec-complete and the runner is executable today against the existing Builder CLI commands and `POST /api/agent/chat` / `POST /api/agent/chat/respond` HTTP endpoints.
 
 ## Owned freshness
 
@@ -25,12 +25,6 @@ If you are an agent landing here and the loop is active, read in this order:
 5. [HARNESS.md](HARNESS.md) — invoke the runner.
 6. [COMPARE.md](COMPARE.md) — interpret the result.
 
-If you are an agent on the source-change roadmap item ([docs/goal/ROADMAP.md § M3.5](../goal/ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b)) you also need:
-
-- [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md) — for the OTEL env-var prescription.
-- [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) — for the context-attribution implementation.
-- [GAPS.md](GAPS.md) — for the precise source-change list.
-
 ## What's in this folder
 
 | File | Role | Status | Audience |
@@ -38,12 +32,9 @@ If you are an agent on the source-change roadmap item ([docs/goal/ROADMAP.md § 
 | `README.md` (this file) | Folder entry point, activation status, file map, load order. | Stable | Anyone landing here |
 | [OPTIMIZE.md](OPTIMIZE.md) | The loop contract: what an iteration does, hard gates, allowlist, stop condition. The agent's `program.md`. | Stable | Agent running the loop |
 | [OPTIMIZE_IDEAS.md](OPTIMIZE_IDEAS.md) | Living backlog of optimization hypotheses ordered by expected impact. The agent reads top-down. | Living | Agent picking next idea |
-| [METRICS.md](METRICS.md) | Master metrics reference: every measurable signal, its source (Builder CLI / Claude SDK / Codex SDK / OTEL), which TSV column it lands in, and known gaps. | Stable | Agent + harness author |
-| [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md) | Claude Agent SDK and Codex SDK observability surface. Specific env vars to set per run. OTEL configuration that turns the loop from blind to fully observable. | Stable | Harness author |
-| [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) | How to capture *where* prompt context came from. Two paths: ground-truth raw API body capture (Path A, executable today) and source-level instrumentation (Path B, needs code). | Stable | Anyone optimizing prompt shape |
+| [METRICS.md](METRICS.md) | Master metrics reference: every measurable signal, its source (Builder CLI / Claude SDK / Codex SDK), which TSV column it lands in, and known gaps. | Stable | Agent + harness author |
 | [HARNESS.md](HARNESS.md) | Concrete runner contract for `scripts/autoresearch/{run,baseline,compare,loop}.py`. Uses existing Builder CLI and HTTP endpoints. Pseudo-code level — implementation is a roadmap item. | Stable | Harness author |
 | [COMPARE.md](COMPARE.md) | Two-run diff protocol with 2σ statistical test, per-prompt diff, verdict format that the loop consumes for keep/discard decisions. | Stable | Harness author + agent |
-| [GAPS.md](GAPS.md) | Honest list of source-code changes needed to make the loop fully autonomous. Tiered into v1-minimum (must have to run loop at all) and v2-polish (improves the loop). | Stable | Roadmap planning |
 | [fixtures.md](fixtures.md) | Scripted operator prompts (A short / B long / C ambiguous / D vague / E multi-turn). Same prompt every run = comparable runs. | Stable | Agent + harness |
 | [baseline_variance.md](baseline_variance.md) | N=5 baseline run protocol that establishes the 2σ noise floor below which "wins" are sampling jitter. | Stable | Harness author |
 | [baseline_runs.tsv](baseline_runs.tsv) | Header-only. Filled by `scripts/autoresearch/baseline.py`. One row per baseline cycle per fixture. | Empty | Harness output |
@@ -72,11 +63,10 @@ OPTIMIZE.md ────┤                              optimize_results.tsv
                 │                          │   builder metrics    │
                 │                          │   builder board      │
                 │                          │                      │
-                │                          │ Claude SDK (OTEL):   │
-                │                          │   SDK-OBSERVABILITY  │
-                │                          │                      │
-                │                          │ Per-prompt context:  │
-                │                          │   CONTEXT-LEDGER     │
+                │                          │ composite metric:    │
+                │                          │   noncached_plus_    │
+                │                          │   output_tokens      │
+                │                          │   (builder analyze)  │
                 │                          └──────────────────────┘
                 │
                 ▼
@@ -119,7 +109,7 @@ When the in-harness prerequisites close, edit this section to flip the status li
 ## Where execution lives
 
 - **This folder (`docs/autoresearch/`)** owns the contract: what to measure, how to compare, what counts as a win.
-- **`scripts/autoresearch/`** owns the runner: 5 Python scripts (`run.py`, `baseline.py`, `compare.py`, `loop.py`, `extract_context_breakdown.py`) that drive fixtures, capture evidence, write TSV rows, run comparisons. Landed 2026-05-22 in commits `cdf7101` (scaffold + optional Jaeger compose) and `2284ba6` (Phase C v1 harness).
+- **`scripts/autoresearch/`** owns the runner: 4 Python scripts (`run.py`, `baseline.py`, `compare.py`, `loop.py`) that drive fixtures, capture evidence, write TSV rows, run comparisons.
 - **`.seed/devpulse`** owns the immutable starting state for every run. Captured by `bash scripts/autoresearch/setup_seed.sh` on first Baseline lane invocation; `chmod -R a-w` after capture.
 - **`.claude/skills/autoresearch/`** owns the discipline layer: single entry + 3 lanes (Baseline / Iterate / Fix), preflight + closeout per lane, freshness sweep enforced at every closeout.
 - **Builder source** owns the telemetry. As of 2026-05-23 (commit `a3354c2`), `builder logs analyze --session <id>` is honestly session-scoped via `tasks.chat_session_id` FK; the N=5 baseline σ-floor is now reliable.

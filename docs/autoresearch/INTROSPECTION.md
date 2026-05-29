@@ -1,6 +1,6 @@
 # Autoresearch loop introspection
 
-*Generated 2026-05-29T06:57:00Z by `.claude/skills/autoresearch/scripts/introspect.py`. Overwritten each close-out — `git log` for history.*
+*Generated 2026-05-29T07:42:09Z by `.claude/skills/autoresearch/scripts/introspect.py`. Overwritten each close-out — `git log` for history.*
 
 ## 1. Token economics — where do tokens go?
 
@@ -36,11 +36,10 @@ Top agents by cumulative cost (the ones to target with lean ideas first):
 - **Fixture A**: σ/mean = 25.5% (target: <25%). Timing-fragile.
 - **Fixture B**: σ/mean = 56.1% (target: <25%). Timing-fragile.
 - **Fixture C**: σ/mean = 26.5% (target: <25%). Timing-fragile.
-- **Anchor attribution drift:** 0/159 prompts have >10% unattributed tokens (0.0%).
 
 ## 7. Idea backlog
 
-- **1 attempted / 10 remaining** of 11 total in `OPTIMIZE_IDEAS.md`.
+- **2 attempted / 9 remaining** of 11 total in `OPTIMIZE_IDEAS.md`.
 
 ## 8. Lean recommendations
 
@@ -119,16 +118,11 @@ Top agents by cumulative cost (the ones to target with lean ideas first):
     ],
     "stable_count": 0
   },
-  "per_prompt_anchors": {
-    "scanned": 159,
-    "drift_runs": 0,
-    "drift_pct": 0.0
-  },
   "idea_velocity": {
     "applicable": true,
     "total_ideas": 11,
-    "attempted": 1,
-    "remaining": 10
+    "attempted": 2,
+    "remaining": 9
   }
 }
 ```

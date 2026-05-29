@@ -140,32 +140,6 @@ def _wal_mtime(workspace: pathlib.Path) -> float:
         return 0.0
 
 
-def _raw_bodies_max_mtime(roots: list[pathlib.Path]) -> float:
-    """Latest mtime across all known autoresearch raw_bodies dirs.
-
-    raw_bodies files are written by Builder's OTEL exporter on every Anthropic
-    API request/response. A stale DB-WAL combined with growing raw_bodies
-    means Builder IS alive — making model calls — but not persisting agent
-    intermediate state. That is not a hang. The watchdog uses raw_bodies as a
-    second-tier liveness signal to avoid the false-positive seen 2026-05-23
-    during fixture A code-gen, where the model ran a 6-minute tool-use chain
-    while agent_run_events writes paused mid-stream.
-    """
-    best = 0.0
-    for root in roots:
-        try:
-            for path in root.rglob("raw_bodies/*"):
-                try:
-                    mt = path.stat().st_mtime
-                    if mt > best:
-                        best = mt
-                except OSError:
-                    continue
-        except (OSError, ValueError):
-            continue
-    return best
-
-
 # -- Dump ---------------------------------------------------------------------
 
 
@@ -193,7 +167,6 @@ def dump_diagnostics(
     dump_root: pathlib.Path,
     idle_s: float,
     wal_mtime: float,
-    raw_bodies_mtime: float = 0.0,
 ) -> pathlib.Path:
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = dump_root / f"{ts}-pid{pid}"
@@ -211,14 +184,6 @@ def dump_diagnostics(
                 wal_mtime, tz=datetime.timezone.utc
             ).isoformat()
             if wal_mtime
-            else None
-        ),
-        "raw_bodies_last_mtime_epoch": raw_bodies_mtime,
-        "raw_bodies_last_mtime_iso": (
-            datetime.datetime.fromtimestamp(
-                raw_bodies_mtime, tz=datetime.timezone.utc
-            ).isoformat()
-            if raw_bodies_mtime
             else None
         ),
         "idle_seconds": round(idle_s, 1),
@@ -335,14 +300,8 @@ def main(argv: list[str] | None = None) -> int:
         "--raw-bodies-root",
         action="append",
         default=[],
-        help=(
-            "Directory tree to scan for autoresearch raw_bodies/ files (any "
-            "depth). Used as a secondary liveness signal: while raw_bodies "
-            "files are still being written, Builder is making model API "
-            "calls and is NOT hung even if the DB-WAL has paused. May be "
-            "repeated. Default: /tmp/autoresearch/baseline-* and "
-            "/tmp/autoresearch/iterate-*."
-        ),
+        help="Deprecated no-op (OTEL raw-body capture removed). Accepted for "
+             "backward compatibility with existing spawn calls; ignored.",
     )
     ap.add_argument(
         "--once",
@@ -376,11 +335,6 @@ def main(argv: list[str] | None = None) -> int:
     dump_root = pathlib.Path(args.dump_root)
     dump_root.mkdir(parents=True, exist_ok=True)
 
-    raw_bodies_roots: list[pathlib.Path] = [pathlib.Path(p) for p in args.raw_bodies_root]
-    if not raw_bodies_roots:
-        for pattern in ("baseline-*", "iterate-*"):
-            raw_bodies_roots.extend(pathlib.Path("/tmp/autoresearch").glob(pattern))
-
     seen: dict[int, dict[str, float]] = {}
 
     def log(msg: str) -> None:
@@ -391,8 +345,7 @@ def main(argv: list[str] | None = None) -> int:
     log(
         f"started; idle_threshold={args.idle_seconds}s, "
         f"poll={args.poll_seconds}s, grace={args.grace_seconds}s, "
-        f"dump_root={dump_root}, "
-        f"raw_bodies_roots={[str(p) for p in raw_bodies_roots]}"
+        f"dump_root={dump_root}"
     )
 
     running = True
@@ -414,26 +367,23 @@ def main(argv: list[str] | None = None) -> int:
             log(f"pid {dead}: ended")
             del seen[dead]
 
-        # Compute once per poll cycle (one rglob across all roots, not per-pid).
-        raw_mt = _raw_bodies_max_mtime(raw_bodies_roots)
-
         for pid in current_pids:
             ws = _workspace_of(pid)
             if ws is None or not _is_autoresearch_workspace(ws):
                 continue
             wal_mt = _wal_mtime(ws)
-            # Dual liveness signal: a hang requires BOTH the DB-WAL AND the
-            # raw_bodies stream to be stale. If raw_bodies is still growing
-            # the model loop is alive and Builder is making progress, even if
-            # intermediate state isn't being persisted to the DB.
-            live_mt = max(wal_mt, raw_mt)
+            # Liveness signal: DB-WAL mtime. (A secondary raw_bodies/OTEL signal
+            # was removed with the observability subsystem; a long pure-model
+            # turn with no DB write now relies on the generous --idle-seconds
+            # budget, set to 600s by baseline.py. Watch for P22-style false
+            # positives; re-add a file-only liveness probe if they recur.)
+            live_mt = wal_mt
             state = seen.setdefault(
                 pid,
                 {
                     "first_seen": now,
                     "last_live_mtime": live_mt,
                     "last_wal_mtime": wal_mt,
-                    "last_raw_bodies_mtime": raw_mt,
                     "last_dump_for_mtime": 0.0,
                 },
             )
@@ -442,8 +392,6 @@ def main(argv: list[str] | None = None) -> int:
                 state["last_live_mtime"] = live_mt
             if wal_mt > state["last_wal_mtime"]:
                 state["last_wal_mtime"] = wal_mt
-            if raw_mt > state["last_raw_bodies_mtime"]:
-                state["last_raw_bodies_mtime"] = raw_mt
 
             age_since_first_seen = now - state["first_seen"]
             idle = (
@@ -465,13 +413,11 @@ def main(argv: list[str] | None = None) -> int:
                     dump_root=dump_root,
                     idle_s=idle,
                     wal_mtime=state["last_wal_mtime"],
-                    raw_bodies_mtime=state["last_raw_bodies_mtime"],
                 )
                 log(
                     f"HANG DETECTED pid={pid} port={port} "
                     f"workspace={ws} idle={idle:.0f}s "
-                    f"(wal_idle={now - state['last_wal_mtime']:.0f}s, "
-                    f"raw_bodies_idle={now - state['last_raw_bodies_mtime']:.0f}s) "
+                    f"(wal_idle={now - state['last_wal_mtime']:.0f}s) "
                     f"diagnostics={out}"
                 )
                 state["last_dump_for_mtime"] = state["last_live_mtime"]

@@ -310,7 +310,7 @@ def match_p3_watchdog_false_positive(
         evidence=evidence,
         fix_pointer=(
             ".claude/skills/autoresearch/scripts/hang_watchdog.py — "
-            "_raw_bodies_max_mtime + live_mt = max(WAL, raw_bodies) dual signal"
+            "WAL-mtime liveness signal (live_mt = wal_mt)"
         ),
     )
 

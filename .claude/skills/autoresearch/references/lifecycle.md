@@ -46,7 +46,7 @@ python3 .claude/skills/autoresearch/scripts/preflight.py
 | --- | --- |
 | **Hard** (must pass — exit 1 on fail) | `builder` / `npm` / `python3` / `git` on PATH; `requests` importable; `~/Builder-Workspace/devpulse` exists; 5 contract docs in `docs/autoresearch/`; 6 harness files in `scripts/autoresearch/` |
 | **Recipe-specific** (gated by `--recipe N`) | Baseline (`--recipe 1`): warns if baseline already exists. Iterate (`--recipe 2`/`3`): `.seed/devpulse` exists + `baseline_runs_summary.json` exists + every fixture `status=stable`. |
-| **Soft** (warn-only — degraded mode) | `tiktoken` importable; ports 9876–9880 free; `/tmp` has ≥5 GB free; docker present + Jaeger running; git on clean branch |
+| **Soft** (warn-only — degraded mode) | `tiktoken` importable; ports 9876–9880 free; `/tmp` has ≥5 GB free; git on clean branch |
 
 `--json` emits machine-readable output. Exit 0 = pass or warn-only; 1 = hard or recipe-specific failure. **If exit non-zero, run bootstrap (below) or surface the `fix:` field of each failed check to the operator. Do not proceed.**
 
@@ -57,28 +57,22 @@ When preflight fails, `scripts/bootstrap.sh` auto-fixes the machine-fixable item
 ```bash
 bash .claude/skills/autoresearch/scripts/bootstrap.sh
 bash .claude/skills/autoresearch/scripts/bootstrap.sh --skip-seed     # don't snapshot
-bash .claude/skills/autoresearch/scripts/bootstrap.sh --skip-jaeger   # don't start Jaeger
 bash .claude/skills/autoresearch/scripts/bootstrap.sh --dry-run       # report only
 ```
 
-Auto-fixes: pip-install `requests`/`tiktoken`; runs `setup_seed.sh` if `.seed/devpulse` missing; `docker compose up -d` for Jaeger.
+Auto-fixes: pip-install `requests`/`tiktoken`; runs `setup_seed.sh` if `.seed/devpulse` missing.
 
-Cannot fix (operator action required): docker daemon down, ports 9876–9880 busy, dirty git, low disk. Bootstrap prints the remedy per item.
+Cannot fix (operator action required): ports 9876–9880 busy, dirty git, low disk. Bootstrap prints the remedy per item.
 
 ## Teardown — clean session shutdown
 
 `scripts/teardown.sh` releases ephemeral state cleanly:
 
 ```bash
-bash .claude/skills/autoresearch/scripts/teardown.sh                   # default — stop Jaeger, clean stuck workspaces
+bash .claude/skills/autoresearch/scripts/teardown.sh                   # default — clean stuck workspaces
 bash .claude/skills/autoresearch/scripts/teardown.sh --with-evidence   # also wipe /tmp/autoresearch/
-bash .claude/skills/autoresearch/scripts/teardown.sh --keep-jaeger     # keep Jaeger for trace inspection
 ```
 
-Surgical: stops Jaeger, removes UUID-pattern `/tmp/devpulse-<uuid>/` workspaces (refuses non-UUID paths), optional evidence wipe. Never touches `.seed/devpulse`.
-
-## Docker container lifecycle (Jaeger)
-
-Optional; only needed for live trace inspection. `scripts/autoresearch/docker-compose.yml` runs Jaeger all-in-one with `network_mode: host` (avoids WSL2 port-forwarding flake). UI: <http://127.0.0.1:16686>. Path A raw-body capture works without Jaeger; treat the UI as a debugging tool.
+Surgical: removes UUID-pattern `/tmp/devpulse-<uuid>/` workspaces (refuses non-UUID paths), optional evidence wipe. Never touches `.seed/devpulse`.
 
 ---

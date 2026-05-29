@@ -1,13 +1,15 @@
 # Harness — Runner Contract
 
-> **Read [README.md](README.md), [OPTIMIZE.md](OPTIMIZE.md), [METRICS.md](METRICS.md), [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md), and [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) first.**
+> **Read [README.md](README.md), [OPTIMIZE.md](OPTIMIZE.md), and [METRICS.md](METRICS.md) first.**
+
+> **Note (2026-05-29 lean cut):** The OTEL/Jaeger raw-body capture + `extract_context_breakdown.py` context-attribution subsystem was removed — the composite metric is read directly from `builder analyze`. Steps below that mention OTEL / raw_bodies / context-ledger are historical and pending a deeper rewrite.
 
 This file specifies the runnable harness that turns the [OPTIMIZE.md](OPTIMIZE.md) loop contract into executable Python. It is pseudo-code level — the implementation is itself a roadmap item ([docs/goal/ROADMAP.md § M3.5](../goal/ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b)) — but the contract here is precise: every input, every output, every command call, every TSV column.
 
 The harness uses only:
 - Existing Builder CLI commands (verified in `src/autonomous_agent_builder/cli/commands/`).
 - Existing Builder HTTP endpoints (verified at `src/autonomous_agent_builder/embedded/server/routes/agent.py:1316-1632`).
-- The Claude Agent SDK env-var surface (verified per [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md)).
+- The Claude Agent SDK env-var surface (verified per SDK-OBSERVABILITY.md).
 
 No new CLI commands or HTTP endpoints are required for v1. The harness is executable today against the existing source.
 
@@ -22,7 +24,7 @@ The harness lives at `scripts/autoresearch/` (created by the implementing PR). F
 | `compare.py` | Diff two runs of the same fixture. Outputs `keep`/`discard`/`crash`. | `--baseline-run <run-id>`, `--candidate-run <run-id>` | Verdict JSON to stdout; updates `optimize_results.tsv` `decision` column for the candidate |
 | `loop.py` | Karpathy-style continuous loop. Picks ideas, branches, runs, compares, advances or rewinds. | `--max-iterations 50`, `--cost-budget-usd 100` | TSV rows; commits on success; `git reset` on failure |
 
-`extract_context_breakdown.py` is a helper invoked by `run.py` per turn — it parses raw API bodies into the `context_breakdown_json` column per [CONTEXT-LEDGER.md Path A](CONTEXT-LEDGER.md#path-a--ground-truth-otel-capture).
+`extract_context_breakdown.py` is a helper invoked by `run.py` per turn — it parses raw API bodies into the `context_breakdown_json` column per CONTEXT-LEDGER.md Path A.
 
 ## `run.py` — the atomic iteration
 
@@ -560,14 +562,14 @@ if __name__ == "__main__":
 
 ### SDK env vars used
 
-Per [SDK-OBSERVABILITY.md § Recommended loop setup](SDK-OBSERVABILITY.md#recommended-loop-setup). Exported in the shell that runs `builder start`; inherited by the SDK child process.
+Per SDK-OBSERVABILITY.md § Recommended loop setup. Exported in the shell that runs `builder start`; inherited by the SDK child process.
 
 ## What this harness does NOT do today (gaps)
 
-- **Does not handle the agent-edit step autonomously.** v1 is human-in-the-loop for the `agent_edit(idea)` step; v2 makes it autonomous. See [GAPS.md G-7](GAPS.md).
-- **Does not collect MCP server status.** Polling `get_mcp_status()` requires either a direct Python SDK call (works today) or an MCP-status HTTP endpoint (doesn't exist). See [GAPS.md G-1](GAPS.md).
-- **Does not collect per-model breakdown.** Requires either OTEL `claude_code.token.usage` metric parsing (works with collector) or surfacing `ResultMessage.model_usage` in Builder analyze (source change). See [GAPS.md G-4](GAPS.md).
-- **Does not handle Codex lane's raw-body capture.** Codex app-server produces logs of its own; needs a Codex-specific extractor. See [GAPS.md G-8](GAPS.md).
+- **Does not handle the agent-edit step autonomously.** v1 is human-in-the-loop for the `agent_edit(idea)` step; v2 makes it autonomous. See GAPS.md G-7.
+- **Does not collect MCP server status.** Polling `get_mcp_status()` requires either a direct Python SDK call (works today) or an MCP-status HTTP endpoint (doesn't exist). See GAPS.md G-1.
+- **Does not collect per-model breakdown.** Requires either OTEL `claude_code.token.usage` metric parsing (works with collector) or surfacing `ResultMessage.model_usage` in Builder analyze (source change). See GAPS.md G-4.
+- **Does not handle Codex lane's raw-body capture.** Codex app-server produces logs of its own; needs a Codex-specific extractor. See GAPS.md G-8.
 
 These do not block v1 of the loop — they limit its diagnostic resolution. The loop can run, keep, discard, and learn without any of them.
 
@@ -605,13 +607,13 @@ if rows:
 "
 ```
 
-A successful smoke test means: all four "captured" lines print, the TSVs have at least one row each, and `unattributed_tokens` is below 5% of total context tokens. If any of those fails, [GAPS.md](GAPS.md) is where the cause lives.
+A successful smoke test means: all four "captured" lines print, the TSVs have at least one row each, and `unattributed_tokens` is below 5% of total context tokens. If any of those fails, GAPS.md is where the cause lives.
 
 ## Related
 
 - [OPTIMIZE.md](OPTIMIZE.md) — the loop contract this harness implements
 - [METRICS.md](METRICS.md) — TSV column definitions
-- [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md) — OTEL setup the harness exports
-- [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) — how `extract_context_breakdown.py` works
+- SDK-OBSERVABILITY.md — OTEL setup the harness exports
+- CONTEXT-LEDGER.md — how `extract_context_breakdown.py` works
 - [COMPARE.md](COMPARE.md) — comparison protocol `compare.py` implements
-- [GAPS.md](GAPS.md) — what source changes would simplify or improve the harness
+- GAPS.md — what source changes would simplify or improve the harness

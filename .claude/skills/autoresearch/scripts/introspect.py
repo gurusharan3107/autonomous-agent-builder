@@ -235,30 +235,6 @@ def analyze_baseline_noise(baseline: dict) -> dict:
     return {"noisy_fixtures": noisy, "stable_count": baseline.get("fixtures_stable", 0)}
 
 
-def analyze_per_prompt_anchors(per_prompt: list[dict]) -> dict:
-    """How often does extract_context_breakdown.py report unattributed > 10%?
-    High rate means the anchor table is drifting and context attribution is
-    becoming unreliable — Path B (source instrumentation) becomes worth doing."""
-    drift_runs = 0
-    total = 0
-    for row in per_prompt:
-        bd_raw = row.get("context_breakdown_json") or "{}"
-        try:
-            bd = json.loads(bd_raw)
-        except (TypeError, json.JSONDecodeError):
-            continue
-        total += 1
-        unattr = bd.get("unattributed_tokens", 0)
-        totl = bd.get("total_tokens", 0)
-        if totl and unattr / totl > 0.10:
-            drift_runs += 1
-    return {
-        "scanned": total,
-        "drift_runs": drift_runs,
-        "drift_pct": round(drift_runs / total * 100, 1) if total else 0,
-    }
-
-
 def analyze_token_economics(optimize_rows: list[dict], per_prompt: list[dict]) -> dict:
     """Where did tokens go? Aggregate by agent/phase across all iterations.
 
@@ -449,7 +425,6 @@ def build_recommendations(findings: dict) -> list[str]:
     gates = findings["gate_utility"]
     fixtures = findings["fixture_agreement"]
     noise = findings["baseline_noise"]
-    anchors = findings["per_prompt_anchors"]
     velocity = findings["idea_velocity"]
     econ = findings.get("token_economics") or {}
     roi = findings.get("loop_roi") or {}
@@ -479,9 +454,7 @@ def build_recommendations(findings: dict) -> list[str]:
         if share > 40:
             recs.append(
                 f"**Agent `{worst['agent']}` consumes {share:.0f}% of loop tokens.** "
-                "Any lean idea targeting this agent's prompt has the highest leverage. "
-                "Look at GAPS.md G-2 (PromptBlockLedger) for the attribution path that "
-                "would tell you which prompt block in this agent is fattest."
+                "Any lean idea targeting this agent's prompt has the highest leverage."
             )
 
     # Per-iteration cost trajectory: if average iteration cost is creeping up,
@@ -491,8 +464,7 @@ def build_recommendations(findings: dict) -> list[str]:
             f"**Average iteration is {econ['avg_per_iteration']:,} non-cached+output tokens.** "
             "At ~$3/Mtok blended, that's >$0.15 per iteration just on the LLM side. "
             "Targets to cut: per-turn re-reads of unchanged docs, repeated tool-call output "
-            "re-injection. Look at `extract_context_breakdown.py` per-block totals to see "
-            "which block is dominant."
+            "re-injection."
         )
 
     # ROI signal — if total cost > 10x cumulative savings basis, the loop is bleeding
@@ -583,15 +555,6 @@ def build_recommendations(findings: dict) -> list[str]:
             "drop it from the baseline set."
         )
 
-    # Anchor drift signal
-    if anchors.get("drift_pct", 0) > 20:
-        recs.append(
-            f"**Context attribution drift: {anchors['drift_pct']}% of prompts have "
-            ">10% unattributed tokens.** The anchor regex in `extract_context_breakdown.py` is "
-            "falling behind the prompt assembly. Either update the ANCHORS table or move to "
-            "Path B (source-level instrumentation per GAPS.md G-2)."
-        )
-
     # Idea velocity signal
     if velocity.get("applicable"):
         remaining = velocity["remaining"]
@@ -614,7 +577,6 @@ def render_report(findings: dict, recommendations: list[str]) -> str:
     gates = findings["gate_utility"]
     fixtures = findings["fixture_agreement"]
     noise = findings["baseline_noise"]
-    anchors = findings["per_prompt_anchors"]
     velocity = findings["idea_velocity"]
 
     econ = findings["token_economics"]
@@ -737,11 +699,6 @@ def render_report(findings: dict, recommendations: list[str]) -> str:
     else:
         for f, pct in noisy:
             lines.append(f"- **Fixture {f}**: σ/mean = {pct}% (target: <25%). Timing-fragile.")
-    if anchors.get("scanned"):
-        lines.append(
-            f"- **Anchor attribution drift:** {anchors['drift_runs']}/{anchors['scanned']} "
-            f"prompts have >10% unattributed tokens ({anchors['drift_pct']}%)."
-        )
     lines.append("")
 
     if velocity.get("applicable"):
@@ -795,7 +752,6 @@ def render_report(findings: dict, recommendations: list[str]) -> str:
                 "compound_effect": compound,
                 "gate_utility": gates,
                 "baseline_noise": noise,
-                "per_prompt_anchors": anchors,
                 "idea_velocity": velocity,
             },
             indent=2,
@@ -857,7 +813,6 @@ def main() -> int:
         "gate_utility": analyze_gate_utility(iterations),
         "fixture_agreement": analyze_fixture_agreement(iterations),
         "baseline_noise": analyze_baseline_noise(baseline),
-        "per_prompt_anchors": analyze_per_prompt_anchors(per_prompt),
         "idea_velocity": analyze_idea_velocity(IDEAS_MD),
         "optimize_row_count": len(optimize_rows),
         "token_economics": analyze_token_economics(optimize_rows, per_prompt),

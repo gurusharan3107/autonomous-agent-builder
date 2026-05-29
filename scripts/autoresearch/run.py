@@ -7,16 +7,17 @@ or directly for manual experimentation.
 
 Workflow (see docs/autoresearch/HARNESS.md):
 1. Copy immutable seed → fresh workspace; verify sha256.
-2. Build OTEL env per SDK-OBSERVABILITY.md.
-3. Spawn `builder start --port $PORT` against the workspace.
-4. Drive the fixture via POST /api/agent/chat + /api/agent/chat/respond.
-5. Wait for board to reach `shipped` phase or timeout.
-6. Run `npm run build && npm run test` in workspace/app for correctness.
-7. Capture analyze.json, metrics.json, board.json, errors.json.
-8. Parse raw API bodies for context breakdown.
-9. Append one row to optimize_results.tsv (or baseline_runs.tsv if --baseline).
-10. Append N rows to per_prompt_results.tsv.
-11. Tear down workspace.
+2. Spawn `builder start --port $PORT` against the workspace.
+3. Drive the fixture via POST /api/agent/chat + /api/agent/chat/respond.
+4. Wait for board to reach `shipped` phase or timeout.
+5. Run `npm run build && npm run test` in workspace/app for correctness.
+6. Capture analyze.json, metrics.json, board.json, errors.json.
+7. Append one row to optimize_results.tsv (or baseline_runs.tsv if --baseline).
+8. Append N rows to per_prompt_results.tsv.
+9. Tear down workspace.
+
+The composite metric is `noncached_plus_output_tokens` read straight from
+`builder analyze` — no OTEL/Jaeger/raw-body capture required.
 """
 
 from __future__ import annotations
@@ -74,32 +75,6 @@ FIXTURES: dict[str, dict] = {
 
 DEFAULT_SEED = pathlib.Path("/home/gurusharangupta/.seed/devpulse")
 DEFAULT_TSV_ROOT = pathlib.Path(__file__).resolve().parents[2] / "docs" / "autoresearch"
-
-
-def build_otel_env(run_id: str, fixture_id: str, branch: str, evidence_dir: pathlib.Path) -> dict[str, str]:
-    raw_bodies = evidence_dir / "raw_bodies"
-    raw_bodies.mkdir(parents=True, exist_ok=True)
-    return {
-        "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
-        "CLAUDE_CODE_ENHANCED_TELEMETRY_BETA": "1",
-        "ENABLE_BETA_TRACING_DETAILED": "1",
-        "OTEL_TRACES_EXPORTER": "otlp",
-        "OTEL_METRICS_EXPORTER": "otlp",
-        "OTEL_LOGS_EXPORTER": "otlp",
-        "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
-        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4318",
-        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
-        "OTEL_LOGS_EXPORT_INTERVAL": "1000",
-        "OTEL_TRACES_EXPORT_INTERVAL": "1000",
-        "OTEL_SERVICE_NAME": f"autoresearch-{run_id}",
-        "OTEL_RESOURCE_ATTRIBUTES": (
-            f"run.id={run_id},fixture.id={fixture_id},branch={branch},autoresearch.iteration=true"
-        ),
-        "OTEL_LOG_USER_PROMPTS": "1",
-        "OTEL_LOG_TOOL_DETAILS": "1",
-        "OTEL_LOG_TOOL_CONTENT": "1",
-        "OTEL_LOG_RAW_API_BODIES": f"file:{raw_bodies}",
-    }
 
 
 def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
@@ -586,7 +561,7 @@ PROMPT_HEADERS = [
     "context_budget_tokens", "tokens_input", "tokens_cached", "cache_creation_tokens",
     "tokens_output", "noncached_plus_output_tokens", "cache_ratio",
     "tool_calls_count", "tool_names_json", "stop_reason", "duration_ms",
-    "cost_usd", "runtime_sdk", "model", "effort", "context_breakdown_json",
+    "cost_usd", "runtime_sdk", "model", "effort",
 ]
 
 
@@ -643,7 +618,7 @@ def _gate_pass_rate_value(gates_passed: str) -> float:
 
 
 def append_prompt_rows(
-    *, tsv_path: pathlib.Path, run_id: str, analyze: dict, breakdown: dict
+    *, tsv_path: pathlib.Path, run_id: str, analyze: dict
 ) -> None:
     """Emit one TSV row per session-scoped agent (code-gen, scaffold, …).
 
@@ -690,7 +665,6 @@ def append_prompt_rows(
             runtime_default,
             "",
             "",
-            json.dumps(breakdown.get(str(i)) or {}),
         ])
     for row in rows:
         write_tsv_row(tsv_path, PROMPT_HEADERS, row)
@@ -739,24 +713,6 @@ def compute_branch_diff_stats(branch: str) -> dict:
     return out
 
 
-def extract_context_breakdown(evidence_dir: pathlib.Path) -> dict:
-    extractor = pathlib.Path(__file__).resolve().parent / "extract_context_breakdown.py"
-    if not extractor.exists():
-        return {}
-    try:
-        out = subprocess.check_output(
-            [
-                sys.executable, str(extractor),
-                "--raw-bodies-dir", str(evidence_dir / "raw_bodies"),
-                "--analyze-json", str(evidence_dir / "analyze.json"),
-            ],
-            timeout=60,
-        )
-        return json.loads(out.decode())
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError):
-        return {}
-
-
 def main() -> int:
     args = parse_args()
     if args.fixture not in FIXTURES:
@@ -780,8 +736,7 @@ def main() -> int:
 
     fixture = FIXTURES[args.fixture]
     restore_seed(seed, workspace)
-    otel_env = build_otel_env(run_id, args.fixture, args.branch, evidence_dir)
-    env = {**os.environ, **otel_env}
+    env = dict(os.environ)
 
     # Critical: do NOT use subprocess.PIPE without a draining thread. Builder's
     # code-gen agents produce ~MB of stdout during long runs; once the 64KB
@@ -909,7 +864,6 @@ def main() -> int:
     analyze = _read_json(evidence_dir / "analyze.json")
     metrics = _read_json(evidence_dir / "metrics.json")
     board = _read_json(evidence_dir / "board.json")
-    breakdown = extract_context_breakdown(evidence_dir)
 
     # P16 (2026-05-23): composite := noncached_plus_output_tokens only.
     # Previous formula multiplied this by operator_turns × wallclock_seconds,
@@ -943,7 +897,7 @@ def main() -> int:
     )
     append_prompt_rows(
         tsv_path=tsv_root / "per_prompt_results.tsv",
-        run_id=run_id, analyze=analyze, breakdown=breakdown,
+        run_id=run_id, analyze=analyze,
     )
 
     if workspace.exists():

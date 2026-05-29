@@ -13,8 +13,6 @@ After lane choice, build context in this order:
 5. **`docs/autoresearch/COMPARE.md`** — Iterate lane only; interpret `decision: discard` verdicts.
 6. **`docs/autoresearch/METRICS.md`** — Fix lane on telemetry defects.
 
-Do not read `CONTEXT-LEDGER.md` / `SDK-OBSERVABILITY.md` / `GAPS.md` unless extending the harness itself.
-
 ## Files this skill MAY edit (by lane)
 
 - **Baseline lane:**
@@ -42,7 +40,7 @@ Do not read `CONTEXT-LEDGER.md` / `SDK-OBSERVABILITY.md` / `GAPS.md` unless exte
 
 ## Files this skill MUST NEVER edit
 
-- `docs/autoresearch/{OPTIMIZE,COMPARE,SDK-OBSERVABILITY,CONTEXT-LEDGER,GAPS,fixtures}.md` — stable contracts; if one must evolve, that's a separate Fix lane closeout including a versioning discussion.
+- `docs/autoresearch/{OPTIMIZE,COMPARE,fixtures}.md` — stable contracts; if one must evolve, that's a separate Fix lane closeout including a versioning discussion.
 - `src/autonomous_agent_builder/` from inside Iterate lane — those edits happen as part of the operator's idea attempt, on the iteration branch, not as a skill-driven edit on master.
 - `optimize_results.tsv decision` column — never hand-edit; the verdict is mechanical.
 - `.seed/devpulse/` — immutable after capture.

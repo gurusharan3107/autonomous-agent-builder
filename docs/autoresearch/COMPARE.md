@@ -98,7 +98,7 @@ A healthy improvement looks like:
 A suspicious pattern (any of which triggers `discard` with `suspicious_per_prompt_diff`):
 
 - **`stable_system_prefix` shrank.** This usually means the agent moved stuff out of the cache prefix into per-turn context, which kills cache hits on subsequent runs. Almost always a regression masquerading as a win.
-- **`unattributed_tokens` jumped.** The anchor strings in [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md#path-a--ground-truth-otel-capture) are stale. Fix the anchors before trusting the comparison.
+- **`unattributed_tokens` jumped.** The anchor strings in CONTEXT-LEDGER.md are stale. Fix the anchors before trusting the comparison.
 - **`tool_calls_count` halved.** The model probably stopped calling a tool it needed. The win is likely brittle.
 - **`prompt_count` halved.** The operator-turn count dropped because the model skipped an intake question; the resulting feature probably loses scope alignment. Cross-check with the fixture's `expected_intake`.
 - **One turn lost > 50% of tokens but `cache_ratio` on that turn dropped.** The change kills caching on that turn. Long-run regression.
@@ -212,4 +212,4 @@ This is the "are we converging" view the loop operator reads to know whether the
 - [HARNESS.md](HARNESS.md) — where `compare.py` is invoked
 - [METRICS.md](METRICS.md) — composite definition and gate definitions
 - [baseline_variance.md](baseline_variance.md) — how σ is established
-- [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) — what `unattributed_tokens` means
+- CONTEXT-LEDGER.md — what `unattributed_tokens` means

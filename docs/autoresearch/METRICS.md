@@ -2,9 +2,11 @@
 
 > **Read [README.md](README.md) first.**
 
+> **Note (2026-05-29 lean cut):** The OTEL/Jaeger + raw-body context-attribution subsystem was removed. The loop's composite metric (`noncached_plus_output_tokens`) and the `session_scoped` aggregates come directly from `builder analyze`. Rows/sections below that reference OTEL, `context_breakdown_json`, or per-block attribution are historical and pending a deeper rewrite.
+
 This file lists every measurable signal the autoresearch loop captures, where it comes from, which TSV column it lands in, and any known gap. Use it as the single point of truth for what is *and is not* measurable today.
 
-The loop captures three data streams per fixture run: **Builder CLI evidence** (already exposed), **Claude Agent SDK native telemetry** (exposed via OTEL — see [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md)), and **Codex SDK app-server telemetry** (exposed via Codex-specific fields persisted by Builder).
+The loop captures three data streams per fixture run: **Builder CLI evidence** (already exposed), **Claude Agent SDK native telemetry** (exposed via OTEL — see SDK-OBSERVABILITY.md), and **Codex SDK app-server telemetry** (exposed via Codex-specific fields persisted by Builder).
 
 ## Composite Metric (loop primary)
 
@@ -71,7 +73,7 @@ Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). **One ro
 | `context_budget_tokens` | `builder logs analyze --session <id> --full --json` `prompts[i].context_budget.estimated_tokens` | Total assembled context. |
 | `tokens_input` | Same source `prompts[i].tokens_input` | What the model received. |
 | `tokens_cached` | Same source `prompts[i].tokens_cached` | Subset of input that hit cache. |
-| `cache_creation_tokens` | SDK ResultMessage `usage.cache_creation_input_tokens` (via OTEL or per-prompt enrichment) | Cache writes vs reads. Currently **gap** in Builder analyze — see [GAPS.md G-3](GAPS.md). |
+| `cache_creation_tokens` | SDK ResultMessage `usage.cache_creation_input_tokens` (via OTEL or per-prompt enrichment) | Cache writes vs reads. Currently **gap** in Builder analyze — see GAPS.md G-3. |
 | `tokens_output` | Same source `prompts[i].tokens_output` | What the model generated. |
 | `noncached_plus_output_tokens` | Same source `prompts[i].noncached_plus_output_tokens` | Per-turn composite contribution. |
 | `cache_ratio` | Same source `prompts[i].cache_ratio` | Per-turn cache ratio. |
@@ -83,7 +85,7 @@ Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). **One ro
 | `runtime_sdk` | `agent_run_evidence[*].runtime_sdk` | `claude` or `codex_sdk`. |
 | `model` | `agent_run_evidence[*].model` | E.g. `claude-sonnet-4-6`. |
 | `effort` | `agent_run_evidence[*].effort` | `low`/`medium`/`high`/`xhigh`/`max`. |
-| `context_breakdown_json` | Path A: parsed from `OTEL_LOG_RAW_API_BODIES=file:...` capture; Path B: Builder `PromptBlockLedger` event. See [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md). | Per-source token attribution. **Key column for prompt optimization.** |
+| `context_breakdown_json` | Path A: parsed from `OTEL_LOG_RAW_API_BODIES=file:...` capture; Path B: Builder `PromptBlockLedger` event. See CONTEXT-LEDGER.md. | Per-source token attribution. **Key column for prompt optimization.** |
 
 ## Source-by-source inventory
 
@@ -116,7 +118,7 @@ Captured by `scripts/autoresearch/run.py` per [HARNESS.md](HARNESS.md). **One ro
 
 ### From Claude Agent SDK native telemetry (via OTEL)
 
-Sourced through env vars enabled per [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md). Not all of this is in Builder analyze output today; some has to be parsed from the OTEL backend or from the raw API body dump on disk.
+Sourced through env vars enabled per SDK-OBSERVABILITY.md. Not all of this is in Builder analyze output today; some has to be parsed from the OTEL backend or from the raw API body dump on disk.
 
 **Per-message (from `AssistantMessage.usage`):**
 - `input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens` — per assistant message, mid-turn streaming granularity.
@@ -159,7 +161,7 @@ Sourced through env vars enabled per [SDK-OBSERVABILITY.md](SDK-OBSERVABILITY.md
 - `claude_code.user_prompt` (prompt text when `OTEL_LOG_USER_PROMPTS=1`)
 - `claude_code.tool_result` (tool inputs/outputs when `OTEL_LOG_TOOL_DETAILS=1` or `OTEL_LOG_TOOL_CONTENT=1`)
 - `claude_code.api_request_body` / `claude_code.api_response_body` (full prompt + response when `OTEL_LOG_RAW_API_BODIES=1` or `file:<dir>`).
-- **Builder gap:** Builder doesn't ingest these. Critical for [CONTEXT-LEDGER.md Path A](CONTEXT-LEDGER.md#path-a--ground-truth-otel-capture).
+- **Builder gap:** Builder doesn't ingest these. Critical for CONTEXT-LEDGER.md Path A.
 
 ### From Codex SDK app-server telemetry
 
@@ -168,26 +170,26 @@ Persisted by Builder when `RUNTIME_SDK=codex_sdk`. Fields in `agent_run_evidence
 - Codex token/turn/duration/provider-limit/native user-input/telemetry-source fields
 - Codex `large_command_output` flag triggers `chunk_pressure_risk` and `avoidable_cost_flags` in metrics.
 
-**Parity concern:** When comparing Claude vs Codex lanes for the same fixture, the loop must normalize the per-prompt TSV columns so both lanes feed comparable rows. See [SDK-OBSERVABILITY.md § Codex parity](SDK-OBSERVABILITY.md#codex-sdk-parity).
+**Parity concern:** When comparing Claude vs Codex lanes for the same fixture, the loop must normalize the per-prompt TSV columns so both lanes feed comparable rows. See SDK-OBSERVABILITY.md § Codex parity.
 
 ## What we are NOT capturing (and why it matters)
 
 | Missing signal | Why it matters | Fix path |
 | --- | --- | --- |
-| Per-source context breakdown ("which file produced which prompt block") | Without it, an idea that "drops board state JSON" can't be verified to actually drop it. | [CONTEXT-LEDGER.md](CONTEXT-LEDGER.md) |
-| Cache creation vs cache read | Cache creation is paid; cache read is cheap. Builder lumps both as "cached". A change that *churns* the cache (high creation, low read) looks good but is bad. | OTEL `cache_creation_input_tokens` capture; [GAPS.md G-3](GAPS.md). |
-| Per-model breakdown when multi-model routing is active | If `code-gen` uses Sonnet and `verifier` uses Haiku, model mix shifts hide in aggregates. | OTEL `model_usage` capture; [GAPS.md G-4](GAPS.md). |
-| Hook execution timeline | Hooks can silently grow runtime; today they're invisible in `analyze`. | `include_hook_events=True` + persist in chat events; [GAPS.md G-5](GAPS.md). |
+| Per-source context breakdown ("which file produced which prompt block") | Without it, an idea that "drops board state JSON" can't be verified to actually drop it. | CONTEXT-LEDGER.md |
+| Cache creation vs cache read | Cache creation is paid; cache read is cheap. Builder lumps both as "cached". A change that *churns* the cache (high creation, low read) looks good but is bad. | OTEL `cache_creation_input_tokens` capture; GAPS.md G-3. |
+| Per-model breakdown when multi-model routing is active | If `code-gen` uses Sonnet and `verifier` uses Haiku, model mix shifts hide in aggregates. | OTEL `model_usage` capture; GAPS.md G-4. |
+| Hook execution timeline | Hooks can silently grow runtime; today they're invisible in `analyze`. | `include_hook_events=True` + persist in chat events; GAPS.md G-5. |
 | MCP server status snapshot per run | An MCP failure mid-run causes tool denials that look like model misbehavior. | Snapshot `get_mcp_status()` at run start and end. |
-| OTEL trace spans | True wall-clock per `llm_request` / `tool` / `hook` step is essential for finding latency hotspots. | OTEL traces to local Jaeger; [SDK-OBSERVABILITY.md § Recommended setup](SDK-OBSERVABILITY.md#recommended-loop-setup). |
+| OTEL trace spans | True wall-clock per `llm_request` / `tool` / `hook` step is essential for finding latency hotspots. | OTEL traces to local Jaeger; SDK-OBSERVABILITY.md § Recommended setup. |
 | Rate-limit utilization curve | A run that ends fine but hit 80% utilization is fragile. | `RateLimitEvent` capture. |
 | Per-tool latency histograms | Knowing `Read` takes 5ms but `mcp__builder__board` takes 1.2s tells us where to compact tools. | OTEL `claude_code.tool.execution` spans. |
 | Permission denial list | A run that succeeded after 8 denials wasted tokens on attempts. | `ResultMessage.permission_denials` capture. |
 
-These gaps are itemized in [GAPS.md](GAPS.md) with a tiered fix list (v1-minimum to run the loop at all; v2-polish for high-quality diagnostics).
+These gaps are itemized in GAPS.md with a tiered fix list (v1-minimum to run the loop at all; v2-polish for high-quality diagnostics).
 
 ## How to extend this file
 
 - Adding a TSV column → add it here, in the per-session or per-prompt table above. Then update [HARNESS.md](HARNESS.md) to capture it and the TSV header file to include it.
-- Adding a new metric source → add it under "Source-by-source inventory". If it requires Builder source changes, add it to [GAPS.md](GAPS.md) too.
+- Adding a new metric source → add it under "Source-by-source inventory". If it requires Builder source changes, add it to GAPS.md too.
 - Tightening a gate → update "Hard Gates" above and the gate check in [OPTIMIZE.md](OPTIMIZE.md). Re-run baseline variance per [baseline_variance.md](baseline_variance.md) afterwards.

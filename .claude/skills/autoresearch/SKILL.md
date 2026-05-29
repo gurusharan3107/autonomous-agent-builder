@@ -10,7 +10,6 @@ compatibility:
   - tiktoken (pip install tiktoken; optional — falls back to 4-char-per-token approximation)
   - builder CLI on PATH (subprocess invocations; required)
   - npm on PATH (feature-correctness gate inside fixture workspaces; required)
-  - docker (optional; only if Jaeger UI is desired — Path A raw-body capture works without it)
 ---
 
 # autoresearch — single entry, three lanes
@@ -86,7 +85,7 @@ After the lane is chosen, run the universal preflight (load [`references/lifecyc
 
 | Reference | When to load |
 |---|---|
-| [`references/lifecycle.md`](references/lifecycle.md) | At session start (universal preflight) and at lane closeout (freshness sweep). Also: bootstrap auto-fix, teardown, Docker / Jaeger lifecycle. |
+| [`references/lifecycle.md`](references/lifecycle.md) | At session start (universal preflight) and at lane closeout (freshness sweep). Also: bootstrap auto-fix, teardown. |
 | [`references/gotchas.md`](references/gotchas.md) | When a wiring / setup issue bites mid-flow. |
 | [`references/artifacts.md`](references/artifacts.md) | At Baseline/Iterate closeout — refresh `autoresearch-explainer.html` AUTOUPDATE fences + INTROSPECTION.md. |
 | [`references/reference-policy.md`](references/reference-policy.md) | At lane start — what `docs/autoresearch/` files to read in what order; what files the lane MAY and MUST NEVER edit. |
