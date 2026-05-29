@@ -2,6 +2,7 @@ const HOST_NAME = "com.hermes.chrome_bridge";
 let port = null;
 const attachedTabs = new Set();
 const injectedTabs = new Set();
+const sessionGroups = new Map(); // sessionName → groupId
 
 function connectHost() {
   try {
@@ -31,6 +32,24 @@ function post(message) {
   }
 }
 
+// Groups all tabs created during a named session under one Chrome tab group.
+// Non-fatal: if tabGroups API is unavailable or the call fails, we skip silently.
+async function ensureSessionGroup(sessionName, tabId) {
+  let groupId = sessionGroups.get(sessionName);
+  if (groupId !== undefined) {
+    const valid = await chrome.tabGroups.get(groupId).catch(() => null);
+    if (!valid) groupId = undefined;
+  }
+  if (groupId !== undefined) {
+    await chrome.tabs.group({ tabIds: [tabId], groupId });
+  } else {
+    groupId = await chrome.tabs.group({ tabIds: [tabId] });
+    await chrome.tabGroups.update(groupId, { title: sessionName, color: 'blue' });
+    sessionGroups.set(sessionName, groupId);
+  }
+  return groupId;
+}
+
 function isControllableUrl(url) {
   return typeof url === "string" && /^(https?|file):\/\//i.test(url);
 }
@@ -56,7 +75,13 @@ async function currentTab() {
 
 async function ensureAttached(tabId) {
   if (attachedTabs.has(tabId)) return;
-  await withTimeout(chrome.debugger.attach({ tabId }, "1.3"), 3000, "debugger.attach");
+  try {
+    await withTimeout(chrome.debugger.attach({ tabId }, "1.3"), 3000, "debugger.attach");
+  } catch (e) {
+    // "Another debugger is already attached" means we lost the Set (service worker restarted)
+    // but the debugger session is still live — treat as already attached.
+    if (!String(e?.message || e).includes("already attached")) throw e;
+  }
   attachedTabs.add(tabId);
   await withTimeout(chrome.debugger.sendCommand({ tabId }, "Runtime.enable"), 3000, "Runtime.enable");
   await withTimeout(chrome.debugger.sendCommand({ tabId }, "Page.enable"), 3000, "Page.enable");
@@ -310,7 +335,9 @@ async function runBrowserAction(action, state) {
     }
     state.tabId = tab.id;
     state.lastUrl = tab.url || action.url;
+    if (state.groupName) await ensureSessionGroup(state.groupName, state.tabId).catch(() => {});
     await new Promise((resolve) => setTimeout(resolve, action.waitMs || 2000));
+    await ensureAttached(state.tabId).catch(() => {}); // pre-attach so screenshots never race
     return { type, tabId: state.tabId, url: tab.url || action.url };
   }
 
@@ -322,6 +349,37 @@ async function runBrowserAction(action, state) {
   if (type === "wait") {
     await new Promise((resolve) => setTimeout(resolve, action.ms || 1000));
     return { type, ms: action.ms || 1000 };
+  }
+
+  if (type === "wait_for_selector") {
+    const selector = String(action.selector || "");
+    const timeout = action.timeout || 5000;
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      try {
+        const found = await evaluate(state.tabId, `!!document.querySelector(${JSON.stringify(selector)})`);
+        if (found) return { type, selector };
+      } catch { /* page still loading — retry */ }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    throw new Error(`wait_for_selector: "${selector}" not found after ${timeout}ms`);
+  }
+
+  if (type === "wait_for_url_change") {
+    const timeout = action.timeout || 5000;
+    const deadline = Date.now() + timeout;
+    const anchor = await chrome.tabs.get(state.tabId).catch(() => null);
+    if (!anchor) throw new Error("wait_for_url_change: tab not found");
+    const fromUrl = action.from_url || anchor.url;
+    while (Date.now() < deadline) {
+      const current = await chrome.tabs.get(state.tabId).catch(() => null);
+      if (!current) throw new Error("wait_for_url_change: tab was closed");
+      if (current.url !== fromUrl && current.url !== "about:blank") {
+        return { type, from: fromUrl, url: current.url };
+      }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    throw new Error(`wait_for_url_change: URL still "${fromUrl}" after ${timeout}ms`);
   }
 
   if (type === "text") {
@@ -356,6 +414,24 @@ async function runBrowserAction(action, state) {
       params
     );
     return { type, format, base64: capture.data };
+  }
+
+  if (type === "zoom") {
+    await ensureAttached(state.tabId);
+    const { x0 = 0, y0 = 0, x1, y1 } = action;
+    if (x1 == null || y1 == null) throw new Error("zoom requires x0, y0, x1, y1");
+    const quality = action.quality != null ? Number(action.quality) : 85;
+    const capture = await chrome.debugger.sendCommand(
+      { tabId: state.tabId },
+      "Page.captureScreenshot",
+      {
+        format: 'jpeg',
+        quality,
+        clip: { x: Number(x0), y: Number(y0), width: Number(x1) - Number(x0), height: Number(y1) - Number(y0), scale: 1 },
+        captureBeyondViewport: true,
+      }
+    );
+    return { type, format: 'jpeg', x0, y0, x1, y1, base64: capture.data };
   }
 
   if (type === "close_tab") {
@@ -428,7 +504,7 @@ async function runBrowserAction(action, state) {
     return { type };
   }
 
-  // ---- CDP-based fallback actions ----
+  // ---- Extension interaction actions ----
   if (type === "click_text") {
     const point = await findPointByText(state.tabId, action.text);
     await clickAtPoint(state.tabId, point);
@@ -465,8 +541,10 @@ async function runBrowserAction(action, state) {
 async function handleHostMessage(message) {
   const state = {
     maxTextChars: message.maxTextChars || 20000,
-    tabId: message.useSelectedTab ? (await currentTab()).id : undefined
+    tabId: message.useSelectedTab ? (await currentTab()).id : undefined,
+    groupName: message.sessionName || null,
   };
+  if (state.tabId && state.groupName) await ensureSessionGroup(state.groupName, state.tabId).catch(() => {});
   if (message?.type === "reload") {
     post({ id: message.id, success: true, message: "reloading" });
     setTimeout(() => chrome.runtime.reload(), 150);
@@ -502,3 +580,11 @@ async function handleHostMessage(message) {
 }
 
 connectHost();
+
+// Keep-alive: MV3 service workers terminate after 30s idle.
+// An alarm every ~25s resets the idle clock before it expires.
+// Unpacked (dev-loaded) extensions have no minimum alarm interval.
+chrome.alarms.create("hermes-keepalive", { periodInMinutes: 25 / 60 });
+chrome.alarms.onAlarm.addListener((_alarm) => {
+  // No-op — handling the event is sufficient to reset the idle timeout.
+});

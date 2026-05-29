@@ -1,10 +1,13 @@
-"""Hermes-owned Chrome browser-control tool."""
+"""Hermes-owned Chrome browser-control tool.
 
+Extension bridge only: Windows Chrome + Hermes extension + native messaging Unix socket.
+"""
 from __future__ import annotations
 
 import json
 import os
 import socket
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +30,8 @@ _SOCKET_PATH = Path(os.environ.get("HERMES_CHROME_BRIDGE_SOCKET",
     str(Path.home() / ".hermes" / "run" / "chrome-bridge.sock")))
 
 
+# ── Shared helpers ────────────────────────────────────────────────────────────
+
 def _coerce_positive_int(raw: Any, *, default: int, minimum: int, maximum: int) -> int:
     try:
         value = int(raw)
@@ -38,11 +43,11 @@ def _coerce_positive_int(raw: Any, *, default: int, minimum: int, maximum: int) 
 def _normalise_action(raw: Any) -> dict[str, Any] | None:
     if not isinstance(raw, dict):
         return None
-    action_type = str(raw.get("type") or "").strip()
-    if not action_type:
+    t = str(raw.get("type") or "").strip()
+    if not t:
         return None
     action = dict(raw)
-    action["type"] = action_type
+    action["type"] = t
     return action
 
 
@@ -51,27 +56,10 @@ def _normalise_actions(raw: Any) -> list[dict[str, Any]]:
         return []
     if not isinstance(raw, list):
         raise ValueError("actions must be a list")
-    actions: list[dict[str, Any]] = []
-    for item in raw[:MAX_ACTIONS]:
-        action = _normalise_action(item)
-        if action is not None:
-            actions.append(action)
-    return actions
+    return [a for item in raw[:MAX_ACTIONS] if (a := _normalise_action(item)) is not None]
 
 
-def _install_info() -> dict[str, Any]:
-    return {
-        "success": True,
-        "socket": str(_SOCKET_PATH),
-        "steps": [
-            "Load unpacked extension from C:\\Users\\<you>\\.claude\\extension\\ in chrome://extensions.",
-            "Copy the extension id shown in chrome://extensions.",
-            "Run: python .claude/plugin/hermes_chrome/scripts/install_hermes_chrome_bridge.py --extension-id <id>",
-            "Run: .claude/plugin/hermes_chrome/scripts/sync.sh",
-            "Call hermes_chrome_browser with action=status to confirm.",
-        ],
-    }
-
+# ── Extension socket path (Windows Chrome + native messaging) ─────────────────
 
 def _socket_reachable(*, timeout: float = 2.0) -> bool:
     if not _SOCKET_PATH.exists():
@@ -86,12 +74,120 @@ def _socket_reachable(*, timeout: float = 2.0) -> bool:
         return False
 
 
-def _diagnostics() -> dict[str, Any]:
-    # Delegate to the shared deterministic checker (single source of truth,
-    # also used by scripts/diagnose.py in the skill preflight). It runs even
-    # when the live bridge is down: filesystem + native-manifest inspection.
+def _wake_chrome_extension() -> None:
+    """Wake Chrome's MV3 service worker (goes idle after ~30s)."""
+    import subprocess, platform, time
     try:
-        import sys
+        if platform.system() == "Darwin":
+            subprocess.run(["open", "-a", "Google Chrome", "about:newtab"],
+                           capture_output=True, timeout=5)
+        else:
+            subprocess.run(
+                ["powershell.exe", "-Command",
+                 "& { Start-Process 'cmd.exe' '/c start chrome about:newtab' }"],
+                capture_output=True, timeout=5,
+            )
+    except Exception:
+        pass
+    time.sleep(3)
+
+
+def _call_socket(payload: dict[str, Any], *, timeout_seconds: int) -> dict[str, Any]:
+    """Raw socket call — no retry logic."""
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.settimeout(timeout_seconds)
+    with client:
+        client.connect(str(_SOCKET_PATH))
+        client.sendall(json.dumps(payload, ensure_ascii=False).encode())
+        chunks: list[bytes] = []
+        while True:
+            chunk = client.recv(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    raw = b"".join(chunks).decode()
+    return json.loads(raw) if raw else {
+        "success": False, "error_code": "EMPTY_RESPONSE",
+        "error": "Extension bridge returned no output",
+    }
+
+
+def _run_extension_bridge(request: dict[str, Any], *, timeout_seconds: int) -> dict[str, Any]:
+    payload: dict[str, Any]
+    if request.get("action") == "status":
+        payload = {"type": "status", "timeoutSeconds": timeout_seconds}
+    else:
+        payload = {
+            "type": "run",
+            "actions": request.get("actions", []),
+            "timeoutSeconds": timeout_seconds,
+            "sessionName": request.get("sessionName"),
+            "taskId": request.get("taskId"),
+            "useSelectedTab": request.get("useSelectedTab", False),
+            "maxTextChars": request.get("maxTextChars", 20_000),
+        }
+
+    # First attempt
+    if _SOCKET_PATH.exists():
+        try:
+            return _call_socket(payload, timeout_seconds=timeout_seconds)
+        except Exception:
+            pass  # fall through to recovery
+
+    # Socket missing or dead — MV3 service worker went idle. Remove stale socket,
+    # wake Chrome, then wait for the native host to rebind.
+    try:
+        if _SOCKET_PATH.exists():
+            _SOCKET_PATH.unlink(missing_ok=True)
+    except Exception:
+        pass
+    _wake_chrome_extension()
+    import time
+    for _ in range(10):
+        if _SOCKET_PATH.exists():
+            try:
+                return _call_socket(payload, timeout_seconds=timeout_seconds)
+            except Exception:
+                time.sleep(1)
+        else:
+            time.sleep(1)
+
+    return {
+        "success": False,
+        "error_code": "SOCKET_DOWN",
+        "error": (
+            "Extension bridge socket not found after Chrome wake attempt. "
+            "Open Chrome, ensure the Hermes extension is enabled, and navigate to any HTTPS page."
+        ),
+        "socket": str(_SOCKET_PATH),
+    }
+
+
+def _extension_health(*, timeout_seconds: int) -> dict[str, Any]:
+    reachable = _socket_reachable()
+    result: dict[str, Any] = {
+        "success": True,
+        "bridge": "extension",
+        "socket": str(_SOCKET_PATH),
+        "preflight_ok": reachable,
+        "ready": False,
+    }
+    if not reachable:
+        result["error_code"] = "SOCKET_DOWN"
+        return result
+    status = _run_extension_bridge({"action": "status"}, timeout_seconds=timeout_seconds)
+    result["ready"] = bool(status.get("success"))
+    result["active_tab"] = status.get("active_tab", {})
+    if not status.get("success"):
+        result["error_code"] = status.get("error_code", "BRIDGE_ERROR")
+        result["error"] = status.get("error", "Bridge status failed")
+    return result
+
+
+# ── Diagnostics (filesystem/manifest checks, bridge-independent) ──────────────
+
+def _diagnostics() -> dict[str, Any]:
+    try:
         sys.path.insert(0, str(PLUGIN_DIR))
         from diagnostics import run_diagnostics  # type: ignore[import]
         return run_diagnostics()
@@ -101,120 +197,33 @@ def _diagnostics() -> dict[str, Any]:
             "success": True,
             "preflight_ok": reachable,
             "blocking_checks": [] if reachable else ["bridge_socket_reachable"],
-            "checks": [{"name": "bridge_socket_reachable", "ok": reachable}],
-            "socket": str(_SOCKET_PATH),
-            "diagnostics_degraded": f"shared checker unavailable: {exc}",
+            "diagnostics_degraded": str(exc),
         }
 
 
-def _preflight() -> dict[str, Any]:
-    diagnostics = _diagnostics()
+def _install_info() -> dict[str, Any]:
     return {
         "success": True,
+        "bridge": "extension",
         "socket": str(_SOCKET_PATH),
-        "socket_exists": _SOCKET_PATH.exists(),
-        "diagnostics": diagnostics,
-        "preflight_ok": diagnostics["preflight_ok"],
-        "blocking_checks": diagnostics["blocking_checks"],
+        "steps": [
+            "1. Load unpacked extension from C:\\Users\\<you>\\.claude\\extension\\ in chrome://extensions.",
+            "2. Run: python .claude/plugin/hermes_chrome/scripts/install_hermes_chrome_bridge.py --extension-id <id>",
+            "3. Run: bash .claude/plugin/hermes_chrome/scripts/sync.sh",
+            "4. Call hermes_chrome_browser with action=status to confirm.",
+        ],
     }
 
 
-def _build_bridge_request(args: dict[str, Any], *, task_id: str | None) -> dict[str, Any]:
-    action = str(args.get("action") or "run").strip().lower()
-    if action not in {"install_info", "preflight", "diagnose", "health", "status", "run"}:
-        raise ValueError("action must be one of: install_info, preflight, diagnose, health, status, run")
-
-    request: dict[str, Any] = {
-        "action": action,
-        "sessionName": str(args.get("session_name") or "Hermes Chrome"),
-        "taskId": task_id or "",
-        "maxTextChars": _coerce_positive_int(
-            args.get("max_text_chars"),
-            default=20_000,
-            minimum=1_000,
-            maximum=MAX_TEXT_CHARS,
-        ),
-    }
-    if action == "run":
-        actions = _normalise_actions(args.get("actions"))
-        url = str(args.get("url") or "").strip()
-        if url:
-            actions.insert(0, {"type": "goto", "url": url})
-        if not actions:
-            actions = [{"type": "snapshot"}]
-        request["actions"] = actions
-        request["useSelectedTab"] = bool(args.get("use_selected_tab", False))
-    return request
-
-
-def _build_extension_request(request: dict[str, Any], *, timeout_seconds: int) -> dict[str, Any]:
-    if request["action"] == "status":
-        return {"type": "status", "timeoutSeconds": timeout_seconds}
-    return {
-        "type": "run",
-        "actions": request.get("actions", []),
-        "timeoutSeconds": timeout_seconds,
-        "sessionName": request.get("sessionName"),
-        "taskId": request.get("taskId"),
-        "useSelectedTab": request.get("useSelectedTab", False),
-        "maxTextChars": request.get("maxTextChars", 20_000),
-    }
-
-
-def _run_extension_bridge(request: dict[str, Any], *, timeout_seconds: int) -> dict[str, Any]:
-    if not _SOCKET_PATH.exists():
-        return {
-            "success": False,
-            "error": "Hermes Chrome Bridge socket not found. Ensure Chrome is open with the extension loaded.",
-            "socket": str(_SOCKET_PATH),
-        }
-    payload = _build_extension_request(request, timeout_seconds=timeout_seconds)
-    try:
-        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        client.settimeout(timeout_seconds)
-        with client:
-            client.connect(str(_SOCKET_PATH))
-            client.sendall(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
-            chunks: list[bytes] = []
-            while True:
-                chunk = client.recv(65536)
-                if not chunk:
-                    break
-                chunks.append(chunk)
-        raw = b"".join(chunks).decode("utf-8")
-        return json.loads(raw) if raw else {"success": False, "error": "Hermes extension bridge returned no output"}
-    except Exception as exc:
-        return {"success": False, "error": f"Hermes extension bridge failed: {exc}", "socket": str(_SOCKET_PATH)}
-
-
-def _health_check(*, timeout_seconds: int) -> dict[str, Any]:
-    reachable = _socket_reachable()
-    result: dict[str, Any] = {
-        "success": True,
-        "socket": str(_SOCKET_PATH),
-        "preflight_ok": reachable,
-        "blocking_checks": [] if reachable else ["bridge_socket_reachable"],
-        "bridge_status": None,
-        "selected_tab_ready": False,
-        "ready": False,
-    }
-    if not reachable:
-        return result
-    bridge_status = _run_extension_bridge({"action": "status"}, timeout_seconds=timeout_seconds)
-    result["bridge_status"] = bridge_status
-    result["ready"] = bool(bridge_status.get("success"))
-    result["selected_tab_ready"] = bool(bridge_status.get("content_script", {}).get("injected"))
-    if not bridge_status.get("success"):
-        result["bridge_error"] = bridge_status.get("error") or "Hermes Chrome bridge status failed"
-    return result
-
+# ── Tool schema ───────────────────────────────────────────────────────────────
 
 HERMES_CHROME_BROWSER_SCHEMA = {
     "name": "hermes_chrome_browser",
     "description": (
-        "Control the user's signed-in Chrome profile through the Hermes Chrome "
-        "extension and native messaging host. Use for browser testing or authenticated "
-        "browser tasks when the user explicitly wants Chrome state."
+        "Control the user's Windows Chrome browser via the Hermes extension bridge. "
+        "Requires the Hermes extension installed in Windows Chrome and the native messaging host deployed. "
+        "Use for browser testing, authenticated tasks, screenshots, and UI verification. "
+        "Always run action=status first to confirm the bridge is ready."
     ),
     "parameters": {
         "type": "object",
@@ -223,47 +232,65 @@ HERMES_CHROME_BROWSER_SCHEMA = {
                 "type": "string",
                 "enum": ["install_info", "preflight", "diagnose", "health", "status", "run"],
                 "description": (
-                    "Use install_info for setup instructions, preflight for local checks, "
-                    "diagnose for detailed deterministic runtime checks, status to check "
-                    "live bridge availability, health for combined diagnostics plus live "
-                    "status, and run to execute browser actions."
+                    "status/health: check if extension bridge is reachable. "
+                    "preflight/diagnose: detailed health check including manifest/socket validation. "
+                    "install_info: setup instructions. "
+                    "run: execute browser actions."
                 ),
                 "default": "run",
             },
             "url": {
                 "type": "string",
-                "description": "Optional URL to open before executing actions.",
+                "description": "Navigate to this URL before executing actions.",
             },
-            "session_name": {
+            "tab_id": {
                 "type": "string",
-                "description": "Short Chrome session name for this task.",
-            },
-            "use_selected_tab": {
-                "type": "boolean",
-                "description": "Reuse Chrome's selected tab instead of creating a managed tab.",
-                "default": False,
+                "description": "Extension tab ID to target. Omit to use the active tab.",
             },
             "actions": {
                 "type": "array",
                 "description": (
-                    "Ordered browser actions. Supported types: goto, wait, snapshot, text, "
-                    "screenshot, click_text, fill_selector, click_selector, cursor_move, "
-                    "cursor_click, cursor_right_click, cursor_double_click, cursor_triple_click, "
-                    "cursor_type, cursor_key, cursor_drag, cursor_scroll, cursor_status, "
-                    "cursor_hide, evaluate, close_tab. High-level click/fill actions animate "
-                    "the visible Hermes cursor before interacting."
+                    "Ordered browser actions. Batch everything into one call. "
+                    "Supported types: "
+                    "page_context (compact overview ~1KB), "
+                    "snapshot (interactive elements with selectors), "
+                    "text (full visible text), "
+                    "screenshot, "
+                    "zoom {x0, y0, x1, y1, quality?} (region-specific JPEG — use instead of full screenshot when you only care about part of the page), "
+                    "goto {url, waitMs?, reload?}, "
+                    "wait {ms}, "
+                    "wait_for_selector {selector, timeout?} (poll until element present — use after goto instead of fixed wait), "
+                    "wait_for_url_change {from_url?, timeout?} (poll until URL changes — use after form submit / login redirect), "
+                    "click_text {text}, "
+                    "click_selector {selector}, "
+                    "fill_selector {selector, value, append?}, "
+                    "evaluate {expression}, "
+                    "cursor_move {x,y}, cursor_type {text}, cursor_key {key, modifiers?}, "
+                    "cursor_scroll {deltaX?, deltaY?}, cursor_drag {x,y,duration?}, "
+                    "cursor_click, cursor_double_click, cursor_right_click, cursor_hide, "
+                    "close_tab."
                 ),
                 "items": {"type": "object"},
             },
             "timeout_seconds": {
                 "type": "integer",
-                "description": "Maximum wall time for the bridge request.",
+                "description": "Max wall time per bridge call.",
                 "default": DEFAULT_TIMEOUT_SECONDS,
             },
             "max_text_chars": {
                 "type": "integer",
-                "description": "Maximum text or DOM snapshot characters returned per action.",
+                "description": "Max characters for text/snapshot actions.",
                 "default": 20000,
+            },
+            "session_name": {
+                "type": "string",
+                "description": (
+                    "Name for this task's Chrome tab group. All tabs opened during this call "
+                    "are grouped under this name in Chrome's tab strip. Use a stable task "
+                    "identifier (e.g. task ID or feature name) so related tabs stay together "
+                    "and separate from other concurrent tasks. Defaults to 'Hermes Chrome'."
+                ),
+                "default": "Hermes Chrome",
             },
         },
         "additionalProperties": False,
@@ -271,29 +298,63 @@ HERMES_CHROME_BROWSER_SCHEMA = {
 }
 
 
+# ── Handler ───────────────────────────────────────────────────────────────────
+
 def _handle_hermes_chrome_browser(args: dict, task_id: str | None = None, **_: Any) -> str:
-    try:
-        args = args or {}
-        request = _build_bridge_request(args, task_id=task_id)
-        timeout_seconds = _coerce_positive_int(
-            args.get("timeout_seconds"),
-            default=DEFAULT_TIMEOUT_SECONDS,
-            minimum=5,
-            maximum=180,
-        )
-    except Exception as exc:
-        return tool_error(str(exc), success=False)
+    args = args or {}
+    action = str(args.get("action") or "run").strip().lower()
+    timeout_seconds = _coerce_positive_int(
+        args.get("timeout_seconds"),
+        default=DEFAULT_TIMEOUT_SECONDS, minimum=5, maximum=180,
+    )
 
-    if request["action"] == "install_info":
+    # ── Static actions (no bridge needed) ─────────────────────────────────────
+    if action == "install_info":
         return tool_result(_install_info())
-    if request["action"] == "preflight":
-        return tool_result(_preflight())
-    if request["action"] == "diagnose":
-        return tool_result(_diagnostics())
-    if request["action"] == "health":
-        return tool_result(_health_check(timeout_seconds=timeout_seconds))
 
+    if action in ("preflight", "diagnose"):
+        diag = _diagnostics()
+        ext = _extension_health(timeout_seconds=timeout_seconds)
+        return tool_result({
+            "extension": ext,
+            "diagnostics": diag,
+            "ready": ext.get("ready", False),
+        })
+
+    # ── Health / status ────────────────────────────────────────────────────────
+    if action in ("health", "status"):
+        return tool_result(_extension_health(timeout_seconds=timeout_seconds))
+
+    # ── Run ────────────────────────────────────────────────────────────────────
+    if action != "run":
+        return tool_error(f"Unknown action: {action!r}", success=False)
+
+    try:
+        actions = _normalise_actions(args.get("actions"))
+    except ValueError as e:
+        return tool_error(str(e), success=False)
+    if not actions:
+        actions = [{"type": "page_context"}]
+
+    url = str(args.get("url") or "").strip()
+    if url:
+        actions.insert(0, {"type": "goto", "url": url})
+    request: dict[str, Any] = {
+        "action": "run",
+        "actions": actions,
+        "sessionName": str(args.get("session_name") or "Hermes Chrome"),
+        "taskId": task_id or "",
+        "maxTextChars": _coerce_positive_int(
+            args.get("max_text_chars"), default=20_000, minimum=1_000, maximum=MAX_TEXT_CHARS,
+        ),
+        "useSelectedTab": bool(args.get("use_selected_tab", True)),
+    }
     result = _run_extension_bridge(request, timeout_seconds=timeout_seconds)
+
     if not result.get("success"):
-        return tool_error(result.get("error") or "Hermes Chrome bridge failed", success=False, details=result)
+        return tool_error(
+            result.get("error") or "Bridge call failed",
+            success=False,
+            error_code=result.get("error_code", "BRIDGE_ERROR"),
+        )
     return tool_result(result)

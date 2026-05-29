@@ -3,7 +3,7 @@
   "name": "Hermes Chrome Bridge",
   "version": "0.1.0",
   "description": "Lets OWL control Chrome via the Hermes agent.",
-  "permissions": ["debugger", "nativeMessaging", "tabs", "scripting", "activeTab"],
+  "permissions": ["debugger", "nativeMessaging", "tabs", "tabGroups", "scripting", "activeTab", "alarms"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "service_worker.js",

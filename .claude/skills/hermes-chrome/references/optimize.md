@@ -1,7 +1,201 @@
 # hermes-chrome — Optimize reference
 
-Surface map, diagnosis flow, and per-surface fix procedure.
+Surface map, diagnosis flow, per-surface fix procedure, and troubleshooting when
+preflight exits 0 but Chrome is still unstable.
 Loaded on demand from SKILL.md when a failure or quality issue is detected.
+
+---
+
+## Preflight exits 0 but Chrome is still unstable
+
+Preflight validates the socket + native host + diagnostics. It does **not** validate
+the page state or content-script attachment. The cases below produce a healthy bridge
+with actions that still fail — none are fixed by re-running preflight.
+
+### 1. Content script blocked — active tab is chrome://, about:newtab, or an error page
+
+**Signal:** preflight prints `⚠ Content script blocked on active tab`.
+Actions return `blocked: true` or silently no-op.
+
+The Chrome extension cannot inject content scripts into `chrome://`, `about:*`,
+`file://`, or extension pages. The bridge socket is alive, but no tab action can execute.
+
+**Fix:** use `useSelectedTab: False` — `True` fails before `goto` runs when the active tab is `chrome://`.
+```python
+r = bridge({"type":"run","sessionName":"my-task","useSelectedTab":False,"actions":[
+    {"type":"goto","url":"http://localhost:9876"},
+    {"type":"wait_for_selector","selector":"h1","timeout":5000},
+    {"type":"page_context"}
+]})
+```
+
+Navigate Chrome to an `https://` or `http://localhost` page, then proceed.
+Never proceed to click/fill while `blocked` is true.
+
+---
+
+### 2. SPA not hydrated — `goto` resolves but React/Vue hasn't rendered yet
+
+**Signal:** `page_context` returns an empty body, missing headings, or only a spinner.
+`wait_for_selector` times out on an element that should be present.
+
+`goto` fires when the `load` event fires. SPAs often render the shell on `load` and
+hydrate content asynchronously. The socket is healthy, the URL is correct, but the DOM
+is not ready.
+
+**Fix:** Replace `wait` with `wait_for_selector` targeting a real content element:
+```python
+# ❌ wrong — fires at arbitrary time
+{"type": "goto", "url": "http://localhost:9877"},
+{"type": "wait", "ms": 1500},
+
+# ✅ correct — waits for actual content
+{"type": "goto", "url": "http://localhost:9877"},
+{"type": "wait_for_selector", "selector": "h1", "timeout": 8000},
+{"type": "page_context"}
+```
+
+If `h1` is not a reliable signal for this page, use a more specific selector
+(`wait_for_selector` supports any CSS selector). Increase timeout to 8–10s for
+slow dev servers.
+
+---
+
+### 3. Multiple Chrome windows — extension reports the wrong window's active tab
+
+**Signal:** `page_context` returns an unexpected URL (different site, wrong page).
+Operator can see the correct page in another Chrome window.
+
+When multiple Chrome windows are open, `useSelectedTab: true` attaches to the most
+recently focused tab — which may not be the page being tested.
+
+**Fix:** Ask the operator to click inside the correct Chrome window to make it the
+foreground window, then re-run `page_context` to confirm:
+```python
+r = bridge({"type":"run","useSelectedTab":True,"actions":[{"type":"page_context"}]})
+current_url = r["results"][0].get("url","")
+# If URL is wrong, operator must click the correct Chrome window first
+```
+
+Do not proceed until `current_url` matches the expected URL.
+
+---
+
+### 4. Tab navigated by operator between preflight and first action
+
+**Signal:** Preflight reports `ok` with URL `A`, but first `page_context` returns URL `B`.
+
+The operator navigated Chrome while the agent was processing. The bridge is healthy —
+the URL just changed.
+
+**Fix:** Always re-verify at the start of every turn (SKILL.md Hard rule 6):
+```python
+# First action of every new turn — confirm URL before acting
+r = bridge({"type":"run","useSelectedTab":True,"actions":[{"type":"page_context"}]})
+current_url = r["results"][0].get("url","")
+# If current_url != expected_url, navigate or abort
+```
+
+Never assume the tab is still where preflight left it.
+
+---
+
+### 5. Native host alive but Chrome tab closed after preflight
+
+**Signal:** Socket exists, `status` returns `success: true`, but `page_context` returns
+`{url: "about:blank"}` or an error, or `active_tab` is empty.
+
+Chrome closed the tab (or all tabs) after preflight finished. The native host process
+survives tab closure but cannot control a non-existent tab.
+
+**Fix:**
+```python
+r = bridge({"type":"run","useSelectedTab":True,"actions":[
+    {"type":"goto","url":"http://localhost:9877"},
+    {"type":"wait_for_selector","selector":"h1","timeout":5000},
+    {"type":"page_context"}
+]})
+```
+
+Navigate to open a new tab at the target URL. If `goto` also fails, reload the
+extension in `chrome://extensions` to reconnect the native host to the new tab.
+
+---
+
+### 6. Service worker went idle between preflight finish and first agent action
+
+**Signal:** Preflight exits 0. First bridge call in the same session returns socket error
+or empty response.
+
+Chrome MV3 service workers idle-out after ~30s. The keep-alive alarm fires every 25s —
+but if Chrome sleeps (system suspend, display off) or the alarm fires late, the worker
+can die between preflight and the first action.
+
+**Fix — inline recovery:**
+```python
+import subprocess, os
+
+def bridge_call(payload, timeout=45):
+    try:
+        return bridge(payload)
+    except OSError:
+        result = subprocess.run(
+            ["bash", os.path.expanduser(
+                "~/.claude/plugin/hermes_chrome/scripts/preflight.sh")],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"preflight failed:\n{result.stdout.strip()}")
+        return bridge(payload)   # one retry only
+```
+
+Use `bridge_call()` in place of `bridge()` for every action. **One retry only** — if
+the second call also fails, stop and enter Optimize; do not loop.
+
+**Permanent fix (structural):** The keep-alive alarm should prevent this. If it
+recurs, confirm the `"alarms"` permission is present in `manifest.json` and the alarm
+is created in `service_worker.js` with `periodInMinutes: 25/60`. Run `sync.sh` and
+reload the extension.
+
+---
+
+### 7. Extension reloaded mid-session (resets socket)
+
+**Signal:** Actions succeed early in a session, then start failing with socket errors.
+Operator may have reloaded the extension from `chrome://extensions`.
+
+Extension reload tears down the native messaging connection and creates a new socket.
+The old socket file is deleted; the new one may have a different inode.
+
+**Fix:** Re-run preflight inline (same recovery as case 6 above), then re-establish
+ground state with a fresh `page_context`. Any selectors or URLs captured before the
+reload are still valid.
+
+**Prevention:** Tell the operator not to reload the extension during an active agent
+session. If they need to apply extension updates, close the session first, reload,
+then start a new session.
+
+---
+
+### 8. Click actions hitting wrong element — page not fully settled
+
+**Signal:** `click_text` returns `point` with a match, but the page behaves as if a
+different element was clicked, or nothing happens.
+
+The page is animating (modal opening, dropdown expanding, lazy-load completing) when
+the click fires. `click_text` found the element in a transitional DOM state.
+
+**Fix:** Add `wait_for_selector` on a stable post-action element before clicking:
+```python
+# After navigation or a prior click, wait for the page to settle
+{"type": "wait_for_selector", "selector": ".loaded-indicator", "timeout": 4000},
+# Then click the intended element
+{"type": "click_text", "text": "Submit"},
+{"type": "wait_for_selector", "selector": ".success-banner", "timeout": 5000},
+{"type": "page_context"}
+```
+
+Never retry a failed click without a fresh `snapshot` first — the DOM may have changed.
 
 ---
 
@@ -70,7 +264,7 @@ surface that owns the root cause — not where the symptom shows. `diagnose`
 | `click_text` clicks the wrong thing (e.g. a hidden skip-link, a 0×0 mobile-menu duplicate) | Loose substring match + first-DOM-order + no visibility filter | **extension** — `service_worker.js:findPointByText`/`findPointBySelector`: exact→starts-with→contains ranking over `__vis`-filtered, occlusion-checked candidates | live click test |
 | Cursor doesn't move / click misses when Chrome is NOT the foreground window | Position integrated by `requestAnimationFrame`, which throttles to ~1fps in a backgrounded tab; click fired at the stale position | **extension** — `cursor-agent.js`: snap logical `cursorX/Y` to target immediately; glide visibly via a **CSS transform transition** (compositor-driven, runs backgrounded) | live click test, headless-window |
 | Screenshot returns nothing | PNG > 1MB native-messaging limit, dropped silently | **extension** — JPEG default in screenshot action | — |
-| Click lands on wrong/stale element | Acted before the page/SPA settled | **operate discipline** — `wait` + fresh `snapshot`, never blind-retry | — |
+| Click lands on wrong/stale element | Acted before the page/SPA settled | **operate discipline** — `wait_for_selector` + fresh `snapshot`, never blind-retry | — |
 
 **Click-reliability invariants (do not regress — these define operator trust):**
 
@@ -86,18 +280,22 @@ patch skill prose to work around a code bug.
 
 ## Diagnosis flow
 
-### Step 1 — run the deterministic diagnose first
+### Step 1 — run the self-healing preflight first
 
 ```bash
-python3 .claude/plugin/hermes_chrome/scripts/diagnose.py
+bash ~/.claude/plugin/hermes_chrome/scripts/preflight.sh
 ```
 
-This is bridge-independent — it inspects the filesystem + native manifest, so it
-works even when the live bridge is dead. Each failed check prints its `surface`
-and `fix`. Resolve `blocking_checks` before anything else; most map to `sync.sh`,
-the install skill, or `chrome://extensions` reload. Only fall through to the
-manual steps below when diagnose is `READY` but live actions still fail (a live
-bridge / content-script / page-state problem, not a setup problem).
+This auto-fixes file deployment drift, stale sockets, and idle service workers.
+Exit 0 = bridge healthy and ready. Exit 1 = prints the exact manual step needed.
+
+Only fall through to manual steps below when preflight exits 0 but live actions
+still fail (a content-script / page-state problem, not a setup problem).
+
+For raw check output without auto-fix:
+```bash
+python3 ~/.claude/plugin/hermes_chrome/scripts/diagnose.py --json
+```
 
 ### Step 2 — is the socket alive? (manual, if diagnose was READY)
 
