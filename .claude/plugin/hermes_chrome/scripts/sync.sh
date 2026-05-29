@@ -43,11 +43,10 @@ rsync -a --exclude='*.Zone.Identifier' --exclude='scripts/' \
 # 1b. Install diagnose.py to global plugin scripts/ so preflight works from any cwd.
 #     sync.sh itself is intentionally excluded (repo-specific); diagnose.py is not.
 mkdir -p "$GLOBAL_PLUGIN/scripts"
-cp "$REPO_ROOT/scripts/diagnose.py"        "$GLOBAL_PLUGIN/scripts/diagnose.py"
-cp "$REPO_ROOT/scripts/preflight.sh"       "$GLOBAL_PLUGIN/scripts/preflight.sh"
-cp "$REPO_ROOT/scripts/start_chrome_cdp.sh" "$GLOBAL_PLUGIN/scripts/start_chrome_cdp.sh"
-chmod +x "$GLOBAL_PLUGIN/scripts/preflight.sh" "$GLOBAL_PLUGIN/scripts/start_chrome_cdp.sh"
-echo "→ Installed scripts → $GLOBAL_PLUGIN/scripts/ (diagnose.py, preflight.sh, start_chrome_cdp.sh)"
+cp "$REPO_ROOT/scripts/diagnose.py"  "$GLOBAL_PLUGIN/scripts/diagnose.py"
+cp "$REPO_ROOT/scripts/preflight.sh" "$GLOBAL_PLUGIN/scripts/preflight.sh"
+chmod +x "$GLOBAL_PLUGIN/scripts/preflight.sh"
+echo "→ Installed scripts → $GLOBAL_PLUGIN/scripts/ (diagnose.py, preflight.sh)"
 
 # 2. Chrome extension (platform-specific Windows/macOS path Chrome loads from)
 echo "→ [$PLATFORM] Syncing extension → $INSTALL_EXT"
