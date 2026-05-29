@@ -423,3 +423,31 @@ This run's primary output is a classification of the 18 autoresearch patches by 
 5. **Run `baseline.py --fixtures A --n 1` as autonomy-stack sanity check before re-snapshot.** Confirms self-heal + per-iter gate + preflight stack works end-to-end on fixture A (already stable). $1 / ~5min. If it completes clean, that's evidence the substrate tooling is correct and only the seed identity is wrong. *Next concrete action per CURRENT.md.*
 
 
+
+## 2026-05-29 — Codebase-grounded ROADMAP revalidation (roadmap-audit, devpulse-validation-driven)
+
+Trigger: operator request to bring `docs/goal/` up to date after a hermes-chrome-driven devpulse validation session. Each candidate was grepped against `src/` (adoption ≠ docstring mention). Skill edited `ROADMAP.md` + this file only; STATUS sync is recommended below (skill is forbidden from editing STATUS).
+
+### Validation table
+
+| ROADMAP item | Bucket | Evidence (`path:line`) | Action |
+| --- | --- | --- | --- |
+| M2.5 `AgentDefinition.maxTurns` per subagent | **already-present** | `agents/definitions.py` `max_turns=20` per subagent; `agents/runner_options.py:61` forwards `maxTurns` | ticked `[x]` (duplicate of M1.4 closure) |
+| M1.5 migrate `query()` → `ClaudeSDKClient` ctx mgr | **partial** | migrated: `agents/runner.py:690` `async with ClaudeSDKClient(...)`; gap: `claude_runtime.py:265` bare `sdk_query()` (chat path) | narrowed to the `claude_runtime.py` chat path |
+| M2.1 audit `receive_response()` early `break` | **already-safe** | single site `agents/runner.py:692`, no early `break` | downgraded P0 → hardening (codify-as-rule only) |
+| M2.6 `can_use_tool` enforces subagent boundaries | **partial** | deny exists for chat tools `agent_tool_policy.py:52` (via `routes/agent.py:702`); subagent path `claude_runtime.py:236 _auto_approve` always allows | narrowed to "extend deny to subagent path" |
+| M3.2 G3 `SessionStore` adapter | **confirmed-missing** | `grep SessionStore src/` → 0 hits | kept `[ ]`; revalidated genuinely absent (HARD prereq for M3.2 + M3.3) |
+| M1.1 IMP-014/015/016/017 | **confirmed-missing (new)** | devpulse validation this session (observability stale-error rec; `type=feature` shown as IMPROVEMENT; chat mis-routes builder asks to app backlog; no item remove/cancel) | added earlier this session |
+| M2.1 +2 lifecycle features (auto-complete feature / backlog-item) | **confirmed mis-filed** | were `type=feature` in the devpulse backlog; builder-lifecycle behavior | added earlier this session |
+
+### Net effect
+
+- Two phantom-work items retired from the active backlog: `maxTurns` (done) closed; the async-break audit downgraded from P0 to preventive hardening.
+- Two P0 items narrowed to the actual remaining gap (chat-path `query()` migration; subagent-path `can_use_tool` deny) — saves re-implementing already-shipped halves.
+- The genuinely-open extreme-priority set is now honest: **G3 `SessionStore`** (biggest unlock; HARD prereq), the **subagent `can_use_tool` deny extension** (cheap; deny mechanism already exists), and the **M1.1 IMP-014/016/017** operator-trust/integrity defects.
+
+### Recommended actions (STATUS — operator-owned, skill cannot edit)
+
+1. STATUS Recent Decisions: add a 2026-05-29 line recording this revalidation (maxTurns closed; query-migration + can_use_tool narrowed to partial; async-break downgraded; SessionStore revalidated absent).
+2. STATUS `Last Update`: refresh to 2026-05-29.
+3. No EVALUATION.md change required — no tier bar moved.
