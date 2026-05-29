@@ -46,6 +46,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       sv($('cs-status'), 'warn', 'Blocked on this URL');
     }
+
+    // ---- Feedback Mode toggle ----
+    const toggle = $('feedback-toggle');
+    const errRow = $('feedback-err-row');
+    const errOut = $('feedback-err');
+    const storageKey = `feedback-mode:${tab.id}`;
+
+    const showErr = (msg) => {
+      errOut.textContent = msg || '';
+      errRow.style.display = msg ? 'flex' : 'none';
+    };
+    const paint = (on) => {
+      toggle.classList.toggle('on', !!on);
+      toggle.setAttribute('aria-checked', on ? 'true' : 'false');
+    };
+
+    const { [storageKey]: stored } = await chrome.storage.local.get(storageKey);
+    paint(!!stored);
+
+    const handle = async () => {
+      if (toggle.classList.contains('busy')) return;
+      const next = !toggle.classList.contains('on');
+      toggle.classList.add('busy');
+      showErr('');
+      try {
+        const result = await chrome.runtime.sendMessage({
+          type: 'hermes-feedback-toggle',
+          tabId: tab.id,
+          enabled: next
+        });
+        if (result?.ok) {
+          paint(next);
+          await chrome.storage.local.set({ [storageKey]: next });
+        } else {
+          showErr(result?.error || 'Toggle failed');
+        }
+      } catch (e) {
+        showErr(e.message || String(e));
+      } finally {
+        toggle.classList.remove('busy');
+      }
+    };
+    toggle.addEventListener('click', handle);
+    toggle.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handle(); }
+    });
   } else {
     $('tab').innerHTML = '<div class="empty">No active tab detected</div>';
     sv($('cs-status'), 'warn', 'No tab');

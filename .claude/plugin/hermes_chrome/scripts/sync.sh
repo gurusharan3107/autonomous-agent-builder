@@ -7,6 +7,23 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SOCKET="${HERMES_CHROME_BRIDGE_SOCKET:-$HOME/.hermes/run/chrome-bridge.sock}"
 
+# ── Mirror agent-feedback-artifact overlay.html into the extension ────────────
+# Canonical source lives in the skill. Extension needs two artifacts:
+#   - overlay.html for the markup (content script strips <script> on inject)
+#   - feedback-widget-runtime.js — the IIFE body, served via <script src> because
+#     MV3 isolated-world CSP blocks inline scripts content scripts try to inject.
+SKILL_OVERLAY="$(cd "$REPO_ROOT/../../skills/agent-feedback-artifact/references" 2>/dev/null && pwd)/overlay.html"
+EXT_OVERLAY="$REPO_ROOT/extension/content-scripts/overlay.html"
+EXT_RUNTIME="$REPO_ROOT/extension/content-scripts/feedback-widget-runtime.js"
+if [[ -f "$SKILL_OVERLAY" ]]; then
+  if ! cmp -s "$SKILL_OVERLAY" "$EXT_OVERLAY" 2>/dev/null; then
+    echo "→ Mirroring overlay.html from skill → extension"
+    cp "$SKILL_OVERLAY" "$EXT_OVERLAY"
+  fi
+  echo "→ Extracting feedback-widget-runtime.js from overlay.html"
+  awk '/^<script>/{found=1; next} /^<\/script>/{found=0; next} found' "$SKILL_OVERLAY" > "$EXT_RUNTIME"
+fi
+
 # ── Platform detection ────────────────────────────────────────────────────────
 if grep -qi microsoft /proc/version 2>/dev/null; then
   PLATFORM="wsl"

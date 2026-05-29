@@ -37,6 +37,11 @@
     .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:4px}
     .badge.ok{background:rgba(34,197,94,0.15);color:#22c55e}
     .badge.bad{background:rgba(239,68,68,0.15);color:#ef4444}
+    .toggle{position:relative;width:34px;height:18px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;transition:background 0.15s,border-color 0.15s;flex-shrink:0}
+    .toggle::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#71717a;transition:left 0.15s,background 0.15s}
+    .toggle.on{background:rgba(99,102,241,0.4);border-color:rgba(99,102,241,0.6)}
+    .toggle.on::after{left:18px;background:#fff}
+    .toggle.busy{opacity:0.5;cursor:wait}
   </style>
 </head>
 <body>
@@ -52,6 +57,8 @@
   <div class="body">
     <div class="row"><span class="lbl">Extension</span><span id="ext-status" class="val warn">—</span></div>
     <div class="row"><span class="lbl">Content Script</span><span id="cs-status" class="val warn">—</span></div>
+    <div class="row"><span class="lbl">Feedback Mode</span><div id="feedback-toggle" class="toggle" role="switch" aria-checked="false" tabindex="0"></div></div>
+    <div class="row" id="feedback-err-row" style="display:none"><span class="lbl">&nbsp;</span><span id="feedback-err" class="val bad" style="font-size:10px;font-weight:400">—</span></div>
   </div>
   <div class="section">
     <div class="section-title">Active Tab</div>

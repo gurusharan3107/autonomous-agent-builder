@@ -239,6 +239,65 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch((error) => sendResponse({ injected: false, blocked: true, reason: String(error?.message || error) }));
     return true;
   }
+  if (msg && msg.type === 'hermes-feedback-toggle') {
+    toggleFeedbackWidget(msg.tabId, msg.enabled)
+      .then((status) => sendResponse(status))
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
+    return true;
+  }
+});
+
+async function toggleFeedbackWidget(tabId, enabled) {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab?.id) return { ok: false, error: 'tab_not_found' };
+  if (!isControllableUrl(tab.url)) return { ok: false, error: unsupportedUrlReason(tab.url) };
+
+  const storageKey = `feedback-mode:${tabId}`;
+  if (enabled) {
+    await chrome.storage.local.set({ [storageKey]: true });
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content-scripts/feedback-widget.js']
+    });
+    return { ok: true, enabled: true };
+  }
+
+  await chrome.storage.local.remove(storageKey);
+  // Removal: clear the mount node + reset the injection flag. Page reload also works
+  // and is the recommended clean reset; this is a best-effort soft removal.
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      document.getElementById('hermes-feedback-mount')?.remove();
+      window.__hermesFeedbackWidgetInjected = false;
+    }
+  }).catch(() => {});
+  return { ok: true, enabled: false };
+}
+
+// Auto-re-inject the feedback widget after page reloads/navigations in tabs where
+// it was toggled on. devpulse (and many dashboards) hard-reload periodically;
+// without this the widget would silently disappear and the operator would see the
+// toggle "stuck on" with no UI.
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete') return;
+  if (!isControllableUrl(tab.url)) return;
+  const storageKey = `feedback-mode:${tabId}`;
+  const { [storageKey]: on } = await chrome.storage.local.get(storageKey);
+  if (!on) return;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content-scripts/feedback-widget.js']
+    });
+  } catch (err) {
+    // Tab may have closed mid-injection or navigated to a blocked URL; non-fatal.
+  }
+});
+
+// Clean up per-tab storage when the tab closes so we don't accumulate stale keys.
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.local.remove(`feedback-mode:${tabId}`).catch(() => {});
 });
 
 // ---- Content Script Messaging ----
