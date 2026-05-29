@@ -903,6 +903,8 @@
   if (!root || window.__agentFeedbackLoaded) return;
   window.__agentFeedbackLoaded = true;
 
+  const __FB_BASE = document.getElementById("hermes-feedback-mount")?.dataset?.queueOrigin || "";
+
   const artifactPath = location.pathname;
   const storageKey = `agent-feedback:${artifactPath}`;
   const layer = root.querySelector("[data-af-layer]");
@@ -1022,7 +1024,7 @@
 
     if (message.batchId && message.status === "queued") {
       try {
-        const response = await fetch(`/api/feedback/message?batch=${encodeURIComponent(message.batchId)}&message=${encodeURIComponent(message.id)}`, {
+        const response = await fetch(`${__FB_BASE}/api/feedback/message?batch=${encodeURIComponent(message.batchId)}&message=${encodeURIComponent(message.id)}`, {
           method: "DELETE"
         });
         if (!response.ok) {
@@ -1062,7 +1064,7 @@
     for (const message of thread.messages) {
       if (message.role === "user" && message.status === "queued" && message.batchId) {
         try {
-          await fetch(`/api/feedback/message?batch=${encodeURIComponent(message.batchId)}&message=${encodeURIComponent(message.id)}`, {
+          await fetch(`${__FB_BASE}/api/feedback/message?batch=${encodeURIComponent(message.batchId)}&message=${encodeURIComponent(message.id)}`, {
             method: "DELETE"
           });
         } catch {
@@ -1083,7 +1085,7 @@
     const queuedMessages = comments.flatMap((thread) => normalizeThread(thread).messages)
       .filter((message) => message.role === "user" && message.status === "queued" && message.batchId);
     await Promise.allSettled(queuedMessages.map((message) => (
-      fetch(`/api/feedback/message?batch=${encodeURIComponent(message.batchId)}&message=${encodeURIComponent(message.id)}`, {
+      fetch(`${__FB_BASE}/api/feedback/message?batch=${encodeURIComponent(message.batchId)}&message=${encodeURIComponent(message.id)}`, {
         method: "DELETE"
       })
     )));
@@ -1157,7 +1159,7 @@
     };
 
     try {
-      const response = await fetch("/api/feedback", {
+      const response = await fetch(`${__FB_BASE}/api/feedback`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
@@ -1468,7 +1470,7 @@
       collapsePopover();
       return;
     }
-    expandPopover("ui");
+    expandPopover("agent");
   });
   popoverTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -1571,6 +1573,10 @@
     const marker = item?.marker || item?.payload?.comments?.[0];
     const markerId = item?.markerId || marker?.markerId || marker?.id;
     if (!marker || !markerId) return null;
+    // Don't resurrect threads the operator deleted (server flips item.status to
+    // "canceled" when all messages are removed). Without this guard, pollStatus /
+    // SSE rebroadcasts re-create the marker 2-3s after the trash click.
+    if (item.status === "canceled") return null;
     let thread = comments.find((entry) => {
       normalizeThread(entry);
       return entry.id === markerId
@@ -1598,7 +1604,7 @@
 
   async function pollStatus() {
     try {
-      const response = await fetch(`/api/feedback/status?artifact=${encodeURIComponent(artifactPath)}`);
+      const response = await fetch(`${__FB_BASE}/api/feedback/status?artifact=${encodeURIComponent(artifactPath)}`);
       if (!response.ok) return;
       const result = await response.json();
       if (result.latest) {
@@ -1672,7 +1678,78 @@
       showToast("Agent feedback controls shown");
     }
   });
-  window.setInterval(pollStatus, 5000);
+
+  // ---- Auto-reload trigger ----
+  // Declared BEFORE the SSE/setInterval bindings so they capture the wrapped
+  // function. Earlier ordering had setInterval(pollStatus,…) capture the
+  // ORIGINAL by reference, which bypassed the reload check on safety-net polls.
+  const reloadedKey = `${storageKey}:reloaded`;
+  const alreadyReloaded = new Set(JSON.parse(localStorage.getItem(reloadedKey) || "[]"));
+  const origPollStatus = pollStatus;
+  pollStatus = async function pollStatusWrapped() {
+    await origPollStatus.apply(this, arguments);
+    try {
+      const r = await fetch(`${__FB_BASE}/api/feedback/status?artifact=${encodeURIComponent(artifactPath)}`);
+      if (!r.ok) return;
+      const result = await r.json();
+      // Collect every pending reload first, then add ALL to the seen-set BEFORE
+      // scheduling, so a race that fires multiple pollStatus calls in quick
+      // succession doesn't schedule N reloads (only the first item triggers,
+      // the rest are pre-marked as handled).
+      const pending = (result.items || []).filter(
+        (item) => item.reload && item.status === "done" && !alreadyReloaded.has(item.id)
+      );
+      if (!pending.length) return;
+      for (const item of pending) alreadyReloaded.add(item.id);
+      localStorage.setItem(reloadedKey, JSON.stringify([...alreadyReloaded]));
+      // Reload mode escalates to "full" if ANY pending item demands it; otherwise
+      // default to "css" hot-swap (the dominant case — preserves runtime state).
+      const wantsFull = pending.some((item) => item.reloadMode === "full");
+      if (wantsFull) {
+        showToast(`Agent applied a change — reloading page…`);
+        setTimeout(() => {
+          const u = new URL(location.href);
+          u.searchParams.set("_fb_reload", Date.now().toString());
+          location.replace(u.toString());
+        }, 600);
+      } else {
+        showToast(`Agent applied a change — refreshing styles…`);
+        // CSS hot-swap: replace each <link rel="stylesheet"> with a cloned link
+        // that carries a cache-bust query param. Browser fetches fresh (different
+        // URL = cache miss), applies new rules, removes old node. No page reload,
+        // no runtime state loss, instant visible change for CSS edits.
+        setTimeout(() => {
+          const cb = Date.now().toString();
+          document.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+            if (!link.href) return;
+            const fresh = link.cloneNode();
+            const u = new URL(link.href, location.origin);
+            u.searchParams.set("_fb_cb", cb);
+            fresh.href = u.toString();
+            link.parentNode.insertBefore(fresh, link.nextSibling);
+            fresh.addEventListener("load", () => { link.remove(); }, { once: true });
+            fresh.addEventListener("error", () => { fresh.remove(); }, { once: true });
+          });
+        }, 400);
+      }
+    } catch {}
+  };
+
+  // Push channel: SSE. Replaces 5s polling. pollStatus is now the wrapped
+  // version, so both SSE-triggered calls and the safety-net interval get the
+  // reload check. EventSource auto-reconnects on disconnect.
+  const sseUrl = `${__FB_BASE}/api/feedback/events?artifact=${encodeURIComponent(artifactPath)}`;
+  let sse = null;
+  try {
+    sse = new EventSource(sseUrl);
+    sse.addEventListener("message", () => { pollStatus(); });
+    sse.addEventListener("error", () => { /* auto-reconnects */ });
+  } catch (e) {
+    window.setInterval(() => pollStatus(), 2000);
+  }
+  // Safety net via arrow-function so the *current* (wrapped) pollStatus is
+  // resolved at every tick — never the original.
+  window.setInterval(() => pollStatus(), 30_000);
 })();
 </script>
 <!-- AGENT_FEEDBACK_WIDGET_END -->

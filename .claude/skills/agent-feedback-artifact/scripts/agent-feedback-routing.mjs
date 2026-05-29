@@ -2,7 +2,7 @@ export function classifyWorkItem(item) {
   const marker = markerFor(item);
   const latest = latestUserMessage(marker) || item.latestUserMessage || "";
   const haystack = `${latest}\n${item.visibleText || ""}`.toLowerCase();
-  const styleIntent = /\b(bigger|smaller|font|typography|weight|stronger|bold|color|spacing|align|padding|margin|ui|style|layout|button|icon|copy|text)\b/i.test(haystack);
+  const styleIntent = /\b(bigger|smaller|larger|wider|narrower|taller|shorter|font|typography|weight|stronger|bold|italic|underline|cursive|color|colour|red|orange|yellow|green|blue|purple|pink|teal|cyan|magenta|brown|beige|tan|gold|silver|maroon|navy|olive|coral|salmon|lime|indigo|violet|black|white|gray|grey|dark|light|hex|rgb|hsl|spacing|align|center|centre|left|right|top|bottom|above|below|beside|near|beneath|under|padding|margin|gap|ui|style|layout|theme|button|icon|copy|text|wording|phrasing|language|cursive|hover|background|border|radius|shadow|opacity|visible|hidden|show|hide|move|reorder|sort|subtitle|tagline|caption|label|heading|header|footer|title|nav|navigation|badge|pill|chip|panel|card|modal|tooltip|notice|alert|hint|helper|placeholder|link|image|logo|brand)\b/i.test(haystack);
   const dataIntent = /\b(total|gross|taxable|tax|refund|liability|income|calculate|recalculate|dependent|derive|amount|number|incorrect|wrong)\b|₹|rs\.?/i.test(haystack);
   const explanationIntent = /\b(explain|why|what changed|reply|answer|clarify|summari[sz]e)\b/i.test(haystack);
 
@@ -22,7 +22,7 @@ export function classifyWorkItem(item) {
   // This handles cases like "Make the Refresh Data button bigger" where
   // "data" appears in a UI label but the intent is stylistic.
   if (styleIntent && dataIntent) {
-    const styleCount = (haystack.match(/\b(bigger|smaller|font|typography|weight|stronger|bold|color|spacing|align|padding|margin|ui|style|layout|button|icon|copy|text)\b/gi) || []).length;
+    const styleCount = (haystack.match(/\b(bigger|smaller|larger|wider|narrower|taller|shorter|font|typography|weight|stronger|bold|italic|underline|cursive|color|colour|red|orange|yellow|green|blue|purple|pink|teal|cyan|magenta|brown|beige|tan|gold|silver|maroon|navy|olive|coral|salmon|lime|indigo|violet|black|white|gray|grey|dark|light|hex|rgb|hsl|spacing|align|center|centre|left|right|top|bottom|above|below|beside|near|beneath|under|padding|margin|gap|ui|style|layout|theme|button|icon|copy|text|wording|phrasing|language|cursive|hover|background|border|radius|shadow|opacity|visible|hidden|show|hide|move|reorder|sort|subtitle|tagline|caption|label|heading|header|footer|title|nav|navigation|badge|pill|chip|panel|card|modal|tooltip|notice|alert|hint|helper|placeholder|link|image|logo|brand)\b/gi) || []).length;
     const dataCount = (haystack.match(/\b(total|gross|taxable|tax|refund|liability|income|calculate|recalculate|dependent|derive|amount|number|incorrect|wrong)\b|₹|rs\.?/gi) || []).length;
     if (styleCount > 0 && styleCount >= dataCount) {
       return {

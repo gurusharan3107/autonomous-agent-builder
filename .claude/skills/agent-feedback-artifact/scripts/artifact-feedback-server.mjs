@@ -23,6 +23,33 @@ if (!existsSync(queuePath)) {
   await writeJson(queuePath, []);
 }
 
+// SSE subscriber registry — keyed by artifactPath (or "*" for all). Each entry
+// is a Set of res streams. broadcastChange() writes one event-stream record to
+// every connected client whose artifact matches.
+const sseClients = new Map();
+function broadcast(artifactPath) {
+  const payload = `data: ${JSON.stringify({ event: "queue_changed", artifactPath, ts: Date.now() })}\n\n`;
+  // Semantics:
+  //   broadcast("*")          → deliver to EVERY connected client (used by fs.watch,
+  //                              which can't know which artifact actually changed)
+  //   broadcast("/specific")  → deliver to clients subscribed to "/specific" OR "*"
+  const deliverToAll = artifactPath === "*";
+  for (const [key, set] of sseClients.entries()) {
+    if (!deliverToAll && key !== "*" && key !== artifactPath) continue;
+    for (const res of set) {
+      try { res.write(payload); } catch { /* client gone — onClose will clean up */ }
+    }
+  }
+}
+
+// fs.watch on the queue file so EVERY mutation (HTTP-driven or direct write
+// from mark.mjs) results in an SSE broadcast. Watching the parent dir catches
+// atomic-rename writes (writeJson uses tmp → rename).
+import { watch as fsWatch } from "node:fs";
+fsWatch(dataDir, { persistent: false }, (_event, filename) => {
+  if (filename === "feedback-queue.json") broadcast("*");
+});
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
@@ -52,12 +79,39 @@ const server = createServer(async (req, res) => {
         queue.push(...items);
       });
       const dispatch = await notifyAgentWebhook(items, payload);
+      broadcast(payload.artifactPath || "*");
       return json(res, 202, {
         id: items[0].id,
         status: "queued",
         dispatch,
         items: items.map(summarizeItem)
       });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/feedback/events") {
+      const artifact = url.searchParams.get("artifact") || "*";
+      // Disable Nagle's so each `data: …\n\n` write reaches the client immediately.
+      // Without this, SSE delivery latency was 4–9 s in WSL2 because TCP coalesced
+      // the tiny `\n\n`-terminated record with the next packet.
+      try { req.socket.setNoDelay(true); } catch {}
+      res.writeHead(200, {
+        "content-type": "text/event-stream",
+        "cache-control": "no-store",
+        "connection": "keep-alive",
+        "x-accel-buffering": "no",
+        "access-control-allow-origin": req.headers.origin || "*"
+      });
+      res.flushHeaders?.();
+      res.write(`data: ${JSON.stringify({ event: "open", artifact, ts: Date.now() })}\n\n`);
+      // Keepalive every 25 s (well under proxy idle timeouts).
+      const ka = setInterval(() => { try { res.write(": keepalive\n\n"); } catch {} }, 25_000);
+      if (!sseClients.has(artifact)) sseClients.set(artifact, new Set());
+      sseClients.get(artifact).add(res);
+      req.on("close", () => {
+        clearInterval(ka);
+        sseClients.get(artifact)?.delete(res);
+      });
+      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/feedback/status") {
@@ -141,6 +195,7 @@ const server = createServer(async (req, res) => {
       const id = decodeURIComponent(url.pathname.replace("/api/agent/status/", ""));
       const body = await readBody(req);
       const patch = JSON.parse(body || "{}");
+      let broadcastArtifact = null;
       const result = await updateQueue((queue) => {
         const item = queue.find((entry) => entry.id === id);
         if (!item) return { code: 404, body: { error: "not_found" } };
@@ -148,13 +203,16 @@ const server = createServer(async (req, res) => {
         item.workerStatus = String(patch.workerStatus || patch.status || item.workerStatus || item.status);
         item.agentMessage = String(patch.agentMessage || item.agentMessage || "");
         if (patch.threadSummary) item.threadSummary = String(patch.threadSummary);
+        if (patch.reload) item.reload = true;
         if (["done", "blocked", "canceled"].includes(item.status)) {
           item.lastProcessedAt = new Date().toISOString();
           if (!item.threadSummary) item.threadSummary = summarizeThread(item, item.agentMessage);
         }
         item.updatedAt = new Date().toISOString();
+        broadcastArtifact = artifactPathFor(item);
         return { code: 200, body: { id: item.id, status: item.status } };
       });
+      if (broadcastArtifact !== null && result.code === 200) broadcast(broadcastArtifact || "*");
       return json(res, result.code, result.body);
     }
 
@@ -394,6 +452,9 @@ function summarizeItem(item) {
     latestUserMessage: item.latestUserMessage || latestUserMessage(marker),
     threadSummary: item.threadSummary || "",
     lastProcessedAt: item.lastProcessedAt || null,
+    reload: Boolean(item.reload),
+    reloadMode: item.reloadMode || (item.reload ? "css" : null),
+    agentMessage: item.agentMessage || "",
     ...routeSummary(item, route),
     commentCount: marker?.id ? 1 : 0,
     marker: {

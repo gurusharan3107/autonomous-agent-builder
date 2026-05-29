@@ -1,0 +1,91 @@
+{
+  "skill_name": "agent-feedback-artifact",
+  "evals": [
+    {
+      "id": 1,
+      "name": "static-artifact-roundtrip",
+      "prompt": "I have an HTML report at evals/files/sample-report.html that I want to annotate. Add the agent-feedback widget to it, serve it on port 4180, and tell me the URL to open. I should be able to click an element and type a comment that lands in a queue I can read.",
+      "expected_output": "Widget injected via add-agent-feedback.mjs; artifact-feedback-server.mjs serving on 4180; agent reports the explicit URL (NOT bare /) the operator opens; queue directory location stated.",
+      "files": ["evals/files/sample-report.html"],
+      "assertions": [
+        "Agent runs scripts/agent-feedback-preflight.mjs before injecting",
+        "Agent uses scripts/add-agent-feedback.mjs (not hand-injection) to add the widget",
+        "Agent starts scripts/artifact-feedback-server.mjs with the correct serve-root containing the HTML file",
+        "The URL reported includes the explicit filename like /sample-report.html (not bare /)",
+        "Queue path under <serve-root>/data/feedback-queue.json is stated explicitly",
+        "Agent does NOT modify any file outside the artifact + the skill's own scripts dir"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "running-app-via-hermes-chrome",
+      "prompt": "DevPulse is a managed app running at http://127.0.0.1:8765. I want to leave inline comments on its dashboard without editing the app source. Set this up for me.",
+      "expected_output": "Skill uses the running-app mode: feedback queue server up on its standard port; instructs operator to toggle Feedback Mode in the hermes-chrome extension popup; the QUEUE_ORIGIN is set to localhost (not 127.0.0.1) per the WSL2 IPv6 finding; NO files inside the devpulse workspace are edited.",
+      "files": [],
+      "assertions": [
+        "Agent does NOT edit any file under ~/Builder-Workspace/devpulse/ or any managed-app path",
+        "Agent points the operator at the hermes-chrome extension popup toggle, not at add-agent-feedback.mjs",
+        "Agent starts artifact-feedback-server.mjs (queue + API are needed even in running-app mode)",
+        "Reported queue origin uses 'localhost' (Windows-side Chrome on WSL2 IPv6 wildcard)",
+        "Agent does NOT propose CDP or proxy-injection workarounds"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "arm-wake-monitor-claude-code",
+      "prompt": "I'm in Claude Code. After you finish setting up the feedback server, I want to be notified the moment a comment arrives — no polling. Arm the wake bridge.",
+      "expected_output": "Agent calls Monitor with persistent:true and command pointing at scripts/agent-feedback-watch.mjs --root <serve-root>. Mentions backfill semantics. Does not propose interval-based polling, cron, or RemoteTrigger.",
+      "files": [],
+      "assertions": [
+        "Agent uses the Monitor tool (Claude Code wake primitive)",
+        "Monitor command invokes scripts/agent-feedback-watch.mjs with the same --root as the running server",
+        "persistent: true is set",
+        "Agent does NOT use CronCreate, setInterval, or any polling-style mechanism",
+        "Agent does NOT call PushNotification for wake (that's a user notification, not an agent wake)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "process-queued-marker-by-route",
+      "prompt": "There's a queued marker at /tmp/agent-feedback-devpulse with the comment 'make the brand text larger'. Process it.",
+      "expected_output": "Agent uses scripts/agent-feedback-next.mjs to claim, recognizes the style intent → no_worker_main_agent_direct route, applies the fix in the appropriate surface, marks the marker done via agent-feedback-mark.mjs with a brief reply. Does NOT pull full marker JSON unnecessarily for a style-route marker.",
+      "files": [],
+      "assertions": [
+        "Agent reads the queue via agent-feedback-next.mjs (NOT cat or direct JSON read)",
+        "Agent recognizes style intent → no_worker_main_agent_direct route from the wake summary alone",
+        "Agent does NOT call agent-feedback-details.mjs for a style-route marker (context-efficient)",
+        "Agent marks the marker via agent-feedback-mark.mjs done with a non-empty reply",
+        "Agent passes --reload (CSS hot-swap) since the fix is a CSS color/font change",
+        "Agent does NOT pass --reload-full for a style-only change (would force unnecessary page reload)",
+        "Agent does NOT poll the queue after marking (the next wake will arrive via Monitor)"
+      ]
+    },
+    {
+      "id": 4.5,
+      "name": "choose-reload-tier-html-vs-css",
+      "prompt": "Two queued markers: 'add a footer with copyright text' (HTML/template change) and 'make the footer text dim' (CSS change). Process both.",
+      "expected_output": "Agent edits the HTML template for marker 1 and the stylesheet for marker 2. Marks marker 1 with --reload-full (HTML change needs full page reload to render new DOM) and marker 2 with --reload (CSS hot-swap suffices). Bonus: batches both into one turn.",
+      "files": [],
+      "assertions": [
+        "Marker 1 (HTML/template edit) marked done with --reload-full",
+        "Marker 2 (CSS-only edit) marked done with --reload (NOT --reload-full)",
+        "Both markers processed within a single conversation turn (batching)",
+        "Agent does NOT use --reload-full for the CSS-only marker (would lose runtime state unnecessarily)"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "closeout-leaves-clean-state",
+      "prompt": "We're done. Clean everything up so my system is back to its starting state.",
+      "expected_output": "Agent stops the Monitor task (TaskStop), stops the server, runs agent-feedback-closeout.mjs, and for a static-artifact session optionally removes the widget via remove-agent-feedback.mjs. No leftover background processes, no orphan tabs.",
+      "files": [],
+      "assertions": [
+        "Agent stops the Monitor handle (TaskStop)",
+        "Agent stops the artifact-feedback-server.mjs process",
+        "Agent runs scripts/agent-feedback-closeout.mjs",
+        "If a static artifact was injected, agent runs remove-agent-feedback.mjs",
+        "Final state: no listening processes on the skill's port; no leftover Monitor"
+      ]
+    }
+  ]
+}

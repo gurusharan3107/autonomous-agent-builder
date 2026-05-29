@@ -71,6 +71,12 @@ const report = {
   cleanupCommands: {
     removeCapability: `node ${resolve(import.meta.dirname, "remove-agent-feedback.mjs")} ${target}`,
     clearLocalQueue: `node ${resolve(import.meta.dirname, "agent-feedback-closeout.mjs")} ${target} --port ${port} --clear-local-queue`
+  },
+  agentReminders: {
+    taskStopMonitor: "If you armed a Monitor on agent-feedback-watch.mjs during step 4 of the operating sequence, call TaskStop on that handle now. The closeout report cannot end the Monitor itself — only the agent that owns the task ID can.",
+    stopServer: serverListening
+      ? `Server still listening on port ${port}. Identify the PID with 'lsof -nP -iTCP:${port} -sTCP:LISTEN' and stop it (or kill the background task that started it). Closeout does not auto-kill processes it didn't start.`
+      : null
   }
 };
 
