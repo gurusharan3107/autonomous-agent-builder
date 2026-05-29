@@ -162,11 +162,34 @@ print(f'builder CLI: {len(items)} item(s) — OK')
 
 **Submit operator instruction. Observe session behavior. Verify side-effects.**
 
-### 4a. Submit instruction via dashboard (webwright)
+### 4a. Submit instruction via dashboard (hermes-chrome — MANDATORY driver)
 
-Navigate to `http://localhost:9876` (Agent page). Type the operator instruction
-appropriate to what was changed. Click Send. Wait for session to complete or
-reach a question/approval state.
+All dashboard checking and triggering goes through the **hermes-chrome** bridge —
+the agent drives the real browser with a visible cursor, exactly as an operator
+would. Do NOT use webwright/Playwright/curl to *trigger* UI actions; curl is for
+*observing* state only (4b–4e).
+
+```bash
+# Preflight FIRST — abort E2E if not READY (BLOCKED prints surface+fix).
+python3 .claude/plugin/hermes_chrome/scripts/diagnose.py
+```
+
+Then drive via the bridge socket (`~/.hermes/run/chrome-bridge.sock`), action
+protocol `{"type":"run","useSelectedTab":true,"actions":[...]}`:
+
+```python
+# goto Agent page → fill the instruction textarea → click "Send agent instruction"
+seq([{"type":"goto","url":"http://localhost:9876/"}])
+seq([{"type":"click_text","text":"Agent"},{"type":"wait","ms":1000}])
+seq([{"type":"fill_selector","selector":"textarea","value":"<operator instruction>"}])
+seq([{"type":"click_text","text":"Send agent instruction"},{"type":"wait","ms":1500}])
+# Confirm send fired: textarea cleared.
+ev("document.querySelector('textarea')?.value")  # → ""
+```
+
+The active thread is bound in the URL (`?mode=chat&session=<id>`) — read it with
+`ev("location.href")` to get the session id for 4b. A `New thread` click starts a
+fresh session if you must isolate from prior conversation.
 
 ### 4b. Observe session
 
@@ -220,7 +243,8 @@ AAB_API_URL=http://localhost:9876 builder backlog item list --json 2>&1 | python
 import sys,json
 from collections import Counter
 d=json.load(sys.stdin)
-items = d.get('data', d if isinstance(d,list) else d.get('items',[]))
+assert d.get('ok'), d.get('error')          # ALWAYS check ok first
+items = d.get('data', [])                    # backlog → 'data' key
 titles = [x.get('title','') for x in items]
 dupes = {t:c for t,c in Counter(titles).items() if c>1}
 if dupes:
@@ -229,6 +253,52 @@ else:
     print(f'No duplicates — {len(items)} item(s) — OK')
 "
 ```
+
+### 4e. Dashboard surface sweep (hermes-chrome) + builder CLI observability cross-check
+
+Sweep EVERY operator surface via the bridge, then cross-check with the CLI. A
+change verified only on the touched surface is unverified (goal/ Hard Rule 9).
+
+```python
+# hermes-chrome: visit each surface, scrape headline state, flag render-error words
+for nav in ["Backlog","Board","Metrics","Observability"]:
+    seq([{"type":"click_text","text":nav},{"type":"wait","ms":1500}])
+    # assert the new item shows on Backlog; assert no 'undefined/NaN/null' render bleaks
+```
+
+```bash
+# builder CLI observability — RUN FROM THE GENERATED-APP WORKSPACE, not the source repo.
+# logs/analyze are workspace-local (source repo → project_not_initialized / logs_unavailable).
+# metrics show / backlog route via AAB_API_URL and work anywhere.
+WS=/home/gurusharangupta/Builder-Workspace/devpulse
+export AAB_API_URL=http://localhost:9876
+
+# Runtime/tool errors — result is under 'results' with a 'count' (NOT 'data').
+( cd "$WS" && builder logs --error --json --limit 12 ) | python3 -c "
+import sys,json; d=json.load(sys.stdin); assert d.get('ok'), d.get('error')
+print('runtime/tool errors:', d.get('count', len(d.get('results',[]))))
+for e in d.get('results',[])[:12]:
+    print('  -',e.get('event_type'),'|',e.get('tool_name'),'|',e.get('summary'))
+"
+# Must reconcile with the Observability 'Runtime Error Trend' card count.
+
+# Per-session telemetry — fields are TOP-LEVEL (NOT under 'data').
+( cd "$WS" && builder logs analyze --session <id> --json ) | python3 -c "
+import sys,json; d=json.load(sys.stdin); assert d.get('ok'), d.get('error')
+print('recommended_next_change:', d.get('recommended_next_change'))   # want maintain_current_flow
+print('avoidable_token_estimate:', d.get('avoidable_token_estimate'), '| cost:', d.get('total_cost_usd'))
+"
+
+# Project cost/cache — 'metrics show' (NOT bare 'metrics'); data under 'data'.
+builder metrics show --json | python3 -c "
+import sys,json; d=json.load(sys.stdin); assert d.get('ok'); s=d['data']['optimization_summary']
+print('cache_ratio:', s['cache_ratio'], '| avoidable_cost_flags:', s['avoidable_cost_flags'])
+"
+```
+
+**Reconcile dashboard vs CLI.** The Observability error-trend count MUST equal
+`builder logs --error` `count`. If they differ, that is a real finding — but
+first re-check your JSON parsing (see Gotchas: CLI result keys vary per command).
 
 **Phase 4 artifact**: session JSON (turns, stop_reason, cost) + event type counts + duplicate check result.
 
