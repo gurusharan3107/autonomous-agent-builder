@@ -38,7 +38,7 @@ locations Chrome and native-host actually read from:
 | Popup | `extension/popup.{html,js}` | (same) | Status panel + Feedback Mode toggle |
 | Native host | `native/native_host.py` | `~/.hermes/chrome-bridge/native/native_host.py` | Stdio ↔ AF_UNIX bridge; always runs in WSL |
 | Tool (agent-callable) | `tools.py` | `~/.claude/plugin/hermes_chrome/tools.py` (synced via sync.sh) | Connects to AF_UNIX socket; exposed to agent harness |
-| Preflight | `scripts/preflight.sh` | `~/.claude/plugin/hermes_chrome/scripts/preflight.sh` | Bring bridge to steady state |
+| Preflight | `scripts/preflight.sh` | `.claude/plugin/hermes_chrome/scripts/preflight.sh` | Bring bridge to steady state |
 | Diagnose | `scripts/diagnose.py` | (synced) | JSON health probe used by preflight |
 | Sync | `scripts/sync.sh` | (not deployed; run from repo) | Deploys everything above + reloads via socket |
 
@@ -128,7 +128,7 @@ locations Chrome and native-host actually read from:
 
 ### "Action returns 'Content script did not respond after injection'"
 
-1. `bash ~/.claude/plugin/hermes_chrome/scripts/preflight.sh` — must exit 0.
+1. `bash .claude/plugin/hermes_chrome/scripts/preflight.sh` — must exit 0.
 2. If preflight prints `⚠ Content script blocked on active tab`, the active tab is `chrome://` or an error page. Use `useSelectedTab: False` with a `goto` to a real URL.
 3. If preflight is clean but action still fails → **stale content script** from a recent extension reload. Reload the affected tab (any URL change works) and retry.
 4. If a tab reload doesn't fix it → there might be a CSP conflict from another installed extension. Check DevTools console for CSP violations.

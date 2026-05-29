@@ -293,8 +293,7 @@ def bridge_call(payload, timeout=45):
         return bridge(payload)
     except OSError:
         result = subprocess.run(
-            ["bash", os.path.expanduser(
-                "~/.claude/plugin/hermes_chrome/scripts/preflight.sh")],
+            ["bash", ".claude/plugin/hermes_chrome/scripts/preflight.sh"],
             capture_output=True, text=True
         )
         if result.returncode != 0:

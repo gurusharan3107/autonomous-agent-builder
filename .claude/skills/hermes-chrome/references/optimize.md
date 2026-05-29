@@ -141,7 +141,7 @@ def bridge_call(payload, timeout=45):
     except OSError:
         result = subprocess.run(
             ["bash", os.path.expanduser(
-                "~/.claude/plugin/hermes_chrome/scripts/preflight.sh")],
+                ".claude/plugin/hermes_chrome/scripts/preflight.sh")],
             capture_output=True, text=True
         )
         if result.returncode != 0:
@@ -283,7 +283,7 @@ patch skill prose to work around a code bug.
 ### Step 1 — run the self-healing preflight first
 
 ```bash
-bash ~/.claude/plugin/hermes_chrome/scripts/preflight.sh
+bash .claude/plugin/hermes_chrome/scripts/preflight.sh
 ```
 
 This auto-fixes file deployment drift, stale sockets, and idle service workers.
@@ -294,7 +294,7 @@ still fail (a content-script / page-state problem, not a setup problem).
 
 For raw check output without auto-fix:
 ```bash
-python3 ~/.claude/plugin/hermes_chrome/scripts/diagnose.py --json
+python3 .claude/plugin/hermes_chrome/scripts/diagnose.py --json
 ```
 
 ### Step 2 — is the socket alive? (manual, if diagnose was READY)
