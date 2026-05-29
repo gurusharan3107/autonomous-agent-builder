@@ -51,3 +51,11 @@ session-report-*.html
 # Skill evaluation workspaces (per-iteration TSVs, grading.json, response.md,
 # benchmark.md, review.html). Ephemeral evaluation evidence, never committed.
 .claude/skills/*-workspace/
+
+# Transient runtime + scratch artifacts (machine-local, never committed)
+.claude/scheduled_tasks.lock
+outputs/
+__pycache__/
+*.pyc
+# Windows ADS sidecar files created under WSL
+*Zone.Identifier

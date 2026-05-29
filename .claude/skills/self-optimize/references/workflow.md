@@ -24,6 +24,10 @@ If no `last-run.json` exists, this is the first run — skip comparison, note in
 
 ## Step 1 — Collect
 
+Pick the lane (see SKILL.md "Two query shapes"). `--filter-pattern` / `--project-filter` is the first narrowing lever in both — scope to the project key substring before widening.
+
+### Lane A — operator-correction clustering (default)
+
 ```bash
 WINDOW="<operator-chosen: 7d|14d|30d>"
 FILTER="autonomous-agent-builder-codex"   # project key substring
@@ -41,6 +45,23 @@ fi
 ```
 
 If the filter produces no results, retry without `--filter-pattern` and note in the report that all projects were included.
+
+**Do NOT `cat /tmp/self-optimize-session.json`** — it is a ~900KB / ~236K-token token/cache-metrics aggregate. `cluster.py` reads only `recent_prompts` from it. Inspect with `python3 -c "import json;print(list(json.load(open('/tmp/self-optimize-session.json')).keys()))"` if you must.
+
+### Lane B — agent-failure mining (content-targeted asks)
+
+For "where did the agent hit `<failure X>`". Reads transcripts directly — does not touch the aggregate.
+
+```bash
+WINDOW="<operator-chosen>"
+python3 .claude/skills/self-optimize/scripts/mine_sessions.py \
+  --preset browser_testing --since "$WINDOW" \
+  --project-filter code-autonomous-agent-builder --limit 25
+# Arbitrary pattern: --pattern "rollback|session is closed"  (precise phrases, not bare keywords)
+# Tool-result errors only: add --errors-only
+```
+
+Output JSON IS the result — deduped, top-N-capped findings + `project_counts_top10`. Skip Step 2's clustering for this lane; go straight to Step 3 (Map). Add a `browser_testing`-style entry to `PRESETS` in `mine_sessions.py` when a new failure family recurs.
 
 ## Step 2 — Cluster
 

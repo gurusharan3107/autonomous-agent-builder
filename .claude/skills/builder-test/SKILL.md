@@ -48,9 +48,12 @@ Source repo: the autonomous-agent-builder source checked out here.
    tool registry, prompt content). Per-function verdict.
 4. **INTEGRATION** — REST API smoke tests; builder CLI round-trips. Abort
    E2E if any endpoint unreachable.
-5. **E2E** — submit operator instruction via dashboard; observe session
-   (turns, tool calls, dispatch reached, output type); verify side-effects
-   (backlog item, no duplicates, status correct).
+5. **E2E** — drive the dashboard via **hermes-chrome** (preflight `diagnose`
+   first; agent types the operator instruction + clicks Send with a visible
+   cursor); observe session (turns, tool calls, dispatch reached, output type);
+   sweep EVERY surface (Backlog/Board/Metrics/Observability) via the bridge;
+   verify side-effects (backlog item, no duplicates, status correct); cross-check
+   issues with builder CLI logs/analyze/metrics **from the app workspace**.
 6. **VERDICT** — PASS/WARN/FAIL table per phase with cited evidence. For each
    FAIL: diagnose root cause, apply surgical fix where the issue lives
    (builder source, test data, or skill procedure), re-run the affected phase
@@ -71,6 +74,11 @@ See `reference/assertions.md` for the assertion catalog and known bad patterns.
   across a YAML line break.
 - **NEVER skip Phase 0.** Health check gates everything — a builder on the
   wrong port or wrong workspace makes all other phases meaningless.
+- **hermes-chrome is the E2E driver — checking AND triggering go through it.**
+  The agent drives the real browser (visible cursor) for every UI action, like
+  an operator: submit the instruction, navigate, sweep all surfaces. Run
+  `python3 .claude/plugin/hermes_chrome/scripts/diagnose.py` first; abort E2E if
+  not READY. `curl`/REST is for *observing* state only, never for triggering UI.
 - **Assert output TYPE, not content.** Check "was AskUserQuestion emitted?"
   not the exact question text. Content assertions break on any prompt
   wording change.
@@ -94,6 +102,24 @@ See `reference/assertions.md` for the assertion catalog and known bad patterns.
 
 ## Gotchas
 
+- **builder CLI JSON result keys VARY PER COMMAND — always check `ok` first,
+  then the command-specific key. Never assume `data`.** A naive `d.get("data")`
+  / `d.get("items")` silently returns `None`/`[]` and looks like "0 results" or
+  "command returned nothing" — a false alarm, not a product bug. Confirmed
+  shapes: `backlog item list` → `data: [...]`; `logs --error` → `results: [...]`
+  + `count: N`; `logs analyze` → fields at **top level** (no wrapper, e.g.
+  `recommended_next_change`, `total_cost_usd`); `metrics show` → `data: {...}`.
+  When a value looks empty/missing, re-check the key and `ok`/`error` BEFORE
+  concluding anything is broken.
+- **`builder logs` / `logs analyze` are workspace-local — run them from the
+  generated-app workspace**, not the source repo (source repo returns
+  `project_not_initialized` / `logs_unavailable`). `metrics show` and `backlog`
+  route via `AAB_API_URL` and work from any cwd.
+- **Dashboard labels backlog items "IMPROVEMENT" / "PLANNED IMPROVEMENTS" even
+  when `type=feature`.** All current devpulse items are `type=feature` but render
+  under the Improvements view. Treat the type from REST/CLI as truth; the badge
+  is an operator-facing grouping, not the stored type. Don't flag this as a
+  data bug without inspecting the badge-rendering component.
 - Builder runs from `/home/gurusharangupta/Builder-Workspace/devpulse`, NOT
   from the source repo. Starting it from the wrong directory returns
   `{"error": "No .agent-builder/ directory found"}` on health — looks like
