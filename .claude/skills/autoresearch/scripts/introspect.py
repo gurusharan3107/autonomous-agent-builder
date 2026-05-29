@@ -137,17 +137,55 @@ def analyze_discard_reasons(iterations: list[dict]) -> Counter:
     return reasons
 
 
+def _per_gate_bools(iteration: dict) -> list[bool] | None:
+    """Extract the 6 per-gate booleans from an iteration record, or None when
+    the record only carries the aggregate ``gates_passed`` string.
+
+    The runner persists per-gate booleans as ``gates_json`` (a JSON object
+    keyed by the full gate name) on each ``optimize_results.tsv`` row. Older
+    rows predate that column and only have ``gates``/``gates_passed`` as a
+    ``"N/6"`` string — there is no way to recover per-gate signal from that, so
+    return None and let the caller mark utility unmeasurable."""
+    raw = iteration.get("gates_json")
+    if isinstance(raw, str) and raw.strip():
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            raw = None
+    if isinstance(raw, dict) and raw:
+        return [bool(v) for v in raw.values()]
+    if isinstance(raw, list) and len(raw) == len(GATE_NAMES):
+        return [bool(v) for v in raw]
+    gates = iteration.get("gates")
+    if isinstance(gates, list) and len(gates) == len(GATE_NAMES):
+        return [bool(v) for v in gates]
+    return None  # only the "N/6" aggregate is available
+
+
 def analyze_gate_utility(iterations: list[dict]) -> dict:
     """Which hard gates actually discriminate? A gate that always passes (or
-    always fails) isn't gating anything; it's noise in the verdict logic."""
-    out: dict[str, dict] = {}
+    always fails) isn't gating anything; it's noise in the verdict logic.
+
+    Per-gate discrimination is only computable when per-gate booleans are
+    persisted (``gates_json``). When every iteration carries only the ``N/6``
+    aggregate, utility is *unmeasurable* — we must say so rather than report a
+    spurious ``discriminating: false`` (which an n<measurable run would emit for
+    every gate purely from absence of data)."""
+    per_gate = [b for b in (_per_gate_bools(i) for i in iterations) if b is not None]
+    measurable = len(per_gate) > 0
+    out: dict[str, Any] = {"_measurable": measurable, "_measured_n": len(per_gate)}
     for idx, name in enumerate(GATE_NAMES):
-        pass_count = sum(1 for i in iterations if (i.get("gates") or [False] * 6)[idx])
-        fail_count = len(iterations) - pass_count
+        if measurable:
+            pass_count = sum(1 for bools in per_gate if bools[idx])
+            fail_count = len(per_gate) - pass_count
+            discriminating = fail_count > 0 and pass_count > 0
+        else:
+            pass_count = fail_count = 0
+            discriminating = None  # unknown, not False
         out[name] = {
             "pass": pass_count,
             "fail": fail_count,
-            "discriminating": fail_count > 0 and pass_count > 0,
+            "discriminating": discriminating,
         }
     return out
 
@@ -382,14 +420,22 @@ def analyze_idea_velocity(ideas_md: pathlib.Path) -> dict:
     if not ideas_md.exists():
         return {"applicable": False}
     text = ideas_md.read_text()
-    # Loose parse: each top-level numbered list item is an idea
-    idea_blocks = re.findall(r"(?m)^\s*\d+\.\s+\*\*[\w\-]+\*\*", text)
-    attempted = len(re.findall(r"(?i)>\s*attempted:", text))
+    # Current format: each idea is an H2 header `## N. Title`; attempts are
+    # recorded as `- Attempted YYYY-MM-DD ...` lines under that idea's
+    # `- **Attempts**:` block. Split on the H2 idea headers and count how many
+    # idea blocks contain at least one attempt line (an idea with 3 attempt
+    # rows is still one attempted idea, not three).
+    idea_blocks = re.split(r"(?m)^##\s+\d+\.\s+", text)[1:]  # drop preamble
+    attempted = sum(
+        1 for block in idea_blocks
+        if re.search(r"(?im)^\s*-\s*Attempted\b", block)
+    )
+    total = len(idea_blocks)
     return {
         "applicable": True,
-        "total_ideas": len(idea_blocks),
+        "total_ideas": total,
         "attempted": attempted,
-        "remaining": max(len(idea_blocks) - attempted, 0),
+        "remaining": max(total - attempted, 0),
     }
 
 
@@ -497,10 +543,16 @@ def build_recommendations(findings: dict) -> list[str]:
                 "Keep going with current idea categories."
             )
 
-    # Gate utility signal — gates that never fire are dead code
-    non_discriminating = [name for name, stats in gates.items() if not stats["discriminating"]]
-    if non_discriminating and verdict["total"] >= 10:
-        all_pass = [g for g in non_discriminating if gates[g]["fail"] == 0]
+    # Gate utility signal — gates that never fire are dead code. Only assessable
+    # when per-gate booleans are persisted (gates.get("_measurable")) AND there
+    # are enough iterations to trust the signal; below that we say nothing rather
+    # than flag every gate from absence of data.
+    gate_stats = {n: s for n, s in gates.items() if not n.startswith("_")}
+    non_discriminating = [
+        name for name, stats in gate_stats.items() if stats["discriminating"] is False
+    ]
+    if gates.get("_measurable") and non_discriminating and verdict["total"] >= 10:
+        all_pass = [g for g in non_discriminating if gate_stats[g]["fail"] == 0]
         if all_pass:
             recs.append(
                 f"**Hard gates `{', '.join(all_pass)}` never failed across {verdict['total']} "
@@ -643,12 +695,30 @@ def render_report(findings: dict, recommendations: list[str]) -> str:
 
     lines += ["## 5. What's redundant", ""]
     redundancy = []
-    non_disc = [name for name, stats in gates.items() if not stats["discriminating"]]
-    if non_disc:
+    gate_stats = {n: s for n, s in gates.items() if not n.startswith("_")}
+    GATE_MEASURE_MIN_N = 10
+    if not gates.get("_measurable"):
         redundancy.append(
-            f"- **Hard gates {', '.join(f'`{n}`' for n in non_disc)} never discriminated** "
-            "(always pass or always fail). Worth tightening or removing."
+            "- **Gate discrimination not measurable** — per-gate booleans aren't "
+            "persisted on `optimize_results.tsv` (only the `N/6` aggregate). The "
+            "runner now writes a `gates_json` column; discrimination becomes "
+            "assessable once iterations accumulate rows carrying it. *Do not prune "
+            "gates until then — absence of data is not evidence a gate is dead.*"
         )
+    elif verdict["total"] < GATE_MEASURE_MIN_N:
+        redundancy.append(
+            f"- **Too few iterations ({verdict['total']}/{GATE_MEASURE_MIN_N}) to "
+            "assess gate discrimination.** Per-gate signal is recorded but not yet "
+            "statistically meaningful."
+        )
+    else:
+        non_disc = [n for n, s in gate_stats.items() if s["discriminating"] is False]
+        if non_disc:
+            redundancy.append(
+                f"- **Hard gates {', '.join(f'`{n}`' for n in non_disc)} never discriminated** "
+                f"across {verdict['total']} iterations (always pass or always fail). "
+                "Worth tightening or removing."
+            )
     redundant_pairs = fixtures.get("redundant_pairs") or []
     if redundant_pairs:
         redundancy.append(
@@ -745,12 +815,40 @@ def analyze_discard_reasons_table(reasons: Counter, total_discarded: int) -> lis
     return rows
 
 
+def _iter_from_optimize_row(r: dict) -> dict:
+    """Project an `optimize_results.tsv` row onto the iteration shape the
+    verdict/gate/compound analyses expect. The TSV is the authoritative ledger
+    (the runner appends one row per completed iteration); `iterations.json` is a
+    derived render artifact that can lag it."""
+    def _num(key: str) -> float:
+        try:
+            return float(r.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+    return {
+        "verdict": (r.get("decision") or "").strip().lower() or "unknown",
+        "composite": int(_num("composite")),
+        "delta_pct": _num("composite_delta_pct"),
+        "gates_passed": r.get("gates_passed") or "",
+        "gates_json": r.get("gates_json") or "",
+        "ref": (r.get("idea_ref") or "").strip(),
+        "reason": (r.get("notes") or "").strip(),
+    }
+
+
 def main() -> int:
     args = parse_args()
     iterations = load_json(ITERATIONS_JSON, {}).get("iterations") or []
     optimize_rows = load_tsv(OPTIMIZE_TSV)
     per_prompt = load_tsv(PROMPTS_TSV)
     baseline = load_json(ITERATIONS_JSON, {}).get("baseline") or {}
+
+    # Single source of truth: when the rendered iterations.json is empty or has
+    # fewer rows than the authoritative optimize_results.tsv ledger, derive the
+    # iteration list from the TSV so verdict/gate/ROI counts can't contradict
+    # the token-economics section (which already reads the TSV).
+    if len(iterations) < len(optimize_rows):
+        iterations = [_iter_from_optimize_row(r) for r in optimize_rows]
 
     findings = {
         "verdict_distribution": analyze_verdict_distribution(iterations),

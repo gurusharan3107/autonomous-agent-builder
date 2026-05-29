@@ -578,7 +578,7 @@ SESSION_HEADERS = [
     "chunk_pressure_risk", "avoidable_cost_flags", "gate_pass_rate",
     "feature_correct", "wallclock_s", "operator_turns",
     "composite", "composite_delta_pct", "gates_passed",
-    "decision", "notes",
+    "decision", "notes", "gates_json",
 ]
 
 PROMPT_HEADERS = [
@@ -595,6 +595,7 @@ def append_session_row(
     analyze: dict, metrics: dict, gates_passed: str, composite: int,
     wallclock_s: float, feature_correct: bool, decision_status: str,
     idea_ref: str = "", diff_stats: dict | None = None,
+    gates_detail: dict | None = None,
 ) -> None:
     opt = (metrics.get("optimization_summary") or metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     chunk = opt.get("chunk_pressure") or {}
@@ -623,6 +624,10 @@ def append_session_row(
         gates_passed,
         "",  # decision — patched by compare.py
         f"sha={git_main_sha()} status={decision_status}",
+        # Per-gate booleans (gate-name → bool). Persisted so introspect.py can
+        # measure which hard gates actually discriminate; the N/6 aggregate
+        # alone cannot answer that. Empty {} on older callers → unmeasurable.
+        json.dumps(gates_detail or {}),
     ]
     write_tsv_row(tsv_path, SESSION_HEADERS, row)
 
@@ -919,7 +924,7 @@ def main() -> int:
     # (mirrors evaluate_hard_gates P12 fix).
     opt = (metrics.get("optimization_summary") or metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     composite = int(opt.get("noncached_plus_output_tokens") or 0)
-    gates_str, _ = evaluate_hard_gates(analyze, metrics, board, feature_correct, decision_status == "shipped")
+    gates_str, gates_detail = evaluate_hard_gates(analyze, metrics, board, feature_correct, decision_status == "shipped")
 
     tsv_path = tsv_root / ("baseline_runs.tsv" if args.baseline else "optimize_results.tsv")
     # Idea ref is parsed out of the branch name when this run is an iteration
@@ -934,7 +939,7 @@ def main() -> int:
         tsv_path=tsv_path, run_id=run_id, fixture_id=args.fixture, branch=args.branch,
         analyze=analyze, metrics=metrics, gates_passed=gates_str, composite=composite,
         wallclock_s=wallclock_s, feature_correct=feature_correct, decision_status=decision_status,
-        idea_ref=idea_ref, diff_stats=diff_stats,
+        idea_ref=idea_ref, diff_stats=diff_stats, gates_detail=gates_detail,
     )
     append_prompt_rows(
         tsv_path=tsv_root / "per_prompt_results.tsv",

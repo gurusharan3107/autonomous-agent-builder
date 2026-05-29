@@ -362,7 +362,10 @@ async def get_project_info(workspace_path: str) -> dict:
     elif (wp / "pyproject.toml").exists():
         info["name"] = wp.name
 
-    return {"content": [{"type": "text", "text": json.dumps(info, indent=2)}]}
+    # Compact separators: this tool result is reinjected into agent context on
+    # subsequent turns until compaction, so pretty-print whitespace is paid
+    # repeatedly in non-cached tokens. ~51% fewer tokens, identical data.
+    return {"content": [{"type": "text", "text": json.dumps(info, separators=(",", ":"))}]}
 
 
 # Registry of all workspace tools — used by the MCP server builder

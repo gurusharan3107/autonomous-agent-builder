@@ -14,7 +14,8 @@ Order roughly by expected impact / cost — agent reads top-down.
 - **Hypothesis**: Move all stable Builder runtime guidance (CLAUDE.md content, agent role, tool list) into the first prompt block, separated from per-turn variable context. Should raise `cache_ratio` and lower `noncached_plus_output_tokens`.
 - **SDK basis**: Claude Agent SDK prompt caching — cache hits are prefix-bound; any per-turn variation in the prefix kills caching.
 - **Files**: `agents/execution_policy.py`, agent route prompt assembly.
-- **Attempts**: none.
+- **Attempts**:
+  - Attempted 2026-05-29 (static source review, no loop run) result:skip — **already implemented.** `agents/runner_options.py:80` sets `system_prompt={type:preset, preset:claude_code, exclude_dynamic_sections:True}` (G2) + `setting_sources:["project"]`. The dynamic preset sections (timestamp/git status) are already excluded and CLAUDE.md loads via project setting source, so the system prefix is cache-stable by construction. No iteration needed. The real non-cached cost is **per-turn injected context** (board/observability/KB/phase) in the user turn — see ideas #2/#5/#7/#9, now the priority lane.
 
 ---
 

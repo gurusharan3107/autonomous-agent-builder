@@ -205,6 +205,9 @@ def group_iterations(rows: list[dict], baseline: dict) -> list[dict]:
             "delta_pct": delta_pct,
             "delta_sigma": delta_sigma,
             "gates": f"{gates_passed_count(primary)}/6",
+            # Per-gate booleans (JSON string) so introspect.py can measure gate
+            # discrimination; "" for rows that predate the gates_json column.
+            "gates_json": primary.get("gates_json") or "",
         })
     return out
 

@@ -221,7 +221,10 @@ def _general_chat_prompt(
         )
     if not documentation_context:
         return prompt
-    context_json = json.dumps(documentation_context, indent=2, sort_keys=True)
+    # Compact separators: injected into the chat turn (non-cached) on every
+    # KB-routed turn, so indentation whitespace is paid per turn. ~33% fewer
+    # tokens, identical data. sort_keys kept for deterministic ordering.
+    context_json = json.dumps(documentation_context, separators=(",", ":"), sort_keys=True)
     return (
         f"{prompt}\n\n"
         "Documentation routing is active for this turn.\n"

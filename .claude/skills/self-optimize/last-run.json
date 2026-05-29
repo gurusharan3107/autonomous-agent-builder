@@ -1,0 +1,76 @@
+{
+  "date": "2026-05-29",
+  "window": "30d (full history May 20-29)",
+  "lane": "intent-categorization + correction-clustering",
+  "total_prompts_analyzed": 1049,
+  "themes": [
+    {
+      "name": "exercise-authority",
+      "edit_applied": true,
+      "surface": "~/.claude/CLAUDE.md \u00a7Rules",
+      "edit_type": "add-rule"
+    },
+    {
+      "name": "proactive-momentum",
+      "edit_applied": true,
+      "surface": "~/.claude/CLAUDE.md \u00a7Rules",
+      "edit_type": "add-rule"
+    },
+    {
+      "name": "validate-before-done",
+      "edit_applied": true,
+      "surface": "~/.claude/CLAUDE.md \u00a7Rules",
+      "edit_type": "strengthen-rule"
+    },
+    {
+      "name": "autoresearch",
+      "edit_applied": false,
+      "note": "app-direction, not a correction"
+    },
+    {
+      "name": "autonomy-self-direction",
+      "edit_applied": false,
+      "note": "app-direction (north star), lives in docs/goal"
+    },
+    {
+      "name": "runtime-sdk-dual",
+      "edit_applied": false,
+      "note": "app-direction"
+    },
+    {
+      "name": "dashboard-browser-lifecycle",
+      "edit_applied": false,
+      "note": "app-direction"
+    },
+    {
+      "name": "test-discipline",
+      "edit_applied": false,
+      "note": "already encoded in memory"
+    },
+    {
+      "name": "surface-routing",
+      "edit_applied": false,
+      "note": "already encoded in memory"
+    },
+    {
+      "name": "commit-discipline",
+      "edit_applied": false,
+      "note": "already encoded in memory"
+    },
+    {
+      "name": "docs-concision",
+      "edit_applied": false,
+      "note": "already encoded (memory + global CLAUDE.md)"
+    },
+    {
+      "name": "root-cause-not-symptom",
+      "edit_applied": false,
+      "note": "already encoded in memory"
+    },
+    {
+      "name": "managed-app-boundary",
+      "edit_applied": false,
+      "note": "already encoded in memory"
+    }
+  ]
+}

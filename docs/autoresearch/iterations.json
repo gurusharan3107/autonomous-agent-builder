@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-26T10:01:36Z",
+  "generated_at": "2026-05-29T07:10:33Z",
   "baseline": {
-    "measured_at": "2026-05-26",
+    "measured_at": "2026-05-29",
     "mean": 29859,
     "stdev": 7628.344414091435,
     "noise_floor_2sigma": 14602.31117181713,
@@ -131,7 +131,8 @@
       "composite": 30594,
       "delta_pct": 2.46,
       "delta_sigma": 0.1,
-      "gates": "6/6"
+      "gates": "6/6",
+      "gates_json": "{\"cache_ratio_gt_5x_after_turn_2\": true, \"chunk_pressure_risk_false\": true, \"avoidable_cost_flags_empty\": true, \"gate_pass_rate_full\": true, \"feature_correct\": true, \"fully_shipped\": true}"
     }
   ]
 }

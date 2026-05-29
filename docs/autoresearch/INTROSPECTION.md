@@ -1,6 +1,6 @@
 # Autoresearch loop introspection
 
-*Generated 2026-05-26T09:58:26Z by `.claude/skills/autoresearch/scripts/introspect.py`. Overwritten each close-out — `git log` for history.*
+*Generated 2026-05-29T06:57:00Z by `.claude/skills/autoresearch/scripts/introspect.py`. Overwritten each close-out — `git log` for history.*
 
 ## 1. Token economics — where do tokens go?
 
@@ -20,16 +20,16 @@ Top agents by cumulative cost (the ones to target with lean ideas first):
 
 ## 3. What worked
 
-No iterations recorded yet. This report becomes meaningful after the first iteration
-lands a row in `optimize_results.tsv`. Re-run `introspect.py` after iteration #1.
+- **0/1 iterations kept** (0% keep rate).
 
 ## 4. What didn't
 
-- No discarded iterations yet.
+- **1 discarded** iterations grouped by reason:
+  - `no_reason_recorded`: 1
 
 ## 5. What's redundant
 
-- **Hard gates `cache`, `chunk`, `avoid`, `rate`, `build`, `ship` never discriminated** (always pass or always fail). Worth tightening or removing.
+- **Too few iterations (1/10) to assess gate discrimination.** Per-gate signal is recorded but not yet statistically meaningful.
 
 ## 6. What's noisy
 
@@ -40,98 +40,64 @@ lands a row in `optimize_results.tsv`. Re-run `introspect.py` after iteration #1
 
 ## 7. Idea backlog
 
-- **0 attempted / 0 remaining** of 0 total in `OPTIMIZE_IDEAS.md`.
+- **1 attempted / 10 remaining** of 11 total in `OPTIMIZE_IDEAS.md`.
 
 ## 8. Lean recommendations
 
 *Ranked by `(expected token reduction × applicability)`. Each item is actionable today — no speculation.*
 
 - **Loop has spent $35.94 with zero kept iterations.** Either the 2σ bar is too tight (re-run baseline with N=10 to tighten σ) or ideas are systematically over-ambitious. Try smaller, more targeted ideas; the best ideas usually touch <50 lines.
-- **No iterations recorded yet.** Run Recipe 1 + Recipe 2 first; introspection becomes useful after ≥5 iterations.
+- **Fixture B σ is 56.1% of mean** (threshold: 25%). It's too timing-fragile to gate verdicts on. Either raise its `timeout_s` in `run.py` FIXTURES dict (catches slow-but-correct runs that currently look like noise), or drop it from the baseline set.
 
 ## 9. KB leads (from `workflow knowledge`)
 
-Articles relevant to making the loop leaner. Read with: `workflow knowledge read <slug>`.
-
-**Query:** `prompt caching token cost`
-
-- `2026-04-07-cache-read-tokens-track-separately-measure-caching-savings`
-    > ## Insight Claude's prompt caching returns `cache_read_input_tokens` (tokens read from cache at ~10%
-- `2026-04-07-reasoning-models-require-manual-token-submission`
-    > …or the autonomous-agent-builder's ClaudeCodeRunner: always extract `usage.input_tokens` and `usage.
-- `2026-03-27-exact-prefix-preservation-prompt-caching`
-    > …licability In the Claude Code harness: when appending tool call outputs to the prompt history, ensu
-
-**Query:** `context engineering token reduction`
-
-- `2026-04-04-monorepo-baseline-context`
-    > Monorepo context baseline ~20k tokens, 10% of window
-- `2026-04-04-observation-masking-beats-llm-summarization`
-    > Observation masking beats LLM summarization for context reduction — 50%+ cost, equal or better perfo
-- `2026-04-04-fic-40-60-percent-optimal-compact-at-60`
-    > FIC targets 40-60% context utilization as optimal zone — compact at 60%, not 80%
-
-**Query:** `agent skill bundle minimal context`
-
-- `2026-04-04-preload-skills-into-subagent-context`
-    > Preload skill content into subagent context at startup
-- `2026-04-04-passive-context-beats-active-skill-retrieval`
-    > Passive context (always-loaded docs index) beats active skill retrieval — 100% vs 53% on framework e
-- `2026-04-04-structured-memory-across-context-windows`
-    > Agents require formalized persistent memory outside context windows
-
-**Query:** `fixture redundancy benchmark variance`
-
-- `2026-04-05-abstract-benchmark-runner-for-agnostic-loops`
-    > Abstract BenchmarkRunner makes improvement loops benchmark-agnostic
-- `2026-04-07-ai-generated-tests-are-structural-signal-not-behavioral-gate`
-    > AI-generated tests are structural signal only — green tests do not mean correct behavior; use approv
-- `2026-04-07-regime-shift-adaptation-should-be-benchmarked-explicitly`
-    > regime-shift-adaptation-should-be-benchmarked-explicitly
+*KB query skipped: skipped via --skip-kb*
 
 ## Raw stats
 
 ```json
 {
   "verdict_distribution": {
-    "total": 0,
+    "total": 1,
     "kept": 0,
-    "discarded": 0,
+    "discarded": 1,
     "crashed": 0,
     "pending": 0,
-    "keep_rate": 0
+    "keep_rate": 0.0
   },
   "compound_effect": {
     "applicable": false
   },
   "gate_utility": {
+    "_measurable": true,
+    "_measured_n": 1,
     "cache": {
-      "pass": 0,
+      "pass": 1,
       "fail": 0,
       "discriminating": false
     },
     "chunk": {
-      "pass": 0,
+      "pass": 1,
       "fail": 0,
       "discriminating": false
     },
     "avoid": {
-      "pass": 0,
+      "pass": 1,
       "fail": 0,
       "discriminating": false
     },
     "rate": {
-      "pass": 0,
+      "pass": 1,
       "fail": 0,
       "discriminating": false
     },
     "build": {
-      "pass": 0,
+      "pass": 1,
       "fail": 0,
       "discriminating": false
     },
     "ship": {
-      "pass": 0,
+      "pass": 1,
       "fail": 0,
       "discriminating": false
     }
@@ -160,9 +126,9 @@ Articles relevant to making the loop leaner. Read with: `workflow knowledge read
   },
   "idea_velocity": {
     "applicable": true,
-    "total_ideas": 0,
-    "attempted": 0,
-    "remaining": 0
+    "total_ideas": 11,
+    "attempted": 1,
+    "remaining": 10
   }
 }
 ```
