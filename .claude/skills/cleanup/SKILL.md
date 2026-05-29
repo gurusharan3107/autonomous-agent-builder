@@ -39,7 +39,7 @@ After lane chosen, load `references/<lane>.md` for the procedure. Universal pref
 
 ## Detection signals + safety blockers — canonical reference
 
-[references/criteria.md](references/criteria.md) — 7 detection signals (orphan / deprecated stub / historical-only / verbose drift / dangling refs / misrouted / duplicates) and 4 NEVER-DELETE safety blockers. Loaded on demand by Audit and Prune lanes.
+[references/criteria.md](references/criteria.md) — 8 detection signals (orphan / deprecated stub / historical-only / verbose drift / dangling refs / misrouted / duplicates / over-line-cap) and 4 NEVER-DELETE safety blockers. Loaded on demand by Audit and Prune lanes.
 
 ## Hard rules (universal)
 

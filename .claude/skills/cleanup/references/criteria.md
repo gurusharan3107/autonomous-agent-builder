@@ -13,6 +13,7 @@ Loaded on demand by Audit + Prune lanes. The canonical spec for what cleanup loo
 | 5 | **Dangling refs** | Links to non-existent files; bare `path.md` mentions of deleted files | WIRE (fix link or strip ref) |
 | 6 | **Misrouted content** | Per-patch detail in milestone-scope docs (e.g., autoresearch P-numbered fixes in ROADMAP); cross-cutting decisions buried in domain logs | WIRE (move to domain log) |
 | 7 | **Duplicate content** | Same info maintained in 2+ files (drift inevitable) | WIRE (canonical-owner + link from others) |
+| 8 | **Over line-cap** | `len(splitlines())` exceeds a `docs/goal/README.md § "Compression triggers per file"` cap (currently `STATUS.md > 120`). Catches table/bullet-heavy files that evade the long-paras signal. `ROADMAP.md` is EXEMPT — it's the spine; closed `[x]` items stay. | COMPACT (trim oldest rolling content → memory/git per the owning doc's rule) |
 
 ## Safety blockers (NEVER delete if any apply)
 
@@ -47,4 +48,4 @@ Before closing a lane:
 
 ## Inputs the audit script needs
 
-`scripts/audit.py` consumes this file's structure. It enumerates every `.md` under `docs/` and `.claude/skills/`, computes the 7 signals + 4 blockers per file, and emits a prioritized JSON or human-readable report. Don't bypass it with ad-hoc grep loops — the 2026-05-23 false-positive on EVALUATION came from exactly that shortcut.
+`scripts/audit.py` consumes this file's structure. It enumerates every `.md` under `docs/` and `.claude/skills/`, computes the 8 signals + 4 blockers per file, and emits a prioritized JSON or human-readable report. Don't bypass it with ad-hoc grep loops — the 2026-05-23 false-positive on EVALUATION came from exactly that shortcut.

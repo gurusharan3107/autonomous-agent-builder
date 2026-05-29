@@ -129,6 +129,11 @@ def doc_graph_refs(p: pathlib.Path) -> list[str]:
     return sorted(matches)
 
 
+# Per-file hard line-count caps from docs/goal/README.md § "Compression triggers per file".
+# ROADMAP.md is intentionally EXEMPT — it's the spine; closed [x] items stay for the audit trail.
+LINE_CAPS = {"docs/goal/STATUS.md": 120}
+
+
 def detect_signals(p: pathlib.Path) -> list[str]:
     """Return list of triggered signal IDs from criteria.md."""
     signals = []
@@ -148,6 +153,12 @@ def detect_signals(p: pathlib.Path) -> list[str]:
     ]
     if len(long_paras) >= 3:
         signals.append(f"long-paras:{len(long_paras)}")
+    # Per-file line-count compression trigger (goal-folder caps; tables/bullets evade long-paras)
+    line_cap = LINE_CAPS.get(p.as_posix()) or LINE_CAPS.get(p.name)
+    if line_cap is not None:
+        n_lines = len(content.splitlines())  # matches `wc -l` for newline-terminated files
+        if n_lines > line_cap:
+            signals.append(f"over-line-cap:{n_lines}/{line_cap}")
     return signals
 
 
@@ -158,7 +169,7 @@ def categorize(refs: list[str], code_refs: list[str],
     has_safety = bool(blockers)
     if has_safety:
         return "KEEP" if not signals else "COMPACT"  # safety blocker prevents delete
-    if any("verbose" in s or "long-paras" in s for s in signals):
+    if any("verbose" in s or "long-paras" in s or "over-line-cap" in s for s in signals):
         if n_refs + n_code <= 2:
             return "DELETE?"  # verbose AND low refs → likely dead doctrine
         return "COMPACT"
