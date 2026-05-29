@@ -90,9 +90,7 @@ After the lane is chosen, run the universal preflight (load [`references/lifecyc
 | [`references/gotchas.md`](references/gotchas.md) | When a wiring / setup issue bites mid-flow. |
 | [`references/artifacts.md`](references/artifacts.md) | At Baseline/Iterate closeout — refresh `autoresearch-explainer.html` AUTOUPDATE fences + INTROSPECTION.md. |
 | [`references/reference-policy.md`](references/reference-policy.md) | At lane start — what `docs/autoresearch/` files to read in what order; what files the lane MAY and MUST NEVER edit. |
-| [`references/hang-detection.md`](references/hang-detection.md) | When the watchdog dumps to `/tmp/autoresearch/diagnostics/` — match against `KNOWN_PATTERNS.md` before diagnosing by hand. |
 | [`references/failure-modes.md`](references/failure-modes.md) | When a known symptom appears (`session_scoped=False`, fixture status=unstable, compare returns crash, etc.). |
-| [`KNOWN_PATTERNS.md`](KNOWN_PATTERNS.md) | When `scripts/diagnose_hang.py` identifies (or fails to identify) a hang class. |
 
 ## Skill-owned scripts
 
@@ -101,8 +99,7 @@ After the lane is chosen, run the universal preflight (load [`references/lifecyc
 | `scripts/self_heal.py` | Autonomous diagnose-and-fix invoked by `baseline.py` on a failed per-iter gate. Pattern catalog at top of file — **extend it** when a new failure surfaces; that's how autonomy grows. |
 | `scripts/preflight.py` | Upstream guard: hard-fails the lane before any iter spends a token when seed pytest-collect / seed git-clean / TSV / port / disk checks miss. |
 | `scripts/lane_status.py` | Read-only inflight detector (`baseline.py`/`loop.py` via `ps -ef`). |
-| `scripts/hang_watchdog.py` | Forensic dump trigger on idle (idle-seconds + grace-seconds). |
-| `scripts/diagnose_hang.py` | Pattern matcher over hang-watchdog dumps (KNOWN_PATTERNS). |
+| `scripts/hang_watchdog.py` | Idle detector (WAL-mtime): writes `STUCK_DETECTED.json` + dump on idle so `baseline.py` aborts + escalates. (Pattern-matcher `diagnose_hang.py` + catalog were cut 2026-05-29 — stuck == escalate; fix the hang at source.) |
 | `scripts/render_iterations.py` | Closeout: refresh the 4 AUTOUPDATE fences in `autoresearch-explainer.html` (baseline summary / scatter / raw rows / iterations history) + write `iterations.json`. |
 | `scripts/introspect.py` | Closeout: regenerate `INTROSPECTION.md`. |
 | `scripts/freshness_sweep.py` | Closeout gate (Hard Rule 2). |

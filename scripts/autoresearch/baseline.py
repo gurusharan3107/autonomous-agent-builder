@@ -24,7 +24,6 @@ TSV_ROOT = ROOT / "docs" / "autoresearch"
 SKILL_SCRIPTS = ROOT / ".claude" / "skills" / "autoresearch" / "scripts"
 SELF_HEAL = SKILL_SCRIPTS / "self_heal.py"
 HANG_WATCHDOG = SKILL_SCRIPTS / "hang_watchdog.py"
-DIAGNOSE_HANG = SKILL_SCRIPTS / "diagnose_hang.py"
 DEFAULT_SEED_DIR = pathlib.Path("/home/gurusharangupta/.seed/devpulse")
 
 # Per-iter wall-clock budget. The hang_watchdog detects silent hangs by WAL
@@ -122,30 +121,17 @@ def _latest_stuck_dump(dump_root: pathlib.Path,
 
 
 def _invoke_diagnose_hang(dump_dir: pathlib.Path) -> dict:
-    """Run diagnose_hang.py against a watchdog dump; return the diagnosis JSON.
-
-    diagnose_hang prints a JSON object with `top_match` (best matcher result
-    or None) + `verdict` (matched|unknown). Each Match record now carries a
-    `category` field (transient|persistent|substrate|unknown) that the loop
-    uses to route remediation.
+    """Return a minimal 'stuck' verdict. (2026-05-29 lean cut: the 1,811-line
+    diagnose_hang.py pattern-matcher library + KNOWN_PATTERNS catalog were
+    deleted — they classified historical hang signatures that were since fixed
+    at the source, and matched 'unknown' for genuinely new hangs anyway. A
+    stuck run now aborts + escalates to the operator, who inspects the
+    watchdog dump in `dump_dir`. The category-based auto-retry path is gone;
+    stuck == escalate, which is the honest default.)
     """
-    if not DIAGNOSE_HANG.exists():
-        return {"verdict": "unknown",
-                "error": f"diagnose_hang.py missing at {DIAGNOSE_HANG}"}
-    try:
-        r = subprocess.run(
-            [sys.executable, str(DIAGNOSE_HANG), str(dump_dir), "--json"],
-            capture_output=True, text=True, timeout=60,
-        )
-    except (subprocess.TimeoutExpired, OSError) as exc:
-        return {"verdict": "unknown",
-                "error": f"diagnose_hang invocation failed: {type(exc).__name__}: {exc}"}
-    try:
-        return json.loads(r.stdout)
-    except (ValueError, json.JSONDecodeError):
-        return {"verdict": "unknown",
-                "error": f"diagnose_hang non-JSON output: {r.stdout[:300]}",
-                "stderr_tail": r.stderr[-300:]}
+    return {"verdict": "stuck",
+            "top_match": {"category": "unknown", "pattern_id": "none", "confidence": 0.0},
+            "dump_dir": str(dump_dir)}
 
 
 def _kill_iter_processes(port: int) -> None:
@@ -221,10 +207,9 @@ def run_one_fixture(
                     # without flagging STUCK — check one last time.
                     dump = _latest_stuck_dump(dump_root, start_ts)
                     if dump is None:
-                        # No watchdog dump. Write a synthetic STUCK_DETECTED.json
-                        # to evidence_dir so diagnose_hang.py can run its matchers
-                        # against the builder log (P21: hook stream closed on
-                        # graceful shutdown, P18b: dispatch DB lock, etc.).
+                        # No watchdog dump. Record a synthetic STUCK_DETECTED.json
+                        # in evidence_dir so the operator has the stuck reason +
+                        # elapsed time alongside the builder log for inspection.
                         synthetic = evidence_dir / "STUCK_DETECTED.json"
                         synthetic.write_text(json.dumps({
                             "reason": "wall_clock_budget_exceeded",
@@ -335,10 +320,10 @@ def _stuck_proposed_questions(pattern_id: str, category: str,
             "Forensic dump preserved. How to proceed?"
         ),
         "options": [
-            {"label": "Inspect dump_dir + extend catalog",
-             "description": "Diagnose manually, then add matcher to "
-                            "diagnose_hang.py + KNOWN_PATTERNS.md so next "
-                            "session benefits."},
+            {"label": "Inspect dump_dir + fix root cause",
+             "description": "Read the watchdog dump, find why the run hung, "
+                            "and fix it at the source (the lean answer: fix the "
+                            "hang, not the diagnosis)."},
             {"label": "Skip this iter",
              "description": "Continue with --allow-imperfect-iter."},
         ],
@@ -456,15 +441,12 @@ def main() -> int:
             #
             # 1. Each iter spawns hang_watchdog.py as a sibling process.
             #    Watchdog dumps forensics if Builder's WAL mtime is stale
-            #    ≥180s, OR if wall-clock budget exceeds DEFAULT_ITER_WALL_CLOCK_SECONDS.
+            #    ≥600s, OR if wall-clock budget exceeds DEFAULT_ITER_WALL_CLOCK_SECONDS.
             # 2. If iter ships 6/6 gates with feature_correct=True → record + advance.
             # 3. If iter is "stuck" (watchdog fired OR wall-clock exceeded) →
-            #    diagnose_hang categorizes the failure:
-            #      • transient (e.g., P18 DB-lock race) → retry on fresh
-            #        evidence subdir, no operator involvement
-            #      • persistent (real Builder/harness defect) → emit
-            #        SELF_HEAL_ESCALATION with proposed_questions, abort
-            #      • substrate / unknown → escalate
+            #    abort + SELF_HEAL_ESCALATION; operator inspects the dump and
+            #    fixes the hang at the source. (No category-based auto-retry —
+            #    the matcher catalog was cut 2026-05-29; stuck == escalate.)
             # 4. If iter completes but imperfect (gates fail) → self_heal.py
             #    probes evidence_dir/feature_check.log + seed state for
             #    catalogued substrate fixes (missing deps, untracked files).
@@ -511,18 +493,7 @@ def main() -> int:
                         f"confidence={confidence}",
                         file=sys.stderr,
                     )
-                    if category == "transient" and attempt + 1 < MAX_HEAL_ATTEMPTS:
-                        # Autonomous retry: don't record this result, don't
-                        # invoke self_heal, just kick off a fresh attempt on a
-                        # new evidence subdir. The transient fix is "try again
-                        # on a clean workspace copy" — no operator needed.
-                        print(
-                            f"[baseline] category=transient — auto-retry on "
-                            f"fresh evidence subdir (attempt {attempt+2}/{MAX_HEAL_ATTEMPTS})",
-                            file=sys.stderr,
-                        )
-                        continue
-                    # Persistent / unknown / out-of-retries — escalate.
+                    # Stuck == escalate (lean cut: no category-based auto-retry).
                     runs_by_fixture[fixture].append(result)
                     remaining = (len(fixtures) - f_idx) * args.n - (i + 1)
                     escalation = {
@@ -558,13 +529,12 @@ def main() -> int:
                         pass  # best-effort; stderr marker is canonical source
                     print(
                         f"[baseline] ABORT — fixture={fixture} iter={i+1}/{args.n} "
-                        f"stuck after {attempt+1} attempt(s). category={category!r}. "
+                        f"stuck after {attempt+1} attempt(s). "
                         f"Saved ~{remaining} more iters. Calling agent should "
                         f"parse SELF_HEAL_ESCALATION.json in evidence-root and "
-                        f"surface via AskUserQuestion, OR extend pattern catalog "
-                        f"at .claude/skills/autoresearch/scripts/diagnose_hang.py "
-                        f"+ KNOWN_PATTERNS.md, OR re-run with "
-                        f"--allow-imperfect-iter if flake is acceptable.",
+                        f"surface via AskUserQuestion, inspect the watchdog dump "
+                        f"in dump_dir, OR re-run with --allow-imperfect-iter if "
+                        f"flake is acceptable.",
                         file=sys.stderr,
                     )
                     aborted = True
@@ -698,8 +668,8 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_ITER_WALL_CLOCK_SECONDS,
         help=(
             "Per-iter wall-clock budget. If exceeded, baseline kills the run.py + "
-            "Builder for this iter and invokes diagnose_hang to route remediation. "
-            "Default: 1800s (30 min). Hang_watchdog's WAL-mtime check (180s) usually "
+            "Builder for this iter, records a stuck dump, and escalates. "
+            "Default: 1800s (30 min). Hang_watchdog's WAL-mtime check (600s) usually "
             "fires first; this is the safety net for cases where Builder is 'active' "
             "but not making progress."
         ),

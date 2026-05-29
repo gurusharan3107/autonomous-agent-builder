@@ -100,10 +100,8 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
     #      user's real workspace. Autoresearch must not leak there.
     # Fix: (a) repoint the project's repo_url to this ephemeral workspace so
     # sprint merge operates on the ephemeral copy; (b) create `main` from
-    # current HEAD as the merge target. Caught 2026-05-23 cycle 6 by the
-    # diagnose_hang.py P5 matcher (which initially detected the same symptom
-    # cycle 5; the real fix was discovered after re-reading sprint_lifecycle.py
-    # to find where repo_root comes from).
+    # current HEAD as the merge target. (Caught 2026-05-23 by re-reading
+    # sprint_lifecycle.py to find where repo_root comes from.)
     git_env = {"GIT_TERMINAL_PROMPT": "0"}
     try:
         existing = subprocess.run(
@@ -328,7 +326,7 @@ def latest_chat_state(port: int, session_id: str) -> dict:
     # The reliable "chat is done" signal is `assistant_message.payload.final
     # == True` — set when the model ends_turn. Earlier revisions relied on
     # `run_status.running == false`, which never fired because run_status was
-    # invisible. Caught 2026-05-23 cycle 9 (P8 in KNOWN_PATTERNS.md).
+    # invisible. Caught 2026-05-23 cycle 9.
     content_event_types = {
         "assistant_message",
         "ask_user_question",
