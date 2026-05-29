@@ -232,3 +232,27 @@ Run date: 2026-05-25
 | Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
 | --- | --- | --- | --- | --- | --- |
 | C | unstable | 0/1 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-29
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| D | unstable | 2/3 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-29
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| D | unstable | 1/2 | — | — | — |
+
+## Recorded baselines
+
+Run date: 2026-05-29
+
+| Fixture | Status | Stable Runs | Mean Composite | σ | 2σ Noise Floor |
+| --- | --- | --- | --- | --- | --- |
+| D | unstable | 0/1 | — | — | — |
