@@ -2,12 +2,64 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+
+import structlog
+from sqlalchemy.exc import OperationalError
 
 from autonomous_agent_builder.agents.runner import RunResult
 from autonomous_agent_builder.db.models import ChatSession, utcnow
 from autonomous_agent_builder.db.session import get_session_factory
+
+# Bookkeeping write (chat_sessions.sdk_session_id) retries on SQLite
+# `database is locked` — same P18 class as agent_run_lifecycle, different write
+# path (caught 2026-05-29 by the autoresearch fuzzer: fixture-D run hung when
+# this UPDATE raced concurrent orchestrator writes during a multi-agent run).
+_SESSION_DB_LOCK_RETRY_ATTEMPTS = 5
+_SESSION_DB_LOCK_RETRY_BASE_SECONDS = 0.5
+
+
+async def _persist_sdk_session_id(session_id: str, sdk_session_id: str | None) -> bool:
+    """Record `chat_sessions.sdk_session_id` for resume. Bookkeeping only —
+    NEVER fail the run over it. Retries on SQLite `database is locked` with
+    exponential backoff (P18 class), then gives up with a warning instead of
+    propagating, because the run's result is already complete by this point.
+    Returns True on success, False if skipped/failed (non-fatal)."""
+    if not sdk_session_id:
+        return False
+    log = structlog.get_logger()
+    for attempt in range(_SESSION_DB_LOCK_RETRY_ATTEMPTS):
+        try:
+            async with get_session_factory()() as db:
+                session = await db.get(ChatSession, session_id)
+                if session is None:
+                    return False
+                session.sdk_session_id = sdk_session_id
+                session.updated_at = utcnow()
+                await db.commit()
+            return True
+        except OperationalError as oe:
+            if ("database is locked" in str(oe).lower()
+                    and attempt + 1 < _SESSION_DB_LOCK_RETRY_ATTEMPTS):
+                backoff = _SESSION_DB_LOCK_RETRY_BASE_SECONDS * (2 ** attempt)
+                log.warning("chat_session_sdk_id_db_lock_retry",
+                            session_id=session_id, attempt=attempt + 1,
+                            max_attempts=_SESSION_DB_LOCK_RETRY_ATTEMPTS,
+                            backoff_seconds=backoff)
+                await asyncio.sleep(backoff)
+                continue
+            # Out of retries or non-lock error — bookkeeping write, don't kill
+            # a completed run; log and move on.
+            log.warning("chat_session_sdk_id_persist_failed",
+                        session_id=session_id, error=str(oe))
+            return False
+        except Exception as exc:  # noqa: BLE001 — never let bookkeeping kill the run
+            log.warning("chat_session_sdk_id_persist_error",
+                        session_id=session_id, error=str(exc))
+            return False
+    return False
 from autonomous_agent_builder.embedded.server import agent_chat_transcript
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_chat_event as _append_chat_event,
@@ -218,13 +270,7 @@ async def _publish_successful_chat_result(
             status="completed",
         )
 
-    session_factory = get_session_factory()
-    async with session_factory() as db:
-        session = await db.get(ChatSession, session_id)
-        if session is not None and result.session_id:
-            session.sdk_session_id = result.session_id
-            session.updated_at = utcnow()
-            await db.commit()
+    await _persist_sdk_session_id(session_id, result.session_id)
 
     assistant_event = await _append_chat_event(
         session_id,
