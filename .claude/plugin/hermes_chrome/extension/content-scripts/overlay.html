@@ -966,6 +966,19 @@
     localStorage.setItem(storageKey, JSON.stringify(comments));
   }
 
+  // Tombstones: operator-deleted marker IDs persisted across page reloads so the
+  // server's still-existing items (e.g. status "done") don't get resurrected by
+  // pollStatus / SSE. The server is intentionally append-only for processed
+  // markers (audit trail); the widget owns the "operator no longer wants to see
+  // this on the page" half of the contract.
+  const tombstoneKey = `${storageKey}:tombstones`;
+  const tombstones = new Set(JSON.parse(localStorage.getItem(tombstoneKey) || "[]"));
+  function tombstone(...ids) {
+    let changed = false;
+    for (const id of ids) if (id && !tombstones.has(id)) { tombstones.add(id); changed = true; }
+    if (changed) localStorage.setItem(tombstoneKey, JSON.stringify([...tombstones]));
+  }
+
   function makeId() {
     return `af-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   }
@@ -1041,6 +1054,10 @@
     thread.messages = thread.messages.filter((item) => item.id !== messageId);
     thread.text = thread.messages.filter((item) => item.role === "user").map((item) => item.text).filter(Boolean).at(-1) || "";
     if (!thread.messages.length) {
+      // Tombstone the marker AND every work-item id ever associated with it so
+      // refresh doesn't restore the deleted thread from the server's queue.
+      const batchIds = (thread.messages || []).map((m) => m.batchId).filter(Boolean);
+      tombstone(thread.id, thread.markerId, ...batchIds);
       comments = comments.filter((item) => item.id !== thread.id);
       if (activeId === thread.id) {
         activeId = null;
@@ -1072,6 +1089,8 @@
         }
       }
     }
+    const batchIds = (thread.messages || []).map((m) => m.batchId).filter(Boolean);
+    tombstone(thread.id, thread.markerId, ...batchIds);
     comments = comments.filter((item) => item.id !== threadId);
     if (pendingComment?.id === threadId) pendingComment = null;
     if (activeId === threadId) activeId = null;
@@ -1089,6 +1108,14 @@
         method: "DELETE"
       })
     )));
+    // Tombstone every marker + every batch id we knew about so refresh / SSE
+    // don't resurrect them from the server's audit trail.
+    const ids = [];
+    for (const thread of comments) {
+      ids.push(thread.id, thread.markerId);
+      for (const m of thread.messages || []) ids.push(m.batchId);
+    }
+    tombstone(...ids);
     comments = [];
     pendingComment = null;
     activeId = null;
@@ -1573,10 +1600,14 @@
     const marker = item?.marker || item?.payload?.comments?.[0];
     const markerId = item?.markerId || marker?.markerId || marker?.id;
     if (!marker || !markerId) return null;
-    // Don't resurrect threads the operator deleted (server flips item.status to
-    // "canceled" when all messages are removed). Without this guard, pollStatus /
-    // SSE rebroadcasts re-create the marker 2-3s after the trash click.
+    // Don't resurrect threads the operator deleted. Two cases:
+    //   (a) Server flipped item.status to "canceled" (all messages removed
+    //       on the server side — happens for queued-message deletions).
+    //   (b) Operator deleted a done/processed thread locally — server still
+    //       has it (intentional audit trail), but the tombstone list says
+    //       "this marker is no longer wanted on the page".
     if (item.status === "canceled") return null;
+    if (tombstones.has(item.id) || tombstones.has(markerId)) return null;
     let thread = comments.find((entry) => {
       normalizeThread(entry);
       return entry.id === markerId
