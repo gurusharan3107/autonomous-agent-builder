@@ -55,19 +55,27 @@ class FollowupDecision:
 
 async def _maybe_mark_sprint_stalled(
     db: AsyncSession,
-    failed_task: Task,
+    trigger_task: Task,
 ) -> bool:
-    """Detect and resolve sprint implementation deadlock (P23).
+    """Detect and resolve sprint implementation deadlock (P23 + 2026-05-29).
 
-    When a task fails and the owning sprint still shows phase=implementation
-    with no tasks left in active dispatch states, the orchestrator will never
-    re-enter the dispatch loop. Transition the sprint to phase=blocked so the
-    session reaches a terminal state the harness and dashboard can evaluate.
+    When a task reaches a non-recoverable terminal state (FAILED, or BLOCKED
+    needing an operator decision such as `quality_gate_cap_exceeded`) and the
+    owning sprint still shows phase=implementation with no tasks left in active
+    dispatch states, the orchestrator will never re-enter the dispatch loop —
+    the dependent PENDING tasks can't run and nothing escalates. Transition the
+    sprint to phase=blocked so the session reaches a terminal state the harness
+    and dashboard can evaluate, instead of going silent until the watchdog.
 
-    Stall condition: all sprint tasks are in {failed, pending, done} AND at
-    least one is failed AND at least one is pending (blocked by failed deps).
-    Skips if any task is still actively dispatching or waiting on a recoverable
-    state (capability_limit, review_pending, blocked).
+    Stall condition: all sprint tasks are in {failed, pending, done, blocked}
+    AND at least one is failed-or-blocked AND at least one is pending. Skips if
+    any task is still actively dispatching or in a genuinely recoverable state
+    (capability_limit → provider-limit reset, review_pending → approval).
+
+    2026-05-29 (fuzzer-caught fixture-D hang): BLOCKED was previously assumed
+    "has a path to progress" and excluded — but a `quality_gate_cap_exceeded`
+    block has NO autonomous path, so the sprint quiesced silently. BLOCKED now
+    counts as a stall trigger alongside FAILED.
     """
     result = await db.execute(
         select(Sprint).where(Sprint.phase == SprintPhase.IMPLEMENTATION)
@@ -76,7 +84,7 @@ async def _maybe_mark_sprint_stalled(
 
     sprint: Sprint | None = None
     for s in sprints:
-        if failed_task.feature_id in (s.approved_feature_ids or []):
+        if trigger_task.feature_id in (s.approved_feature_ids or []):
             sprint = s
             break
     if sprint is None:
@@ -91,30 +99,33 @@ async def _maybe_mark_sprint_stalled(
     if not sprint_tasks:
         return False
 
-    # Only fire when every task is in a terminal-or-waiting state.
-    # Any active, blocked, or capability-limited task has a path to progress.
-    _TERMINAL_OR_WAITING = {TaskStatus.FAILED, TaskStatus.PENDING, TaskStatus.DONE}
+    # Only fire when every task is in a terminal-or-waiting state. An active
+    # task, or one in a genuinely recoverable state (capability_limit →
+    # provider reset, review_pending → approval), still has a path to progress.
+    # BLOCKED is terminal-without-operator and DOES count (see docstring).
+    _TERMINAL_OR_WAITING = {
+        TaskStatus.FAILED, TaskStatus.PENDING, TaskStatus.DONE, TaskStatus.BLOCKED,
+    }
     for task in sprint_tasks:
         ts = task.status if isinstance(task.status, TaskStatus) else TaskStatus(str(task.status))
         if ts not in _TERMINAL_OR_WAITING:
             return False
 
-    failed_ids = [
-        t.id for t in sprint_tasks
-        if (t.status if isinstance(t.status, TaskStatus) else TaskStatus(str(t.status))) == TaskStatus.FAILED
-    ]
-    pending_ids = [
-        t.id for t in sprint_tasks
-        if (t.status if isinstance(t.status, TaskStatus) else TaskStatus(str(t.status))) == TaskStatus.PENDING
-    ]
-    if not failed_ids or not pending_ids:
+    def _is(t: Task, status: TaskStatus) -> bool:
+        return (t.status if isinstance(t.status, TaskStatus) else TaskStatus(str(t.status))) == status
+
+    failed_ids = [t.id for t in sprint_tasks if _is(t, TaskStatus.FAILED)]
+    blocked_ids = [t.id for t in sprint_tasks if _is(t, TaskStatus.BLOCKED)]
+    pending_ids = [t.id for t in sprint_tasks if _is(t, TaskStatus.PENDING)]
+    if not (failed_ids or blocked_ids) or not pending_ids:
         return False
 
     sprint.phase = SprintPhase.BLOCKED
     sprint.verification_status = "blocked"
     sprint.verification_evidence = {
-        "blocked_reason": "all_active_tasks_failed",
+        "blocked_reason": "all_active_tasks_failed_or_blocked",
         "failed_task_ids": failed_ids,
+        "blocked_task_ids": blocked_ids,
         "pending_task_ids": pending_ids,
     }
     await db.flush()
@@ -122,6 +133,7 @@ async def _maybe_mark_sprint_stalled(
         "sprint_implementation_stall_detected",
         sprint_id=sprint.id,
         failed_count=len(failed_ids),
+        blocked_count=len(blocked_ids),
         pending_count=len(pending_ids),
     )
     return True
@@ -158,7 +170,11 @@ async def choose_followup_after_dispatch(
                 reason=f"same_task_next_phase_{completed_status.value}",
                 task_id=completed_task.id,
             )
-        if completed_status == TaskStatus.FAILED:
+        if completed_status in (TaskStatus.FAILED, TaskStatus.BLOCKED):
+            # BLOCKED needing an operator (e.g. quality_gate_cap_exceeded) has no
+            # autonomous path; let the stall-detector decide if the whole sprint
+            # is now deadlocked (dependent pending tasks can't run) and mark it
+            # blocked instead of quiescing silently. (fuzzer-caught fixture-D hang)
             await _maybe_mark_sprint_stalled(db, completed_task)
         return FollowupDecision(action="idle", reason=f"task_status_{completed_status.value}")
 
