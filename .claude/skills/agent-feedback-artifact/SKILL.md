@@ -18,7 +18,7 @@ Two ways the widget reaches the page. Both share the same server, queue, routing
 | Mode | When | Delivery |
 |---|---|---|
 | **Static artifact** | Single HTML file (report, generated page) | `add-agent-feedback.mjs` injects the widget into the file; `artifact-feedback-server.mjs` serves it. |
-| **Running app** | Any live web app (devpulse, todo, dashboards) | `hermes-chrome` extension toggles `Feedback Mode` in the popup → content script injects the widget into the live page. Same queue, same flow, no app code change. Reference: [`references/hermes-chrome-bridge-setup.md`](references/hermes-chrome-bridge-setup.md). |
+| **Running app** | Any live web app (devpulse, todo, dashboards) | `hermes-chrome` extension toggles `Feedback Mode` in the popup → content script injects the widget into the live page. Same queue, same flow, no app code change. See the `hermes-chrome` skill for extension setup; this skill owns the queue + capability. |
 
 ## Operating Sequence
 
@@ -99,11 +99,12 @@ Always run `closeout.mjs`. Report: widget state, server state, webhook config, q
 
 | When | Load |
 |---|---|
+| Modifying or troubleshooting this skill | `references/agent-handbook.md` — architectural lessons + diagnostic recipes |
 | Wake adapter (Monitor / file-watch / Hermes webhook) | `references/wake-bridge.md` |
 | CORS issues with widget fetch | `references/cors-setup.md` |
-| River acceptance test checklist | `references/browser-acceptance.md` *(see below)* |
-| Hermes Chrome Bridge for headed testing | `hermes-chrome-bridge` skill |
-| Widget HTML/CSS/JS internals | `references/overlay.html` |
+| Browser acceptance checklist | `references/browser-acceptance.md` |
+| Headed browser testing for running-app mode | `hermes-chrome` skill (separate top-level skill) |
+| Widget HTML/CSS/JS internals | `references/overlay.html` (canonical) |
 
 ## Why This Exists
 
