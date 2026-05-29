@@ -1,6 +1,6 @@
 ---
 name: knowledge-base
-description: "All operations on the user's global Claude-tooling knowledge base at ~/.claude/knowledge/. The KB is the coding agent's first-stop discovery surface for SDK levers across Claude Code, Claude Agent SDK (Python+TS), Claude Managed Agents, and the OpenAI Codex SDK — when it's stale, the next session reinvents what already exists (see INSIGHTS Run #7's 13-IMP cost of context blindness). This skill handles every KB operation: REFRESH (detect upstream deltas + write gap articles for new features), MAINTAIN (validate URLs + lint + check rubric slug refs + flag staleness), INGEST (lint and add user-provided drafts with correct tags), AUDIT (full coverage re-check across all four surfaces), SEARCH (smart query expansion), DEDUPE (find overlapping articles), and RUBRIC OPS (read/edit/re-ingest the four surface rubrics). Use this skill proactively whenever the user says 'refresh the KB', 'audit the KB', 'is our KB current?', 'what's new in Claude SDK / Codex SDK?', 'update the rubrics', 'add this article to the KB', 'check if our KB has X', 'find overlapping KB articles', 'are KB URLs still valid?', 'have new features landed since last sweep?', or asks about adopting any Claude or Codex feature that may not yet be indexed. ALSO use proactively on a monthly cadence and after any major upstream release (new Anthropic Claude Code week, new Python/TS SDK minor version, new Codex CLI minor version). The four surface rubrics live at predictable slugs: claude-agent-sdk-rubric, claude-code-rubric, claude-managed-agents-rubric, codex-sdk-rubric. Skip this skill ONLY if the user explicitly says 'don't touch the KB' or asks a question that's already answered by the rubrics."
+description: "All operations on the user's global Claude-tooling knowledge base at ~/.claude/knowledge/. The KB is the coding agent's first-stop discovery surface for SDK levers across Claude Code, Claude Agent SDK (Python+TS), Claude Managed Agents, and the OpenAI Codex SDK — when it's stale, the next session reinvents what already exists (see INSIGHTS Run #7's 13-IMP cost of context blindness). This skill handles every KB operation: REFRESH (detect upstream deltas + write gap articles for new features), MAINTAIN (validate URLs + lint + check rubric slug refs + flag staleness), INGEST (lint and add user-provided drafts with correct tags), AUDIT (full coverage re-check across all four surfaces), SEARCH (smart query expansion), DEDUPE (find overlapping articles), RUBRIC OPS (read/edit/re-ingest the four surface rubrics), and OPEN (open the operator-facing knowledge-browser.html in a browser). Use this skill proactively whenever the user says 'refresh the KB', 'audit the KB', 'is our KB current?', 'what's new in Claude SDK / Codex SDK?', 'update the rubrics', 'add this article to the KB', 'check if our KB has X', 'find overlapping KB articles', 'are KB URLs still valid?', 'have new features landed since last sweep?', 'open the KB browser', 'show the KB html', or asks about adopting any Claude or Codex feature that may not yet be indexed. ALSO use proactively on a monthly cadence and after any major upstream release (new Anthropic Claude Code week, new Python/TS SDK minor version, new Codex CLI minor version). The four surface rubrics live at predictable slugs: claude-agent-sdk-rubric, claude-code-rubric, claude-managed-agents-rubric, codex-sdk-rubric. Skip this skill ONLY if the user explicitly says 'don't touch the KB' or asks a question that's already answered by the rubrics."
 model: sonnet
 effort: high
 allowed-tools: Read, Write, Edit, Bash, WebFetch, Task
@@ -28,8 +28,15 @@ The global Claude-tooling knowledge base at `~/.claude/knowledge/raw/` is the ag
 | **SEARCH** | "find KB article on X", "what do we know about Y?" | S1 → S2 |
 | **DEDUPE** | "find overlapping articles", "any duplicates?" | D1 → D2 |
 | **RUBRIC OPS** | "update the SDK rubric", "what's in the Codex rubric?" | R1 → R2 → R3 |
+| **OPEN** | "open", "show the html", "open the browser/KB browser" | O1 |
 
-Pick the operation that matches the user's ask. If unclear, run REFRESH (most common entry point).
+If the user's message names an operation unambiguously (e.g. "refresh", "maintain", "ingest this file"), skip the question and run it directly. Otherwise, first action is `AskUserQuestion`:
+
+| Option | Covers | When to pick |
+|---|---|---|
+| **Update** | REFRESH, AUDIT | Bring KB up to date — detect upstream delta, write gap articles, update rubrics |
+| **Health check** | MAINTAIN | Validate existing KB — lint sweep, URL validity, rubric slug refs |
+| **Other** | INGEST, SEARCH, DEDUPE, RUBRIC OPS, OPEN | Add an article, search, find duplicates, edit rubrics, open KB browser |
 
 ## ⚠ Hard rules
 
@@ -79,16 +86,11 @@ echo "Pass: $PASS Fail: $FAIL"
 
 Fix failures (typically missing frontmatter field — see [`references/ingest-gotchas.md`](references/ingest-gotchas.md) § 4). Re-lint until 0 fails.
 
-Then ingest each, extracting tags from frontmatter:
+Then ingest each, extracting tags from frontmatter with `Grep`:
 
 ```bash
 for f in /tmp/kb-drafts/<date>-*.md; do
-  tags=$(python3 -c "
-import re
-with open('$f') as fh: head=fh.read()[:2000]
-m=re.search(r'tags:\s*\[([^\]]+)\]', head)
-print(','.join([p.strip().strip(chr(34)).strip(chr(39)) for p in m.group(1).split(',')]) if m else '')
-")
+  tags=$(grep -oP 'tags:\s*\[\K[^\]]+' "$f" | tr -d ' "'"'" | tr ',' ',')
   /home/$USER/.local/bin/workflow knowledge ingest "$f" --tags "$tags" --json > /dev/null
 done
 ```
@@ -116,9 +118,10 @@ for q in "<feature1>" "<feature2>"; do
 done
 ```
 
-Then persist state:
+Then rebuild the operator browser (new articles must appear in the view) and persist state:
 
 ```bash
+python3 .claude/skills/knowledge-base/scripts/build_browser.py
 python3 .claude/skills/knowledge-base/scripts/detect_updates.py --commit-state
 ```
 
@@ -130,30 +133,7 @@ REFRESH closeout has two responsibilities beyond the KB itself: signal `roadmap-
 
 **1. Rubric-updated marker for `roadmap-audit`.** For each of the four surface rubrics, after Phase D updates rows: append/update a `"last_rubric_update"` field in `.claude/skills/knowledge-base/state.json` with `{ "<rubric-slug>": "<ISO date>" }`. The `roadmap-audit` skill reads this field on its Step 1 bootstrap and uses it to decide whether the rubric has shifted since its last INSIGHTS entry — if shifted, the audit runs; if not, it short-circuits. This is how SDK signature drift flows from KB refresh → roadmap audit → ROADMAP additions without operator prompting.
 
-**2. Self-schedule the next REFRESH.** Call the `CronCreate` deferred tool to schedule the next monthly REFRESH:
-
-```
-CronCreate(
-  schedule: "monthly on day 1 at 10:00",
-  prompt: "monthly knowledge-base REFRESH — detect upstream deltas and write gap articles",
-  description: "Auto-scheduled by knowledge-base Phase F. Self-rescheduling chain; safe to delete if cadence changes."
-)
-```
-
-Skip the CronCreate call when:
-- `CronCreate` is unavailable in the environment (report in chat, ask operator to schedule manually).
-- A monthly knowledge-base cron is already scheduled (check `CronList` first; refuse duplicates).
-- Operator passed `--no-schedule` or said "don't reschedule".
-
-If the rubric-updated marker was set for any of the four rubrics in this REFRESH, also fire an immediate (next-day) `CronCreate` for `roadmap-audit` so the audit picks up the new rubric promptly:
-
-```
-CronCreate(
-  schedule: "in 24 hours",
-  prompt: "roadmap-audit — KB refresh updated <rubric-slug>; revalidate ROADMAP",
-  description: "Auto-scheduled by knowledge-base after detecting rubric delta on <rubric-slug>."
-)
-```
+**2. Prompt operator to run `/knowledge-base REFRESH` next month.** `CronCreate` is session-bound and does not persist — do not use it. Instead, tell the user: "Next REFRESH due ~30 days from now. Use `/schedule` to set a recurring remote routine if you want it automated."
 
 ## Operation: MAINTAIN
 
@@ -161,12 +141,21 @@ Quarterly cadence — validate the KB's existing state.
 
 ### M1 — URL validity
 
-For each article tagged `agents` or `coding-agents` written in the last 90 days, WebFetch `source_url` and check for 200 + content match. Use Haiku Explore subagents for parallelism (1 per surface).
+Extract `source_url` from recent articles and check HTTP status in a single Bash loop — no subagents, no model tokens:
 
-If a URL 404s:
-1. Search adjacent paths (e.g., `/docs/en/X` → `/docs/en/agent-sdk/X`)
-2. If genuinely removed: add a `## Maintenance` note to the article explaining the docs deprecation, update the surface rubric to remove the row.
-3. Don't delete the article — it's history.
+```bash
+BROKEN=()
+for f in ~/.claude/knowledge/raw/2026-0[456789]*.md ~/.claude/knowledge/raw/2026-1*.md; do
+  [[ -f "$f" ]] || continue
+  url=$(grep -m1 '^source_url:' "$f" | sed 's/source_url: *//')
+  [[ -z "$url" || "$url" == "unknown" ]] && continue
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "$url" 2>/dev/null)
+  [[ "$code" != "200" ]] && BROKEN+=("$code $url $(basename $f)")
+done
+printf '%s\n' "${BROKEN[@]:-none broken}"
+```
+
+For each broken URL: try adjacent paths manually (e.g. `/docs/en/X` → `/docs/en/agent-sdk/X`). If genuinely gone: add a `## Maintenance` note to the article. Don't delete — it's history.
 
 ### M2 — Lint sweep
 
@@ -186,22 +175,22 @@ Fix any newly-failing articles (frontmatter drift, missing sections).
 
 ### M3 — Rubric slug refs
 
-For each of the 4 rubrics, read the body, extract slug references (pattern: `2026-XX-XX-<slug>`), and verify each resolves via `workflow knowledge read`. Flag mismatches — these happen when titles get renamed and rubric tables aren't updated.
+Use `Grep` on the raw files directly — no CLI round-trip, no Python:
 
 ```bash
-/home/$USER/.local/bin/workflow knowledge read claude-agent-sdk-rubric --json | python3 -c "
-import sys, json, re
-content = json.load(sys.stdin).get('content','')
-slugs = re.findall(r'2026-\\d{2}-\\d{2}-[\\w-]+', content)
-print(f'{len(slugs)} slug refs')
-for s in slugs[:20]: print(s)
-" | while read slug; do
-  status=$(/home/$USER/.local/bin/workflow knowledge read "$slug" --json 2>&1 | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','?'))")
-  if [ "$status" != "ok" ]; then echo "BROKEN: $slug"; fi
+RAW=~/.claude/knowledge/raw
+for rubric in claude-agent-sdk-rubric claude-code-rubric claude-managed-agents-rubric codex-sdk-rubric; do
+  f=$(ls "$RAW"/*-${rubric}.md 2>/dev/null | head -1)
+  [[ -z "$f" ]] && echo "MISSING rubric: $rubric" && continue
+  echo "--- $rubric ---"
+  grep -oE '2026-[0-9]{2}-[0-9]{2}-[a-z0-9-]+' "$f" | sort -u | while read slug; do
+    [[ -f "$RAW/${slug}.md" ]] || echo "BROKEN: $slug"
+  done
 done
+echo "done"
 ```
 
-Fix the rubric by replacing broken slugs with current ones (use `workflow knowledge search` to find).
+Fix the rubric with `Edit` on the raw file — replace broken slugs with current ones (use `workflow knowledge search` to find). Then `workflow knowledge reindex` once.
 
 ## Operation: INGEST (user-provided drafts)
 
@@ -228,9 +217,29 @@ If top result is suspiciously similar, ask user whether to merge or proceed.
 ```bash
 tags=$(python3 -c "<extract tags from file frontmatter>")
 /home/$USER/.local/bin/workflow knowledge ingest <file.md> --tags "$tags" --json
+python3 .claude/skills/knowledge-base/scripts/build_browser.py   # refresh operator browser
 ```
 
 If the article belongs to one of the four surfaces, add a row to its rubric (see RUBRIC OPS).
+
+## Operation: OPEN
+
+User says "open", "show the html", "open the KB browser". Open the operator browser in the default browser; regenerate first if it's missing or stale.
+
+### O1 — Build if needed, then open
+
+```bash
+F="$HOME/.claude/knowledge/knowledge-browser.html"
+[ -f "$F" ] || python3 .claude/skills/knowledge-base/scripts/build_browser.py
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  explorer.exe "$(wslpath -w "$F")"          # WSL2 → Windows default browser
+else
+  (xdg-open "$F" >/dev/null 2>&1 || open "$F" >/dev/null 2>&1) &   # Linux / macOS
+fi
+echo "opened $F"
+```
+
+On WSL2 `explorer.exe` is the reliable launcher (`xdg-open` often no-ops). If the operator wants the latest articles guaranteed fresh, run `build_browser.py` first regardless. State the `file://` path in chat as a fallback.
 
 ## Operation: AUDIT
 
@@ -263,7 +272,16 @@ User asks "find overlapping articles" or you suspect duplication:
 
 ### D1 — List candidates
 
-For each pair of recently-ingested articles, compute title-token overlap via `workflow knowledge list --json`. Flag pairs with >50% overlap.
+Extract titles from recent article frontmatter with `Grep` — no CLI, no model:
+
+```bash
+grep -h '^title:' ~/.claude/knowledge/raw/2026-0[456789]*.md ~/.claude/knowledge/raw/2026-1*.md 2>/dev/null \
+  | sed 's/^title: *//' | sort > /tmp/kb-titles.txt
+# Flag titles sharing 3+ words
+awk '{for(i=1;i<=NF;i++) words[$i]++} END{for(w in words) if(words[w]>=3) print w}' /tmp/kb-titles.txt
+```
+
+Flag pairs with suspiciously similar titles for manual review.
 
 ### D2 — Manual review
 
@@ -273,44 +291,43 @@ Don't auto-delete; leave history visible.
 
 ## Operation: RUBRIC OPS
 
-The four rubrics are index articles with a `## Evidence` section containing rubric tables. Predictable slugs:
+The four rubrics are raw `.md` files in `~/.claude/knowledge/raw/`. Edit them directly — no CLI round-trip, no temp files.
 
-- `claude-agent-sdk-rubric`
-- `claude-code-rubric`
-- `claude-managed-agents-rubric`
-- `codex-sdk-rubric`
+Canonical slugs: `claude-agent-sdk-rubric`, `claude-code-rubric`, `claude-managed-agents-rubric`, `codex-sdk-rubric`.
 
-### R1 — Read
+### R1 — Find + Read
+
+Use `Glob` to locate the file, then `Read` it directly:
 
 ```bash
-/home/$USER/.local/bin/workflow knowledge read claude-agent-sdk-rubric --json | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-print(d.get('content', d.get('article',{}).get('content','')))
-" > /tmp/rubric.md
+# Find the file
+ls ~/.claude/knowledge/raw/*-claude-agent-sdk-rubric.md
 ```
 
-### R2 — Edit
+Then `Read` the full path returned. No CLI, no JSON parsing.
 
-Open `/tmp/rubric.md`, find the relevant `### <Category>` table, append rows:
+### R2 — Edit in-place
+
+Use `Edit` on the raw file path to append rows to the relevant `### <Category>` table:
 
 ```
 | <When you need to...> | <Reach for affordance> | <article slug> | <docs URL> |
 ```
 
-Use the ingested slug — read from `workflow knowledge read <slug>` post-ingest. For long lever-article titles, the slug is auto-truncated; cite the actual ingested slug, not the file basename.
+Slug comes from: `ls ~/.claude/knowledge/raw/<date>-<slug>.md` after ingest — the filename IS the slug (minus `.md`).
 
-### R3 — Re-ingest
+### R3 — Reindex
 
 ```bash
-# Title is unchanged → slug is unchanged → ingest overwrites
-/home/$USER/.local/bin/workflow knowledge ingest /tmp/rubric.md --tags agents,coding-agents,architecture,tools
+/home/$USER/.local/bin/workflow knowledge reindex
 ```
 
-Re-verify by reading:
+Single call rebuilds the search index. No re-ingest needed — the file was already edited in place.
+
+Verify the rubric is readable:
 
 ```bash
-/home/$USER/.local/bin/workflow knowledge read claude-agent-sdk-rubric --json | python3 -c "import sys,json; print(json.load(sys.stdin).get('status'))"
+ls ~/.claude/knowledge/raw/*-claude-agent-sdk-rubric.md && echo "ok"
 ```
 
 ## Reference files
@@ -322,6 +339,7 @@ Re-verify by reading:
 ## Bundled scripts
 
 - [`scripts/detect_updates.py`](scripts/detect_updates.py) — State-tracker. Two modes: `--json` (read current upstream + diff against state.json), `--commit-state` (write current versions to state.json after successful REFRESH).
+- [`scripts/build_browser.py`](scripts/build_browser.py) — Regenerates the operator-facing browser `~/.claude/knowledge/knowledge-browser.html` from `raw/*.md` frontmatter. Self-contained single file (gallery design system; embeds an `#artifact-data` JSON block for cheap agent re-read — dual-surface pattern, html-artifact skill). No args, idempotent. Run after **any** KB content mutation (REFRESH Phase E, INGEST I3, MAINTAIN frontmatter fixes). The HTML is a generated view — never the canonical copy; `raw/*.md` stays canonical.
 
 ## Test prompts (evals)
 

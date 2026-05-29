@@ -40,5 +40,14 @@
       "0.131.0"
     ]
   },
-  "committed_at": "2026-05-22T08:15:55.562491+00:00"
+  "committed_at": "2026-05-22T08:15:55.562491+00:00",
+  "last_refresh": "2026-05-29",
+  "last_ingestion": "2026-05-29",
+  "articles_added_today": 34,
+  "stale_urls_fixed": 5,
+  "last_rubric_update": {
+    "claude-agent-sdk-rubric": "2026-05-29",
+    "claude-code-rubric": "2026-05-29",
+    "claude-managed-agents-rubric": "2026-05-29"
+  }
 }
