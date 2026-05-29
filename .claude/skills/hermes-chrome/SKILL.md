@@ -205,6 +205,7 @@ incomplete run, not a done run.
 
 - [references/operate.md](references/operate.md) — full action reference, best practices, anti-patterns, all patterns, closeout detail
 - [references/optimize.md](references/optimize.md) — surface map, diagnosis flow, preflight-green instability troubleshooting, per-surface fixes
+- [references/agent-handbook.md](references/agent-handbook.md) — what to know BEFORE modifying the plugin: architecture map, hard-won lessons (stale content scripts, shared bridge socket, CSP gotchas, no-cdp doctrine), diagnostic recipes, editing conventions
 - Plugin source: `.claude/plugin/hermes_chrome/` — `service_worker.js`, `cursor-agent.js`, `native_host.py`, `tools.py`, `diagnostics.py`
 - Preflight script: `~/.claude/plugin/hermes_chrome/scripts/preflight.sh`
 - Deploy: `.claude/plugin/hermes_chrome/scripts/sync.sh`
