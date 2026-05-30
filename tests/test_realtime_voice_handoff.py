@@ -150,7 +150,7 @@ async def test_realtime_handoff_permission_prompt_has_single_decision_owner(
     question = next(event for event in events if event.event_type == "ask_user_question")
     assert question.status == "pending"
     assert question.payload_json["source"] == "assistant_delivery_permission_prompt"
-    assert question.payload_json["question"] == "Ready for Builder to start this improvement?"
+    assert question.payload_json["question"] == "Ready for Builder to start this work?"
 
 
 @pytest.mark.asyncio

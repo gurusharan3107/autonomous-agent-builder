@@ -66,7 +66,7 @@ async def test_assistant_delivery_permission_prompt_becomes_pending_question(
     assert question_item["status"] == "pending"
     assert question_item["payload"]["source"] == "assistant_delivery_permission_prompt"
     assert question_item["payload"]["question"] == (
-        "Ready for Builder to start this improvement?"
+        "Ready for Builder to start this work?"
     )
     assert question_item["payload"]["options"][0]["label"] == "Start now"
     assert history_payload["status"]["running"] is False

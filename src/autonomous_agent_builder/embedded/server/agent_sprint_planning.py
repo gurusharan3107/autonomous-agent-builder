@@ -206,7 +206,7 @@ async def append_persisted_delivery_permission_question_if_needed(
         event_type="ask_user_question",
         payload={
             "header": "Start Work?",
-            "question": "Ready for Builder to start this improvement?",
+            "question": "Ready for Builder to start this work?",
             "options": [
                 {
                     "label": "Start now",
@@ -214,7 +214,7 @@ async def append_persisted_delivery_permission_question_if_needed(
                 },
                 {
                     "label": "Hold",
-                    "description": "Keep the improvement captured without starting delivery.",
+                    "description": "Keep the work captured without starting delivery.",
                 },
             ],
             "multi_select": False,

@@ -193,6 +193,18 @@ def test_browser_evidence_tier_classifies_proof() -> None:
     assert gap["tier"] == "no_browser_proof" and gap["advisory"]
 
 
+def test_browser_tools_registered_in_tool_registry() -> None:
+    # P19 contract: tools in an agent's allowed_tools that lack a tool_registry
+    # schema are silently dropped (tool_not_found_in_registry). A live
+    # feature-verifier run (recall-loop 2026-05-30) showed every mcp__browser__*
+    # tool dropped because the schemas were missing here. Guard it.
+    from autonomous_agent_builder.agents import tool_registry as tr
+    from autonomous_agent_builder.agents.definitions import BROWSER_TOOLS
+
+    missing = [t for t in BROWSER_TOOLS if t not in tr._SDK_BUILTINS]
+    assert not missing, f"browser tools missing tool_registry schemas: {missing}"
+
+
 def test_verification_agents_carry_browser_tools() -> None:
     from autonomous_agent_builder.agents.definitions import (
         BROWSER_TOOLS,

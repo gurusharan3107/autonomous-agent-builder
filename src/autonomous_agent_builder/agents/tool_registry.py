@@ -625,4 +625,55 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
         description="Detect language and build files for the isolated workspace",
         read_only=True,
     ),
+    # ── Browser verification tools (IMP-019) — Hermes Chrome bridge ──
+    # These MUST be registered here. Without a schema the registry drops them
+    # with `tool_not_found_in_registry` even though they are in the verifier's
+    # allowed_tools + the browser MCP server — the same P19 contract gap noted
+    # for AskUserQuestion / task_recover above. Caught by a live feature-verifier
+    # run (recall-loop 2026-05-30) where every mcp__browser__* tool was dropped.
+    "mcp__browser__resolve_app_url": ToolSchema(
+        name="mcp__browser__resolve_app_url",
+        description=(
+            "Resolve how to serve this generated web app and the URL to open "
+            "(reads the workspace package.json serve script / index.html). Call "
+            "first to learn the start command + URL before navigating."
+        ),
+        read_only=True,
+    ),
+    "mcp__browser__navigate": ToolSchema(
+        name="mcp__browser__navigate",
+        description=(
+            "Open the running app in a real browser and return rendered page "
+            "context (url, title, headings, nav, buttons, inputs)."
+        ),
+        params=(ToolParam("url", "string", "URL of the running app", required=True),),
+    ),
+    "mcp__browser__page_context": ToolSchema(
+        name="mcp__browser__page_context",
+        description="Compact context for the current browser tab (url, title, headings, nav, buttons, inputs).",
+        read_only=True,
+    ),
+    "mcp__browser__read_text": ToolSchema(
+        name="mcp__browser__read_text",
+        description="Visible rendered text of the current page, to assert real content/values.",
+        read_only=True,
+    ),
+    "mcp__browser__click_text": ToolSchema(
+        name="mcp__browser__click_text",
+        description="Click the first element whose visible text matches, then return page context.",
+        params=(ToolParam("text", "string", "Visible text of the element to click", required=True),),
+    ),
+    "mcp__browser__fill": ToolSchema(
+        name="mcp__browser__fill",
+        description="Fill the form field matched by CSS selector with a value; return page context.",
+        params=(
+            ToolParam("selector", "string", "CSS selector of the field", required=True),
+            ToolParam("value", "string", "Value to fill", required=True),
+        ),
+    ),
+    "mcp__browser__screenshot": ToolSchema(
+        name="mcp__browser__screenshot",
+        description="Capture a viewport screenshot as visual proof; returns the on-disk path.",
+        read_only=True,
+    ),
 }
