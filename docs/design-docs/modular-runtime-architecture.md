@@ -15,10 +15,11 @@ Exactly one harness is active for a run.
 | Claude Agent SDK | `claude` | Claude Code OAuth/token path | Claude Agent SDK / Claude Code | user-facing Claude lane |
 | Codex SDK | `codex_sdk` | ChatGPT/Codex login | Codex app-server/SDK JSON-RPC | user-facing Codex lane with SDK/app-server telemetry |
 
-The `openai_agents` compatibility adapter may remain in lower-level runtime
-code while migrations are in progress, but it is not a dashboard, onboarding,
-or sprint-validation lane. `codex_cli` has been removed — `codex_sdk` (Codex
-app-server/SDK JSON-RPC) supersedes the `codex exec` adapter.
+`claude` and `codex_sdk` are the only implemented harnesses; there are no hidden
+compatibility adapters. Both `codex_cli` (`codex exec`) and the `openai_agents`
+(`opencode_go`) lane have been removed — `codex_sdk` (Codex app-server/SDK
+JSON-RPC) supersedes `codex exec`, and the OpenAI-Agents lane was retired
+2026-05-30. `get_implemented_runtimes()` now equals `get_available_runtimes()`.
 
 ## Control Plane
 
