@@ -133,6 +133,40 @@ def is_correction(text: str) -> bool:
     return any(k in t for k in CORRECTION_SIGNALS)
 
 
+# Builder-orchestrated sub-agent system prompts (feature-verifier, gate-remediator,
+# scaffold, code-gen, build-verifier, ...) are captured in this repo's transcript
+# stream and open with "You are the <role> agent" — which matches the "you are"
+# CORRECTION_SIGNAL and floods the clustering with false "corrections". Exclude them.
+BUILDER_AGENT_SIGNATURES = (
+    "you are the feature verifier",
+    "you are the gate-remediator",
+    "you are the gate remediator",
+    "you are the scaffold agent",
+    "you are the code-gen",
+    "you are the build verifier",
+    "you are the build-verifier",
+    "you are the evidence",
+    "you are the pr-creator",
+    "you are the pr creator",
+    "you are the repo-researcher",
+    "you are the security review",
+    "you are the documentation agent",
+    "you are the browser-verifier",
+    "you are the optimization agent",
+)
+
+
+def is_builder_agent_prompt(text: str) -> bool:
+    """True for builder sub-agent system prompts (not operator input)."""
+    t = text.strip().lower()
+    if any(t.startswith(sig) for sig in BUILDER_AGENT_SIGNATURES):
+        return True
+    head = t[:80]
+    return t.startswith("you are the ") and (
+        "agent" in head or "verifier" in head or "remediator" in head
+    )
+
+
 def collect_git_fixes(since: str = "30d") -> list[str]:
     """Return git log subjects for fix/correction commits."""
     try:
@@ -170,6 +204,9 @@ def cluster(session_json: dict, since: str = "30d") -> dict:
         # Only count prompts that actually triggered API calls (real interactions)
         if api == 0:
             continue
+        # Skip builder sub-agent system prompts — they are not operator corrections.
+        if is_builder_agent_prompt(text):
+            continue
         t = text.lower()
         for theme in THEMES:
             if any(k in t for k in theme["keywords"]):
@@ -198,7 +235,11 @@ def cluster(session_json: dict, since: str = "30d") -> dict:
     return {
         "window": since,
         "total_prompts": len(prompts),
-        "correction_prompts": sum(1 for p in prompts if is_correction(p.get("text", ""))),
+        "correction_prompts": sum(
+            1
+            for p in prompts
+            if is_correction(p.get("text", "")) and not is_builder_agent_prompt(p.get("text", ""))
+        ),
         "git_subjects_analyzed": len(git_subjects),
         "themes": results,
     }

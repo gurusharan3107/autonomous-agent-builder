@@ -243,6 +243,10 @@ class Feature(Base):
     evidence: Mapped[str] = mapped_column(Text, default="")
     acceptance_criteria: Mapped[list[str]] = mapped_column(JSON, default=list)
     dependencies: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # Model-proposed task decomposition emitted by the chat intake agent (IMP-027c).
+    # Each entry: {"title": str, "purpose": str}. Empty = planner falls back to the
+    # deterministic risk-based templates. Length may be 1 for trivial items.
+    proposed_tasks: Mapped[list[dict[str, str]]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow

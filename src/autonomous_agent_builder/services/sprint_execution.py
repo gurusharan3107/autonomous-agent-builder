@@ -234,7 +234,7 @@ def build_sprint_execution_plan(project: Project, features: list[Feature]) -> di
             spec = {
                 "feature_id": feature.id,
                 "task_key": task_key,
-                "title": template["title"].format(feature=feature.title),
+                "title": _format_task_title(template["title"], feature.title),
                 "purpose": template["purpose"],
                 "ownership": template["ownership"],
                 "depends_on_batches": depends_on_batches,
@@ -740,10 +740,57 @@ def _risk_flags(feature: Feature) -> list[str]:
     return flags or ["routine"]
 
 
+def _format_task_title(title: str, feature_title: str) -> str:
+    """Substitute the {feature} placeholder without brittle str.format.
+
+    Deterministic templates carry a `{feature}` placeholder; model-proposed titles
+    (IMP-027c) are literal and may contain characters that would break str.format,
+    so use plain replacement.
+    """
+    return title.replace("{feature}", feature_title)
+
+
+def _model_proposed_templates(feature: Feature) -> tuple[dict[str, str], ...]:
+    """Convert the chat agent's model-proposed decomposition (IMP-027c) into planner
+    template dicts. Returns empty when the feature carries no proposal so the planner
+    falls back to the deterministic risk-based templates. Length may be 1 — a trivial
+    item should not be exploded into a multi-task sprint.
+    """
+    proposed = getattr(feature, "proposed_tasks", None)
+    if not isinstance(proposed, list) or not proposed:
+        return ()
+    templates: list[dict[str, str]] = []
+    for index, task in enumerate(proposed, start=1):
+        if not isinstance(task, dict):
+            continue
+        title = str(task.get("title", "")).strip()
+        if not title:
+            continue
+        purpose = (
+            str(task.get("purpose", "")).strip()
+            or "Deliver this slice of the feature and prove it works."
+        )
+        templates.append(
+            {
+                "key": f"model-task-{index}",
+                "title": title,
+                "purpose": purpose,
+                "ownership": "implementation, tests, and verification evidence for this slice",
+            }
+        )
+    return tuple(templates)
+
+
 def _task_templates_for_feature(
     feature: Feature,
     risk_flags: list[str],
 ) -> tuple[dict[str, str], ...]:
+    # IMP-027c: a model-proposed decomposition (from the chat intake agent) is the
+    # source of truth for task count — it scales work to the real change instead of
+    # a fixed keyword-selected template. Deterministic templates are the fallback.
+    model_templates = _model_proposed_templates(feature)
+    if model_templates:
+        return model_templates
     if set(risk_flags) & _HIGH_RISK_FLAGS:
         return _SPRINT_TASK_TEMPLATES
     return _LOW_RISK_SPRINT_TASK_TEMPLATES
@@ -767,7 +814,7 @@ def _task_implementation_brief(
     dependencies: list[str],
 ) -> str:
     parts = [
-        f"{template['title'].format(feature=feature.title)}.",
+        f"{_format_task_title(template['title'], feature.title)}.",
         template["purpose"],
         f"Feature outcome: {feature.description}".strip(),
         f"Task ownership: {template['ownership']}.",

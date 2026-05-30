@@ -125,3 +125,50 @@ def test_recent_chat_context_for_prompt_force_bypasses_message_filter(tmp_path):
 
     assert context_without_force == ""
     assert "developer pulse dashboard" in context_with_force
+
+
+def test_feature_spec_prompt_requests_proposed_task_sizing(tmp_path):
+    """IMP-027c: the intake prompt must ask the model to size proposed_tasks to the
+    real change (one task for a trivial single-surface change)."""
+    prompt = agent_routes._feature_spec_chat_prompt(
+        tmp_path,
+        "I want a small version label in the footer.",
+        runtime_sdk="codex_sdk",
+    )
+    assert "proposed_tasks" in prompt
+    assert "is ONE task" in prompt
+
+
+def test_general_chat_prompt_mentions_proposed_tasks(tmp_path):
+    prompt = agent_routes._general_chat_prompt(
+        tmp_path,
+        "Add a small empty-state hint under the todo list.",
+    )
+    assert "proposed_tasks" in prompt
+
+
+def test_normalize_feature_spec_payload_carries_proposed_tasks() -> None:
+    """The captured feature-spec payload preserves a model decomposition (length>=1)."""
+    from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
+        normalize_feature_spec_payload,
+        normalize_proposed_tasks,
+    )
+
+    payload = normalize_feature_spec_payload(
+        {
+            "title": "Footer version label",
+            "description": "Static v0.1 label, not tied to any external source.",
+            "acceptance_criteria": ["Footer shows v0.1"],
+            "proposed_tasks": [
+                {"title": "Add v0.1 footer label", "purpose": "show version"},
+                "Verify label renders",  # bare-string form is accepted
+            ],
+        }
+    )
+    assert [task["title"] for task in payload["proposed_tasks"]] == [
+        "Add v0.1 footer label",
+        "Verify label renders",
+    ]
+    # junk and empty entries are dropped; non-lists yield empty
+    assert normalize_proposed_tasks("nope") == []
+    assert normalize_proposed_tasks([{"title": ""}, 42]) == []

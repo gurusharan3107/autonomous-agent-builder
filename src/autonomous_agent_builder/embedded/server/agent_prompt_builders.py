@@ -193,7 +193,12 @@ def _general_chat_prompt(
         "If no matching item exists, decide whether the scope is clear enough. If it is unclear, ask the next "
         "plain product question through the runtime-native structured question mechanism. If it is clear, "
         "summarize the agreed improvement and emit `FEATURE_SPEC_JSON:` followed immediately by one raw "
-        "JSON object with title, description, priority, acceptance_criteria, and dependencies. Do not "
+        "JSON object with title, description, priority, acceptance_criteria, dependencies, and "
+        "proposed_tasks. Size proposed_tasks to the real change: a trivial single-surface change (a "
+        "static label, tagline, copy/style tweak, one stat) is ONE task — do not add domain-model, "
+        "persistence, or separate verify tasks for a one-line UI change; decompose into multiple tasks "
+        "only when the feature genuinely spans distinct surfaces. Every extra task is real builder cost. "
+        "Do not "
         "tell the user to create backlog items, plan a sprint, or create tasks; Builder handles those "
         "internal lifecycle steps after the captured improvement is approved. "
         "Do not say you will check memory, backlog, board, or project state unless you actually use "
@@ -356,8 +361,24 @@ The JSON object must match this shape exactly:
   "description": "What the improvement delivers and its boundaries",
   "priority": 50,
   "acceptance_criteria": ["observable outcome 1", "observable outcome 2"],
-  "dependencies": []
+  "dependencies": [],
+  "proposed_tasks": [
+    {{"title": "One implementation task", "purpose": "what it delivers"}}
+  ]
 }}
+
+`proposed_tasks` is how you size the work — scale it to the real change, not a fixed
+template. Use your judgment:
+- A trivial, single-surface change (a static label, a tagline, a copy/colour/style tweak,
+  one stat line) is ONE task. Do not invent a separate domain-model, persistence, or
+  "verify" task for a one-line UI change.
+- Decompose into multiple tasks ONLY when the feature genuinely spans distinct surfaces
+  (e.g. a real data model AND UI AND persistence AND verification). Authentication,
+  multi-screen flows, or anything touching storage/migrations/integrations warrants
+  several tasks.
+- Each task must be independently implementable. Prefer the fewest tasks that still
+  deliver the feature safely. The builder runs full SDLC ceremony per task, so every
+  extra task is real cost — only add one when it earns its place.
 
 Project root: {project_root}
 

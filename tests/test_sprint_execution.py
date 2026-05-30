@@ -964,3 +964,80 @@ def test_build_verifier_failure_detects_markdown_failures() -> None:
     failure = build_verifier_failure("`npm run test` — **FAIL** (1/41)")
 
     assert failure == "build_verification_failed: `npm run test` — **FAIL** (1/41)"
+
+
+def test_task_templates_prefer_model_proposed_decomposition() -> None:
+    """IMP-027c: when the chat intake agent sizes a trivial item as ONE task, the
+    planner must emit exactly that — not the keyword-selected 5/3-task template.
+    The description contains 'external' (the substring that wrongly escalated a
+    static label to the high-risk 5-task set before this fix)."""
+    from autonomous_agent_builder.services.sprint_execution import (
+        _model_proposed_templates,
+        _risk_flags,
+        _task_templates_for_feature,
+    )
+
+    trivial = Feature(
+        title="Home screen footer version label",
+        description="Render a minimal 'v0.1' label in the footer; not tied to any external source.",
+        proposed_tasks=[{"title": "Add v0.1 footer label", "purpose": "show the static version"}],
+    )
+    templates = _task_templates_for_feature(trivial, _risk_flags(trivial))
+    assert len(templates) == 1
+    assert templates[0]["title"] == "Add v0.1 footer label"
+    assert _model_proposed_templates(trivial)[0]["purpose"] == "show the static version"
+
+
+def test_task_templates_fall_back_to_deterministic_when_no_proposal() -> None:
+    """No model proposal → planner keeps its deterministic risk-based templates."""
+    from autonomous_agent_builder.services.sprint_execution import (
+        _LOW_RISK_SPRINT_TASK_TEMPLATES,
+        _SPRINT_TASK_TEMPLATES,
+        _risk_flags,
+        _task_templates_for_feature,
+    )
+
+    plain = Feature(title="Stats dashboard", description="charts and counters", proposed_tasks=[])
+    assert _task_templates_for_feature(plain, _risk_flags(plain)) is _LOW_RISK_SPRINT_TASK_TEMPLATES
+    risky = Feature(
+        title="Login with OAuth",
+        description="OAuth login and session handling",
+        proposed_tasks=[],
+    )
+    assert _task_templates_for_feature(risky, _risk_flags(risky)) is _SPRINT_TASK_TEMPLATES
+
+
+@pytest.mark.asyncio
+async def test_proposed_tasks_produce_one_task_for_trivial_item(test_db) -> None:
+    """End-to-end IMP-027c: a trivial item with a single model-proposed task creates
+    exactly one Task with the model's literal title (no domain-model/persistence/verify
+    explosion)."""
+    _, factory = test_db
+    async with factory() as db:
+        project = Project(name="LabelApp", language="python")
+        db.add(project)
+        await db.flush()
+        feature = Feature(
+            project_id=project.id,
+            title="Home screen footer version label",
+            description="Render a minimal 'v0.1' label in the footer; not tied to any external source.",
+            priority=100,
+            acceptance_criteria=["Footer shows v0.1"],
+            proposed_tasks=[
+                {"title": "Add v0.1 footer label to home screen", "purpose": "show static version"}
+            ],
+        )
+        db.add(feature)
+        await db.flush()
+        result = await db.execute(
+            select(Feature)
+            .options(selectinload(Feature.tasks))
+            .where(Feature.project_id == project.id)
+        )
+        features = list(result.scalars().all())
+
+        await persist_sprint_execution_artifacts(db, project, features)
+
+        tasks = list((await db.execute(select(Task))).scalars().all())
+        assert len(tasks) == 1
+        assert tasks[0].title == "Add v0.1 footer label to home screen"

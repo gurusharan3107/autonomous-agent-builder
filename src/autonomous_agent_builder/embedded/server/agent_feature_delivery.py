@@ -38,6 +38,14 @@ async def persist_feature_spec(db: AsyncSession, payload: dict[str, Any]) -> Fea
         dependencies=[
             str(item).strip() for item in payload.get("dependencies", []) if str(item).strip()
         ],
+        proposed_tasks=[
+            {
+                "title": str(task.get("title", "")).strip(),
+                "purpose": str(task.get("purpose", "")).strip(),
+            }
+            for task in payload.get("proposed_tasks", [])
+            if isinstance(task, dict) and str(task.get("title", "")).strip()
+        ],
     )
     db.add(feature)
     await db.commit()

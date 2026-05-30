@@ -130,6 +130,34 @@ def feature_record_description(payload: dict[str, Any]) -> str:
     return "\n\n".join(section for section in sections if section).strip()
 
 
+def normalize_proposed_tasks(raw: Any) -> list[dict[str, str]]:
+    """Normalize the chat agent's model-proposed task decomposition (IMP-027c).
+
+    Accepts a list of objects ({"title", "purpose"}) or bare title strings. Returns
+    a capped, sanitized list; empty when absent so the planner falls back to its
+    deterministic risk-based templates. Length may legitimately be 1 for a trivial
+    item — the whole point is to stop decomposing a one-line change into a sprint.
+    """
+    if not isinstance(raw, list):
+        return []
+    tasks: list[dict[str, str]] = []
+    for item in raw:
+        if isinstance(item, str):
+            title = item.strip()
+            purpose = ""
+        elif isinstance(item, dict):
+            title = str(item.get("title", "")).strip()
+            purpose = str(item.get("purpose", "")).strip()
+        else:
+            continue
+        if not title:
+            continue
+        tasks.append({"title": title, "purpose": purpose})
+        if len(tasks) >= 8:  # safety cap; a feature should never need more
+            break
+    return tasks
+
+
 def normalize_feature_spec_payload(payload: dict[str, Any]) -> dict[str, Any]:
     title = str(payload.get("title", "")).strip()
     if not title:
@@ -140,6 +168,7 @@ def normalize_feature_spec_payload(payload: dict[str, Any]) -> dict[str, Any]:
     dependencies = [
         str(item).strip() for item in payload.get("dependencies", []) if str(item).strip()
     ]
+    proposed_tasks = normalize_proposed_tasks(payload.get("proposed_tasks"))
     raw_priority = payload.get("priority", 50)
     try:
         priority = int(raw_priority)
@@ -157,6 +186,7 @@ def normalize_feature_spec_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "priority": priority,
         "acceptance_criteria": acceptance_criteria,
         "dependencies": dependencies,
+        "proposed_tasks": proposed_tasks,
     }
 
 
