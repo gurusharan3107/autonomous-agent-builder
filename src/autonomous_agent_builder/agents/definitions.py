@@ -28,6 +28,12 @@ class AgentDefinition:
     model: str = "sonnet"
     max_turns: int = 30
     max_budget_usd: float = 5.00
+    # SDK permission mode for this agent's runtime. ``None`` falls back to the
+    # global ``settings.agent.permission_mode``. Interactive lanes that must
+    # surface AskUserQuestion / tool-approval cards require a mode that invokes
+    # the ``can_use_tool`` callback (e.g. ``"default"``); ``"dontAsk"`` bypasses
+    # the callback entirely and disables AskUserQuestion.
+    permission_mode: str | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +81,22 @@ VERIFICATION_SPECIALIST_TOOLS: tuple[str, ...] = (
     "mcp__workspace__read_file",
     "mcp__workspace__list_directory",
     "mcp__workspace__get_project_info",
+)
+
+# IMP-019: real-browser verification tools (Hermes Chrome bridge) for the
+# browser-visible acceptance lane. Kept separate so only the verification agents
+# that actually render the app carry them.
+BROWSER_TOOLS: tuple[str, ...] = (
+    "mcp__browser__resolve_app_url",
+    "mcp__browser__navigate",
+    "mcp__browser__page_context",
+    "mcp__browser__read_text",
+    "mcp__browser__click_text",
+    "mcp__browser__fill",
+    "mcp__browser__screenshot",
+)
+BROWSER_VERIFICATION_SPECIALIST_TOOLS: tuple[str, ...] = (
+    VERIFICATION_SPECIALIST_TOOLS + BROWSER_TOOLS
 )
 
 EVIDENCE_SPECIALIST_TOOLS: tuple[str, ...] = (
@@ -205,6 +227,12 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         model="haiku",
         max_turns=20,
         max_budget_usd=2.00,
+        # Interactive operator lane: must run under a mode that invokes the
+        # can_use_tool callback so AskUserQuestion renders structured option
+        # cards and tool-approval requests reach the dashboard. "dontAsk"
+        # bypasses the callback and silently disables AskUserQuestion, which
+        # forces the requirements interview into degraded free-text Q&A.
+        permission_mode="default",
     ),
     "init-project-chat": AgentDefinition(
         name="init-project-chat",
@@ -213,12 +241,12 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "You are an expert product planner for a brand-new software project.\n\n"
             "Your job is to interview the user until the first implementation scope is crisp, "
             "gap-free, and ready to turn into a feature backlog.\n\n"
-            "IMPORTANT — you are running inside Builder, a product context. The permission "
-            "mode ('dontAsk') means tool-use permission prompts are auto-approved. It does NOT "
-            "mean you should skip the requirements interview or make silent product decisions. "
-            "You MUST use `AskUserQuestion` to gather product context — not because you lack "
-            "CLI interactivity, but because the operator answers are captured as durable product "
-            "evidence in the conversation timeline.\n\n"
+            "IMPORTANT — you are running inside Builder, a product context with an "
+            "interactive dashboard. The `AskUserQuestion` tool IS available in this lane "
+            "and renders structured option cards the operator clicks to answer. You MUST "
+            "use `AskUserQuestion` to gather product context — the operator answers are "
+            "captured as durable product evidence in the conversation timeline. Never fall "
+            "back to plain-text questions and never claim the question tool is disabled.\n\n"
             "For every new product request on a clean-slate workspace, conduct a structured "
             "requirements interview BEFORE creating any backlog item. Ask about the product "
             "audience, key workflows, data and persistence expectations, UI/UX tone, and "
@@ -679,7 +707,9 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Branch: {branch}\n"
             "Workspace: {workspace_path}\n"
         ),
-        tools=("Read", "Bash", "Glob", "Grep"),
+        # Browser tools let a delegated browser-verifier render the app; the
+        # parent must carry them so the browser MCP server is built (IMP-019).
+        tools=("Read", "Bash", "Glob", "Grep", *BROWSER_TOOLS),
         model="sonnet",
         max_turns=10,
         max_budget_usd=1.50,
@@ -707,9 +737,18 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "- Never run a long-lived dev server in the foreground. Start it in the background with "
             "log redirection, record the PID, run browser validation, then stop it.\n"
             "- Do not print Playwright traces, full browser logs, full test lists, or generated bundles.\n\n"
+            "Real-browser verification (preferred for user-facing web features):\n"
+            "- Call `mcp__browser__resolve_app_url` first to get the start command + URL, start that "
+            "server in the background with log redirection, then use the "
+            "`mcp__browser__*` tools (navigate, page_context, read_text, click_text, fill, screenshot) "
+            "to drive the RENDERED app in a real browser and confirm each acceptance criterion through "
+            "actual UI behavior, route changes, and reload/persistence — not jsdom alone.\n"
+            "- If `mcp__browser__navigate` reports `bridge_unavailable`, fall back to the deterministic "
+            "acceptance command and record that browser proof was unavailable (a weaker evidence tier).\n\n"
             "Required workflow:\n"
             "1. Inspect the feature, app surface, and acceptance criteria.\n"
-            "2. Exercise the user-visible feature flow as a tester and judge whether it satisfies the criteria.\n"
+            "2. Exercise the user-visible feature flow as a tester via `mcp__browser__*` against the running "
+            "app and judge whether it satisfies the criteria; capture a screenshot as proof.\n"
             "3. If the product behavior is wrong, fix the product and repeat the tester validation.\n"
             "4. Once satisfied, add or update Playwright tests that directly cover the criteria.\n"
             "5. Run the feature acceptance command and the smallest build/test command needed after edits.\n"
@@ -741,6 +780,9 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "mcp__workspace__run_command",
             "mcp__workspace__read_file",
             "mcp__workspace__list_directory",
+            # IMP-019: real-browser verification via the Hermes Chrome bridge so
+            # the tester step actually renders the app (not jsdom-only).
+            *BROWSER_TOOLS,
         ),
         model="sonnet",
         max_turns=24,

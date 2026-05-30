@@ -48,6 +48,11 @@ class ChatTurnCallbackState:
     feature_spec_requested: bool = False
     model_backed_delivery_context_requested: bool = False
     specialist_phase: str = ""
+    # Tools the agent is already granted (its definition's allowed_tools). Under
+    # permission_mode="default" the can_use_tool callback may be consulted for
+    # these; auto-allowing them preserves historical silent-execution behavior so
+    # enabling AskUserQuestion does not introduce approval-card friction.
+    preapproved_tools: frozenset[str] = frozenset()
 
 
 def resolve_chat_turn_intent(

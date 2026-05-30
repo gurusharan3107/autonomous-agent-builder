@@ -18,10 +18,18 @@ from autonomous_agent_builder.embedded.server.agent_message_intent import (
 FEATURE_LIST_MARKER = "FEATURE_LIST_JSON:"
 FEATURE_SPEC_MARKER = "FEATURE_SPEC_JSON:"
 _CAPTURED_FEATURE_TITLE_PATTERNS = (
-    re.compile(r"I captured that improvement as `([^`]+)`", re.IGNORECASE),
+    # Accept any backlog-item type noun (feature/improvement/optimization/
+    # incident) — save_note is now type-aware (IMP-015).
+    re.compile(r"I captured that [\w-]+ as `([^`]+)`", re.IGNORECASE),
     re.compile(r"Feature saved to backlog as `([^`]+)`", re.IGNORECASE),
     re.compile(r"I saved that as `([^`]+)`(?:[^.]*in the backlog)?", re.IGNORECASE),
 )
+
+
+def content_announces_captured_feature(content: str) -> bool:
+    """True if assistant text announces a captured backlog item, for any type
+    noun (feature/improvement/optimization/incident). Type-agnostic per IMP-015."""
+    return any(pattern.search(content) for pattern in _CAPTURED_FEATURE_TITLE_PATTERNS)
 
 
 def extract_json_object(text: str) -> dict[str, Any]:
@@ -175,12 +183,7 @@ def session_has_pending_feature_spec(session: ChatSession) -> bool:
         if item.type != "assistant_message":
             continue
         content = str(item.payload.get("content", ""))
-        if (
-            FEATURE_SPEC_MARKER in content
-            or "Feature saved to backlog as `" in content
-            or "I captured that improvement as `" in content
-            or ("I saved that as `" in content and "in the backlog" in content)
-        ):
+        if FEATURE_SPEC_MARKER in content or content_announces_captured_feature(content):
             return False
     return True
 
@@ -190,12 +193,7 @@ def session_has_saved_feature_for_delivery(session: ChatSession) -> bool:
         if item.type != "assistant_message":
             continue
         content = str(item.payload.get("content", ""))
-        if (
-            "Feature saved to backlog as `" in content
-            or "I captured that improvement as `" in content
-        ) or (
-            "I saved that as `" in content and "in the backlog" in content
-        ):
+        if content_announces_captured_feature(content):
             return True
     return False
 

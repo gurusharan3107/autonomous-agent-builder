@@ -556,6 +556,13 @@ async def _authorize_chat_tool(
     ):
         return _permission_allow(input_data)
 
+    # Tools already granted to this agent execute without an approval card. This
+    # preserves the historical silent-execution behavior of permission_mode
+    # "dontAsk" now that interactive lanes run under "default" (required so the
+    # can_use_tool callback is invoked and AskUserQuestion can collect answers).
+    if tool_name in state.preapproved_tools:
+        return _permission_allow(input_data)
+
     summary, description = _tool_summary(tool_name, input_data)
     approval_event = await _append_chat_event(
         state.session_id,
@@ -677,6 +684,7 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
         active_specialist=active_specialist,
         user_message=user_message,
         specialist_phase=specialist_phase,
+        preapproved_tools=frozenset(agent_def.tools),
     )
     turn_publisher = ChatTurnPublisher(
         session_id=session_id,

@@ -2,15 +2,45 @@
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from autonomous_agent_builder.agents.tools import workspace_tools
+from autonomous_agent_builder.agents.tools import browser_tools, workspace_tools
 from autonomous_agent_builder.services import builder_tool_service
 
+
+def _to_mcp(result: dict[str, Any]) -> dict[str, Any]:
+    """Wrap a plain handler result in the MCP ``content`` envelope the SDK
+    requires. Without ``content`` the SDK ``call_tool`` handler returns an empty
+    ``CallToolResult`` and the model receives nothing. ``builder_tool_service``
+    already returns this envelope; the browser tools return plain dicts, so wrap
+    them here at the SDK boundary (keeps browser_tools.py cleanly testable)."""
+    if "content" in result:
+        return result
+    return {"content": [{"type": "text", "text": json.dumps(result, default=str)}]}
+
 _EMPTY_SCHEMA = {"type": "object", "properties": {}, "additionalProperties": False}
+_BROWSER_NAVIGATE_SCHEMA = {
+    "type": "object",
+    "properties": {"url": {"type": "string"}},
+    "required": ["url"],
+    "additionalProperties": False,
+}
+_BROWSER_CLICK_SCHEMA = {
+    "type": "object",
+    "properties": {"text": {"type": "string"}},
+    "required": ["text"],
+    "additionalProperties": False,
+}
+_BROWSER_FILL_SCHEMA = {
+    "type": "object",
+    "properties": {"selector": {"type": "string"}, "value": {"type": "string"}},
+    "required": ["selector", "value"],
+    "additionalProperties": False,
+}
 _BACKLOG_ITEM_LIST_SCHEMA = {
     "type": "object",
     "properties": {
@@ -669,10 +699,88 @@ def build_default_mcp_servers(
         allowed_tool_set,
     )
 
+    # ── Browser verification tools (IMP-019) — Hermes Chrome bridge ──
+    @tool(
+        "navigate",
+        "Open the running app in a real browser and return rendered page context "
+        "(url, title, headings, nav, buttons, inputs).",
+        _BROWSER_NAVIGATE_SCHEMA,
+    )
+    async def browser_navigate(args: dict[str, Any]) -> dict:
+        return _to_mcp(await browser_tools.browser_navigate(args["url"]))
+
+    @tool(
+        "page_context",
+        "Compact context for the current browser tab (url, title, headings, nav, "
+        "buttons, inputs) — the cheapest way to verify rendered state.",
+        _EMPTY_SCHEMA,
+    )
+    async def browser_page_context(_args: dict[str, Any]) -> dict:
+        return _to_mcp(await browser_tools.browser_page_context())
+
+    @tool(
+        "read_text",
+        "Visible rendered text of the current page, to assert real content/values.",
+        _EMPTY_SCHEMA,
+    )
+    async def browser_read_text(_args: dict[str, Any]) -> dict:
+        return _to_mcp(await browser_tools.browser_read_text())
+
+    @tool(
+        "click_text",
+        "Click the first element whose visible text matches, then return page context.",
+        _BROWSER_CLICK_SCHEMA,
+    )
+    async def browser_click_text(args: dict[str, Any]) -> dict:
+        return _to_mcp(await browser_tools.browser_click_text(args["text"]))
+
+    @tool(
+        "fill",
+        "Fill the form field matched by CSS selector with a value; return page context.",
+        _BROWSER_FILL_SCHEMA,
+    )
+    async def browser_fill(args: dict[str, Any]) -> dict:
+        return _to_mcp(await browser_tools.browser_fill(args["selector"], args["value"]))
+
+    @tool(
+        "screenshot",
+        "Capture a viewport screenshot as visual proof; returns the on-disk path.",
+        _EMPTY_SCHEMA,
+    )
+    async def browser_screenshot(_args: dict[str, Any]) -> dict:
+        return _to_mcp(await browser_tools.browser_screenshot())
+
+    @tool(
+        "resolve_app_url",
+        "Resolve how to serve this generated web app and the URL to open "
+        "(reads the workspace package.json serve script / index.html). Call this "
+        "first to learn the start command + URL before navigating.",
+        _EMPTY_SCHEMA,
+    )
+    async def browser_resolve_app_url(_args: dict[str, Any]) -> dict:
+        return _to_mcp(browser_tools.resolve_dev_server(workspace_path))
+
+    browser_tools_list = _filter_mcp_tools(
+        "browser",
+        [
+            ("resolve_app_url", browser_resolve_app_url),
+            ("navigate", browser_navigate),
+            ("page_context", browser_page_context),
+            ("read_text", browser_read_text),
+            ("click_text", browser_click_text),
+            ("fill", browser_fill),
+            ("screenshot", browser_screenshot),
+        ],
+        allowed_tool_set,
+    )
+
     builder_server = create_sdk_mcp_server(name="builder", tools=builder_tools)
     workspace_server = create_sdk_mcp_server(name="workspace", tools=workspace_tools_list)
 
-    return {
+    servers: dict[str, Any] = {
         "builder": builder_server,
         "workspace": workspace_server,
     }
+    if browser_tools_list:
+        servers["browser"] = create_sdk_mcp_server(name="browser", tools=browser_tools_list)
+    return servers

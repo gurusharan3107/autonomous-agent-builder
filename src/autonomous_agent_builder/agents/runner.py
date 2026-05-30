@@ -637,7 +637,8 @@ class AgentRunner:
                 allowed_tools=allowed_tools,
                 workspace_path=workspace_path,
                 mcp_servers=self._build_mcp_servers(workspace_path, allowed_tools),
-                permission_mode=self.settings.agent.permission_mode,
+                permission_mode=agent_def.permission_mode
+                or self.settings.agent.permission_mode,
                 sdk_subagents=sdk_subagents,
                 effective_can_use_tool=effective_can_use_tool,
             )

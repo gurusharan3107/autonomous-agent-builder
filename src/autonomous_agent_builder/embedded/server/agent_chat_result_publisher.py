@@ -259,7 +259,12 @@ async def _publish_successful_chat_result(
                 feature = await _persist_feature_spec(db, feature_spec_payload)
             if feature is not None:
                 feature_captured = True
-                save_note = f"I captured that improvement as `{feature.title}`."
+                # Use the item's real type word (feature/improvement/optimization/
+                # incident) so a brand-new feature is not mislabeled an
+                # "improvement" (IMP-015). Parser markers in agent_feature_payloads
+                # accept any type noun in lockstep.
+                type_noun = str(getattr(feature, "item_type", "") or "item")
+                save_note = f"I captured that {type_noun} as `{feature.title}`."
                 visible_response = (
                     f"{visible_response}\n\n{save_note}".strip() if visible_response else save_note
                 )

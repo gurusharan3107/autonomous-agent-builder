@@ -222,7 +222,11 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
     }
     assert captured["options"].setting_sources == ["project"]
     assert captured["options"].effort == "medium"
-    assert captured["options"].thinking is None  # chat agent uses haiku → no adaptive thinking
+    # chat resolves to implementation_model (sonnet) → adaptive thinking (builder-owned policy)
+    assert captured["options"].thinking == {"type": "adaptive"}
+    # chat is the interactive operator lane: must run under "default" so the
+    # can_use_tool callback is invoked and AskUserQuestion stays enabled (IMP-018).
+    assert captured["options"].permission_mode == "default"
     assert captured["options"].settings is None  # chat agent not in autocompact strategies
     assert captured["options"].has_task_budget is False
     assert captured["options"].extra_args == {"disable-slash-commands": None}

@@ -89,7 +89,7 @@ async def test_ship_new_feature_prompt_creates_feature_before_sprint_planning(
     assert "There are no product backlog items available for sprint planning." not in assistant_item[
         "payload"
     ]["content"]
-    assert "I captured that improvement" in assistant_item["payload"]["content"]
+    assert "I captured that feature" in assistant_item["payload"]["content"]
 
 @pytest.mark.asyncio
 async def test_todo_app_improvement_prompt_uses_model_and_captures_feature(
@@ -376,7 +376,7 @@ async def test_natural_confirmation_routes_saved_feature_to_sprint_planning(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "I captured that improvement as" in item["payload"].get("content", ""),
+            predicate=lambda item: "I captured that feature as" in item["payload"].get("content", ""),
         )
 
         second = await client.post(

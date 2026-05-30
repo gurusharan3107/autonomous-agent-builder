@@ -83,14 +83,14 @@ async def test_chat_feature_spec_request_creates_backlog_feature(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "I captured that improvement" in item["payload"].get("content", ""),
+            predicate=lambda item: "I captured that feature" in item["payload"].get("content", ""),
         )
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
         created_feature = next(feature for feature in feature_payload["features"] if feature["title"] == "Post bookmarks")
         tasks_response = await client.get(f"/api/features/{created_feature['id']}/tasks")
 
-    assert "I captured that improvement as `Post bookmarks`." in assistant_item["payload"]["content"]
+    assert "I captured that feature as `Post bookmarks`." in assistant_item["payload"]["content"]
     payload = feature_payload
     assert any(feature["title"] == "Post bookmarks" for feature in payload["features"])
     assert created_feature["priority"] == "77"
@@ -167,7 +167,7 @@ async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "I captured that improvement" in item["payload"].get("content", ""),
+            predicate=lambda item: "I captured that feature" in item["payload"].get("content", ""),
         )
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
@@ -182,7 +182,7 @@ async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
     tasks = tasks_response.json()
     assert tasks == []
     assert dispatched == []
-    assert "I captured that improvement as `Post bookmarks`." in assistant_item["payload"]["content"]
+    assert "I captured that feature as `Post bookmarks`." in assistant_item["payload"]["content"]
     assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]
 
 @pytest.mark.asyncio
@@ -245,7 +245,7 @@ async def test_chat_saved_feature_delivery_followup_routes_through_sprint_backlo
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "I captured that improvement" in item["payload"].get("content", ""),
+            predicate=lambda item: "I captured that feature" in item["payload"].get("content", ""),
         )
 
         async def fail_run_phase(self, **kwargs):
@@ -403,7 +403,7 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "I captured that improvement" in item["payload"].get("content", ""),
+            predicate=lambda item: "I captured that feature" in item["payload"].get("content", ""),
         )
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
@@ -418,5 +418,5 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
     tasks = tasks_response.json()
     assert tasks == []
     assert dispatched == []
-    assert "I captured that improvement as `Private Post Bookmarks`." in assistant_item["payload"]["content"]
+    assert "I captured that feature as `Private Post Bookmarks`." in assistant_item["payload"]["content"]
     assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]

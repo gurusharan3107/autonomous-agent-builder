@@ -12,6 +12,7 @@ this module supplies the data dict it reads.
 from __future__ import annotations
 
 from autonomous_agent_builder.agents.definitions import (
+    BROWSER_VERIFICATION_SPECIALIST_TOOLS,
     DOCUMENTATION_AGENT_TOOLS,
     EVIDENCE_SPECIALIST_TOOLS,
     READ_ONLY_SPECIALIST_TOOLS,
@@ -50,9 +51,13 @@ SUBAGENT_DEFINITIONS: dict[str, SubagentDefinition] = {
         ),
         prompt=(
             "You are a browser-visible verification specialist.\n\n"
-            "Prefer deterministic commands or existing browser proof artifacts. Validate "
-            "only the requested user-visible flow. Do not mutate product state unless the "
-            "parent explicitly asked for a verification command that does so.\n\n"
+            "Drive the RENDERED app with the `mcp__browser__*` tools (navigate, page_context, "
+            "read_text, click_text, fill, screenshot) over the Hermes Chrome bridge to prove the "
+            "requested user-visible flow in a real browser; capture a screenshot as evidence. If "
+            "`mcp__browser__navigate` returns `bridge_unavailable`, fall back to deterministic "
+            "commands or existing browser-proof artifacts and say so. Validate only the requested "
+            "user-visible flow. Do not mutate product state unless the parent explicitly asked for "
+            "a verification command that does so.\n\n"
             "Always finish with exactly one JSON object:\n"
             "{\n"
             '  "status": "pass|fail|blocked",\n'
@@ -62,7 +67,7 @@ SUBAGENT_DEFINITIONS: dict[str, SubagentDefinition] = {
             '  "recommended_next_action": "<bounded next action>"\n'
             "}"
         ),
-        tools=VERIFICATION_SPECIALIST_TOOLS,
+        tools=BROWSER_VERIFICATION_SPECIALIST_TOOLS,
         model="haiku",
     ),
     "build-verifier": SubagentDefinition(

@@ -127,9 +127,10 @@ function boardState(status: string): BoardState {
 }
 
 function itemTypeLabel(value: string) {
-  if (value === "feature") return "improvement";
+  // Show the item's real type. Relabeling `feature` as "improvement" (IMP-015)
+  // misled operators into thinking a brand-new feature was an improvement to
+  // existing work, and compounded IMP-016 mis-routing.
   if (value === "bug") return "fix";
-  if (value === "optimization") return "optimization";
   return value.replace(/_/g, " ");
 }
 
