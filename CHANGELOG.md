@@ -9,7 +9,7 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
-## 2026-05-30 - M1.1 IMP-018 + IMP-015 closed; IMP-019 real-browser verification built; IMP-020 found
+## 2026-05-30 - M1.1 IMP-018 + IMP-015 + IMP-020 closed; IMP-019 real-browser verification built
 
 Operator-driven dashboard validation on a fresh managed app (recall-loop, a spaced-repetition flashcard app). Full idea→ship loop validated (5-task sprint, 0 errors, ~$2.02; real-browser acceptance + localStorage persistence proven; 62 generated-app tests + lint green).
 
@@ -17,6 +17,7 @@ Operator-driven dashboard validation on a fresh managed app (recall-loop, a spac
 
 - **IMP-018** — requirements interview degraded to free-text instead of structured `AskUserQuestion` cards. Root cause: global `permission_mode="dontAsk"` bypasses the SDK `can_use_tool` callback (the only place AskUserQuestion + tool-approval cards are produced). Added per-agent `AgentDefinition.permission_mode`; `chat` runs `"default"`; `runner.py` forwards it; `preapproved_tools` guard in `_authorize_chat_tool` preserves silent execution of granted tools. Validated live: structured cards render. Tests `test_chat_permission_mode_questions.py` + `test_agent_runner.py`.
 - **IMP-015** — `type=feature` items rendered/announced as "improvement". `BacklogPage.tsx` `itemTypeLabel` mapped feature→"improvement"; `agent_chat_result_publisher` hardcoded the save-note noun; `agent_sprint_planning` hardcoded the start-question wording. Now type-aware/neutral; coupled capture-note parser in `agent_feature_payloads` made type-agnostic. Validated live: badge shows FEATURE.
+- **IMP-020** — IMP-018's `permission_mode="default"` let the chat lane offer Approve/Deny cards for ungranted mutating built-ins (Edit/Write/Bash) on the generated app, which an operator could approve — bypassing the dashboard-first backlog→dispatch lifecycle. Design call resolved (always force capture→dispatch, grounded in CLAUDE.md dashboard-first doctrine): `agent_tool_policy.chat_mutating_builtin_denial()` + `CHAT_DISPATCH_REQUIRED_BUILTINS = {Edit, Write, Bash, MultiEdit, NotebookEdit}`; `_authorize_chat_tool` denies these (scoped to *ungranted* built-ins, after the preapproved/read-only checks) with a `mcp__builder__task_dispatch` routing message + a `tool_error` event instead of a card. Granted/confirmable non-built-in mutating tools (e.g. `mcp__workspace__run_command`) keep their cards — the tested path is intact. Tests: `test_chat_permission_mode_questions.py` (parametrized deny + granted-card-preserved), `test_agent_tool_approval_routes.py` (route-level deny-and-route + card test repointed off `Bash`). 43/43 affected green; ruff clean.
 
 ### Added
 
@@ -24,7 +25,7 @@ Operator-driven dashboard validation on a fresh managed app (recall-loop, a spac
 
 ### Notes
 
-- **IMP-020** (open) — IMP-018's `permission_mode="default"` lets the chat lane surface Approve/Deny cards for ungranted mutating built-ins (Edit/Write/Bash) on the generated app, which can bypass the backlog→dispatch lifecycle; deferred (the approval-card path is intentional/tested — a design call).
+- Pre-existing failure surfaced (unrelated to the above, separate concern): `test_agent_documentation_chat_routes.py::test_chat_routes_explicit_documentation_intent_to_subagent` asserts `"canonical_ref": "main"` but the repo default branch was renamed to `master` (2026-05-29). Documentation-routing `canonical_ref` default is stale → see ROADMAP M1.1 IMP-021.
 
 ## 2026-05-23 - M1.3 re-close: remaining 6 complexity violations resolved
 

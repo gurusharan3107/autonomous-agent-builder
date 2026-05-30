@@ -175,6 +175,9 @@ from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
     session_has_pending_sprint_planning as _session_has_pending_sprint_planning,
 )
 from autonomous_agent_builder.embedded.server.agent_tool_policy import (
+    chat_mutating_builtin_denial as _chat_mutating_builtin_denial,
+)
+from autonomous_agent_builder.embedded.server.agent_tool_policy import (
     extract_tool_text_payload as _extract_tool_text_payload,
 )
 from autonomous_agent_builder.embedded.server.agent_tool_policy import (
@@ -562,6 +565,51 @@ async def _authorize_chat_tool(
     # can_use_tool callback is invoked and AskUserQuestion can collect answers).
     if tool_name in state.preapproved_tools:
         return _permission_allow(input_data)
+
+    # IMP-020: the chat lane must never edit the generated app directly. Ungranted
+    # mutating built-ins (Edit/Write/Bash/MultiEdit/NotebookEdit) are denied with a
+    # capture-and-dispatch route instead of an Approve/Deny card, because an
+    # operator clicking Approve would bypass the dashboard-first backlog -> task ->
+    # approval -> execution lifecycle. Granted/confirmable tools still get cards
+    # (handled by the preapproved check above and the approval flow below).
+    if state.agent_name == "chat":
+        deny_builtin, deny_builtin_reason = _chat_mutating_builtin_denial(tool_name)
+        if deny_builtin:
+            denial_content = {
+                "status": "error",
+                "error": {
+                    "code": "permission_denied",
+                    "message": deny_builtin_reason,
+                    "hint": "Capture the change as a backlog item and dispatch it via mcp__builder__task_dispatch.",
+                    "detail": {
+                        "tool_name": tool_name,
+                        "lane": "chat",
+                    },
+                },
+                "schema_version": "1",
+            }
+            payload = {
+                "tool_name": tool_name,
+                "tool_input": input_data,
+                "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
+                "diagnostic": summarize_tool_event(
+                    event_type="tool_error",
+                    tool_name=tool_name,
+                    tool_input=input_data,
+                    tool_response=denial_content,
+                ),
+            }
+            tool_event = await _append_chat_event(
+                state.session_id,
+                event_type="tool_error",
+                payload=payload,
+                status="completed",
+            )
+            await state.hub.publish(
+                state.session_id,
+                agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
+            )
+            return _permission_deny(deny_builtin_reason)
 
     summary, description = _tool_summary(tool_name, input_data)
     approval_event = await _append_chat_event(

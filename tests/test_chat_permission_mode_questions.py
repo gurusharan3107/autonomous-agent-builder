@@ -104,6 +104,57 @@ async def test_authorize_chat_tool_collects_askuserquestion_answers(monkeypatch)
     assert result.updated_input["answers"]["Which database should we use?"] == "PostgreSQL"
 
 
+@pytest.mark.parametrize("tool_name", ["Edit", "Write", "Bash", "MultiEdit", "NotebookEdit"])
+@pytest.mark.asyncio
+async def test_authorize_chat_tool_denies_ungranted_mutating_builtins(monkeypatch, tool_name) -> None:
+    """IMP-020: the chat lane denies ungranted mutating built-ins (no approval
+    card) and routes the model to capture-and-dispatch. An operator clicking
+    Approve on a direct Edit/Write/Bash would bypass the dashboard-first
+    backlog -> task -> approval -> execution lifecycle."""
+    append_calls: list = []
+
+    async def _fake_append(*args, **kwargs):
+        append_calls.append((args, kwargs))
+        return _FakeEvent()
+
+    monkeypatch.setattr(agent_routes, "_append_chat_event", _fake_append)
+    monkeypatch.setattr(agent_chat_transcript, "serialize_event", lambda _e: _FakeSerialized())
+
+    hub = _FakeHub(answer_value="allow")  # would approve if a card were offered
+    state = _state(hub)
+    result = await agent_routes._authorize_chat_tool(
+        state, tool_name, {"file_path": "/app/src/app.js", "command": "echo hi"}
+    )
+    # Denied, not approved — even though the fake hub would answer "allow".
+    assert result.__class__.__name__ == "PermissionResultDeny"
+    assert "task_dispatch" in result.message
+    # A tool_error event is emitted so the operator sees the routing reason,
+    # but NO pending approval card (create_pending_answer never called).
+    assert append_calls, "expected a tool_error event to be appended"
+    assert all(kwargs.get("event_type") == "tool_error" for _args, kwargs in append_calls)
+
+
+@pytest.mark.asyncio
+async def test_authorize_chat_tool_keeps_card_for_granted_mutating_tool(monkeypatch) -> None:
+    """The deny is scoped to *ungranted* built-ins. A granted mutating built-in
+    (in preapproved_tools) still auto-allows via the preapproved path — the
+    tested approval-card flow for legitimately-granted tools is untouched."""
+    append_calls: list = []
+
+    async def _fake_append(*args, **kwargs):
+        append_calls.append((args, kwargs))
+        return _FakeEvent()
+
+    monkeypatch.setattr(agent_routes, "_append_chat_event", _fake_append)
+    monkeypatch.setattr(agent_chat_transcript, "serialize_event", lambda _e: _FakeSerialized())
+
+    hub = _FakeHub(answer_value="")
+    state = _state(hub, preapproved=frozenset({"Bash"}))
+    result = await agent_routes._authorize_chat_tool(state, "Bash", {"command": "ls"})
+    assert result.updated_input == {"command": "ls"}
+    assert append_calls == []
+
+
 @pytest.mark.asyncio
 async def test_authorize_chat_tool_auto_allows_preapproved_tool(monkeypatch) -> None:
     append_calls: list = []

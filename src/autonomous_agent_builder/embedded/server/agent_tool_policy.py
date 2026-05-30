@@ -20,6 +20,22 @@ FEATURE_SPEC_BLOCKED_TOOLS = frozenset(
     }
 )
 
+# Mutating filesystem/shell built-ins that must never be approved in the chat
+# lane (IMP-020). The dashboard-first delivery lifecycle is backlog -> task ->
+# approval -> execution; a direct chat-lane edit of the generated app bypasses
+# that visible SDLC even when an operator clicks Approve. Denying these (rather
+# than offering an approval card) forces the model to capture the change and
+# dispatch it as a Board task.
+CHAT_DISPATCH_REQUIRED_BUILTINS = frozenset(
+    {
+        "Edit",
+        "Write",
+        "Bash",
+        "MultiEdit",
+        "NotebookEdit",
+    }
+)
+
 
 def extract_tool_text_payload(tool_response: Any) -> dict[str, Any]:
     if not isinstance(tool_response, dict):
@@ -168,6 +184,26 @@ def kb_validate_policy(
             'Retry with `{"kb_dir":"system-docs"}` or another relative directory under `.agent-builder/knowledge/`.',
         )
     return True, updated_input, "", ""
+
+
+def chat_mutating_builtin_denial(tool_name: str) -> tuple[bool, str]:
+    """Deny ungranted mutating filesystem/shell built-ins in the chat lane.
+
+    Returns ``(deny, reason)``. ``deny`` is True for Edit/Write/Bash/MultiEdit/
+    NotebookEdit, which the chat agent is not granted and must not run against the
+    generated app directly. The reason routes the model to capture-and-dispatch so
+    the change flows through the visible backlog -> task -> approval -> execution
+    lifecycle instead of an Approve/Deny card the operator could click through.
+    """
+    if tool_name in CHAT_DISPATCH_REQUIRED_BUILTINS:
+        return (
+            True,
+            f"Denied `{tool_name}` in the chat lane: the chat agent does not edit the "
+            "app directly. Capture the change as a backlog item and dispatch it with "
+            "`mcp__builder__task_dispatch` so it goes through the visible "
+            "backlog -> task -> approval -> execution lifecycle.",
+        )
+    return False, ""
 
 
 def feature_spec_tool_denial(tool_name: str) -> tuple[bool, str]:

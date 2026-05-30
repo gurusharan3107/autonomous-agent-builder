@@ -208,8 +208,12 @@ async def test_tool_approval_card_can_be_denied_and_run_continues(monkeypatch, t
     (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async def fake_run_phase(self, **kwargs):
+        # IMP-020 denies ungranted mutating *built-ins* (Edit/Write/Bash) outright
+        # in the chat lane, so an approval card is only produced for an ungranted
+        # non-built-in mutating tool such as mcp__workspace__run_command. This is
+        # the surface that still warrants an Approve/Deny card.
         permission = await kwargs["can_use_tool"](
-            "Bash",
+            "mcp__workspace__run_command",
             {"command": "npm publish", "description": "Publish the package"},
             {},
         )
@@ -240,7 +244,7 @@ async def test_tool_approval_card_can_be_denied_and_run_continues(monkeypatch, t
         session_id = response.json()["session_id"]
 
         _, approval_item = await _wait_for_history_item(client, session_id, "tool_approval_request")
-        assert approval_item["payload"]["tool_name"] == "Bash"
+        assert approval_item["payload"]["tool_name"] == "mcp__workspace__run_command"
 
         answer = await client.post(
             "/api/agent/chat/respond",
@@ -261,3 +265,57 @@ async def test_tool_approval_card_can_be_denied_and_run_continues(monkeypatch, t
     assert updated_approval["payload"]["answered"] is True
     assert updated_approval["payload"]["decision"] == "deny"
     assert assistant_item["payload"]["content"] == "Understood. I will not publish anything yet."
+
+
+@pytest.mark.asyncio
+async def test_chat_lane_denies_direct_edit_and_routes_to_dispatch(monkeypatch, test_db, tmp_path):
+    """IMP-020: a chat-lane attempt to Edit the generated app directly is denied
+    outright (no Approve/Deny card the operator could click through) and the model
+    is routed to capture-and-dispatch, preserving the dashboard-first lifecycle."""
+    dashboard_root = tmp_path / "dashboard"
+    dashboard_root.mkdir()
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+
+    async def fake_run_phase(self, **kwargs):
+        permission = await kwargs["can_use_tool"](
+            "Edit",
+            {"file_path": str(tmp_path / "src" / "app.js"), "old_string": "a", "new_string": "b"},
+            {},
+        )
+        message = getattr(permission, "message", "")
+        assert permission.__class__.__name__ == "PermissionResultDeny"
+        assert "task_dispatch" in message
+        return RunResult(
+            session_id="sdk-session-imp020",
+            cost_usd=0.01,
+            tokens_input=5,
+            tokens_output=4,
+            num_turns=2,
+            output_text="I'll capture that as a backlog item and dispatch it.",
+        )
+
+    monkeypatch.setattr(
+        "autonomous_agent_builder.embedded.server.routes.agent.AgentRunner.run_phase",
+        fake_run_phase,
+    )
+
+    app = create_app(
+        db_path=tmp_path / ".agent-builder" / "agent_builder.db",
+        dashboard_path=dashboard_root,
+        project_root=tmp_path,
+    )
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/api/agent/chat", json={"message": "Add a total-cards stat to the home screen"})
+        session_id = response.json()["session_id"]
+
+        # The deny surfaces as a tool_error in history (operator sees the routing
+        # reason), and the run continues to an assistant message.
+        history_payload, error_item = await _wait_for_history_item(client, session_id, "tool_error")
+        assert error_item["payload"]["tool_name"] == "Edit"
+
+    # No approval card was ever created for the direct edit.
+    assert not any(
+        item["type"] == "tool_approval_request" for item in history_payload["items"]
+    )
