@@ -148,6 +148,18 @@ See `reference/assertions.md` for the assertion catalog and known bad patterns.
   by `build_chat_turn_prompt_plan()` → `_general_chat_prompt()`. Any behavioral
   change for the chat agent (backlog lookup, dispatch discipline, question rules)
   must go into `agent_prompt_builders.py`, not `definitions.py`.
+- **A new MCP tool needs THREE places in sync or it is SILENTLY DROPPED at
+  runtime** (`tool_not_found_in_registry` → tool absent from the agent's resolved
+  tools, model gets nothing back): (1) `@tool` handler in `agents/tools/sdk_mcp.py`
+  (+ `_to_mcp()` content envelope — a plain dict returns an empty result),
+  (2) the agent's `allowed_tools` / subagent tools, (3) a `ToolSchema` in
+  `agents/tool_registry.py` `_SDK_BUILTINS`. Unit tests and the
+  `agent-sdk-verifier-py` audit do NOT catch a missing registry schema — only a
+  live run does. **Phase 2/5 must grep the run log for `tool_not_found_in_registry`
+  and FAIL on any hit**; `agent_phase_start ... tools=[...]` should contain every
+  tool the agent declares. Guard each new tool family with a unit assertion that
+  its names ⊆ `tool_registry._SDK_BUILTINS`. *(IMP-019 registry gap — caught only
+  by a live feature-verifier run, 2026-05-30.)*
 
 ## Reference Files
 

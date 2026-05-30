@@ -300,7 +300,24 @@ print('cache_ratio:', s['cache_ratio'], '| avoidable_cost_flags:', s['avoidable_
 `builder logs --error` `count`. If they differ, that is a real finding — but
 first re-check your JSON parsing (see Gotchas: CLI result keys vary per command).
 
-**Phase 4 artifact**: session JSON (turns, stop_reason, cost) + event type counts + duplicate check result.
+**Silently-dropped tools (FAIL on any hit).** A tool an agent declares but that
+lacks a `tool_registry._SDK_BUILTINS` schema is dropped at registry build with a
+`tool_not_found_in_registry` warning — the model never gets it, with no error in
+the session status. Unit tests + the SDK audit miss this; only the run log shows
+it. Grep the server start log (the one `builder start` tees to) for the run:
+
+```bash
+# Any hit = a declared tool was dropped → FAIL. Confirm the verb: the
+# agent_phase_start tools=[...] line must contain every tool the agent declares.
+grep -n "tool_not_found_in_registry" /tmp/<builder-start>.log && echo "FAIL: dropped tool(s)" || echo "ok: no dropped tools"
+grep -n "agent_phase_start" /tmp/<builder-start>.log | tail -1   # inspect resolved tools=[...]
+```
+
+(IMP-019: `mcp__browser__*` were wired into agent definitions + the MCP server
+but missing from `tool_registry`, so every browser tool was dropped — caught
+only here, not by unit tests or `agent-sdk-verifier-py`.)
+
+**Phase 4 artifact**: session JSON (turns, stop_reason, cost) + event type counts + duplicate check result + dropped-tool grep result.
 
 ---
 
