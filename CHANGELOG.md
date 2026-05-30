@@ -9,6 +9,27 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-05-30 - Token-cost work: IMP-027a/c task sizing + IMP-028 workspace map; IMP-021 doc-tests fixed
+
+Cheaper-per-change work (goal: beat codex/claude-code on enterprise cost-per-change). Root cause of the burn was DB-verified as **planning-time over-decomposition**, not within-phase reruns: deterministic verifier phases (build-verifier / evidence-collector / feature-acceptance-tests) record `0,0,0,0` tokens. ROADMAP items IMP-027/028 remain `[ ]` (027b per-task phase planner + 028 live A/B and preset experiment still open); only the delivered portions are recorded here.
+
+### Added
+
+- **IMP-027a + IMP-027c** (commit `851ba75`) — model-driven task decomposition (intake-folded). The chat intake agent now emits `proposed_tasks` (N≥1, sized to the real change) as structured output of its existing prompt-interpretation pass — model intelligence, not a deterministic keyword classifier. Wiring: `Feature.proposed_tasks` JSON column (`db/models.py` + idempotent migration `db/session.py`); `normalize_proposed_tasks` + payload carry (`agent_feature_payloads.py`); persistence (`agent_feature_delivery.persist_feature_spec`); model contract + sizing guidance in both intake prompts (`agent_prompt_builders.py` — "a trivial single-surface change is ONE task"); planner consumption (`sprint_execution._model_proposed_templates` / `_task_templates_for_feature`, model decomposition is source of truth, deterministic risk templates are fallback; `str.format` replaced with `_format_task_title`). **Live-proven**: a real Sonnet chat turn on a trivial cosmetic ask emitted `proposed_tasks` len 1; the planner produced exactly 1 task where the identical request previously produced a 5-task sprint.
+- **IMP-028** (commit `1ebb84b`) — compact workspace file map injected into code-gen to stop per-turn re-exploration. The orchestrator injects `compact_workspace_map` (`agents/tools/workspace_tools.py`) into the code-gen prompt at dispatch (`orchestrator._phase_implementation`), via a `{workspace_map}` slot in the code-gen `prompt_template` and a `setdefault("workspace_map","")` in `agent_run_lifecycle` so every other agent's `str.format` stays KeyError-safe. Recall-loop map ≈ 77 tokens for the whole tree, replacing multiple ~20k-cached exploration turns (code-gen run was ~89% context, not generation).
+
+### Fixed
+
+- **IMP-021** (commit `1d1545f`) — three pre-existing doc-routing test failures (`test_agent_documentation_chat_routes::test_chat_routes_explicit_documentation_intent_to_subagent` + `test_agent_documentation_tool_approval::{test_documentation_routed_kb_contract_and_lint_skip_interactive_approval, test_documentation_routed_turn_still_prompts_for_unrelated_tools}`), confirmed failing at pre-session commit `cdb8be8` (unrelated to IMP-027/028). The original `canonical_ref` branch-resolution theory was wrong; actual causes were **(1) compact-JSON staleness** — doc context is serialized compact (`agent_prompt_builders.py:232`) but the tests asserted the old spaced format — and **(2) IMP-020 fallout** — the unrelated-tool test exercised `Bash`, which IMP-020 now denies-outright in the chat lane (no approval card). Fix is test-only (product behavior is correct): updated the three assertions to compact format and repointed the unrelated-tool case from `Bash` to `mcp__workspace__run_command`.
+
+### Validation
+
+- Full suite green: `1574 passed, 0 failed` (background run, 6m11s). 94+ regression green for IMP-027; 145 regression green for IMP-028; 11 doc-routing tests green for IMP-021. ruff clean throughout.
+
+### Notes
+
+- ROADMAP `[ ]` retained for IMP-027/028 by the commit-on-tick rule (sub-items open). This is a catch-up bookkeeping commit: code shipped in `851ba75`/`1ebb84b`/`1d1545f` without an accompanying CHANGELOG entry; this records the proof retroactively.
+
 ## 2026-05-30 - M1.1 IMP-018 + IMP-015 + IMP-020 closed; IMP-019 real-browser verification built
 
 Operator-driven dashboard validation on a fresh managed app (recall-loop, a spaced-repetition flashcard app). Full idea→ship loop validated (5-task sprint, 0 errors, ~$2.02; real-browser acceptance + localStorage persistence proven; 62 generated-app tests + lint green).
