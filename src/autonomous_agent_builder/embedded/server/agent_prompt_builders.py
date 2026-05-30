@@ -91,7 +91,7 @@ def _general_chat_prompt(
     _normalized_sdk = str(runtime_sdk or "")
     _question_tool = (
         "request_user_input"
-        if _normalized_sdk.startswith("codex") or _normalized_sdk == "openai_agents"
+        if _normalized_sdk.startswith("codex")
         else "AskUserQuestion"
     )
     continuation_guidance = ""
@@ -435,18 +435,6 @@ def _question_tool_guidance(runtime_sdk: str) -> str:
             "else in mind. This is operator-facing UI: use plain product wording and do not include "
             "internal terms such as backlog, sprint, task id, lifecycle, bounded, raw logs, full logs, "
             "chunk, or token pressure."
-        )
-    if normalized_sdk == "openai_agents":
-        return (
-            "When a bounded user decision is required, call the OpenAI Agents SDK "
-            "`request_user_input` function tool rather than writing a manual multiple-choice "
-            "list in plain text. Pass a `questions` array with concise `header` and `question` "
-            "fields and exactly 3 suggested `options`, each with `label` and `description`; put "
-            "the recommended option first and suffix its label with `(Recommended)`. The Agent page "
-            "provides the fourth path as an inline custom-answer text box when the operator has "
-            "something else in mind. This is operator-facing UI: use plain product wording and do not "
-            "include internal terms such as backlog, sprint, task id, lifecycle, bounded, raw logs, "
-            "full logs, chunk, or token pressure."
         )
     return (
         "When there are a few clear choices, use AskUserQuestion with concise headers, exactly "

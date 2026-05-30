@@ -97,13 +97,11 @@ class AgentRuntime(ABC):
     """Unified runtime interface for all agent SDKs.
 
     User-facing lanes are Claude Agent SDK (`claude`) and Codex SDK
-    (`codex_sdk`). Additional implementations may exist as compatibility
-    adapters for lower-level tests and migration support.
+    (`codex_sdk`).
 
     Implementations:
     - ClaudeRuntime: Wraps Claude Agent SDK
     - CodexAppServerRuntime: Wraps Codex app-server/SDK JSON-RPC mode
-    - OpenAIAgentsRuntime: Wraps OpenAI Agents SDK
     """
 
     @property

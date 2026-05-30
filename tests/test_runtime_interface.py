@@ -27,7 +27,6 @@ from autonomous_agent_builder.runtime import (
 )
 from autonomous_agent_builder.runtime.claude_runtime import ClaudeRuntime
 from autonomous_agent_builder.runtime.codex_app_server_runtime import CodexAppServerRuntime
-from autonomous_agent_builder.runtime.openai_runtime import OpenAIAgentsRuntime, OpenAIRuntime
 
 # ---------------------------------------------------------------------------
 # RunResult
@@ -82,7 +81,6 @@ class TestAgentRuntimeInterface:
         for cls in (
             ClaudeRuntime,
             CodexAppServerRuntime,
-            OpenAIAgentsRuntime,
         ):
             impl_params = set(inspect.signature(cls.run).parameters)
             missing = base_params - impl_params
@@ -121,7 +119,7 @@ class TestFactory:
         assert "openai_agents" not in available
         assert "codex_cli" not in implemented
         assert "codex_sdk" in implemented
-        assert "openai_agents" in implemented
+        assert "openai_agents" not in implemented
 
     def test_create_runtime_default_returns_claude(self):
         with patch(
@@ -132,26 +130,6 @@ class TestFactory:
         ):
             runtime = create_runtime()
         assert runtime.name == "claude"
-
-    def test_create_runtime_openai_alias_returns_openai_agents(self):
-        with patch(
-            "autonomous_agent_builder.runtime.factory.get_settings",
-            return_value=SimpleNamespace(
-                runtime=SimpleNamespace(sdk="openai", model="openai/gpt-5")
-            ),
-        ):
-            runtime = create_runtime()
-        assert runtime.name == "openai_agents"
-
-    def test_create_runtime_opencode_alias_returns_openai_agents(self):
-        with patch(
-            "autonomous_agent_builder.runtime.factory.get_settings",
-            return_value=SimpleNamespace(
-                runtime=SimpleNamespace(sdk="opencode", model="opencode/big-pickle")
-            ),
-        ):
-            runtime = create_runtime()
-        assert runtime.name == "openai_agents"
 
     def test_create_runtime_codex_sdk_selector_returns_codex_app_server_runtime(self):
         with patch(
@@ -334,25 +312,6 @@ class TestClaudeRuntime:
 
 
 class TestNonClaudeRuntimes:
-    async def test_openai_agents_runtime_requires_provider_api_key(self, monkeypatch):
-        monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
-        runtime = OpenAIRuntime()
-        result = await runtime.run("hello", agent="ask")
-        assert result.success is False
-        assert result.error is not None
-        assert "OPENCODE_GO_API_KEY" in (result.error or "")
-
-    async def test_openai_agents_health_check_returns_false_without_key(self, monkeypatch):
-        monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
-        runtime = OpenAIRuntime()
-        assert await runtime.health_check() is False
-
-    def test_openai_agents_default_model(self):
-        runtime = OpenAIRuntime()
-        assert runtime.name == "openai_agents"
-        assert runtime.provider == "opencode_go"
-        assert runtime.model == "minimax-m2.7"
-
     def test_codex_sdk_default_uses_app_server_capabilities(self):
         runtime = CodexAppServerRuntime()
         assert runtime.name == "codex_sdk"

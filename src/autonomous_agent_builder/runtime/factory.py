@@ -10,26 +10,16 @@ from autonomous_agent_builder.runtime.interface import AgentRuntime
 DEFAULT_PROVIDER_BY_SDK = {
     "claude": "claude_agent_sdk",
     "codex_sdk": "codex_subscription",
-    "openai_agents": "opencode_go",
 }
 
 DEFAULT_MODEL_BY_SDK = {
     "claude": "sonnet",
     "codex_sdk": "gpt-5.5",
-    "openai_agents": "minimax-m2.7",
 }
 
-DEFAULT_API_BY_PROVIDER = {
-    "opencode_go": {
-        "api_base_url": "https://opencode.ai/zen/go/v1",
-        "api_key_env": "OPENCODE_GO_API_KEY",
-    }
-}
+DEFAULT_API_BY_PROVIDER: dict[str, dict[str, str]] = {}
 
-DEPRECATED_SDK_ALIASES = {
-    "openai": "openai_agents",
-    "opencode": "openai_agents",
-}
+DEPRECATED_SDK_ALIASES: dict[str, str] = {}
 
 DEPRECATED_PROVIDER_ALIASES = {
     "claude_code": "claude_agent_sdk",
@@ -56,15 +46,11 @@ def resolve_runtime_config(settings: Any | None = None, **overrides: Any) -> dic
     provider = overrides.get("provider")
     if provider is None:
         provider = _get(runtime, "provider", None)
-    if provider is None and str(raw_sdk or "") == "opencode":
-        provider = "opencode_go"
     if provider is None:
         provider = _get(runtime, "subscription", None)
     if provider in (None, "", "claude"):
         provider = DEFAULT_PROVIDER_BY_SDK.get(sdk, str(provider or ""))
     provider = DEPRECATED_PROVIDER_ALIASES.get(str(provider), provider)
-    if sdk == "openai_agents" and provider == "opencode":
-        provider = "opencode_go"
 
     model = overrides.get("model", _get(runtime, "model", None))
     if not model or (sdk != "claude" and str(model).startswith("anthropic/")):
@@ -122,7 +108,6 @@ def validate_runtime_config(config: dict[str, Any]) -> list[dict[str, str]]:
     legal_pairs = {
         "claude": {"claude_agent_sdk"},
         "codex_sdk": {"codex_subscription"},
-        "openai_agents": {"opencode_go", "openai_api"},
     }
     if provider not in legal_pairs[sdk]:
         errors.append(
@@ -149,15 +134,6 @@ def validate_runtime_config(config: dict[str, Any]) -> list[dict[str, str]]:
             }
         )
 
-    if sdk == "openai_agents" and not config.get("api_key_env"):
-        errors.append(
-            {
-                "code": "missing_api_key_env",
-                "message": "openai_agents requires a provider API-key environment variable.",
-                "next": "export OPENCODE_GO_API_KEY=...; builder agent runtime probe --json",
-            }
-        )
-
     return errors
 
 
@@ -178,17 +154,6 @@ def create_runtime(**kwargs: Any) -> AgentRuntime:
             approval_policy=config["approval_policy"],
         )
 
-    if sdk == "openai_agents":
-        from autonomous_agent_builder.runtime.openai_runtime import OpenAIAgentsRuntime
-
-        return OpenAIAgentsRuntime(
-            model=config["model"],
-            provider=config["provider"],
-            api_base_url=config["api_base_url"],
-            api_key_env=config["api_key_env"],
-            tracing=config["tracing"],
-        )
-
     from autonomous_agent_builder.runtime.claude_runtime import ClaudeRuntime
 
     return ClaudeRuntime(
@@ -203,8 +168,8 @@ def get_available_runtimes() -> list[str]:
 
 
 def get_implemented_runtimes() -> list[str]:
-    """List concrete adapters, including compatibility-only internals."""
-    return ["claude", "codex_sdk", "openai_agents"]
+    """List concrete adapters. Equals the user-facing lanes; no hidden adapters."""
+    return ["claude", "codex_sdk"]
 
 
 def get_current_runtime_name() -> str:

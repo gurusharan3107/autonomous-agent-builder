@@ -4,8 +4,7 @@ User-facing runtime lanes:
 - claude: Claude Agent SDK with local Claude OAuth token auth.
 - codex_sdk: Codex app-server/SDK JSON-RPC mode.
 
-The openai_agents adapter remains implemented for migration and lower-level
-tests, but is not a valid dashboard or `builder agent runtime set` selection.
+These are the only implemented lanes; there are no hidden compatibility adapters.
 """
 
 from autonomous_agent_builder.runtime.factory import (

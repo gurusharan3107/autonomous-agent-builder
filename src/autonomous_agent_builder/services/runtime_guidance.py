@@ -71,8 +71,7 @@ def _normalize_sdk_value(sdk: str | None) -> str:
 
         return normalize_sdk(sdk)
     except Exception:
-        value = str(sdk or "claude").strip() or "claude"
-        return {"openai": "openai_agents", "opencode": "openai_agents"}.get(value, value)
+        return str(sdk or "claude").strip() or "claude"
 
 
 def _runtime_guidance_kind(sdk: str) -> str:
