@@ -202,21 +202,25 @@ async def run_feature_acceptance_gate(
     if verifier_failure := feature_verifier_failure(result.output_text):
         return False, verifier_failure
 
-    # IMP-019: non-blocking real-browser-proof advisory. Surfaces when a feature
-    # was accepted without live browser evidence despite the bridge being
-    # available, without blocking headless/CI ships.
+    # IMP-019: non-blocking real-browser-proof advisory. ALWAYS log the tier
+    # (real_browser / jsdom_fallback / no_browser_proof) so every feature
+    # acceptance is observable — a silent real_browser pass is otherwise
+    # indistinguishable from the tier never being computed, and the signal is
+    # the prerequisite for promoting real-browser proof to a hard gate.
+    # ``advisory`` is None for the real_browser tier; it surfaces the gap when a
+    # feature was accepted without live browser evidence despite the bridge
+    # being available, without blocking headless/CI ships.
     from autonomous_agent_builder.agents.tools.browser_tools import bridge_available
 
     evidence_tier = browser_evidence_tier(
         result.output_text, bridge_available=bridge_available()
     )
-    if evidence_tier["advisory"]:
-        log.info(
-            "feature_acceptance_browser_evidence_tier",
-            tier=evidence_tier["tier"],
-            advisory=evidence_tier["advisory"],
-            task_id=getattr(task, "id", None),
-        )
+    log.info(
+        "feature_acceptance_browser_evidence_tier",
+        tier=evidence_tier["tier"],
+        advisory=evidence_tier["advisory"],
+        task_id=getattr(task, "id", None),
+    )
 
     test_success, test_output = await orchestrator._record_feature_acceptance_tests(
         task,

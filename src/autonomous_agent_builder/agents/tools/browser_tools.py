@@ -97,9 +97,21 @@ def _first_result(reply: dict[str, Any], result_type: str) -> dict[str, Any]:
     return {}
 
 
-async def _run(actions: list[dict[str, Any]], *, session_name: str) -> dict[str, Any]:
+async def _run(
+    actions: list[dict[str, Any]], *, session_name: str, use_selected_tab: bool = True
+) -> dict[str, Any]:
+    # ``use_selected_tab`` False makes the bridge open a dedicated NEW tab
+    # (``chrome.tabs.create``) instead of hijacking the operator's active tab
+    # in place (``chrome.tabs.update``). Per the bridge contract the first
+    # ``goto`` of a verification session uses False (operator-visible new tab),
+    # and follow-up reads/clicks default to True so they continue in that tab.
     return await hermes_bridge(
-        {"type": "run", "sessionName": session_name, "useSelectedTab": True, "actions": actions}
+        {
+            "type": "run",
+            "sessionName": session_name,
+            "useSelectedTab": use_selected_tab,
+            "actions": actions,
+        }
     )
 
 
@@ -165,13 +177,18 @@ def resolve_dev_server(project_root: str | os.PathLike[str]) -> dict[str, Any]:
 async def browser_navigate(url: str, *, session_name: str = "builder-verify") -> dict[str, Any]:
     """Navigate the bridge-controlled browser to ``url`` and return the landed
     URL/title plus compact page context (headings, nav, buttons, inputs)."""
+    # Open a dedicated, operator-visible tab (use_selected_tab=False ->
+    # chrome.tabs.create) and force a real navigation even if a stale tab is
+    # already parked on this URL ("reload": True -> bypass the bridge's
+    # same-URL no-op so the verifier never reads a stale render).
     reply = await _run(
         [
-            {"type": "goto", "url": url},
+            {"type": "goto", "url": url, "reload": True},
             {"type": "wait_for_selector", "selector": "body", "timeout": 8000},
             {"type": "page_context"},
         ],
         session_name=session_name,
+        use_selected_tab=False,
     )
     if not reply.get("success", reply.get("ok", False)):
         return {"ok": False, "error": reply.get("error", "navigate_failed"), "detail": reply}

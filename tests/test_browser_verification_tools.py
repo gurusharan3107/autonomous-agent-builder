@@ -85,6 +85,39 @@ async def test_browser_navigate_parses_page_context(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_navigate_opens_dedicated_visible_tab_with_forced_reload(monkeypatch) -> None:
+    """IMP-019 operator-visibility: navigate must open a dedicated NEW tab
+    (``useSelectedTab=False`` -> bridge ``chrome.tabs.create``) so the operator
+    can watch the verification, and force a real navigation (``reload=True``) so
+    a tab parked on the same URL doesn't serve a stale render. The prior
+    behavior hijacked the operator's active tab in place and could no-op on a
+    same-URL goto."""
+    capture: dict = {}
+    reply = {
+        "success": True,
+        "results": [{"type": "page_context", "url": "http://localhost:5173/", "title": "App"}],
+    }
+    _patch_bridge(monkeypatch, reply, capture)
+    await browser_tools.browser_navigate("http://localhost:5173/")
+    sent = json.loads(capture["writer"].sent.decode())
+    assert sent["useSelectedTab"] is False  # dedicated visible tab, not the active one
+    goto = next(a for a in sent["actions"] if a["type"] == "goto")
+    assert goto.get("reload") is True  # never read a stale same-URL render
+
+
+@pytest.mark.asyncio
+async def test_followup_reads_reuse_the_navigated_tab(monkeypatch) -> None:
+    """Reads/clicks after navigate default to ``useSelectedTab=True`` so they
+    continue in the tab navigate just created+activated (not a second new tab)."""
+    capture: dict = {}
+    reply = {"success": True, "results": [{"type": "text", "text": "hello"}]}
+    _patch_bridge(monkeypatch, reply, capture)
+    await browser_tools.browser_read_text()
+    sent = json.loads(capture["writer"].sent.decode())
+    assert sent["useSelectedTab"] is True
+
+
+@pytest.mark.asyncio
 async def test_browser_tools_degrade_when_bridge_absent(monkeypatch) -> None:
     monkeypatch.setattr(browser_tools, "bridge_available", lambda: False)
     result = await browser_tools.browser_navigate("http://localhost:5173/")
