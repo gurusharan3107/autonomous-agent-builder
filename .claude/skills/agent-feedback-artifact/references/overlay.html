@@ -858,6 +858,7 @@
           <div class="af-ui-selected" data-af-ui-selected>Selected item unavailable.</div>
           <div class="af-ui-grid">
             <div class="af-ui-row"><span>Text color</span><div class="af-ui-value"><i class="af-color-dot" data-af-ui-text-dot></i><span data-af-ui-color>rgb(20, 20, 19)</span></div></div>
+            <div class="af-ui-row" data-af-ui-child-row hidden><span>Primary text</span><div class="af-ui-value"><i class="af-color-dot" data-af-ui-child-dot></i><span data-af-ui-child-color>—</span><span class="af-ui-child-tag" data-af-ui-child-tag style="opacity:.6;margin-left:.4em;font-size:.85em"></span></div></div>
             <div class="af-ui-row"><span>Background</span><div class="af-ui-value"><i class="af-color-dot" data-af-ui-bg-dot></i><span data-af-ui-bg>rgb(255, 255, 255)</span></div></div>
             <div class="af-ui-row"><span>Opacity</span><div class="af-ui-value"><span data-af-ui-opacity>1</span></div></div>
             <div class="af-ui-row"><span>Font</span><div class="af-ui-value"><span data-af-ui-font>system-ui</span></div></div>
@@ -931,6 +932,10 @@
   const uiWeight = root.querySelector("[data-af-ui-weight]");
   const uiTextDot = root.querySelector("[data-af-ui-text-dot]");
   const uiBgDot = root.querySelector("[data-af-ui-bg-dot]");
+  const uiChildRow = root.querySelector("[data-af-ui-child-row]");
+  const uiChildColor = root.querySelector("[data-af-ui-child-color]");
+  const uiChildDot = root.querySelector("[data-af-ui-child-dot]");
+  const uiChildTag = root.querySelector("[data-af-ui-child-tag]");
   const drawer = root.querySelector("[data-af-drawer]");
   const toggle = root.querySelector("[data-af-toggle]");
   const count = root.querySelector("[data-af-count]");
@@ -971,8 +976,20 @@
   // pollStatus / SSE. The server is intentionally append-only for processed
   // markers (audit trail); the widget owns the "operator no longer wants to see
   // this on the page" half of the contract.
+  // Guarded parse — corrupted localStorage (quota, manual edit, browser bug)
+  // must never crash the IIFE; the widget would then never load and the
+  // operator would silently lose the capability.
+  function safeParseArray(key) {
+    try {
+      const v = JSON.parse(localStorage.getItem(key) || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch {
+      try { localStorage.removeItem(key); } catch {}
+      return [];
+    }
+  }
   const tombstoneKey = `${storageKey}:tombstones`;
-  const tombstones = new Set(JSON.parse(localStorage.getItem(tombstoneKey) || "[]"));
+  const tombstones = new Set(safeParseArray(tombstoneKey));
   function tombstone(...ids) {
     let changed = false;
     for (const id of ids) if (id && !tombstones.has(id)) { tombstones.add(id); changed = true; }
@@ -1261,16 +1278,82 @@
     popoverConfig.setAttribute("aria-expanded", "true");
     setTab(tab);
     refreshThreadDelete();
+    // Re-anchor: expanded popover is taller; if the operator opened it near the
+    // viewport bottom, the expanded body would clip off-screen without this.
+    const t = activeThread();
+    if (t) placePopover(t);
   }
 
   function collapsePopover() {
     popover.classList.remove("af-expanded");
     popoverConfig.setAttribute("aria-expanded", "false");
+    // Re-anchor when shrinking too — keeps the popover stuck to the marker.
+    const t = activeThread();
+    if (t) placePopover(t);
+  }
+
+  // When the marker element inherits its `color` (no own rule) but a text-bearing
+  // descendant has a distinct explicit color, that child is what the operator
+  // actually sees ("make THIS number red"). Surface the most prominent such
+  // child so the UI panel reflects the visible change, not just the container's
+  // inherited color. Bounded traversal (depth + count) so a marker on a huge
+  // container doesn't pay an unbounded walk.
+  function findPrimaryTextChild(el) {
+    if (!el) return null;
+    const containerColor = getComputedStyle(el).color;
+    let best = null;
+    let visited = 0;
+    const MAX = 50; // first-N descendants — keeps walk bounded on huge containers
+    const stack = [{ node: el, depth: 0 }];
+    while (stack.length && visited < MAX) {
+      const { node, depth } = stack.pop();
+      if (depth > 4) continue; // depth cap — typical text-bearing leaves are shallow
+      for (const child of node.children) {
+        if (visited >= MAX) break;
+        visited++;
+        if (child.closest("[data-agent-feedback]")) continue;
+        const hasText = Array.from(child.childNodes).some(
+          (n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0
+        );
+        if (hasText) {
+          const cs = getComputedStyle(child);
+          if (cs.color !== containerColor) {
+            const size = parseFloat(cs.fontSize) || 0;
+            if (!best || size > best.size) {
+              best = {
+                el: child, tag: child.tagName.toLowerCase(),
+                color: cs.color, size,
+                fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontWeight: cs.fontWeight,
+                text: child.textContent.trim().slice(0, 40)
+              };
+            }
+          }
+        }
+        stack.push({ node: child, depth: depth + 1 });
+      }
+    }
+    return best;
   }
 
   function renderUiPanel(comment) {
-    const meta = comment.ui || {};
-    uiTag.textContent = meta.tag || comment.selector?.split(" > ").at(-1)?.replace(/:nth-of-type\(\d+\)/g, "") || "element";
+    // Re-sample the live DOM when the selector still resolves — otherwise the
+    // panel would show stale values from marker-creation time and look like the
+    // agent's CSS change never landed. Captured `comment.ui` is the fallback
+    // when the element has been removed or the selector no longer matches.
+    let meta = comment.ui || {};
+    let live = false;
+    let liveEl = null;
+    if (comment.selector) {
+      try {
+        const el = document.querySelector(comment.selector);
+        if (el && !el.closest("[data-agent-feedback]")) {
+          meta = uiSnapshot(el);
+          live = true;
+          liveEl = el;
+        }
+      } catch {}
+    }
+    uiTag.textContent = (meta.tag || comment.selector?.split(" > ").at(-1)?.replace(/:nth-of-type\(\d+\)/g, "") || "element") + (live ? "" : " (snapshot)");
     uiSelected.textContent = comment.selector || "Selected item unavailable.";
     uiColor.textContent = meta.color || "rgb(20, 20, 19)";
     uiBg.textContent = meta.backgroundColor || "rgb(255, 255, 255)";
@@ -1280,6 +1363,25 @@
     uiWeight.textContent = meta.fontWeight || "400";
     uiTextDot.style.setProperty("--af-dot", meta.color || "#141413");
     uiBgDot.style.setProperty("--af-dot", meta.backgroundColor || "#fff");
+    // Primary-text-child row: visible only when the marker element inherits
+    // its color AND a text-bearing descendant has a distinct explicit color.
+    // Also overrides the font-size/family/weight rows to reflect the prominent
+    // child — operator's mental model is "what they're looking at," not the
+    // container wrapper. Font rows then describe the same element as the
+    // Primary text row (consistent), while Text color stays as the container's
+    // own (truthful about the marked element).
+    const child = liveEl ? findPrimaryTextChild(liveEl) : null;
+    if (child && uiChildRow) {
+      uiChildColor.textContent = child.color;
+      uiChildDot.style.setProperty("--af-dot", child.color);
+      uiChildTag.textContent = `<${child.tag}>` + (child.text ? ` "${child.text}"` : "");
+      uiChildRow.hidden = false;
+      uiFont.textContent = child.fontFamily || uiFont.textContent;
+      uiSize.textContent = child.fontSize || uiSize.textContent;
+      uiWeight.textContent = child.fontWeight || uiWeight.textContent;
+    } else if (uiChildRow) {
+      uiChildRow.hidden = true;
+    }
   }
 
   function selectedText() {
@@ -1345,8 +1447,15 @@
     if (left + width > window.scrollX + window.innerWidth - margin) {
       left = Math.max(window.scrollX + margin, rect.x - width - margin);
     }
+    // Height clamp: measure the popover's actual rendered height instead of
+    // hard-coding 220 (which was the collapsed height — expanded popover with
+    // Agent + UI tabs is much taller and would clip off-screen at the bottom).
+    const popoverHeight = popover.getBoundingClientRect().height || 220;
     let top = rect.y + Math.min(rect.height, 46);
-    top = Math.max(window.scrollY + margin, Math.min(top, window.scrollY + window.innerHeight - 220));
+    top = Math.max(
+      window.scrollY + margin,
+      Math.min(top, window.scrollY + window.innerHeight - popoverHeight - margin)
+    );
     popover.style.left = `${left}px`;
     popover.style.top = `${top}px`;
   }
@@ -1636,8 +1745,10 @@
   async function pollStatus() {
     try {
       const response = await fetch(`${__FB_BASE}/api/feedback/status?artifact=${encodeURIComponent(artifactPath)}`);
-      if (!response.ok) return;
+      if (!response.ok) return null;
       const result = await response.json();
+      // Returned for the reload-check wrapper below — eliminates the double
+      // fetch the wrapper used to do (one for thread state, one for reload check).
       if (result.latest) {
         const message = result.latest.agentMessage ? ` — ${result.latest.agentMessage}` : "";
         status.textContent = `Latest batch ${result.latest.id}: ${result.latest.status}${message}`;
@@ -1692,8 +1803,9 @@
         }
         setAgentStatus(result.latest);
       }
+      return result;
     } catch {
-      return;
+      return null;
     }
   }
 
@@ -1715,53 +1827,89 @@
   // function. Earlier ordering had setInterval(pollStatus,…) capture the
   // ORIGINAL by reference, which bypassed the reload check on safety-net polls.
   const reloadedKey = `${storageKey}:reloaded`;
-  const alreadyReloaded = new Set(JSON.parse(localStorage.getItem(reloadedKey) || "[]"));
+  const alreadyReloaded = new Set(safeParseArray(reloadedKey));
   const origPollStatus = pollStatus;
   pollStatus = async function pollStatusWrapped() {
-    await origPollStatus.apply(this, arguments);
+    // Reuse origPollStatus's fetched result instead of issuing a second request
+    // to the same endpoint. Earlier code re-fetched here, doubling load on every
+    // SSE-driven poll and on the safety-net interval.
+    const result = await origPollStatus.apply(this, arguments);
+    if (!result) return;
     try {
-      const r = await fetch(`${__FB_BASE}/api/feedback/status?artifact=${encodeURIComponent(artifactPath)}`);
-      if (!r.ok) return;
-      const result = await r.json();
-      // Collect every pending reload first, then add ALL to the seen-set BEFORE
-      // scheduling, so a race that fires multiple pollStatus calls in quick
-      // succession doesn't schedule N reloads (only the first item triggers,
-      // the rest are pre-marked as handled).
+      // In-flight set (in-memory only) prevents N pollStatus calls in quick
+      // succession from each scheduling their own swap. Persisted `alreadyReloaded`
+      // is the cross-refresh dedupe and is only committed AFTER the swap actually
+      // applies — otherwise a refresh inside the setTimeout window leaves the
+      // item marked "reloaded" with the change never applied.
+      if (!window.__afInflight) window.__afInflight = new Set();
       const pending = (result.items || []).filter(
-        (item) => item.reload && item.status === "done" && !alreadyReloaded.has(item.id)
+        (item) => item.reload && item.status === "done"
+          && !alreadyReloaded.has(item.id) && !window.__afInflight.has(item.id)
       );
       if (!pending.length) return;
-      for (const item of pending) alreadyReloaded.add(item.id);
-      localStorage.setItem(reloadedKey, JSON.stringify([...alreadyReloaded]));
-      // Reload mode escalates to "full" if ANY pending item demands it; otherwise
-      // default to "css" hot-swap (the dominant case — preserves runtime state).
+      for (const item of pending) window.__afInflight.add(item.id);
+      const commit = () => {
+        for (const item of pending) {
+          alreadyReloaded.add(item.id);
+          window.__afInflight.delete(item.id);
+        }
+        localStorage.setItem(reloadedKey, JSON.stringify([...alreadyReloaded]));
+      };
+      const rollback = () => { for (const item of pending) window.__afInflight.delete(item.id); };
       const wantsFull = pending.some((item) => item.reloadMode === "full");
       if (wantsFull) {
         showToast(`Agent applied a change — reloading page…`);
+        // Full reload: commit BEFORE replace, since the new page needs to know
+        // these IDs are handled (otherwise it would loop on the same items).
+        commit();
         setTimeout(() => {
           const u = new URL(location.href);
           u.searchParams.set("_fb_reload", Date.now().toString());
           location.replace(u.toString());
         }, 600);
       } else {
+        // CSS hot-swap targets <link rel="stylesheet"> — inline <style> blocks
+        // can't be re-fetched. If the page has no external stylesheet, the swap
+        // would silently no-op and the operator would see no visible change.
+        // Escalate to a full reload in that case so the change actually lands.
+        const hasExternalSheet = Array.from(
+          document.querySelectorAll('link[rel="stylesheet"]')
+        ).some((l) => l.href);
+        if (!hasExternalSheet) {
+          showToast(`Agent applied a change — reloading page (no external stylesheet)…`);
+          commit();
+          setTimeout(() => {
+            const u = new URL(location.href);
+            u.searchParams.set("_fb_reload", Date.now().toString());
+            location.replace(u.toString());
+          }, 600);
+          return;
+        }
         showToast(`Agent applied a change — refreshing styles…`);
         // CSS hot-swap: replace each <link rel="stylesheet"> with a cloned link
-        // that carries a cache-bust query param. Browser fetches fresh (different
-        // URL = cache miss), applies new rules, removes old node. No page reload,
-        // no runtime state loss, instant visible change for CSS edits.
+        // that carries a cache-bust query param. Commit to localStorage only when
+        // the fresh link's load event fires — a refresh that interrupts the swap
+        // leaves the item still pending so the next page handles it.
         setTimeout(() => {
           const cb = Date.now().toString();
-          document.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
-            if (!link.href) return;
+          const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+            .filter((l) => l.href);
+          let remaining = links.length;
+          const settle = () => { if (--remaining === 0) commit(); };
+          links.forEach((link) => {
             const fresh = link.cloneNode();
             const u = new URL(link.href, location.origin);
             u.searchParams.set("_fb_cb", cb);
             fresh.href = u.toString();
             link.parentNode.insertBefore(fresh, link.nextSibling);
-            fresh.addEventListener("load", () => { link.remove(); }, { once: true });
-            fresh.addEventListener("error", () => { fresh.remove(); }, { once: true });
+            fresh.addEventListener("load", () => { link.remove(); settle(); }, { once: true });
+            fresh.addEventListener("error", () => { fresh.remove(); settle(); }, { once: true });
           });
         }, 400);
+        // Belt-and-suspenders: if the setTimeout itself is dropped (page nav),
+        // we never commit, so the next page retries. No rollback needed here —
+        // __afInflight is in-memory and dies with the page.
+        void rollback;
       }
     } catch {}
   };
@@ -1773,14 +1921,40 @@
   let sse = null;
   try {
     sse = new EventSource(sseUrl);
-    sse.addEventListener("message", () => { pollStatus(); });
+    // Track liveness — last successful message timestamp drives stall detection.
+    // EventSource auto-reconnects on socket-level errors, but a wedged server
+    // (connection held open, no events) leaves no visible signal. Below, the
+    // safety-net poll falls back to 2s cadence when the SSE has been silent
+    // longer than ~3× the server's 25s keepalive.
+    window.__afLastSseMessage = Date.now();
+    sse.addEventListener("message", () => {
+      window.__afLastSseMessage = Date.now();
+      pollStatus();
+    });
     sse.addEventListener("error", () => { /* auto-reconnects */ });
   } catch (e) {
+    // Synchronous EventSource construction failure (rare — only on environments
+    // without EventSource at all). Engage a fixed 2s poll fallback.
+    window.__afLastSseMessage = 0;
     window.setInterval(() => pollStatus(), 2000);
   }
-  // Safety net via arrow-function so the *current* (wrapped) pollStatus is
-  // resolved at every tick — never the original.
-  window.setInterval(() => pollStatus(), 30_000);
+  // Safety net — adaptive cadence: 30s when SSE looks healthy (any message in
+  // the last 80s, ≈3× keepalive), 2s when SSE has gone silent (server wedged,
+  // proxy stripped keepalives, etc.). Arrow-function so the *current* (wrapped)
+  // pollStatus is resolved at every tick.
+  window.setInterval(() => {
+    const sinceLast = Date.now() - (window.__afLastSseMessage || 0);
+    pollStatus();
+    if (sinceLast > 80_000 && !window.__afFastPolling) {
+      window.__afFastPolling = window.setInterval(() => {
+        pollStatus();
+        if (Date.now() - (window.__afLastSseMessage || 0) < 80_000) {
+          window.clearInterval(window.__afFastPolling);
+          window.__afFastPolling = null;
+        }
+      }, 2_000);
+    }
+  }, 30_000);
 })();
 </script>
 <!-- AGENT_FEEDBACK_WIDGET_END -->

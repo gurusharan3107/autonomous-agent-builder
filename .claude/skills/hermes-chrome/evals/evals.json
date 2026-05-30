@@ -1,0 +1,138 @@
+{
+  "skill_name": "hermes-chrome",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Navigate Chrome to http://localhost:9876 and tell me what sections are visible on the page.",
+      "expected_output": "Agent runs preflight, navigates using goto, waits for a real element with wait_for_selector, then reads structure with page_context. Reports page title, headings, and nav items without taking an unnecessary screenshot.",
+      "assertions": [
+        "Agent ran preflight before any browser action",
+        "Agent used wait_for_selector after goto, not a fixed wait",
+        "Agent used page_context for structural verification, not snapshot as first action",
+        "Agent did not use CDP, WSL Chrome, or headless fallback",
+        "Agent reported visible sections from page_context output"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Click the Metrics section in the dashboard and confirm it loaded.",
+      "expected_output": "Agent uses click_text to click with a visible cursor, waits for a real element with wait_for_selector, then confirms with page_context. Does not use evaluate to click, does not rely on a fixed wait, does not use screenshot as sole verification.",
+      "assertions": [
+        "Agent used click_text or click_selector (visible cursor), not evaluate",
+        "Agent used wait_for_selector after the click, not a fixed wait",
+        "Agent used page_context to verify the section loaded",
+        "Agent did not use screenshot as the only verification step"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Fill in the search field on the current page with 'test query' and submit it.",
+      "expected_output": "Agent uses snapshot to find the field's selector, then fill_selector to type into it, then page_context to confirm the value is present before submitting. Does not use evaluate to fill or submit.",
+      "assertions": [
+        "Agent used fill_selector, not evaluate, to type into the field",
+        "Agent verified the fill with page_context before submitting",
+        "Agent did not use evaluate to submit the form",
+        "Agent used click_text or cursor_key for submission, not evaluate"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Take a screenshot of the current state of the dashboard as visual proof.",
+      "expected_output": "Agent runs page_context first to orient, then takes a single screenshot. Reports the screenshot_path. Does not take multiple screenshots or use snapshot before page_context.",
+      "assertions": [
+        "Agent ran page_context before screenshot",
+        "Agent took exactly one screenshot",
+        "Agent reported screenshot_path from the result",
+        "Agent did not use snapshot as first action"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I only need to see the top navigation bar — take a focused screenshot of just that area instead of the full page.",
+      "expected_output": "Agent uses zoom with coordinates covering the nav bar region (e.g. x0=0 y0=0 x1=1200 y1=60) instead of a full screenshot. Reports the inline base64 result. Explains that zoom is more token-efficient than a full screenshot for region-specific proof.",
+      "assertions": [
+        "Agent used zoom, not screenshot, for the region-specific request",
+        "Agent supplied x0, y0, x1, y1 coordinates that target the nav area",
+        "Agent explained or acknowledged that zoom is more token-efficient than full screenshot"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Navigate to the login page, fill in the credentials, click Sign In, and wait for the dashboard to load.",
+      "expected_output": "Agent batches goto + fill_selector + click_text + wait_for_url_change (or wait_for_selector on a post-login element) in one bridge call. Does not use a fixed wait after the click. Uses wait_for_url_change to detect the redirect from the login URL.",
+      "assertions": [
+        "Agent used wait_for_url_change or wait_for_selector after clicking Sign In, not a fixed wait",
+        "Agent batched all actions in one bridge call",
+        "Agent did not use evaluate to fill or submit the form",
+        "Agent verified post-login state with page_context"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I want to test two separate tasks in the dashboard at the same time — keep their tabs organised.",
+      "expected_output": "Agent uses session_name on each bridge call to route tabs into named Chrome tab groups. Uses a different session_name for each task so their tabs are visually separated in Chrome's tab strip. Explains the tab group isolation behaviour.",
+      "assertions": [
+        "Agent used session_name parameter on bridge calls",
+        "Agent used distinct session_name values for the two tasks",
+        "Agent explained that tabs are grouped by session_name in Chrome"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "The bridge isn't responding — I'm getting a socket error on every bridge call. Fix it.",
+      "expected_output": "Agent runs preflight.sh first (self-healing). If preflight exits 0 but actions still fail, checks content_script.blocked and active tab URL. Does not attempt CDP fallback, WSL Chrome, or any alternative path.",
+      "assertions": [
+        "Agent ran preflight.sh as the first recovery step",
+        "Agent did not attempt CDP, WSL Chrome, or any non-socket path",
+        "Agent checked content_script.blocked if preflight exited 0 but actions still failed",
+        "Agent used sync.sh if files were stale"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Preflight says the bridge is healthy but when I try to click anything it fails silently. What's wrong?",
+      "expected_output": "Agent identifies this as the 'preflight exits 0 but unstable' pattern. Checks whether the active tab is chrome:// or about:newtab. If blocked, uses useSelectedTab:False with goto to open a fresh https:// tab. Does not re-run preflight in a loop.",
+      "assertions": [
+        "Agent identified the blocked active tab as the likely cause",
+        "Agent checked or mentioned content_script.blocked",
+        "Agent used useSelectedTab:False to open a new tab when active tab is chrome://",
+        "Agent did not re-run preflight in a loop"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "You've finished testing the dashboard. Perform a proper closeout.",
+      "expected_output": "Agent takes a screenshot (reports screenshot_path), calls page_context for final URL and title, calls bridge status to verify health, closes any tabs it opened, and ends with a handoff line stating the URL, bridge state, and tabs closed.",
+      "assertions": [
+        "Agent took a screenshot and reported screenshot_path",
+        "Agent called bridge status and confirmed success:true",
+        "Agent closed any tabs it opened during the session",
+        "Agent stated a handoff line with final URL, bridge state, and tab count",
+        "Agent did not skip closeout steps despite the task being 'finished'"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Navigate to http://localhost:9876 and wait for the main content to appear before doing anything.",
+      "expected_output": "Agent uses goto followed immediately by wait_for_selector targeting a real element (h1, nav, or a known component selector) with a reasonable timeout. Does not use a fixed wait. Proceeds to page_context only after the selector resolves.",
+      "assertions": [
+        "Agent used wait_for_selector after goto, not a fixed wait",
+        "Agent specified a meaningful selector (not a generic div)",
+        "Agent proceeded to page_context only after wait_for_selector resolved",
+        "Agent set a timeout on wait_for_selector"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "The cursor isn't showing up when clicking elements in the browser. Fix it.",
+      "expected_output": "Agent identifies cursor visibility as a cursor-agent.js or images/ asset issue. Runs diagnostics (diagnose.py or preflight.sh) to check asset presence. Runs sync.sh if assets are missing. Does not patch SKILL.md or switch to evaluate-based clicking as a workaround.",
+      "assertions": [
+        "Agent identified cursor-agent.js or images/ as the surface to fix",
+        "Agent ran diagnostics to check asset presence",
+        "Agent ran sync.sh if assets needed updating",
+        "Agent did not modify SKILL.md as a workaround",
+        "Agent did not suggest using evaluate to click instead"
+      ]
+    }
+  ]
+}

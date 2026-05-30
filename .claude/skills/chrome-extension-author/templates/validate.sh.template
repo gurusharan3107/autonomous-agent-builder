@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# REPLACE-NAME — self-validate the generated extension.
+#
+# Checks:
+#   - manifest.json parses as JSON and has manifest_version: 3
+#   - Every referenced file in manifest exists
+#   - 16/32/48/128 PNG icons present
+#   - No console.error left as a trace (heuristic grep)
+#   - If native messaging present: host.json parses, points to host.py
+set -euo pipefail
+
+EXT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$EXT_DIR"
+hard=0
+
+fail() { echo "  [HARD] $*"; hard=$((hard+1)); }
+warn() { echo "  [SOFT] $*"; }
+ok()   { echo "  [ OK ] $*"; }
+
+# 1. manifest.json
+if ! python3 -c "import json; json.load(open('manifest.json'))" 2>/dev/null; then
+  fail "manifest.json is not valid JSON"
+else
+  ok "manifest.json parses"
+  mv=$(python3 -c "import json; print(json.load(open('manifest.json')).get('manifest_version'))")
+  [ "$mv" = "3" ] || fail "manifest_version must be 3 (got: $mv)"
+fi
+
+# 2. Referenced files exist
+python3 <<'PY'
+import json, os, sys
+m = json.load(open("manifest.json"))
+missing = []
+sw = (m.get("background") or {}).get("service_worker")
+if sw and not os.path.exists(sw): missing.append(sw)
+for cs in m.get("content_scripts") or []:
+    for f in cs.get("js") or []:
+        if not os.path.exists(f): missing.append(f)
+for war in m.get("web_accessible_resources") or []:
+    for r in war.get("resources") or []:
+        # Globs allowed — skip strict check
+        if "*" in r: continue
+        if not os.path.exists(r): missing.append(r)
+action = m.get("action") or {}
+popup = action.get("default_popup")
+if popup and not os.path.exists(popup): missing.append(popup)
+if missing:
+    print("MISSING_FILES " + " ".join(missing))
+    sys.exit(1)
+PY
+if [ $? -eq 0 ]; then
+  ok "all referenced files exist"
+else
+  fail "manifest references missing files"
+fi
+
+# 3. Icons
+for SIZE in 16 32 48 128; do
+  if [ ! -f "images/icon${SIZE}.png" ]; then
+    fail "missing icon size: images/icon${SIZE}.png"
+  fi
+done
+ok "icon pack present (or fail noted)"
+
+# 4. console.error heuristic
+# Allow within obvious error paths (catch blocks, error handlers). Flag bare
+# traces like console.error("starting X").
+trace_hits=$(grep -rn 'console\.error("[a-z]' --include='*.js' . 2>/dev/null | wc -l || echo 0)
+if [ "$trace_hits" -gt 0 ]; then
+  warn "potential console.error traces (lowercased message strings): $trace_hits — review and convert to console.debug"
+fi
+
+# 5. Native messaging if present
+if [ -f "native/host.json" ]; then
+  if ! python3 -c "import json; json.load(open('native/host.json'))" 2>/dev/null; then
+    fail "native/host.json not valid JSON"
+  fi
+fi
+
+if [ "$hard" -gt 0 ]; then
+  echo "FAIL: $hard hard finding(s)"
+  exit 1
+fi
+echo "PASS"

@@ -357,25 +357,21 @@ function withTimeout(promise, ms, label) {
 }
 
 async function sendToContentScript(tabId, action, args = []) {
-  console.error(`sendToContentScript: starting ${action}`);
   const status = await withTimeout(
     ensureContentScript(tabId), 3000, `ensureContentScript(${action})`
   );
-  console.error(`sendToContentScript: ensureContentScript done, injected=${status.injected}`);
   if (!status.injected) {
     throw new Error(status.reason || "Content script is not available");
   }
   const result = await withTimeout(
     chrome.tabs.sendMessage(tabId, { action, args }), 3000, `sendMessage(${action})`
   );
-  console.error(`sendToContentScript: sendMessage done`);
   return result;
 }
 
 // ---- Browser Actions ----
 async function runBrowserAction(action, state) {
   const type = action.type;
-  console.error(`runBrowserAction: ${type}, tabId=${state.tabId}`);
   if (action.tabId) {
     state.tabId = action.tabId;
   }

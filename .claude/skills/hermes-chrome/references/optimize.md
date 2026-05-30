@@ -197,6 +197,38 @@ the click fires. `click_text` found the element in a transitional DOM state.
 
 Never retry a failed click without a fresh `snapshot` first — the DOM may have changed.
 
+### 9. Cursor disappears mid-flow or after extension reload
+
+**Signal:** Operator says they can't see the cursor; `cursor_status` reports `visible: false` even though the agent is acting; or the cursor flickers on every click.
+
+Two distinct causes:
+
+**(a) Opacity flash on click.** Earlier `click() / tripleClick() / rightClick() / dblClick() / focusAndType() / keyPress() / dragTo()` did `classList.remove('hermes-visible') → elementFromPoint → classList.add('hermes-visible')` around every hit-test. With `transition: opacity 0.2s`, this caused a visible fade-out/fade-in on every click. **Fix already applied** in `cursor-agent.js`; if you reintroduce the hide-flash, you'll regress. See agent-handbook.md *"Don't hide the cursor around `elementFromPoint`"*.
+
+**(b) Reset on re-inject.** Extension reload or SW idle restart re-runs `cursor-agent.js`. Old `createOverlay()` always built a fresh element at `(-100,-100), opacity:0` — invisible until next `cursor_move`. **Fix already applied**: new `createOverlay()` reads the prior element's `style.transform` and `hermes-visible` class, then restores them on the new element. See agent-handbook.md *"`createOverlay()` must preserve cursor position + visibility"*.
+
+**Diagnostic:**
+```python
+# Read live cursor state to distinguish the two
+r = bridge({"type":"run","useSelectedTab":True,"actions":[
+    {"type":"cursor_status"},
+    {"type":"evaluate","expression":"""
+        (function(){
+          var el = document.getElementById('hermes-agent-cursor-overlay');
+          if (!el) return { exists: false };
+          return {
+            classes: el.className,
+            opacity: getComputedStyle(el).opacity,
+            transform: el.style.transform
+          };
+        })()
+    """}
+]})
+```
+- DOM has element + class `hermes-visible` + opacity 1 + non-corner transform → cursor IS visible; operator may be looking at the wrong tab or panel.
+- DOM has element BUT no `hermes-visible` class + transform at `(-100,-100)` → reset on re-inject (cause b). Check the fix is deployed.
+- Brief flicker during clicks → cause (a). Check the fix is deployed.
+
 ---
 
 ## Surface map

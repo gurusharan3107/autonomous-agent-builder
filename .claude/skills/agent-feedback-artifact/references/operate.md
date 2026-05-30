@@ -52,7 +52,7 @@ Monitor({
   command: "node ~/.claude/skills/agent-feedback-artifact/scripts/agent-feedback-watch.mjs --root <serve-root>"
 })
 ```
-Each new marker prints one JSON line `{id, route, summary, sentAt, createdAt, emittedAt}` (~250 chars). Surfaces as a chat notification.
+Each new marker prints one JSON line — `{id, markerId, route, status, url, origin, artifactTitle, artifactPath, summary, visibleText, sentAt, createdAt, emittedAt}` (~400–460 chars). Surfaces as a chat notification. `origin` and `visibleText` let you decide directly: `origin=localhost` + clear summary → act; `origin=external` + clear question → answer from URL alone; `visibleText` disambiguates deictic phrases.
 
 **Any harness:** `node agent-feedback-watch.mjs --root <serve-root> | <your wake adapter>`. Same line stream, pipe to whatever your harness consumes.
 
@@ -64,12 +64,31 @@ For static-artifact: open `http://localhost:<port>/<file>` (use the explicit fil
 
 For running-app: open the running app's URL in Chrome with the hermes-chrome extension; toggle Feedback Mode.
 
-Then:
+**Marker placement loop (operator):**
 1. Click `.af-launcher` (top-right toggle) → reveals toolbar
-2. Click `[data-af-toggle]` (Annotate button) → arms overlay
-3. Click target element on the page → marker created at click point with `elementAtPoint` resolution
+2. Click `[data-af-toggle]` (Annotate button) → `aria-pressed=true`, layer becomes `pointer-events: auto`
+3. Click target element on the page → marker created at click point via `elementAtPoint` (which masks widget nodes during hit-test)
 4. Type into `[data-af-popover-input]`
 5. Click `.af-popover-send`
+
+After send: popover closes, **Annotate auto-disarms** (`setArmed(false)`). To place another marker, click Annotate again. This is intentional — prevents accidental double-placement.
+
+**Inspecting an existing marker (operator):**
+1. Click the marker badge (`.af-marker`) on the page → popover opens collapsed, Agent tab active
+2. Click the gear (`[data-af-config]`) → popover expands, Agent + UI tabs visible
+3. Click UI tab → shows live-resampled element style; if the marker is on a container whose own color is inherited, a **Primary text** row surfaces the most prominent text-bearing child's color + font
+
+Popover re-anchors automatically on expand/collapse so it stays attached to the marker even near viewport edges.
+
+### 5b. Agent-driven verification (bridge mode)
+
+When an agent drives this flow through hermes-chrome (for self-test or regression check), these rules avoid wasting turns on bridge-automation quirks and keep the cursor presence operator-visible:
+
+1. **Re-check Annotate state at the start of every flow.** `aria-pressed` resets to `false` after each Send and on Feedback Mode re-toggle. Do `evaluate({pressed: ...})` first; only click Annotate if `pressed === "false"`.
+2. **Batch related actions in ONE `bridge({type:"run", actions:[...]})` call.** Between bridge calls there is an idle window where popover state can settle (re-anchoring, re-renders). A multi-call test that places a marker in call 1 and reads popover-input rect in call 2 will sometimes see `width: 0` because the popover collapsed back to its compact form. Single batched call eliminates the gap.
+3. **Use `click_selector` over `cursor_move + cursor_click` for small targets.** The high-level click auto-handles cursor activation and re-tries hit-test against the resolved element rather than the topmost (which can be an SVG icon inside a button — the click still works via bubbling, but the high-level helper is more reliable).
+4. **Verify visible change via computed style on the actual styled element**, not the marker selector. The marker may be placed on a container whose color is inherited; the change is on a child. Read `getComputedStyle(child).color`, not `getComputedStyle(container).color`.
+5. **Cursor presence is operator feedback — never park the cursor at an edge or off-screen.** The cursor sits at the last action coordinate, so end batched sequences at meaningful targets (the marker, the value just changed, the popover gear). Never call `cursor_hide`. Don't move to viewport corners. The operator infers "agent is working / agent finished here" from where the cursor stopped — make that location informative.
 
 Marker is created with `pendingComment`, committed to queue on send.
 

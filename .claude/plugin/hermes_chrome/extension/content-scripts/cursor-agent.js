@@ -83,11 +83,25 @@
 
   // ---- DOM Setup ----
   function createOverlay() {
-    // Remove stale
+    // Preserve last-known position + visibility across script re-injection.
+    // Without this, a service-worker idle restart or extension reload silently
+    // resets the cursor to (-100, -100) opacity:0 — the operator sees the
+    // cursor vanish mid-flow until the agent's next cursor_move. Read the
+    // prior element's transform + visibility, then restore after recreating.
     const old = document.getElementById(HERMES_CURSOR_ID);
-    if (old) old.remove();
+    let priorTransform = null;
+    let priorVisible = false;
+    if (old) {
+      priorTransform = old.style.transform || null;
+      priorVisible = old.classList.contains('hermes-visible');
+      old.remove();
+    }
 
+    // Replace the style block too (CSS may have changed across reload).
+    const oldStyle = document.querySelector('style[data-hermes-cursor-style]');
+    if (oldStyle) oldStyle.remove();
     const style = document.createElement('style');
+    style.dataset.hermesCursorStyle = '1';
     style.textContent = css;
     document.head.appendChild(style);
 
@@ -104,7 +118,23 @@
     cursorEl.appendChild(pointerImg);
     document.documentElement.appendChild(cursorEl);
 
-    isVisible = false;
+    // Restore prior position + visibility so the cursor stays parked where it
+    // was at the moment of re-injection (operator-facing continuity).
+    if (priorTransform && priorTransform !== 'none' && priorTransform.indexOf('-100') === -1) {
+      cursorEl.style.transform = priorTransform;
+      const m = priorTransform.match(/-?\d+(\.\d+)?/g);
+      if (m && m.length >= 2) {
+        const useMatrix = priorTransform.indexOf('matrix') === 0;
+        cursorX = parseFloat(useMatrix ? m[4] : m[0]);
+        cursorY = parseFloat(useMatrix ? m[5] : m[1]);
+      }
+    }
+    if (priorVisible) {
+      cursorEl.classList.add('hermes-visible');
+      isVisible = true;
+    } else {
+      isVisible = false;
+    }
   }
 
   // ---- Motion ----
@@ -149,11 +179,8 @@
     pointerEl?.classList.add('hermes-clicking');
     setTimeout(() => pointerEl?.classList.remove('hermes-clicking'), 140);
 
-    // Hide cursor momentarily so elementFromPoint gets the real page element
-    const wasVisible = isVisible;
-    if (wasVisible) cursorEl.classList.remove('hermes-visible');
+    // Cursor host is pointer-events:none — elementFromPoint already skips it.
     const el = document.elementFromPoint(cursorX, cursorY);
-    if (wasVisible) cursorEl.classList.add('hermes-visible');
 
     if (el) {
       const scrollX = window.scrollX || 0;
@@ -168,10 +195,8 @@
 
   function tripleClick() {
     if (!cursorEl) return;
-    const wasVisible = isVisible;
-    if (wasVisible) cursorEl.classList.remove('hermes-visible');
+    // Cursor host is pointer-events:none — elementFromPoint already skips it.
     const el = document.elementFromPoint(cursorX, cursorY);
-    if (wasVisible) cursorEl.classList.add('hermes-visible');
     if (el) {
       const opts = { bubbles: true, cancelable: true, view: window };
       [1, 2, 3].forEach(() => {
@@ -185,10 +210,8 @@
 
   function rightClick() {
     if (!cursorEl) return;
-    const wasVisible = isVisible;
-    if (wasVisible) cursorEl.classList.remove('hermes-visible');
+    // Cursor host is pointer-events:none — elementFromPoint already skips it.
     const el = document.elementFromPoint(cursorX, cursorY);
-    if (wasVisible) cursorEl.classList.add('hermes-visible');
     if (el) {
       el.dispatchEvent(new MouseEvent('contextmenu', {
         bubbles: true, cancelable: true, view: window,
@@ -200,10 +223,8 @@
 
   function dblClick() {
     if (!cursorEl) return;
-    const wasVisible = isVisible;
-    if (wasVisible) cursorEl.classList.remove('hermes-visible');
+    // Cursor host is pointer-events:none — elementFromPoint already skips it.
     const el = document.elementFromPoint(cursorX, cursorY);
-    if (wasVisible) cursorEl.classList.add('hermes-visible');
     if (el) {
       const opts = { bubbles: true, cancelable: true, view: window };
       el.dispatchEvent(new MouseEvent('mousedown', { ...opts, clientX: cursorX, clientY: cursorY }));
@@ -215,10 +236,8 @@
 
   function focusAndType(text, opts = {}) {
     if (!cursorEl) return;
-    const wasVisible = isVisible;
-    if (wasVisible) cursorEl.classList.remove('hermes-visible');
+    // Cursor host is pointer-events:none — elementFromPoint already skips it.
     const el = document.elementFromPoint(cursorX, cursorY);
-    if (wasVisible) cursorEl.classList.add('hermes-visible');
     if (!el) return;
     el.focus();
     if (opts.append && el.value !== undefined) {
@@ -239,10 +258,8 @@
 
   function keyPress(key, modifiers = []) {
     if (!cursorEl) return;
-    const wasVisible = isVisible;
-    if (wasVisible) cursorEl.classList.remove('hermes-visible');
+    // Cursor host is pointer-events:none — elementFromPoint already skips it.
     const el = document.elementFromPoint(cursorX, cursorY) || document.activeElement || document.body;
-    if (wasVisible) cursorEl.classList.add('hermes-visible');
     const opts = {
       bubbles: true, cancelable: true, view: window,
       key, code: key,
@@ -262,10 +279,8 @@
       const startX = cursorX;
       const startY = cursorY;
       const startTime = performance.now();
-      const wasVisible = isVisible;
-      if (wasVisible) cursorEl.classList.remove('hermes-visible');
+      // Cursor host is pointer-events:none — elementFromPoint already skips it.
       const el = document.elementFromPoint(cursorX, cursorY);
-      if (wasVisible) cursorEl.classList.add('hermes-visible');
       if (el) {
         el.dispatchEvent(new MouseEvent('mousedown', {
           bubbles: true, cancelable: true, view: window,

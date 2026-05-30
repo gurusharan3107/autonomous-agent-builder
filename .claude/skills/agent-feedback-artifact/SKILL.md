@@ -30,14 +30,20 @@ Full step-by-step + script invocations → [`references/operate.md`](references/
 
 ## Per-marker action (every wake notification)
 
-Wake payload: `{id, route, summary, sentAt, createdAt, emittedAt}` (~250 chars).
+Wake payload: `{id, markerId, route, status, url, origin, artifactTitle, artifactPath, summary, visibleText, sentAt, createdAt, emittedAt}` (~400–460 chars). `origin` ∈ `localhost | external | github | file | blocked | unknown` — derived from `url`. `visibleText` is the marked element's text (≤60 chars), dedup'd to `null` when identical to `summary` — disambiguates deictic comments ("change this", "make the number red"). Pre-decide the action from these fields before paying any round-trip.
 
-| `route` field | What to do |
-|---|---|
-| `no_worker_main_agent_direct` + clear summary | Act directly. **Skip details.** |
-| `no_worker_main_agent_direct` + vague summary | Pull details once via `agent-feedback-details.mjs <id> --root <root>` |
-| `cheap_marker_worker` | Default fallback — usually means classifier missed a keyword. Act on summary; consider extending `agent-feedback-routing.mjs` |
-| `deep_marker_worker` | Pull details. Spawn fresh-once worker if doing data/calc work |
+Decision is `origin` × `route` × `summary clarity`:
+
+| `origin` | `route` + summary | What to do |
+|---|---|---|
+| `localhost` | direct + clear ("make X red") | Act on the local app — file follows from URL/artifactPath. **Skip details.** |
+| `localhost` | direct + vague, or any `cheap_marker_worker` | Pull details once for selector/rect/ui |
+| `external` | direct/cheap + clear question | **Answer from summary + URL.** Skip details. |
+| `external` | direct/cheap + vague | Pull details (selectedText, visibleText) |
+| `github` | any | URL is the work target — fetch/inspect the linked repo, then answer or act |
+| `file` | any | Static artifact mode — file path is in the URL |
+| `blocked` | any | Surface as warning (`chrome://`, `about:`, `view-source:`) |
+| any | `deep_marker_worker` | Pull details. Spawn fresh-once worker if doing data/calc work |
 
 After applying the fix:
 ```

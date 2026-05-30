@@ -122,6 +122,30 @@ locations Chrome and native-host actually read from:
 
 **Fix:** Edit the canonical file in the agent-feedback-artifact skill. Then run `sync.sh` to propagate. If you need a feedback-widget change that's hermes-chrome-specific (not a capability change), that's a sign the boundary is wrong — escalate before adding plugin-only widget logic.
 
+### Don't hide the cursor around `elementFromPoint` — it flashes opacity
+
+**Symptom:** Operator sees the cursor briefly fade out or disappear on every click. With several clicks queued, it looks like the cursor is gone "for a couple of seconds."
+
+**Why:** Earlier `click()`, `tripleClick()`, `rightClick()`, `dblClick()`, `focusAndType()`, `keyPress()`, `dragTo()` each did `classList.remove('hermes-visible') → elementFromPoint → classList.add('hermes-visible')`. The host CSS has `transition: opacity 0.2s ease`, so each toggle ran the fade animation — visible flicker on every click. The hide was added defensively, assuming `elementFromPoint` would return the cursor element.
+
+**Fix:** Never hide the cursor for hit-test. The cursor host has `pointer-events: none`, which makes `elementFromPoint` skip it natively (per CSSOM spec). All 7 functions now call `elementFromPoint` directly without toggling visibility. **Do not re-introduce the hide/show dance** under the rationale "to make elementFromPoint work" — it never needed it.
+
+### Logging hygiene — `console.error` is reserved for real errors
+
+**Symptom:** Operator opens the extension's Errors page (chrome://extensions/?errors=…) and finds it cluttered with informational traces like `runBrowserAction: cursor_move, tabId=…`, `sendToContentScript: starting click`, etc. Real errors get lost in the noise.
+
+**Why:** Debug traces in `service_worker.js` were written with `console.error()` (carryover from initial trace-and-find-bugs phase). Chrome's MV3 Errors page surfaces `console.error` and uncaught exceptions; `console.log/debug/info` go to the regular console only.
+
+**Fix:** Use `console.error` ONLY when something has actually gone wrong (a caught exception, a contract violation, a state the agent cannot recover from). For traces, use `console.debug()` (filtered by default) or remove entirely. The 4 stray traces (`sendToContentScript: starting/done`, `runBrowserAction:`) have been deleted; if you re-add tracing for a debug session, gate it behind a `DEBUG` const or use `console.debug`.
+
+### `createOverlay()` must preserve cursor position + visibility across re-injection
+
+**Symptom:** After an extension reload or service-worker idle restart, the cursor element is at (-100, -100) with `opacity: 0` until the next `cursor_move`. From the operator's perspective the cursor vanished mid-flow.
+
+**Why:** `createOverlay()` removed the existing cursor element and created a fresh one with the default CSS (`opacity: 0`, transform at `-100, -100`). The IIFE's closure variables (`cursorX/Y`, `isVisible`) are reset on re-injection. Until the agent issued another `cursor_move`, the cursor was invisible at the corner.
+
+**Fix:** Before removing the old element, read its `style.transform` and `classList.contains('hermes-visible')`. After creating the new element, restore the transform, parse it back into `cursorX/Y`, and re-add `hermes-visible` if it was set. The cursor stays parked where it was, visibly. **Whenever you change `createOverlay()`, preserve this contract.**
+
 ---
 
 ## Diagnostic recipes

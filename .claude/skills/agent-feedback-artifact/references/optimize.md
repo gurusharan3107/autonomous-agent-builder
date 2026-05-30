@@ -41,11 +41,14 @@ Before declaring a fix done, walk this checklist:
 
 ### "Auto-reload didn't fire after `--reload`"
 
-1. Check the queue file: did `mark.mjs` actually write `reload: true` + `reloadMode`? `curl /api/feedback/status?artifact=/` and look for those fields.
+1. Check the queue: did `mark.mjs` actually write `reload: true` + `reloadMode`? `curl /api/feedback/status?artifact=/` and look for those fields.
 2. DevTools → Network → filter `events` → is there an open EventSource connection? If not → widget isn't getting pushes; check SSE endpoint reachability.
-3. Page console: `localStorage.getItem('agent-feedback:/:reloaded')` — does it contain the marker id? If yes → the wrap already saw and processed it; the page may have already refreshed and you missed the visible change. If no → wrap isn't being called.
-4. If wrap isn't being called → check SSE delivery via `curl -N http://localhost:4177/api/feedback/events?artifact=/` in a separate terminal while POSTing.
-5. If SSE delivers but wrap isn't called → check the pollStatus wrap-ordering bug in [`agent-handbook.md`](agent-handbook.md).
+3. Page console: `localStorage.getItem('agent-feedback:/:reloaded')` — does it contain the marker id?
+   - **Yes + `<link>` has no `?_fb_cb=` query** → race: the page refreshed inside the 400ms setTimeout window before the swap committed. Should not happen after the load-event commit fix; if it does, re-check `overlay.html` `pollStatusWrapped` — `commit()` must be inside the `link.load` settle callback, not on schedule.
+   - **Yes + cache-busted link present** → the swap fired; if no visible change, the disk file may not have your edit, or specificity is wrong.
+4. **Page uses inline `<style>` only (no `<link rel="stylesheet">`)** → `--reload` auto-escalates to full reload now; if it didn't, you're running an old widget runtime. Refresh page to pick up new content script.
+5. **SSE silent > 80s** → adaptive fast-poll engages (2s); check `window.__afFastPolling` is set. If SSE is permanently dead, server may be down or proxy stripping keepalives.
+6. **`/api/feedback/status` fetched twice per SSE message** → old code; the wrapper now reuses `origPollStatus`'s returned `result`. Re-sync the extension.
 
 ### "Visible change applied but page state was lost"
 
@@ -72,6 +75,19 @@ Tombstone is missing or being skipped. Page console:
 ### "SSE delivery is seconds late"
 
 TCP Nagle + small SSE writes. Server should call `req.socket.setNoDelay(true)` + `res.flushHeaders()` + set `x-accel-buffering: no` header. See the SSE-delivery lesson in [`agent-handbook.md`](agent-handbook.md).
+
+### "One queue write triggers N fetches (N=2..14)"
+
+Node's `fs.watch` is chatty — one logical write can fire 2–7 `change` events. Server now coalesces with a 30 ms debounce (`watchBroadcastTimer` in `artifact-feedback-server.mjs`). If you see > 1 fetch per write, you're running an old server — kill and restart it.
+
+### "UI panel shows the wrong color after a change"
+
+- **Same color as before the change** → the marker was placed on a *container* whose own color genuinely didn't change; the change was on a child. The "Primary text" row (when surfaced) shows the prominent child's color. If that row is missing, the child color matches the container's (i.e. no visible difference at that element).
+- **Captured-at-creation stale snapshot** → fixed by live re-sample; the tag shows " (snapshot)" suffix only when the live selector failed to resolve.
+
+### "UI panel hangs on a huge container"
+
+`findPrimaryTextChild` walks descendants — bounded to depth 4 and 50 visited nodes. If you removed those caps locally, restore them.
 
 ### "Routing put a clearly-style marker on `cheap_marker_worker` or `deep_marker_worker`"
 

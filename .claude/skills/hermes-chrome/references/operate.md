@@ -135,6 +135,12 @@ r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":False,"actions
 - **After `fill_selector`, confirm with `page_context`** — don't assume the fill succeeded. Check the input value is reflected before submitting.
 - **For multi-step forms, verify each step** — one `page_context` per step transition.
 
+### Cursor visibility — operator-facing presence
+- **Never call `cursor_hide`** during agent work. The cursor IS the operator's only signal that the agent is actively driving the browser.
+- **Never park the cursor at a viewport edge or corner.** After the last action in a batch, the cursor sits at that coordinate until the next move. End batches on *meaningful* targets — the element just modified, the marker just placed, the control just clicked — so the operator can read intent from where the cursor stopped.
+- **If the last action was a query (`evaluate`, `page_context`, `snapshot`), the cursor hasn't moved.** That's fine — leave it wherever the previous interactive action placed it. Don't add a cleanup `cursor_move` to a corner.
+- **First action after a long idle should be a `cursor_move` to the upcoming target, not a click.** The visible glide tells the operator "agent is about to act here" before the click fires.
+
 ### Context efficiency
 - **`page_context` for navigation verification; `zoom` or `screenshot` for visual proof only.** A full screenshot is a 50–100 KB JPEG. `page_context` delivers the same URL/title/structure in ~1 KB of text. When you do need visual proof, use `zoom` on the relevant region (2–10 KB) rather than a full `screenshot` unless you need the entire viewport.
 - **Batch all actions for a task into one `bridge()` call.** Each call is a socket round-trip. One round-trip per task, not one per action.

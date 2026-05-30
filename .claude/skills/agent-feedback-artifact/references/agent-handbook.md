@@ -110,7 +110,45 @@ agent ─ acts on marker ─ writes file ─ mark.mjs ──── writes queue.
 
 **Why:** Earlier wrap added the matched marker to `alreadyReloaded` then scheduled `setTimeout`. The second marker in the same `pending` list wasn't added until its own setTimeout, but the first reload happened before that.
 
-**Fix:** Collect ALL matching markers into a `pending` array, add every one to `alreadyReloaded` and persist BEFORE scheduling the single reload. Now any number of concurrent `--reload` markers result in exactly one reload event.
+**Fix:** Collect ALL matching markers into a `pending` array, mark all as in-flight, then commit to `alreadyReloaded` only after the swap actually applies.
+
+### Reload commit race — persist on `load`, not on schedule
+
+**Symptom:** Agent marks `--reload`, operator's page shows `localStorage['…:reloaded']` containing the marker ID but the `<link>` has no cache-bust query and the visible style didn't change. Operator sees no effect; agent thinks the swap fired.
+
+**Why:** Earlier code wrote `alreadyReloaded` + persisted localStorage *before* the `setTimeout(400ms)` hot-swap. If the operator refreshed (or the SPA navigated) inside that window, the new page found the ID already in `reloaded` → `pending=0` → never applied.
+
+**Fix:** Split state. In-memory `__afInflight` Set dedupes concurrent pollStatus calls (per-page, dies with the page). Persisted `alreadyReloaded` is committed only inside the link `load`-event settle callback. A page refresh inside the swap window leaves the item still pending so the next page handles it.
+
+### Hot-swap on pages with no external stylesheet — auto-escalate
+
+**Symptom:** `--reload` toast says "refreshing styles" but the visible color/font/spacing didn't change. Operator F5's manually and the change appears.
+
+**Why:** CSS hot-swap iterates `link[rel="stylesheet"]` — pages using inline `<style>` blocks only have nothing to clone. Earlier code silently no-op'd and committed.
+
+**Fix:** Before scheduling the swap, check `document.querySelectorAll('link[rel="stylesheet"]').some(l => l.href)`. If none, escalate to the full-reload path. Toast becomes "reloading page (no external stylesheet)".
+
+### Double-fetch in `pollStatusWrapped`
+
+**Symptom:** Every SSE message triggers two `/api/feedback/status` GETs. Doubles server load; doubles latency.
+
+**Why:** The reload-check wrapper used to call `origPollStatus()` (which fetched) and then make its own fetch to the same endpoint to read the items list.
+
+**Fix:** `pollStatus` returns the fetched `result`; the wrapper reuses it. One fetch per SSE message.
+
+### `fs.watch` fan-out — server-side debounce
+
+**Symptom:** Single queue write produces 2–7 SSE broadcasts. Each one wakes every connected client to re-fetch. With double-fetch this was 14× per write.
+
+**Why:** Node's `fs.watch` is chatty — atomic rename can fire multiple `change` events per logical write.
+
+**Fix:** `artifact-feedback-server.mjs` debounces via `watchBroadcastTimer` (30 ms trailing-edge coalesce). One broadcast per logical change.
+
+### SSE silent-but-connected stall
+
+**Symptom:** EventSource stays open, no `error` fires, but messages stop arriving (proxy stripped keepalives / server wedged / connection half-open). 30s safety-net poll is too slow.
+
+**Fix:** Track `window.__afLastSseMessage` (updated on every received message). Safety-net interval checks freshness — if > 80s (~3× the server's 25s keepalive) without a message, engage 2s fast-poll. Auto-cancels when SSE catches up.
 
 ### Trash + refresh = resurrection (two distinct cases)
 

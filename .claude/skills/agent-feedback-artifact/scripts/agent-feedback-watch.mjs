@@ -59,15 +59,49 @@ async function readQueueSafe() {
   }
 }
 
+// Origin categorization: lets the agent decide local-app vs external vs github
+// vs file in O(1) without parsing the URL each time. Universal capability —
+// the widget works on any page, so WHERE the comment came from is decision-
+// critical context that belongs in the wake, not behind a details round-trip.
+function categorizeOrigin(url) {
+  if (!url) return "unknown";
+  try {
+    const u = new URL(url);
+    if (u.protocol === "file:") return "file";
+    if (u.protocol === "chrome:" || u.protocol === "about:" || u.protocol === "view-source:") return "blocked";
+    const h = u.hostname;
+    if (h === "localhost" || h === "127.0.0.1" || h === "0.0.0.0" || h.endsWith(".localhost")) return "localhost";
+    if (h === "github.com" || h.endsWith(".github.com") || h === "raw.githubusercontent.com") return "github";
+    return "external";
+  } catch {
+    return "unknown";
+  }
+}
+
 function summarize(item) {
   const marker = item.marker || item.payload?.comments?.[0] || {};
+  const url = marker.url || item.payload?.comments?.[0]?.url || null;
   return {
     id: item.id,
     markerId: item.markerId || marker.markerId || marker.id || null,
     route: item.workerRoute || null,
     status: item.status || null,
+    // WHERE — decision-critical for "act directly vs answer vs inspect external"
+    url,
+    origin: categorizeOrigin(url),
+    artifactTitle: item.artifactTitle || marker.title || null,
     artifactPath: item.artifactPath || item.payload?.artifactPath || null,
+    // WHAT — operator's words
     summary: (item.latestUserMessage || marker.text || item.visibleText || "").slice(0, 140),
+    // The element's own text content — disambiguates deictic summaries like
+    // "change this" / "make the number red" without paying a details round-trip.
+    // Only included when distinct from `summary` (avoids duplicating the same
+    // string when operator's comment IS the visible text).
+    visibleText: (() => {
+      const v = (item.visibleText || marker.text || "").trim().slice(0, 60);
+      const s = (item.latestUserMessage || "").trim();
+      return v && v !== s ? v : null;
+    })(),
     // Timing instrumentation — let the agent measure each segment.
     sentAt: item.sentAt || item.payload?.sentAt || null,           // T0 — widget Send click
     createdAt: item.createdAt || null,                              // T1 — server persisted queue.json

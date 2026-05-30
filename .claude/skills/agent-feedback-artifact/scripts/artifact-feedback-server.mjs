@@ -45,9 +45,20 @@ function broadcast(artifactPath) {
 // fs.watch on the queue file so EVERY mutation (HTTP-driven or direct write
 // from mark.mjs) results in an SSE broadcast. Watching the parent dir catches
 // atomic-rename writes (writeJson uses tmp → rename).
+// Debounce fs.watch — Node's fs.watch is chatty (atomic rename can fire 2-7
+// "change" events per logical write). Without coalescing, every queue write
+// produced ~7 SSE broadcasts, each waking every connected client to re-fetch
+// /api/feedback/status. Debouncing collapses the fan-out to one notification
+// per logical change (trailing edge, 30 ms window).
 import { watch as fsWatch } from "node:fs";
+let watchBroadcastTimer = null;
 fsWatch(dataDir, { persistent: false }, (_event, filename) => {
-  if (filename === "feedback-queue.json") broadcast("*");
+  if (filename !== "feedback-queue.json") return;
+  if (watchBroadcastTimer) return;
+  watchBroadcastTimer = setTimeout(() => {
+    watchBroadcastTimer = null;
+    broadcast("*");
+  }, 30);
 });
 
 const server = createServer(async (req, res) => {

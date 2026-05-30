@@ -1,0 +1,36 @@
+{
+  "skill": "chrome-extension-author",
+  "version": "0.1",
+  "activation_phrases": [
+    "build a chrome extension that streams page text to my local agent",
+    "scaffold a Chrome MV3 extension",
+    "create a browser extension",
+    "I need an extension that adds a floating overlay on dashboards",
+    "make a Chrome plugin to extract tables from financial pages",
+    "author an MV3 extension for our internal tool",
+    "add a Chrome extension to this repo"
+  ],
+  "non_activation_phrases": [
+    "use chrome to take a screenshot",
+    "open chrome and navigate to example.com",
+    "fix the hermes-chrome bridge",
+    "click X in the browser",
+    "verify the deploy in chrome"
+  ],
+  "expected_behavior": [
+    "Runs the Interview (Batch A 4 questions, Batch B 4 questions) via AskUserQuestion before scaffolding.",
+    "Echoes the answer summary table back before scaffold.",
+    "Defaults the target directory to extensions/<name>/ at the repo root.",
+    "Generates manifest.json + service_worker.js as the minimum; adds content scripts, popup, native host conditionally on answers.",
+    "Rasterizes the chosen SVG into 16/32/48/128 PNG pack.",
+    "Self-validates the generated extension before reporting success.",
+    "Prints install + verify instructions including the WSL2 UNC path when applicable."
+  ],
+  "regression_checks": [
+    "Generated cursor.js still has the createOverlay preservation logic and does NOT toggle hermes-visible around elementFromPoint.",
+    "Generated service_worker.js still has the chrome:// URL guard in tabs.onUpdated.",
+    "Generated content-script.js still uses safeParseArray for any localStorage parse.",
+    "manifest.json uses MV3 web_accessible_resources object shape (resources + matches), not MV2 string array.",
+    "console.error in scaffolded code is reserved for real error paths; traces use console.debug or are removed."
+  ]
+}

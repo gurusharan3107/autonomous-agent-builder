@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "REPLACE-NAME",
+  "version": "0.1.0",
+  "description": "REPLACE-DESCRIPTION",
+
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+
+  "action": {
+    "default_title": "REPLACE-NAME",
+    "default_icon": {
+      "16":  "images/icon16.png",
+      "32":  "images/icon32.png",
+      "48":  "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16":  "images/icon16.png",
+    "32":  "images/icon32.png",
+    "48":  "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+
+  "host_permissions": [
+    "REPLACE-HOST-PATTERN"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": ["REPLACE-MATCH-PATTERN"],
+      "js": ["content-scripts/main.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["images/*.svg"],
+      "matches": ["REPLACE-MATCH-PATTERN"]
+    }
+  ]
+}

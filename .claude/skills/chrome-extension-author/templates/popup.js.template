@@ -1,0 +1,26 @@
+/**
+ * REPLACE-NAME — Popup script
+ *
+ * Runs each time the operator opens the popup. No state survives popup close.
+ * Persist via chrome.storage if needed.
+ */
+
+const btn = document.getElementById("primary");
+const status = document.getElementById("status");
+
+btn.addEventListener("click", async () => {
+  btn.disabled = true;
+  status.textContent = "Working…";
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: "REPLACE-ACTION", args: {} });
+    if (resp?.success) {
+      status.textContent = "Done.";
+    } else {
+      status.textContent = `Failed: ${resp?.error || "unknown error"}`;
+    }
+  } catch (e) {
+    status.textContent = `Error: ${e?.message || e}`;
+  } finally {
+    btn.disabled = false;
+  }
+});

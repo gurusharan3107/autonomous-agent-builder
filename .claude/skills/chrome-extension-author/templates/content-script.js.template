@@ -1,0 +1,56 @@
+/**
+ * REPLACE-NAME — Content Script (isolated world, default)
+ *
+ * Runs on every matched page. No state survives page navigation.
+ * Re-injection on extension reload is guarded by the IIFE-attribute pattern.
+ */
+(() => {
+  // Prevent double-injection in the same page; allow re-injection if the
+  // extension context was invalidated (e.g., after an extension reload).
+  if (document.documentElement.dataset.replaceSlugInjected) {
+    try {
+      // Throws "Extension context invalidated" after an extension reload.
+      void chrome.runtime.id;
+      return;
+    } catch {
+      document.documentElement.removeAttribute("data-replace-slug-injected");
+    }
+  }
+  document.documentElement.dataset.replaceSlugInjected = "true";
+
+  // ---- Defensive parsing of user-controlled storage ---------------------
+  // Wraps every JSON.parse(localStorage.getItem(key)) so a corrupted entry
+  // never crashes the IIFE and silently breaks the extension on the page.
+  function safeParseArray(key) {
+    try {
+      const v = JSON.parse(localStorage.getItem(key) || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch {
+      try { localStorage.removeItem(key); } catch {}
+      return [];
+    }
+  }
+
+  // ---- Message handlers --------------------------------------------------
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type === "ping") {
+      sendResponse({ ok: true });
+      return;
+    }
+    // Sync responses only here — for async, return true and call sendResponse
+    // from the async path.
+    if (msg?.type === "REPLACE-ACTION") {
+      sendResponse({ success: true, result: doWork(msg.args) });
+      return;
+    }
+  });
+
+  function doWork(args) {
+    // REPLACE — your content-script logic here.
+    // Examples:
+    //   - Read DOM: document.querySelector(...).textContent
+    //   - Modify DOM: el.style.color = "red"
+    //   - Watch DOM: new MutationObserver(...)
+    return { ok: true };
+  }
+})();
