@@ -16,6 +16,8 @@ allowed-tools: Read, Bash, Write, AskUserQuestion
 
 # builder-test — verify a builder source change actually works
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 7-phase loop: test → fix root causes → self-evolve. Phases 0–5 run
 assertions and produce a FAIL/WARN/PASS verdict. Phase 5b fixes every FAIL
 at its root cause (builder source, test data, or skill procedure) and

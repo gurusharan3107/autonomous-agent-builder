@@ -25,6 +25,8 @@ allowed-tools: Bash, Read, Write, Edit
 
 # hermes-chrome
 
+> **Self-validate after edits.** Any change to this skill's files (SKILL.md, scripts/, references/, templates/, assets/) must be followed by `./scripts/validate.sh` from the skill directory. Hard findings → create-skill Optimize lane.
+
 Operate Chrome through the Hermes bridge — navigate, click with visible cursor, screenshot, read page, fill forms, interact with authenticated browser state. **Extension bridge only.** One path: `~/.hermes/run/chrome-bridge.sock`. If the socket is down, run `preflight.sh`. Never attempt an alternative.
 
 ## Workflow (every browser session)
