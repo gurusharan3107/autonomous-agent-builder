@@ -9,6 +9,23 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-05-30 - M1.1 IMP-018 + IMP-015 closed; IMP-019 real-browser verification built; IMP-020 found
+
+Operator-driven dashboard validation on a fresh managed app (recall-loop, a spaced-repetition flashcard app). Full idea→ship loop validated (5-task sprint, 0 errors, ~$2.02; real-browser acceptance + localStorage persistence proven; 62 generated-app tests + lint green).
+
+### Fixed
+
+- **IMP-018** — requirements interview degraded to free-text instead of structured `AskUserQuestion` cards. Root cause: global `permission_mode="dontAsk"` bypasses the SDK `can_use_tool` callback (the only place AskUserQuestion + tool-approval cards are produced). Added per-agent `AgentDefinition.permission_mode`; `chat` runs `"default"`; `runner.py` forwards it; `preapproved_tools` guard in `_authorize_chat_tool` preserves silent execution of granted tools. Validated live: structured cards render. Tests `test_chat_permission_mode_questions.py` + `test_agent_runner.py`.
+- **IMP-015** — `type=feature` items rendered/announced as "improvement". `BacklogPage.tsx` `itemTypeLabel` mapped feature→"improvement"; `agent_chat_result_publisher` hardcoded the save-note noun; `agent_sprint_planning` hardcoded the start-question wording. Now type-aware/neutral; coupled capture-note parser in `agent_feature_payloads` made type-agnostic. Validated live: badge shows FEATURE.
+
+### Added
+
+- **IMP-019** — real-browser self-verification: in-process `browser` SDK MCP server (`agents/tools/browser_tools.py` Hermes-bridge client + `agents/tools/sdk_mcp.py`) exposing `mcp__browser__{resolve_app_url,navigate,page_context,read_text,click_text,fill,screenshot}`, wired into `feature-verifier`/`build-verifier`/`browser-verifier`. `_to_mcp` content-envelope wrapper (SDK `call_tool` returns empty without `content`); `tool_registry.py` schemas (P19 registry-drop gap caught by a live run); `build_verification.browser_evidence_tier()` non-blocking advisory. Tests `test_browser_verification_tools.py`. Audited via `agent-sdk-dev:agent-sdk-verifier-py`.
+
+### Notes
+
+- **IMP-020** (open) — IMP-018's `permission_mode="default"` lets the chat lane surface Approve/Deny cards for ungranted mutating built-ins (Edit/Write/Bash) on the generated app, which can bypass the backlog→dispatch lifecycle; deferred (the approval-card path is intentional/tested — a design call).
+
 ## 2026-05-23 - M1.3 re-close: remaining 6 complexity violations resolved
 
 ### Changed
