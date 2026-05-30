@@ -16,7 +16,7 @@ expectations:
   - "runtime selection flows through RuntimeSettings and create_runtime() rather than product paths instantiating adapters directly"
   - "claude keeps AgentRunner and Claude Agent SDK mechanics behind ClaudeRuntime"
   - "codex_sdk uses the Codex app-server/SDK JSON-RPC contract with Codex login auth and must expose token, turn, duration, native user-input, and telemetry-source fields in RunResult observability"
-  - "compatibility adapters such as codex_cli and openai_agents may remain in lower-level tests but must fail user-facing runtime activation"
+  - "the openai_agents compatibility adapter may remain in lower-level tests but must fail user-facing runtime activation; codex_cli has been removed (codex_sdk supersedes it)"
   - "provider limits, auth misses, unsupported models, and unsupported capabilities normalize into deterministic builder state"
   - "dashboard and CLI settings describe Codex SDK subscription access as Codex login-backed"
   - "dashboard Settings and first-run onboarding mutate the same runtime settings service and keep Claude OTEL versus Codex telemetry mutually exclusive"
@@ -43,9 +43,10 @@ The check keeps the two user-facing runtime lanes distinct:
 - `codex_sdk`: Codex app-server/SDK JSON-RPC path over the same local Codex
   login auth
 
-Compatibility adapters such as `codex_cli` and `openai_agents` may remain in
-lower-level runtime tests while migration work is in progress, but they are not
-dashboard, onboarding, or sprint-validation lanes.
+The `openai_agents` compatibility adapter may remain in lower-level runtime
+tests while migration work is in progress, but it is not a dashboard,
+onboarding, or sprint-validation lane. `codex_cli` has been removed — the
+Codex app-server/SDK path (`codex_sdk`) supersedes the `codex exec` adapter.
 
 ## When To Load
 
@@ -120,7 +121,7 @@ Load this gate before:
 - Dashboard cost copy shows `$0.0000` as if Codex subscription auth had emitted a
   metered cost instead of identifying subscription metering.
 - `openai_agents` silently falls back to ChatGPT/Codex login state.
-- `codex_cli`, `openai_agents`, or other compatibility adapters appear in the
+- `openai_agents` or any other compatibility adapter appears in the
   dashboard runtime selector, onboarding lane picker, or sprint validation docs.
 - Product routes import Claude, Codex, or OpenAI adapter classes directly when
   `create_runtime()` can be used.

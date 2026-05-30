@@ -189,7 +189,7 @@ def persist_runtime_settings(
 
     env_path = builder_source_env_path()
     changed = write_runtime_env(env_path, config, project_name=project_name or project_root.name)
-    if str(config.get("sdk") or "") in {"codex_cli", "codex_sdk"}:
+    if str(config.get("sdk") or "") == "codex_sdk":
         changed.extend(_ensure_project_codex_otel_after_env(project_root.resolve(), env_path))
     payload = runtime_settings_payload(project_root, config)
     payload.update({"status": "updated", "settings_file": str(env_path), "changed_keys": changed})
@@ -284,7 +284,7 @@ def ensure_runtime_env(
     existed = env_path.exists()
     resolved = config or resolve_runtime_config(get_settings())
     changed = write_runtime_env(env_path, resolved, project_name=project_name, endpoint=endpoint)
-    if str(resolved.get("sdk") or "") in {"codex_cli", "codex_sdk"}:
+    if str(resolved.get("sdk") or "") == "codex_sdk":
         changed.extend(_ensure_project_codex_otel_after_env(root, env_path))
     if not existed:
         status = "created"
@@ -511,7 +511,7 @@ def _runtime_env_values(config: dict[str, Any]) -> dict[str, str | None]:
         "RUNTIME_APPROVAL_POLICY": config.get("approval_policy"),
         "RUNTIME_TRACING": config.get("tracing"),
     }
-    if config["sdk"] in {"codex_cli", "codex_sdk"}:
+    if config["sdk"] == "codex_sdk":
         values["RUNTIME_API_BASE_URL"] = None
         values["RUNTIME_API_KEY_ENV"] = None
     return values
@@ -566,7 +566,7 @@ def _telemetry_env_values(
         "AAB_CLAUDE_OTEL_LOG_RAW_API_BODIES": existing_env.get(
             "AAB_CLAUDE_OTEL_LOG_RAW_API_BODIES", "0"
         ),
-        "AAB_CODEX_RUNTIME_TELEMETRY_ENABLED": "1" if sdk in {"codex_cli", "codex_sdk"} else "0",
+        "AAB_CODEX_RUNTIME_TELEMETRY_ENABLED": "1" if sdk == "codex_sdk" else "0",
         "AAB_CODEX_JSONL_TELEMETRY_ENABLED": None,
         "AAB_CODEX_TELEMETRY_SOURCE": codex_source,
         "AAB_CODEX_TELEMETRY_COST_SOURCE": "subscription_unmetered",

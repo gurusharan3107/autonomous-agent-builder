@@ -87,34 +87,6 @@ def test_code_gen_policy_uses_sonnet_and_scripted_context_strategy() -> None:
     assert policy.task_budget_tokens == 150_000
 
 
-def test_codex_cli_policy_uses_runtime_model_and_role_effort() -> None:
-    settings = SimpleNamespace(
-        runtime=SimpleNamespace(
-            sdk="codex_cli",
-            provider="codex_subscription",
-            model="gpt-5.5",
-            subscription=None,
-            api_base_url=None,
-            api_key_env=None,
-            codex_profile=None,
-            sandbox_mode="workspace-write",
-            approval_policy="never",
-            tracing="builder",
-        ),
-        agent=SimpleNamespace(
-            planning_model="opus",
-            design_model="opus",
-            implementation_model="opus",
-            pr_model="sonnet",
-        ),
-    )
-
-    policy = resolve_agent_runtime_policy(get_agent_definition("init-project-chat"), settings)
-
-    assert policy.model == "gpt-5.5"
-    assert policy.effort == "medium"
-
-
 def test_codex_sdk_policy_uses_runtime_model_and_role_effort() -> None:
     settings = SimpleNamespace(
         runtime=SimpleNamespace(

@@ -27,7 +27,6 @@ from autonomous_agent_builder.runtime import (
 )
 from autonomous_agent_builder.runtime.claude_runtime import ClaudeRuntime
 from autonomous_agent_builder.runtime.codex_app_server_runtime import CodexAppServerRuntime
-from autonomous_agent_builder.runtime.codex_cli_runtime import CodexCliRuntime
 from autonomous_agent_builder.runtime.openai_runtime import OpenAIAgentsRuntime, OpenAIRuntime
 from autonomous_agent_builder.runtime.opencode_runtime import OpenCodeRuntime
 
@@ -83,7 +82,6 @@ class TestAgentRuntimeInterface:
         base_params = set(inspect.signature(AgentRuntime.run).parameters)
         for cls in (
             ClaudeRuntime,
-            CodexCliRuntime,
             CodexAppServerRuntime,
             OpenAIAgentsRuntime,
             OpenCodeRuntime,
@@ -123,7 +121,7 @@ class TestFactory:
         assert "opencode" not in implemented
         assert "codex_cli" not in available
         assert "openai_agents" not in available
-        assert "codex_cli" in implemented
+        assert "codex_cli" not in implemented
         assert "codex_sdk" in implemented
         assert "openai_agents" in implemented
 
@@ -157,16 +155,6 @@ class TestFactory:
             runtime = create_runtime()
         assert runtime.name == "openai_agents"
 
-    def test_create_runtime_codex_cli_sdk_returns_codex_cli(self):
-        with patch(
-            "autonomous_agent_builder.runtime.factory.get_settings",
-            return_value=SimpleNamespace(
-                runtime=SimpleNamespace(sdk="codex_cli", model="gpt-5.5")
-            ),
-        ):
-            runtime = create_runtime()
-        assert runtime.name == "codex_cli"
-
     def test_create_runtime_codex_sdk_selector_returns_codex_app_server_runtime(self):
         with patch(
             "autonomous_agent_builder.runtime.factory.get_settings",
@@ -185,8 +173,8 @@ class TestFactory:
                 runtime=SimpleNamespace(sdk="claude", model="sonnet")
             ),
         ):
-            runtime = create_runtime(sdk="codex_cli", model="gpt-5.5")
-        assert runtime.name == "codex_cli"
+            runtime = create_runtime(sdk="codex_sdk", model="gpt-5.5")
+        assert runtime.name == "codex_sdk"
 
     def test_get_current_runtime_name_reads_config(self):
         with patch(
@@ -386,12 +374,6 @@ class TestNonClaudeRuntimes:
         assert runtime.provider == "opencode_go"
         assert runtime.model == "minimax-m2.7"
 
-    def test_codex_cli_default_model_and_provider(self):
-        runtime = CodexCliRuntime()
-        assert runtime.name == "codex_cli"
-        assert runtime.provider == "codex_subscription"
-        assert runtime.model == "gpt-5.5"
-
     def test_codex_sdk_default_uses_app_server_capabilities(self):
         runtime = CodexAppServerRuntime()
         assert runtime.name == "codex_sdk"
@@ -416,13 +398,3 @@ class TestNonClaudeRuntimes:
         assert "OPENAI_BASE_URL" not in env
         assert env["AAB_CODEX_AUTH_SOURCE"] == "chatgpt_subscription"
         assert env["PATH"] == "/usr/bin"
-
-    async def test_codex_cli_probe_reports_missing_binary(self, monkeypatch):
-        monkeypatch.setattr(
-            "autonomous_agent_builder.runtime.codex_cli_runtime.shutil.which",
-            lambda name: None,
-        )
-        runtime = CodexCliRuntime()
-        result = await runtime.probe()
-        assert result.ok is False
-        assert result.code == "codex_cli_missing"

@@ -9,14 +9,12 @@ from autonomous_agent_builder.runtime.interface import AgentRuntime
 
 DEFAULT_PROVIDER_BY_SDK = {
     "claude": "claude_agent_sdk",
-    "codex_cli": "codex_subscription",
     "codex_sdk": "codex_subscription",
     "openai_agents": "opencode_go",
 }
 
 DEFAULT_MODEL_BY_SDK = {
     "claude": "sonnet",
-    "codex_cli": "gpt-5.5",
     "codex_sdk": "gpt-5.5",
     "openai_agents": "minimax-m2.7",
 }
@@ -123,7 +121,6 @@ def validate_runtime_config(config: dict[str, Any]) -> list[dict[str, str]]:
 
     legal_pairs = {
         "claude": {"claude_agent_sdk"},
-        "codex_cli": {"codex_subscription"},
         "codex_sdk": {"codex_subscription"},
         "openai_agents": {"opencode_go", "openai_api"},
     }
@@ -137,9 +134,7 @@ def validate_runtime_config(config: dict[str, Any]) -> list[dict[str, str]]:
             }
         )
 
-    if sdk in {"codex_cli", "codex_sdk"} and (
-        config.get("api_base_url") or config.get("api_key_env")
-    ):
+    if sdk == "codex_sdk" and (config.get("api_base_url") or config.get("api_key_env")):
         errors.append(
             {
                 "code": "invalid_codex_api_config",
@@ -183,18 +178,6 @@ def create_runtime(**kwargs: Any) -> AgentRuntime:
             approval_policy=config["approval_policy"],
         )
 
-    if sdk == "codex_cli":
-        from autonomous_agent_builder.runtime.codex_cli_runtime import CodexCliRuntime
-
-        return CodexCliRuntime(
-            model=config["model"],
-            provider=config["provider"],
-            sdk_name=sdk,
-            codex_profile=config["codex_profile"],
-            sandbox_mode=config["sandbox_mode"],
-            approval_policy=config["approval_policy"],
-        )
-
     if sdk == "openai_agents":
         from autonomous_agent_builder.runtime.openai_runtime import OpenAIAgentsRuntime
 
@@ -221,7 +204,7 @@ def get_available_runtimes() -> list[str]:
 
 def get_implemented_runtimes() -> list[str]:
     """List concrete adapters, including compatibility-only internals."""
-    return ["claude", "codex_cli", "codex_sdk", "openai_agents"]
+    return ["claude", "codex_sdk", "openai_agents"]
 
 
 def get_current_runtime_name() -> str:

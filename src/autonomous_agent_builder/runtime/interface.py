@@ -102,7 +102,6 @@ class AgentRuntime(ABC):
 
     Implementations:
     - ClaudeRuntime: Wraps Claude Agent SDK
-    - CodexCliRuntime: Wraps Codex CLI non-interactive JSONL mode
     - CodexAppServerRuntime: Wraps Codex app-server/SDK JSON-RPC mode
     - OpenAIAgentsRuntime: Wraps OpenAI Agents SDK
     """

@@ -15,9 +15,10 @@ Exactly one harness is active for a run.
 | Claude Agent SDK | `claude` | Claude Code OAuth/token path | Claude Agent SDK / Claude Code | user-facing Claude lane |
 | Codex SDK | `codex_sdk` | ChatGPT/Codex login | Codex app-server/SDK JSON-RPC | user-facing Codex lane with SDK/app-server telemetry |
 
-Compatibility adapters such as `codex_cli` and `openai_agents` may remain in
-lower-level runtime code while migrations are in progress, but they are not
-dashboard, onboarding, or sprint-validation lanes.
+The `openai_agents` compatibility adapter may remain in lower-level runtime
+code while migrations are in progress, but it is not a dashboard, onboarding,
+or sprint-validation lane. `codex_cli` has been removed — `codex_sdk` (Codex
+app-server/SDK JSON-RPC) supersedes the `codex exec` adapter.
 
 ## Control Plane
 

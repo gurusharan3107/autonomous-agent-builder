@@ -24,10 +24,11 @@ must not be used as sprint validation lanes.
 | `claude` | `claude_agent_sdk` | local `CLAUDE_CODE_OAUTH_TOKEN` for the Claude Agent SDK lane | Claude Agent SDK | model only |
 | `codex_sdk` | `codex_subscription` | `codex login` ChatGPT/Codex session | Codex app-server/SDK JSON-RPC | model, profile, sandbox, approval |
 
-Compatibility adapters such as `codex_cli` and `openai_agents` may remain in
-tests or lower-level adapter code while migrations are in progress, but dashboard
-runtime switching and forward-engineering sprint validation should use only
-`claude` and `codex_sdk`.
+The `openai_agents` compatibility adapter may remain in tests or lower-level
+adapter code while migrations are in progress, but dashboard runtime switching
+and forward-engineering sprint validation should use only `claude` and
+`codex_sdk`. `codex_cli` has been removed — `codex_sdk` (Codex app-server/SDK)
+supersedes the `codex exec` adapter.
 
 ## Builder Source Environment Keys
 
