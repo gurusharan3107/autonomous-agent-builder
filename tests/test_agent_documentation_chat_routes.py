@@ -96,10 +96,12 @@ async def test_chat_routes_explicit_documentation_intent_to_subagent(monkeypatch
     assert captured["subagents"] == ("documentation-agent",)
     assert "Documentation routing is active for this turn." in captured["prompt"]
     assert "shared product knowledge for both users and future agents" in captured["prompt"]
-    assert '"canonical_ref": "main"' in captured["prompt"]
+    # Doc context is serialized compact (json.dumps separators=(",",":"), sort_keys)
+    # in agent_prompt_builders.py — assertions must match the no-space format.
+    assert '"canonical_ref":"main"' in captured["prompt"]
     assert '"freshness_candidates"' in captured["prompt"]
-    assert '"resolved_action": "advisory_only"' in captured["prompt"]
-    assert '"target_doc_type": "system-docs"' in captured["prompt"]
+    assert '"resolved_action":"advisory_only"' in captured["prompt"]
+    assert '"target_doc_type":"system-docs"' in captured["prompt"]
     assert "Refresh `system-docs` through the canonical extraction lane" in captured["prompt"]
     phases = [
         item["payload"]["phase"]

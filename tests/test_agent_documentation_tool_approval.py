@@ -316,9 +316,10 @@ async def test_documentation_routed_kb_contract_and_lint_skip_interactive_approv
         )
 
     assert captured["subagents"] == ("documentation-agent",)
-    assert '"resolved_action": "add"' in captured["prompt"]
-    assert '"target_doc_type": "testing"' in captured["prompt"]
-    assert '"testing_scope": "testing_required"' in captured["prompt"]
+    # Doc context is serialized compact (json.dumps separators=(",",":")) — match it.
+    assert '"resolved_action":"add"' in captured["prompt"]
+    assert '"target_doc_type":"testing"' in captured["prompt"]
+    assert '"testing_scope":"testing_required"' in captured["prompt"]
     assert all(item["type"] != "tool_approval_request" for item in history_payload["items"])
     assert assistant_item["payload"]["content"] == "Contract and lint ran without approval."
 
@@ -332,14 +333,18 @@ async def test_documentation_routed_turn_still_prompts_for_unrelated_tools(monke
 
     async def fake_run_phase(self, **kwargs):
         captured["subagents"] = kwargs.get("subagents")
+        # IMP-020: the chat lane now denies ungranted mutating built-ins (Bash/Edit/
+        # Write/...) outright and routes them to dispatch — they no longer surface an
+        # approval card. Use a confirmable non-builtin mutating tool, which IMP-020
+        # explicitly keeps promptable, to exercise the "still prompts" path.
         permission = await kwargs["can_use_tool"](
-            "Bash",
+            "mcp__workspace__run_command",
             {"command": "npm publish", "description": "Publish the package"},
             {},
         )
         assert "wait" in getattr(permission, "message", "")
         return RunResult(
-            session_id="sdk-session-docs-bash-approval",
+            session_id="sdk-session-docs-run-command-approval",
             cost_usd=0.02,
             tokens_input=8,
             tokens_output=6,
@@ -368,4 +373,4 @@ async def test_documentation_routed_turn_still_prompts_for_unrelated_tools(monke
         _, approval_item = await _wait_for_history_item(client, session_id, "tool_approval_request")
 
     assert captured["subagents"] == ("documentation-agent",)
-    assert approval_item["payload"]["tool_name"] == "Bash"
+    assert approval_item["payload"]["tool_name"] == "mcp__workspace__run_command"
