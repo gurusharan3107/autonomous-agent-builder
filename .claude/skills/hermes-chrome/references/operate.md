@@ -49,7 +49,9 @@ Loaded on demand from SKILL.md.
 {"type": "screenshot"}
 # → {format:"jpeg", screenshot_path:"~/.hermes/cache/hermes-chrome/<id>.jpeg"}
 
-# Zoom — region-specific JPEG inline (~2–10 KB); prefer over full screenshot when only one area matters
+# Zoom — region-specific JPEG inline; prefer over full screenshot when only one area matters
+# Payload scales with region AREA: a small panel is ~2–10 KB, but a full-viewport
+# zoom (e.g. 0,0→1280,720) is screenshot-sized (~100 KB+) — that defeats the purpose.
 {"type": "zoom", "x0": 0, "y0": 0, "x1": 800, "y1": 200}
 {"type": "zoom", "x0": 0, "y0": 0, "x1": 800, "y1": 200, "quality": 90}  # quality 1–100, default 85
 # → {format:"jpeg", x0, y0, x1, y1, base64:"<inline>"}
@@ -123,6 +125,7 @@ r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":False,"actions
   ```
 - **Skip `goto` if already on the correct URL.** Check `page_context.url` first.
 - **After `goto`, always verify** with `page_context` or `wait_for_selector` before acting on the page.
+- **Don't chain an interactive action (`click_text`/`fill_selector`/`cursor_*`) right after `goto`/`reload` in the same batch.** The cursor target may not exist yet → `sendMessage(moveToAndWait) timed out`. Land the `goto` + `wait_for_selector` first, then click/fill in the *next* `bridge()` call (or put `wait_for_selector` on the click target between them).
 
 ### Reading the page
 - **Start with `page_context` every turn** before any click or fill. It confirms the URL is what you expect, and surfaces navigation, buttons, and inputs in ~1 KB.
@@ -142,7 +145,7 @@ r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":False,"actions
 - **First action after a long idle should be a `cursor_move` to the upcoming target, not a click.** The visible glide tells the operator "agent is about to act here" before the click fires.
 
 ### Context efficiency
-- **`page_context` for navigation verification; `zoom` or `screenshot` for visual proof only.** A full screenshot is a 50–100 KB JPEG. `page_context` delivers the same URL/title/structure in ~1 KB of text. When you do need visual proof, use `zoom` on the relevant region (2–10 KB) rather than a full `screenshot` unless you need the entire viewport.
+- **`page_context` for navigation verification; `zoom` or `screenshot` for visual proof only.** A full screenshot is a 50–100 KB JPEG. `page_context` delivers the same URL/title/structure in ~1 KB of text. When you do need visual proof, `zoom` a **small region** (2–10 KB) — a zoom payload scales with region area, so a full-viewport zoom is screenshot-sized (~100 KB+), not a saving. If you genuinely need the whole viewport, use `screenshot` (it writes to disk and returns a path, not inline bytes).
 - **Batch all actions for a task into one `bridge()` call.** Each call is a socket round-trip. One round-trip per task, not one per action.
 - **For a multi-section test run, batch all sections in one call.** Navigate to each section, take one `page_context` per section, take a single screenshot at the end as visual proof:
   ```python
@@ -179,6 +182,8 @@ r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":False,"actions
 | `screenshot` after every navigation step | Floods context with 50–100 KB images each | `page_context` for structure; `zoom` on the relevant region for visual proof |
 | Full `screenshot` when only one area matters | 50–100 KB for the full viewport when you care about one panel | `zoom {x0,y0,x1,y1}` — 2–10 KB for the region |
 | `snapshot` as the first action each turn | 8–30× larger than `page_context` for the same orientation | Always start with `page_context` |
+| Interactive action (`click_text`/`fill_selector`) chained right after `goto`/`reload` in one batch | Cursor target not rendered yet → `sendMessage(moveToAndWait) timed out` | `goto` + `wait_for_selector` first, then click/fill in the next `bridge()` call |
+| Full-viewport `zoom` (e.g. `0,0→1280,720`) "to save tokens" | Payload scales with area — a full-frame zoom is screenshot-sized (~100 KB+) | `zoom` a small region, or use `screenshot` (returns a disk path, not inline bytes) |
 | `evaluate` to click a button | Synthetic click — cursor doesn't move, operator can't see it | `click_text` or `click_selector` |
 | Separate `bridge()` calls per action | One socket round-trip per call — batching is free | Batch all actions into one call |
 | Retrying on failed selector without fresh `snapshot` | Selector may be stale after DOM change | Get a fresh `snapshot`, re-identify element |
