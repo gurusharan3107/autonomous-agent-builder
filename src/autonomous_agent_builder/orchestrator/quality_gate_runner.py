@@ -210,7 +210,10 @@ async def run_feature_acceptance_gate(
     # ``advisory`` is None for the real_browser tier; it surfaces the gap when a
     # feature was accepted without live browser evidence despite the bridge
     # being available, without blocking headless/CI ships.
-    from autonomous_agent_builder.agents.tools.browser_tools import bridge_available
+    from autonomous_agent_builder.agents.tools.browser_tools import (
+        bridge_available,
+        browser_close,
+    )
 
     evidence_tier = browser_evidence_tier(
         result.output_text, bridge_available=bridge_available()
@@ -221,6 +224,13 @@ async def run_feature_acceptance_gate(
         advisory=evidence_tier["advisory"],
         task_id=getattr(task, "id", None),
     )
+    # IMP-019: tear down the dedicated verification tab the in-process browser
+    # tools opened, so a run leaves no orphan tabs in the operator's browser
+    # (hermes-chrome closeout). Never let teardown break the gate.
+    try:
+        await browser_close()
+    except Exception:  # noqa: BLE001 - teardown is best-effort
+        pass
 
     test_success, test_output = await orchestrator._record_feature_acceptance_tests(
         task,

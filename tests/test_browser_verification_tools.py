@@ -109,12 +109,57 @@ async def test_navigate_opens_dedicated_visible_tab_with_forced_reload(monkeypat
 async def test_followup_reads_reuse_the_navigated_tab(monkeypatch) -> None:
     """Reads/clicks after navigate default to ``useSelectedTab=True`` so they
     continue in the tab navigate just created+activated (not a second new tab)."""
+    browser_tools._session_tabs.clear()
     capture: dict = {}
     reply = {"success": True, "results": [{"type": "text", "text": "hello"}]}
     _patch_bridge(monkeypatch, reply, capture)
     await browser_tools.browser_read_text()
     sent = json.loads(capture["writer"].sent.decode())
     assert sent["useSelectedTab"] is True
+
+
+@pytest.mark.asyncio
+async def test_session_reuses_one_tab_instead_of_spawning_new_ones(monkeypatch) -> None:
+    """IMP-019: the bridge has no cross-call tab memory, so a naive navigate
+    opens a new tab every call (operator saw two tabs). browser_tools pins the
+    tab id returned by the first navigate and stamps it onto subsequent actions
+    so the whole verification session stays in ONE tab."""
+    browser_tools._session_tabs.clear()
+    capture: dict = {}
+    # First navigate: bridge creates tab 4242 and returns it in the goto result.
+    _patch_bridge(monkeypatch, {"success": True, "results": [
+        {"type": "goto", "tabId": 4242, "url": "http://localhost:5173/"},
+        {"type": "page_context", "url": "http://localhost:5173/", "title": "App"},
+    ]}, capture)
+    await browser_tools.browser_navigate("http://localhost:5173/")
+    assert browser_tools._session_tabs["builder-verify"] == 4242
+    first = json.loads(capture["writer"].sent.decode())
+    assert "tabId" not in first["actions"][0]  # nothing to pin yet on the opener
+
+    # Second navigate: must REUSE tab 4242 (pinned onto the goto action), not create.
+    _patch_bridge(monkeypatch, {"success": True, "results": [
+        {"type": "goto", "tabId": 4242, "url": "http://localhost:5173/x"},
+    ]}, capture)
+    await browser_tools.browser_navigate("http://localhost:5173/x")
+    second = json.loads(capture["writer"].sent.decode())
+    assert second["actions"][0]["tabId"] == 4242
+
+
+@pytest.mark.asyncio
+async def test_browser_close_tears_down_the_session_tab(monkeypatch) -> None:
+    """Teardown closes the opened tab (close_tab on the pinned id) and forgets it
+    so the run leaves no orphan tab (hermes-chrome closeout step 4)."""
+    browser_tools._session_tabs.clear()
+    browser_tools._session_tabs["builder-verify"] = 4242
+    capture: dict = {}
+    _patch_bridge(monkeypatch, {"success": True, "results": [{"type": "close_tab", "tabId": 4242}]}, capture)
+    result = await browser_tools.browser_close()
+    assert result["closed"] is True
+    sent = json.loads(capture["writer"].sent.decode())
+    assert sent["actions"][0] == {"type": "close_tab", "tabId": 4242}
+    assert "builder-verify" not in browser_tools._session_tabs  # forgotten
+    # No tab open -> no-op, no bridge call needed.
+    assert (await browser_tools.browser_close())["closed"] is False
 
 
 @pytest.mark.asyncio

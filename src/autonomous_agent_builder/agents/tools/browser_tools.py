@@ -97,15 +97,28 @@ def _first_result(reply: dict[str, Any], result_type: str) -> dict[str, Any]:
     return {}
 
 
+# session_name -> the dedicated verification tab id the bridge opened for it.
+# The bridge builds fresh per-call state and has NO cross-call tab memory, so a
+# naive ``useSelectedTab=False`` navigate spawns a brand-new tab on EVERY call
+# (orphan-tab proliferation). We remember the opened tab here and pin every
+# subsequent action to it, keeping a verification session in ONE operator-visible
+# tab. ``browser_close`` tears it down so a run leaves no orphan tabs.
+_session_tabs: dict[str, int] = {}
+
+
 async def _run(
     actions: list[dict[str, Any]], *, session_name: str, use_selected_tab: bool = True
 ) -> dict[str, Any]:
     # ``use_selected_tab`` False makes the bridge open a dedicated NEW tab
     # (``chrome.tabs.create``) instead of hijacking the operator's active tab
-    # in place (``chrome.tabs.update``). Per the bridge contract the first
-    # ``goto`` of a verification session uses False (operator-visible new tab),
-    # and follow-up reads/clicks default to True so they continue in that tab.
-    return await hermes_bridge(
+    # in place (``chrome.tabs.update``). Once a session has opened its tab we
+    # pin it by stamping the first action with that tab id (the bridge applies
+    # ``action.tabId`` to its run state), so reads/clicks/repeat-navigates reuse
+    # the same tab instead of creating new ones or grabbing whatever is active.
+    pinned = _session_tabs.get(session_name)
+    if pinned is not None and actions:
+        actions = [{**actions[0], "tabId": pinned}, *actions[1:]]
+    reply = await hermes_bridge(
         {
             "type": "run",
             "sessionName": session_name,
@@ -113,6 +126,15 @@ async def _run(
             "actions": actions,
         }
     )
+    if not reply.get("success", reply.get("ok", False)):
+        # The pinned tab may have been closed by the operator; drop it so the
+        # next navigate opens a fresh dedicated tab rather than failing forever.
+        _session_tabs.pop(session_name, None)
+        return reply
+    landed = _first_result(reply, "goto").get("tabId")
+    if landed:
+        _session_tabs[session_name] = landed
+    return reply
 
 
 def _extract_port(command: str) -> int | None:
@@ -260,3 +282,21 @@ async def browser_screenshot(*, session_name: str = "builder-verify") -> dict[st
         return {"ok": False, "error": reply.get("error", "screenshot_failed"), "detail": reply}
     res = _first_result(reply, "screenshot")
     return {"ok": True, "screenshot_path": res.get("screenshot_path", "")}
+
+
+async def browser_close(*, session_name: str = "builder-verify") -> dict[str, Any]:
+    """Close the dedicated verification tab opened for ``session_name`` and forget
+    it, so a verification run leaves no orphan tabs in the operator's browser
+    (hermes-chrome closeout step 4). Safe/no-op when the session opened no tab."""
+    tab_id = _session_tabs.pop(session_name, None)
+    if tab_id is None:
+        return {"ok": True, "closed": False}
+    reply = await hermes_bridge(
+        {
+            "type": "run",
+            "sessionName": session_name,
+            "useSelectedTab": False,
+            "actions": [{"type": "close_tab", "tabId": tab_id}],
+        }
+    )
+    return {"ok": bool(reply.get("success", reply.get("ok", False))), "closed": True}
