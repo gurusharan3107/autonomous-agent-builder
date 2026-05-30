@@ -25,6 +25,7 @@ from autonomous_agent_builder.agents.documentation_bridge import (
     run_documentation_refresh_bridge,
 )
 from autonomous_agent_builder.agents.runner import AgentRunner, RunResult
+from autonomous_agent_builder.agents.tools.workspace_tools import compact_workspace_map
 from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.db.models import (
     AgentRun,
@@ -83,13 +84,6 @@ from autonomous_agent_builder.orchestrator.operator_decisions import (
     apply_operator_decision_handoff,
     clear_operator_decision_handoff,
     extract_operator_decision,
-)
-from autonomous_agent_builder.services.workspace_scaffold import (
-    build_scaffold_template_vars,
-    parse_scaffold_result,
-    persist_scaffold_language,
-    should_scaffold,
-    write_minimal_gate_config,
 )
 from autonomous_agent_builder.orchestrator.phase_context import (
     compact_phase_output,
@@ -200,6 +194,13 @@ from autonomous_agent_builder.services.sprint_execution import (
     sprint_execution_context,
     task_uses_sprint_design,
     task_uses_sprint_plan,
+)
+from autonomous_agent_builder.services.workspace_scaffold import (
+    build_scaffold_template_vars,
+    parse_scaffold_result,
+    persist_scaffold_language,
+    should_scaffold,
+    write_minimal_gate_config,
 )
 from autonomous_agent_builder.workspace.manager import WorkspaceInfo, WorkspaceManager
 
@@ -484,6 +485,10 @@ class Orchestrator:
         # context explicitly instead.
         scope_reminder = self._build_active_feature_scope_reminder(task)
         _design_ctx = phase_context(task, "design_context")
+        # Inject a compact workspace file map so code-gen locates files directly
+        # instead of spending turns on list_directory/Read to rediscover the tree —
+        # each turn replays the full cached system prompt (IMP-027 context follow-up).
+        _ws_map = compact_workspace_map(workspace.path)
         result = await self._run_agent(
             task,
             "code-gen",
@@ -496,6 +501,12 @@ class Orchestrator:
                 "language": task.feature.project.language,
                 "knowledge_requirements": format_task_system_doc_guidance(doc_requirements),
                 "scope_reminder": scope_reminder,
+                "workspace_map": (
+                    "Workspace files (use these exact paths; do not list directories "
+                    f"to rediscover them):\n{_ws_map}\n"
+                    if _ws_map
+                    else ""
+                ),
             },
         )
 

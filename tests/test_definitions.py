@@ -74,6 +74,12 @@ class TestAgentDefinitions:
         codegen = get_agent_definition("code-gen")
         assert "Recovery context: {recovery_context}" in codegen.prompt_template
 
+    def test_code_gen_prompt_includes_workspace_map_slot(self):
+        # IMP-027 context follow-up: a compact workspace file map is injected so
+        # code-gen locates files without burning list_directory/Read turns.
+        codegen = get_agent_definition("code-gen")
+        assert "{workspace_map}" in codegen.prompt_template
+
     def test_pr_creator_requires_workspace_hygiene_check(self):
         pr_creator = get_agent_definition("pr-creator")
         assert "git status" in pr_creator.prompt_template

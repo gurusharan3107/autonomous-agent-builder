@@ -175,6 +175,9 @@ async def run_agent_lifecycle(
         ),
     )
     template_vars.setdefault("scope_reminder", "")
+    # Code-gen receives a compact workspace file map; default empty so every other
+    # agent's prompt_template.format() stays KeyError-safe (str.format requires the key).
+    template_vars.setdefault("workspace_map", "")
 
     prompt = agent_def.prompt_template.format(**template_vars)
     prompt_budget = prompt_budget_breakdown(

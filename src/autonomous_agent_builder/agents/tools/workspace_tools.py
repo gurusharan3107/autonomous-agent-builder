@@ -368,6 +368,58 @@ async def get_project_info(workspace_path: str) -> dict:
     return {"content": [{"type": "text", "text": json.dumps(info, separators=(",", ":"))}]}
 
 
+# Directories that never help an agent locate feature code — pruned from the map.
+_WORKSPACE_MAP_SKIP_DIRS = frozenset(
+    {
+        ".git", ".hg", ".svn", "node_modules", "dist", "build", "out",
+        ".next", ".nuxt", ".svelte-kit", "coverage", ".venv", "venv",
+        "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+        ".cache", ".turbo", ".parcel-cache", "target", "vendor",
+        ".agent-builder", ".idea", ".vscode",
+    }
+)
+
+
+def compact_workspace_map(workspace_path: str, max_files: int = 200) -> str:
+    """Return a compact newline-joined list of source-file relative paths.
+
+    Skips dependency/build/VCS noise and hidden files, capped at ``max_files`` so
+    it costs a few hundred tokens. Injected into the code-gen prompt so the agent
+    can locate files directly instead of spending turns on ``list_directory`` —
+    each turn replays the full cached system-prompt context (~20k tokens), so
+    cutting exploration turns cuts cached-read cost proportionally (IMP-027
+    context-efficiency follow-up). Returns "" when the workspace is missing/empty.
+    """
+    root = Path(workspace_path)
+    if not root.is_dir():
+        return ""
+    files: list[str] = []
+    truncated = False
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Prune noise dirs in place so os.walk never descends into them.
+        dirnames[:] = sorted(
+            d
+            for d in dirnames
+            if d not in _WORKSPACE_MAP_SKIP_DIRS and not d.startswith(".")
+        )
+        rel_dir = os.path.relpath(dirpath, root)
+        for name in sorted(filenames):
+            if name.startswith("."):
+                continue
+            files.append(name if rel_dir == "." else os.path.join(rel_dir, name))
+            if len(files) >= max_files:
+                truncated = True
+                break
+        if truncated:
+            break
+    if not files:
+        return ""
+    text = "\n".join(files)
+    if truncated:
+        text += f"\n… (truncated at {max_files} files)"
+    return text
+
+
 # Registry of all workspace tools — used by the MCP server builder
 WORKSPACE_TOOLS = {
     "run_tests": run_tests,

@@ -6,6 +6,7 @@ import sys
 import pytest
 
 from autonomous_agent_builder.agents.tools.workspace_tools import (
+    compact_workspace_map,
     list_directory,
     read_file,
     run_command,
@@ -161,3 +162,38 @@ async def test_list_directory_rejects_symlink_escape(tmp_path) -> None:
     result = await list_directory(str(workspace), "linked-dir")
 
     assert result["content"][0]["text"] == "Error: path escapes workspace"
+
+
+def test_compact_workspace_map_lists_source_and_skips_noise(tmp_path) -> None:
+    # IMP-027 context follow-up: the map gives code-gen the file tree upfront so
+    # it does not spend turns rediscovering it. Must skip dependency/build/VCS
+    # noise and hidden files, and emit relative paths.
+    (tmp_path / "src").mkdir()
+    (tmp_path / "node_modules" / "pkg").mkdir(parents=True)
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "index.html").write_text("x")
+    (tmp_path / "src" / "app.js").write_text("x")
+    (tmp_path / "node_modules" / "pkg" / "junk.js").write_text("x")
+    (tmp_path / ".git" / "HEAD").write_text("x")
+    (tmp_path / ".env").write_text("secret")
+
+    result = compact_workspace_map(str(tmp_path))
+    lines = result.splitlines()
+    assert "index.html" in lines
+    assert "src/app.js" in lines
+    assert not any("node_modules" in line for line in lines)
+    assert not any(line.startswith(".git") for line in lines)
+    assert ".env" not in lines  # hidden files excluded
+
+
+def test_compact_workspace_map_handles_missing_and_empty(tmp_path) -> None:
+    assert compact_workspace_map(str(tmp_path / "does-not-exist")) == ""
+    assert compact_workspace_map(str(tmp_path)) == ""  # empty workspace
+
+
+def test_compact_workspace_map_caps_file_count(tmp_path) -> None:
+    for i in range(10):
+        (tmp_path / f"f{i}.txt").write_text("x")
+    result = compact_workspace_map(str(tmp_path), max_files=4)
+    assert "truncated at 4 files" in result
+    assert len([line for line in result.splitlines() if line.endswith(".txt")]) == 4

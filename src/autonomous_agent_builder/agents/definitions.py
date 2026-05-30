@@ -565,6 +565,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "- Run tests after implementation to verify\n"
             "- Run linter to check code quality\n"
             "- Fix any issues before completing\n\n"
+            "{workspace_map}"
             "Output discipline for Codex app-server stability:\n"
             "- Do not narrate progress while working.\n"
             "- Keep command output bounded; redirect verbose command output to a temp log and "
