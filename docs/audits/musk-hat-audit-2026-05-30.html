@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First-Principles Codebase Audit — autonomous-agent-builder</title>
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D; --rust:#B04A3F;
+  --gray-150:#F0EEE6; --gray-300:#D1CFC5; --gray-500:#87867F; --gray-700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--ivory); color:var(--gray-700);
+  font-family:var(--sans); font-size:15px; line-height:1.6;
+  padding:56px 24px 96px;
+}
+.wrap{max-width:1120px; margin:0 auto}
+.eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gray-500); margin-bottom:12px}
+h1{font-family:var(--serif); font-weight:500; font-size:clamp(30px,4.4vw,42px); letter-spacing:-.014em; color:var(--slate); margin:0 0 14px; line-height:1.12}
+h1 em{font-style:italic; color:var(--clay)}
+.lead{font-size:16px; line-height:1.6; color:var(--gray-700); max-width:680px; margin:0 0 8px}
+h2{font-family:var(--serif); font-weight:500; font-size:24px; letter-spacing:-.01em; color:var(--slate); margin:0 0 4px}
+.sec-eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--clay); margin-bottom:8px}
+section{margin-top:56px; padding-top:8px}
+.rule{height:1.5px; background:var(--gray-300); border:0; margin:40px 0 0}
+p{margin:0 0 14px}
+code{font-family:var(--mono); font-size:.86em; background:var(--gray-150); padding:1px 5px; border-radius:4px; color:var(--slate)}
+.mono{font-family:var(--mono)}
+a{color:var(--clay-d); text-decoration:none; border-bottom:1px solid var(--oat)}
+
+/* verdict banner */
+.verdict{
+  display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:center;
+  background:var(--paper); border:1.5px solid var(--gray-300); border-radius:12px;
+  padding:28px 32px; margin-top:32px; box-shadow:0 12px 32px rgba(20,20,19,.06);
+}
+.score-ring{display:flex; flex-direction:column; align-items:center; gap:4px}
+.score-num{font-family:var(--serif); font-size:54px; font-weight:500; color:var(--clay); line-height:1}
+.score-den{font-family:var(--mono); font-size:12px; color:var(--gray-500); letter-spacing:.05em}
+.verdict p{margin:0; font-size:15.5px}
+.verdict .punch{font-family:var(--serif); font-style:italic; font-size:19px; color:var(--slate); line-height:1.4; margin-bottom:6px}
+
+/* metric tiles */
+.tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:24px}
+.tile{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:18px 18px 16px}
+.tile .n{font-family:var(--mono); font-size:30px; color:var(--slate); line-height:1; letter-spacing:-.02em}
+.tile .n.bad{color:var(--rust)} .tile .n.good{color:var(--olive)}
+.tile .l{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-500); margin-top:10px}
+
+/* scorecard */
+table{width:100%; border-collapse:collapse; margin-top:18px; font-size:14px}
+th,td{text-align:left; padding:11px 12px; border-bottom:1.5px solid var(--gray-300); vertical-align:middle}
+th{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-500); font-weight:400}
+td.crit{font-weight:600; color:var(--slate); width:230px}
+.bar{display:inline-block; height:9px; border-radius:5px; vertical-align:middle}
+.bar-track{display:inline-block; width:120px; height:9px; background:var(--gray-150); border-radius:5px; overflow:hidden; vertical-align:middle; margin-right:10px}
+.bar-track .bar{display:block; height:100%}
+.g-num{font-family:var(--mono); font-weight:600; font-size:13px}
+.evid{color:var(--gray-700); font-size:13.5px}
+.b-bad{background:var(--rust)} .b-mid{background:var(--clay)} .b-good{background:var(--olive)}
+.c-bad{color:var(--rust)} .c-mid{color:var(--clay-d)} .c-good{color:var(--olive)}
+
+/* two col */
+.two{display:grid; grid-template-columns:1fr 320px; gap:40px; margin-top:18px}
+.note{background:var(--gray-150); border-left:3px solid var(--oat); padding:14px 16px; border-radius:0 8px 8px 0; font-size:13.5px}
+.note h4{margin:0 0 6px; font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--clay-d)}
+
+/* divergence venn */
+.venn{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px}
+.vcell{border:1.5px solid var(--gray-300); border-radius:10px; padding:18px; text-align:center; background:var(--paper)}
+.vcell.mid{background:#FBEEE8; border-color:var(--clay)}
+.vcell .vn{font-family:var(--mono); font-size:34px; color:var(--slate); line-height:1}
+.vcell.mid .vn{color:var(--clay-d)}
+.vcell .vl{font-size:12px; color:var(--gray-500); margin-top:8px; line-height:1.4}
+.vcell .vt{font-family:var(--mono); font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--gray-500); margin-bottom:6px}
+
+/* deletion candidates */
+.cand{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:18px 20px; margin-top:14px; display:grid; grid-template-columns:36px 1fr auto; gap:16px; align-items:start}
+.cand .rank{font-family:var(--serif); font-size:26px; color:var(--clay); line-height:1}
+.cand h3{margin:0 0 5px; font-size:16px; color:var(--slate); font-family:var(--sans); font-weight:600}
+.cand p{margin:0; font-size:13.5px; color:var(--gray-700)}
+.cand .loc{font-family:var(--mono); font-size:13px; color:var(--rust); white-space:nowrap; text-align:right}
+.cand .loc small{display:block; color:var(--gray-500); font-size:10px; letter-spacing:.05em; text-transform:uppercase; margin-top:3px}
+
+/* right list */
+ul.tight{margin:6px 0 0; padding-left:18px} ul.tight li{margin-bottom:7px; font-size:13.5px}
+.good-list{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:6px 22px 18px}
+.good-list li{margin-bottom:10px}
+.good-list b{color:var(--olive)}
+
+.foot{margin-top:64px; padding-top:20px; border-top:1.5px solid var(--gray-300); font-family:var(--mono); font-size:11px; color:var(--gray-500); letter-spacing:.04em; line-height:1.7}
+.caveat{font-size:13px; color:var(--gray-500); font-style:italic; max-width:680px; margin-top:14px}
+
+@media (max-width:880px){
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+  .verdict{grid-template-columns:1fr; text-align:center}
+  .venn{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">First-Principles Audit · "Musk Hat" Lens · 2026-05-30</div>
+    <h1>A well-run shop building <em>too many parts</em></h1>
+    <p class="lead">autonomous-agent-builder scored through Musk's engineering algorithm — question requirements, <strong>delete</strong>, simplify, accelerate, automate-last — not a conventional quality checklist. The hat fixates on one question: <em>how much of this should exist at all?</em></p>
+  </header>
+
+  <div class="verdict">
+    <div class="score-ring">
+      <div class="score-num">5.3</div>
+      <div class="score-den">/ 10 COMPOSITE</div>
+    </div>
+    <div>
+      <p class="punch">Fast and disciplined, but obese.</p>
+      <p>Excellent iteration speed and near-zero rot — atop a codebase that <strong>only grows</strong>, ships <strong>two divergent web apps</strong> for one product, and carries <strong>three runtime adapters for lanes nobody can ship on</strong>. The fix isn't better code. It's less code.</p>
+    </div>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="n bad">0.08</div><div class="l">Delete : Add ratio · 90d</div></div>
+    <div class="tile"><div class="n">80,845</div><div class="l">src LOC · 268 files</div></div>
+    <div class="tile"><div class="n bad">2</div><div class="l">Live FastAPI apps</div></div>
+    <div class="tile"><div class="n good">1.5s</div><div class="l">1,564 tests collected</div></div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- SCORECARD -->
+  <section>
+    <div class="sec-eyebrow">The Scorecard</div>
+    <h2>Six criteria, graded against the algorithm</h2>
+    <p>The hat doesn't average. It fixates on the lowest bar that represents <em>unnecessary mass</em> — here, criterion 2.</p>
+    <table>
+      <thead><tr><th>Criterion</th><th>Grade</th><th>The evidence that set it</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="crit">1 · Requirements sanity</td>
+          <td><span class="bar-track"><span class="bar b-mid" style="width:50%"></span></span><span class="g-num c-mid">5</span></td>
+          <td class="evid">5 runtime adapters exist; product lanes are only 2 (<code>claude</code>, <code>codex_sdk</code> per CLAUDE.md)</td>
+        </tr>
+        <tr>
+          <td class="crit">2 · Deletion ratio <span style="color:var(--rust)">◆</span></td>
+          <td><span class="bar-track"><span class="bar b-bad" style="width:30%"></span></span><span class="g-num c-bad">3</span></td>
+          <td class="evid">90 days: <b>+156,831 / −12,686</b> lines → <b>0.08</b> del:add. The codebase only grows.</td>
+        </tr>
+        <tr>
+          <td class="crit">3 · Simplicity / idiot index</td>
+          <td><span class="bar-track"><span class="bar b-bad" style="width:40%"></span></span><span class="g-num c-bad">4</span></td>
+          <td class="evid">Two live FastAPI apps for one product; 37 services; <code>"in sync"</code> appears 47× in source</td>
+        </tr>
+        <tr>
+          <td class="crit">4 · Cycle time</td>
+          <td><span class="bar-track"><span class="bar b-good" style="width:80%"></span></span><span class="g-num c-good">8</span></td>
+          <td class="evid">1,564 tests collect in 1.5s; import near-instant; 170 commits / 90 days</td>
+        </tr>
+        <tr>
+          <td class="crit">5 · Automate <span class="mono" style="font-size:10px;color:var(--gray-500)">(judged last)</span></td>
+          <td><span class="bar-track"><span class="bar b-mid" style="width:60%"></span></span><span class="g-num c-mid">6</span></td>
+          <td class="evid">Rich skill / CLI / workflow tooling — but built atop surfaces that should shrink first</td>
+        </tr>
+        <tr>
+          <td class="crit">6 · Vertical ownership</td>
+          <td><span class="bar-track"><span class="bar b-mid" style="width:60%"></span></span><span class="g-num c-mid">6</span></td>
+          <td class="evid">Excellent <em>documented</em> ownership map — but the dual surface violates "one owner per concern"</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="rule">
+
+  <!-- DELETION -->
+  <section>
+    <div class="sec-eyebrow">The Cardinal Sin · Criterion 2</div>
+    <div class="two">
+      <div>
+        <h2>It only grows</h2>
+        <p>A <b>0.08</b> deletion ratio means for every ~12 lines added in the last 90 days, ~1 was removed. Musk's rule is the inverse: <em>if you're not adding back 10% of what you delete, you didn't delete enough.</em></p>
+        <p>80,845 src LOC across 268 files, with almost no pruning pressure. Six files exceed 1,000 lines — <code>onboarding.py</code> (1,931), <code>evidence_graph.py</code> (1,817), <code>dashboard_api.py</code> (1,736), <code>kb.py</code> (1,735). Each is a comprehension tax that compounds.</p>
+        <p>This is the single worst signal in the audit — and the one the hat weights above all others. Lines of code are a liability carried forever, not an asset banked once.</p>
+      </div>
+      <div class="note">
+        <h4>Why it scores so low</h4>
+        <p>Growth-only isn't inherently bad for a young product. It becomes the cardinal sin <em>here</em> because the growth includes provably-deletable mass: a duplicate API surface and dead runtime lanes (next two sections). Discipline exists everywhere except the one place it matters most.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- DUAL APP -->
+  <section>
+    <div class="sec-eyebrow">Verified Finding · Route-Level</div>
+    <h2>Two FastAPI apps that have <em>diverged</em></h2>
+    <p>Two distinct apps with two launchers: <code>embedded/server/app.py</code> (13,609 LOC) booted by <b><code>builder start</code></b> — the operator-facing path and the richer surface — and <code>api/app.py</code> (130 LOC shell) booted only by <code>main.py</code> via a dev-server script. CLAUDE.md institutionalizes the tax: <em>"Keep API retrieval routes in sync across the main app and embedded server."</em> But the fix is <b>not</b> "delete api/" — much of that package is shared core the embedded server imports (see correction below). Keep <code>embedded/server</code>; delete only the redundant shell.</p>
+
+    <div class="venn">
+      <div class="vcell">
+        <div class="vt">api/ only</div>
+        <div class="vn">17</div>
+        <div class="vl">routes (onboarding, readiness, dispatch) — but ~6 are KB endpoints duplicated under a different prefix in embedded/</div>
+      </div>
+      <div class="vcell mid">
+        <div class="vt">In BOTH — hand-synced</div>
+        <div class="vn">30</div>
+        <div class="vl">byte-identical contracts: entire core lifecycle (approval-gates, dashboard board/metrics/inbox, tasks, gates, runs, projects)</div>
+      </div>
+      <div class="vcell">
+        <div class="vt">embedded/ only</div>
+        <div class="vn">33</div>
+        <div class="vl">the growing surface: agent chat, realtime/voice, memory, knowledge extract/validate</div>
+      </div>
+    </div>
+
+    <div class="two" style="margin-top:28px">
+      <div>
+        <p>The asymmetry: <code>embedded/server</code> is the operator path (<code>builder start</code>, 63 routes) while <code>api/</code>'s shell (47 routes) is the lagging twin. Note the 30 "shared" routes aren't all duplicates — embedded <em>reuses</em> api/'s <code>dispatch</code>/<code>onboarding</code>/<code>readiness</code> modules (good), but re-implements <code>features</code>/<code>gates</code>/<code>projects</code>/<code>knowledge</code>/<code>memory</code> (the true duplication). Only the latter shell — <b>1,164 LOC</b> — is the safe cut.</p>
+      </div>
+      <div class="note">
+        <h4>The hidden duplicates</h4>
+        <p>Exact-match comparison undercounts. <code>api/</code> serves KB as <code>/search</code>, <code>/tags</code>, <code>/{doc_id}</code>; <code>embedded/</code> serves the <em>same</em> KB as <code>/kb/search</code>, <code>/kb/tags</code>, <code>/kb/{doc_id}</code> — identical functionality, different prefix. Real duplication is higher than 30.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- DEAD RUNTIMES -->
+  <section>
+    <div class="sec-eyebrow">Verified Finding · Requirements Sanity</div>
+    <h2>Three runtimes for lanes nobody can ship on</h2>
+    <p>The factory string-dispatches 5 runtime adapters. But CLAUDE.md is explicit: <em>"user-facing lanes are only <code>claude</code> and <code>codex_sdk</code>… compatibility adapters must not be used as sprint validation lanes."</em> Three adapters — <code>openai_runtime.py</code> (282), <code>opencode_runtime.py</code> (21), <code>codex_cli_runtime.py</code> (635) — have <b>zero references</b> outside <code>runtime/</code> and tests. That's <b>938 LOC</b> of engineering invested in surfaces the product forbids shipping on: the smartest failure mode — optimizing a part that shouldn't exist.</p>
+  </section>
+
+  <hr class="rule">
+
+  <!-- CANDIDATES -->
+  <section>
+    <div class="sec-eyebrow">The Roadmap · Verified Against Importers</div>
+    <h2>Deletion candidates, sized</h2>
+
+    <div class="note" style="border-left-color:var(--rust); background:#FBEEE8; margin-bottom:8px">
+      <h4 style="color:var(--rust)">Correction to first pass</h4>
+      <p>An earlier draft proposed "delete <code>api/</code> · −3,628 LOC." That was wrong. Import-tracing shows <code>api/</code> is <b>mostly shared infrastructure the embedded server depends on</b> — only a thin shell duplicates. Verified deletable total is <b>~2,100 LOC</b>, not 4,566. The figures below are import-checked.</p>
+    </div>
+
+    <div class="cand">
+      <div class="rank">1</div>
+      <div>
+        <h3>Delete the 3 non-lane runtime adapters <span class="mono" style="font-size:10px;color:var(--olive)">CLEAN</span></h3>
+        <p>Lanes are Claude SDK + Codex SDK; the factory carries 5. <code>codex_cli_runtime.py</code> (635) serves the CLI/subscription path — not the Codex <em>SDK</em> (<code>codex_app_server_runtime.py</code>); <code>openai_runtime.py</code> (282) + <code>opencode_runtime.py</code> (21) serve lanes you don't have. <b>Coupled edits same commit:</b> trim <code>factory.py</code> branches + lane list, 4 refs in <code>runtime_settings.py</code>, ~6 tests. <b>Confirm first:</b> codex_cli &amp; codex_sdk share provider <code>codex_subscription</code> — verify the SDK runtime covers it.</p>
+      </div>
+      <div class="loc">−938<small>LOC · 3 files</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank">2</div>
+      <div>
+        <h3>Delete the duplicate app shell <span class="mono" style="font-size:10px;color:var(--clay-d)">AFTER CHECK</span></h3>
+        <p><b>Not</b> "delete api/." Delete only the redundant 2nd FastAPI app + its private route duplicates (0 external importers, superseded by embedded's own): <code>api/app.py</code> (130), <code>routes/features.py</code> (340), <code>knowledge.py</code> (324), <code>gates.py</code> (172), <code>memory_api.py</code> (124), <code>projects.py</code> (41), <code>main.py</code>+<code>__main__.py</code> (33). <b>Keep</b> the shared core (<code>dashboard_api</code>, <code>dashboard_streams</code>, <code>dispatch</code>, <code>onboarding</code>, <code>readiness</code>, <code>schemas</code>) — embedded mounts it. <b>Coupled edit:</b> repoint <code>dev-server.sh</code> → <code>builder start</code>.</p>
+      </div>
+      <div class="loc">−1,164<small>LOC · shell only</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank">3</div>
+      <div>
+        <h3>Root-cause fix — rename, don't delete</h3>
+        <p>The real smell: <code>api/</code> is <em>misnamed shared infrastructure</em>. Move the kept core into <code>core/</code>/<code>shared/</code>. End-state: <b>one</b> app (<code>embedded/server</code>) + <b>one</b> shared core + <b>two</b> thin runtimes. Makes the dependency direction obvious and the next accidental duplicate impossible.</p>
+      </div>
+      <div class="loc">0<small>LOC · structural</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank">4</div>
+      <div>
+        <h3>Break up the 1,000+ LOC files</h3>
+        <p>Refactor, not deletion — a comprehension tax against vertical ownership. <code>onboarding.py</code> (1,931), <code>evidence_graph.py</code> (1,817), <code>dashboard_api.py</code> (1,736), <code>kb.py</code> (1,735).</p>
+      </div>
+      <div class="loc">~7.2k<small>LOC to refactor</small></div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- WHAT IT DOES RIGHT -->
+  <section>
+    <div class="two">
+      <div>
+        <div class="sec-eyebrow">Credit Where Due</div>
+        <h2>What it does right</h2>
+        <p>The hat rarely praises — these are genuine strengths, and the first one is exactly what makes aggressive deletion <em>safe</em> to attempt here.</p>
+        <ul class="good-list tight">
+          <li><b>Cycle time is genuinely excellent.</b> 1.5s to collect 1,564 tests is rare at this size; iteration speed is preserved.</li>
+          <li><b>Near-zero rot.</b> 1 TODO, 6 deprecated markers across 80k LOC. The code that exists is maintained.</li>
+          <li><b>Ownership is unusually well-articulated.</b> The CLAUDE.md boundary doc <em>is</em> the "one owner per concern" discipline the hat wants — the gap is enforcement, not intent.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h4>The punchline</h4>
+        <p>This is a well-run shop building too many parts. One API surface, two runtimes not five, and a deletion habit to match the strong commit cadence. The disciplined iteration speed is the asset that makes the cuts low-risk.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="caveat">Caveat: this is a synthesis of Musk's publicly-stated engineering algorithm (Starbase / Tesla) mapped onto software — a deliberately provocative lens, not a balanced rubric. Its blind spots (it under-weights correctness, security, long-horizon maintainability) are real, which is why it pairs well <em>against</em> a conventional review rather than replacing one.</p>
+
+  <div class="foot">
+    METHOD · git log --numstat (90d) · wc -l over src/**.py · route extraction via @router decorators · comm-diff of api/routes vs embedded/server/routes · grep ref-count outside runtime/ &amp; tests<br>
+    GENERATED · 2026-05-30 · evidence current as of branch imp-018-015-019-browser-verify · all figures machine-derived, none estimated
+  </div>
+
+</div>
+
+<script type="application/json" id="artifact-data">
+{
+  "audit": "musk-hat first-principles codebase audit",
+  "target": "autonomous-agent-builder",
+  "date": "2026-05-30",
+  "composite": 5.3,
+  "metrics": {
+    "src_loc": 80845, "src_files": 268,
+    "test_loc": 50363, "test_files": 158, "tests_collected": 1564, "test_collect_seconds": 1.5,
+    "deletion_ratio_90d": 0.08, "lines_added_90d": 156831, "lines_removed_90d": 12686,
+    "commits_90d": 170, "todo_markers": 1, "deprecated_markers": 6, "services": 37
+  },
+  "scorecard": [
+    {"criterion": "requirements_sanity", "grade": 5},
+    {"criterion": "deletion_ratio", "grade": 3, "cardinal": true},
+    {"criterion": "simplicity_idiot_index", "grade": 4},
+    {"criterion": "cycle_time", "grade": 8},
+    {"criterion": "automate_last", "grade": 6},
+    {"criterion": "vertical_ownership", "grade": 6}
+  ],
+  "dual_app": {
+    "api_pkg_total_loc": 3628, "api_app_shell_loc": 130, "embedded_app_loc": 13609,
+    "operator_entrypoint": "builder start -> embedded/server", "alt_entrypoint": "main.py -> api/app.py (dev-server.sh only)",
+    "routes_api": 47, "routes_embedded": 63,
+    "routes_shared_exact": 30, "routes_api_only": 17, "routes_embedded_only": 33,
+    "api_shared_core_KEEP": ["dashboard_api", "dashboard_streams", "dispatch", "onboarding", "readiness", "schemas"],
+    "api_duplicate_shell_DELETE": ["app.py", "routes/features.py", "routes/knowledge.py", "routes/gates.py", "routes/memory_api.py", "routes/projects.py", "main.py", "__main__.py"],
+    "shell_delete_loc": 1164,
+    "note": "import-traced: api/ is mostly shared infra embedded depends on; embedded reuses dispatch/onboarding/readiness but re-implements features/gates/projects/knowledge/memory"
+  },
+  "dead_runtimes": {
+    "files": ["codex_cli_runtime.py", "openai_runtime.py", "opencode_runtime.py"],
+    "loc": 938, "refs_outside_runtime_and_tests": 0,
+    "coupled_edits": ["factory.py branches + lane list", "runtime_settings.py x4", "~6 tests"],
+    "confirm_first": "codex_cli & codex_sdk both map to provider codex_subscription; verify CodexAppServerRuntime covers codex_cli",
+    "note": "product lanes are only claude + codex_sdk per CLAUDE.md and user confirmation"
+  },
+  "correction": "first pass proposed 'delete api/ -3628 LOC'; import-tracing reduced verified deletable to ~2100 LOC (Tier1 938 + Tier2 1164)",
+  "deletion_candidates": [
+    {"rank": 1, "tier": "clean", "action": "delete 3 non-lane runtime adapters", "loc_deleted": 938},
+    {"rank": 2, "tier": "after-check", "action": "delete duplicate FastAPI app shell (NOT all of api/)", "loc_deleted": 1164},
+    {"rank": 3, "tier": "structural", "action": "rename api/ shared core to core/ or shared/", "loc_deleted": 0},
+    {"rank": 4, "tier": "refactor", "action": "break up 4 files >1700 LOC", "loc_refactored": 7219}
+  ],
+  "verified_deletable_loc_total": 2102
+}
+</script>
+</body>
+</html>
