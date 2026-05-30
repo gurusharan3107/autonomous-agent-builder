@@ -69,6 +69,47 @@ def feature_verifier_failure(output_text: str) -> str | None:
     return f"feature_acceptance_failed: verifier_status={status}: {detail}"
 
 
+def browser_evidence_tier(output_text: str, *, bridge_available: bool) -> dict[str, Any]:
+    """Classify the real-browser-proof tier of a feature-verifier result (IMP-019).
+
+    Non-blocking advisory — real-browser proof (`mcp__browser__*` screenshots /
+    URLs in the verifier's ``browser_evidence``) is the strongest acceptance
+    tier; jsdom/command proof is accepted when the browser bridge is
+    unavailable. Returns ``{"tier": ..., "advisory": str | None}``:
+    - ``real_browser`` — verifier produced live browser evidence.
+    - ``jsdom_fallback`` — no browser evidence and the bridge was unavailable
+      (acceptable weaker tier).
+    - ``no_browser_proof`` — the bridge WAS available but the verifier produced
+      no browser evidence (the gap IMP-019 targets; advisory set).
+
+    This is intentionally not a hard gate: blocking ships on browser proof must
+    not break headless/CI environments where the bridge cannot launch.
+    """
+    payload = _json_object_from_text(output_text)
+    evidence = payload.get("browser_evidence")
+    has_browser_evidence = isinstance(evidence, list) and any(
+        str(item).strip() for item in evidence
+    )
+    if has_browser_evidence:
+        return {"tier": "real_browser", "advisory": None}
+    if not bridge_available:
+        return {
+            "tier": "jsdom_fallback",
+            "advisory": (
+                "Feature accepted without real-browser proof — the browser bridge was "
+                "unavailable; this is jsdom/command-tier evidence."
+            ),
+        }
+    return {
+        "tier": "no_browser_proof",
+        "advisory": (
+            "Browser bridge was available but the verifier produced no real-browser "
+            "evidence; acceptance is jsdom/command-tier only. Prefer mcp__browser__* "
+            "proof for user-facing web features."
+        ),
+    }
+
+
 def is_advisory_verifier_failure(line: str) -> bool:
     lower = line.lower()
     return "git status" in lower and "fail" in lower and "not a git repository" in lower

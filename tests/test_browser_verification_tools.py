@@ -171,6 +171,28 @@ def test_browser_mcp_server_built_only_when_tools_allowed() -> None:
     assert "browser" not in without_browser
 
 
+def test_browser_evidence_tier_classifies_proof() -> None:
+    from autonomous_agent_builder.orchestrator.build_verification import browser_evidence_tier
+
+    real = browser_evidence_tier(
+        json.dumps({"status": "pass", "browser_evidence": ["screenshot:/tmp/x.jpeg", "url:/#/"]}),
+        bridge_available=True,
+    )
+    assert real["tier"] == "real_browser" and real["advisory"] is None
+
+    # No browser evidence + bridge down → acceptable weaker tier (does not block CI).
+    fallback = browser_evidence_tier(
+        json.dumps({"status": "pass", "browser_evidence": []}), bridge_available=False
+    )
+    assert fallback["tier"] == "jsdom_fallback" and fallback["advisory"]
+
+    # No browser evidence but bridge available → the IMP-019 gap, advisory raised.
+    gap = browser_evidence_tier(
+        json.dumps({"status": "pass", "browser_evidence": []}), bridge_available=True
+    )
+    assert gap["tier"] == "no_browser_proof" and gap["advisory"]
+
+
 def test_verification_agents_carry_browser_tools() -> None:
     from autonomous_agent_builder.agents.definitions import (
         BROWSER_TOOLS,

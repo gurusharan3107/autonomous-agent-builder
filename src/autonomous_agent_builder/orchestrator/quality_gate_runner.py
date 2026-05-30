@@ -5,13 +5,18 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import structlog
+
 from autonomous_agent_builder.db.models import Feature, Task, TaskStatus, set_task_status
 from autonomous_agent_builder.db.models import GateResult as GateResultModel
 from autonomous_agent_builder.knowledge.system_docs import validate_task_system_docs
 from autonomous_agent_builder.orchestrator.build_verification import (
+    browser_evidence_tier,
     feature_verifier_failure,
     is_sprint_feature_verification_task,
 )
+
+log = structlog.get_logger(__name__)
 from autonomous_agent_builder.orchestrator.deterministic_verification import (
     record_feature_acceptance_tests,
 )
@@ -196,6 +201,22 @@ async def run_feature_acceptance_gate(
         )
     if verifier_failure := feature_verifier_failure(result.output_text):
         return False, verifier_failure
+
+    # IMP-019: non-blocking real-browser-proof advisory. Surfaces when a feature
+    # was accepted without live browser evidence despite the bridge being
+    # available, without blocking headless/CI ships.
+    from autonomous_agent_builder.agents.tools.browser_tools import bridge_available
+
+    evidence_tier = browser_evidence_tier(
+        result.output_text, bridge_available=bridge_available()
+    )
+    if evidence_tier["advisory"]:
+        log.info(
+            "feature_acceptance_browser_evidence_tier",
+            tier=evidence_tier["tier"],
+            advisory=evidence_tier["advisory"],
+            task_id=getattr(task, "id", None),
+        )
 
     test_success, test_output = await orchestrator._record_feature_acceptance_tests(
         task,
