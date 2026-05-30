@@ -28,7 +28,6 @@ from autonomous_agent_builder.runtime import (
 from autonomous_agent_builder.runtime.claude_runtime import ClaudeRuntime
 from autonomous_agent_builder.runtime.codex_app_server_runtime import CodexAppServerRuntime
 from autonomous_agent_builder.runtime.openai_runtime import OpenAIAgentsRuntime, OpenAIRuntime
-from autonomous_agent_builder.runtime.opencode_runtime import OpenCodeRuntime
 
 # ---------------------------------------------------------------------------
 # RunResult
@@ -84,7 +83,6 @@ class TestAgentRuntimeInterface:
             ClaudeRuntime,
             CodexAppServerRuntime,
             OpenAIAgentsRuntime,
-            OpenCodeRuntime,
         ):
             impl_params = set(inspect.signature(cls.run).parameters)
             missing = base_params - impl_params
@@ -344,32 +342,13 @@ class TestNonClaudeRuntimes:
         assert result.error is not None
         assert "OPENCODE_GO_API_KEY" in (result.error or "")
 
-    async def test_opencode_wrapper_requires_provider_api_key(self, monkeypatch):
-        monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
-        runtime = OpenCodeRuntime()
-        result = await runtime.run("hello", agent="ask")
-        assert result.success is False
-        assert result.error is not None
-        assert "OPENCODE_GO_API_KEY" in (result.error or "")
-
     async def test_openai_agents_health_check_returns_false_without_key(self, monkeypatch):
         monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
         runtime = OpenAIRuntime()
         assert await runtime.health_check() is False
 
-    async def test_opencode_health_check_returns_false_without_key(self, monkeypatch):
-        monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
-        runtime = OpenCodeRuntime()
-        assert await runtime.health_check() is False
-
     def test_openai_agents_default_model(self):
         runtime = OpenAIRuntime()
-        assert runtime.name == "openai_agents"
-        assert runtime.provider == "opencode_go"
-        assert runtime.model == "minimax-m2.7"
-
-    def test_opencode_wrapper_uses_opencode_go_provider(self):
-        runtime = OpenCodeRuntime()
         assert runtime.name == "openai_agents"
         assert runtime.provider == "opencode_go"
         assert runtime.model == "minimax-m2.7"
