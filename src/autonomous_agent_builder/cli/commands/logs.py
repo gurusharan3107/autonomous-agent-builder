@@ -910,6 +910,18 @@ def _analyze_timeline(
     )
     deterministic_recommendations = dashboard_observability.get("deterministic_recommendations", [])
     optimization = runtime_aggregates.get("optimization_summary", {})
+    # IMP-023: per-prompt telemetry.tokens_used and agent_run usage columns are
+    # not always persisted (notably chat-session prompts), leaving the headline
+    # at 0 while the session-scoped raw event-payload aggregate IS populated.
+    # Fall back to the same optimization_summary source raw_token_total uses so
+    # the self-optimizer headline is never blind. (Cost has no in-scope raw
+    # fallback — deferred to Fix B / chat-turn telemetry persistence.)
+    if not total_tokens:
+        total_tokens = int(
+            optimization.get("noncached_plus_output_tokens")
+            or optimization.get("raw_token_total")
+            or 0
+        )
     context_budget = runtime_aggregates.get("context_budget", {})
     selected_runtime = _selected_runtime_from_coverage(coverage)
     decisions = runtime_decision_summary(

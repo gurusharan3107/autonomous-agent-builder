@@ -1870,6 +1870,94 @@ def test_logs_analyze_includes_runtime_aggregates(monkeypatch, tmp_path):
     assert payload["raw_evidence"]["event_count"] == 1
 
 
+def test_logs_analyze_headline_total_tokens_falls_back_to_raw_aggregate_imp023(
+    monkeypatch, tmp_path
+):
+    """IMP-023 regression: the analyze headline must not read 0 tokens when only
+    per-prompt/agent_run usage telemetry is missing but the session-scoped raw
+    event-payload aggregate is populated.
+
+    Reproduces the blind case: a chat session whose only event is a user_message
+    (so prompt-level ``telemetry.tokens_used`` sums to 0 and there is no agent_run
+    analyze target → ``run_tokens`` is 0), while ``agent_runs`` carry real token
+    usage that ``optimization_summary`` aggregates. Before the fix the headline
+    ``total_tokens`` was 0 while ``raw_token_total`` was populated, blinding the
+    self-optimizer. The headline must fall back to the same raw aggregate.
+    """
+    agent_builder_dir = tmp_path / ".agent-builder"
+    agent_builder_dir.mkdir(parents=True)
+    db_path = agent_builder_dir / "agent_builder.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        create table chat_sessions (
+            id varchar(36) primary key,
+            sdk_session_id varchar(255),
+            created_at datetime default current_timestamp,
+            updated_at datetime default current_timestamp
+        );
+        create table chat_events (
+            id varchar(36) primary key,
+            session_id varchar(36) not null,
+            event_type varchar(50) not null,
+            payload_json json not null,
+            status varchar(20) not null,
+            tool_use_id varchar(255),
+            response_to_event_id varchar(36),
+            created_at datetime default current_timestamp
+        );
+        create table agent_runs (
+            id varchar(36) primary key,
+            task_id varchar(36) not null,
+            agent_name varchar(50) not null,
+            cost_usd float not null default 0,
+            tokens_input integer not null default 0,
+            tokens_output integer not null default 0,
+            tokens_cached integer not null default 0,
+            num_turns integer not null default 0,
+            duration_ms integer not null default 0,
+            stop_reason varchar(50),
+            status varchar(20) not null default 'completed'
+        );
+        """
+    )
+    conn.execute(
+        "insert into chat_sessions (id, sdk_session_id, created_at, updated_at) values (?, ?, ?, ?)",
+        ("sess-imp023", "sdk-imp023", "2026-05-30 23:33:00", "2026-05-30 23:33:05"),
+    )
+    # Only a user_message — no run_status event → prompt telemetry tokens_used = 0.
+    conn.execute(
+        "insert into chat_events (id, session_id, event_type, payload_json, status, created_at) values (?, ?, ?, ?, ?, ?)",
+        (
+            "evt-imp023",
+            "sess-imp023",
+            "user_message",
+            json.dumps({"content": "Build me a pomodoro timer."}),
+            "completed",
+            "2026-05-30 23:33:01",
+        ),
+    )
+    # agent_runs carry the real usage the optimization aggregate sees:
+    # raw_token_total = input+output = 4445, noncached_plus_output = 4445 (cached 0).
+    conn.execute(
+        "insert into agent_runs (id, task_id, agent_name, cost_usd, tokens_input, tokens_output, tokens_cached, num_turns, stop_reason, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("run-code", "task-1", "code-gen", 0.17, 4000, 445, 0, 7, "end_turn", "completed"),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["logs", "analyze", "--session", "sess-imp023", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    # prompt path is blind, but the headline must reflect the raw aggregate.
+    assert payload["raw_token_total"] == 4445
+    assert payload["noncached_plus_output_tokens"] == 4445
+    assert payload["total_tokens"] == 4445, "headline total_tokens must fall back, not read 0"
+
+
 def test_logs_analyze_scopes_runtime_aggregates_to_chat_session(monkeypatch, tmp_path):
     """`analyze --session <id>` must not bleed other sessions' agent_runs.
 

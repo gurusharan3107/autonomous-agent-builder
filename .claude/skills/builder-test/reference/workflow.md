@@ -289,9 +289,9 @@ print('recommended_next_change:', d.get('recommended_next_change'))   # want mai
 print('avoidable_token_estimate:', d.get('avoidable_token_estimate'), '| cost:', d.get('total_cost_usd'))
 "
 
-# Project cost/cache — 'metrics show' (NOT bare 'metrics'); data under 'data'.
+# Project cost/cache — 'metrics show' (NOT bare 'metrics'); fields at TOP LEVEL (NOT 'data').
 builder metrics show --json | python3 -c "
-import sys,json; d=json.load(sys.stdin); assert d.get('ok'); s=d['data']['optimization_summary']
+import sys,json; d=json.load(sys.stdin); assert d.get('ok'); s=d['optimization_summary']
 print('cache_ratio:', s['cache_ratio'], '| avoidable_cost_flags:', s['avoidable_cost_flags'])
 "
 ```

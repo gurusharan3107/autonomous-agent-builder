@@ -110,9 +110,11 @@ See `reference/assertions.md` for the assertion catalog and known bad patterns.
   "command returned nothing" — a false alarm, not a product bug. Confirmed
   shapes: `backlog item list` → `data: [...]`; `logs --error` → `results: [...]`
   + `count: N`; `logs analyze` → fields at **top level** (no wrapper, e.g.
-  `recommended_next_change`, `total_cost_usd`); `metrics show` → `data: {...}`.
-  When a value looks empty/missing, re-check the key and `ok`/`error` BEFORE
-  concluding anything is broken.
+  `recommended_next_change`, `total_cost_usd`); `metrics show` → fields at
+  **top level** too (e.g. `optimization_summary`, `recent_runs`, `run_count`,
+  `voice_ledger`, `context_budget`) — NOT under `data`. When a value looks
+  empty/missing, re-check the key and `ok`/`error` BEFORE concluding anything
+  is broken.
 - **`builder logs` / `logs analyze` are workspace-local — run them from the
   generated-app workspace**, not the source repo (source repo returns
   `project_not_initialized` / `logs_unavailable`). `metrics show` and `backlog`
