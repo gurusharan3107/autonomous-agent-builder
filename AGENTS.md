@@ -81,9 +81,11 @@ Full library map (all IDs, surface → library routing, key queries):
 
 ## Required Triggers
 
-- Before editing `AGENTS.md`:
-  `workflow quality-gate agents-md`.
-  Keep this surface compressed and correctly owned.
+> Global `~/.claude/CLAUDE.md` is always in context and owns the cross-project
+> BEFORE/AFTER triggers (AGENTS.md edits, new files/abstractions → principles
+> Core/Execution, completion → Evidence, build-quality-gate, placement). Do not
+> restate them here — this section holds only repo-local triggers global lacks.
+
 - Before editing `CLAUDE.md`:
   `builder quality-gate claude-md --json` and
   `workflow --docs-dir=docs summary quality-gate/claude-md`.
@@ -91,12 +93,6 @@ Full library map (all IDs, surface → library routing, key queries):
 - Before materially changing docs:
   `workflow --docs-dir docs read REFERENCE`.
   Avoid duplicate control-owner docs.
-- Before new files, dirs, or abstractions:
-  `workflow read principles --section Execution`.
-  Check placement and enforcement doctrine.
-- Before completion:
-  `workflow read principles --section Evidence`.
-  Verify with real evidence, not intent.
 - Dashboard/frontend work:
   `workflow --docs-dir docs summary design-language` and
   `builder quality-gate dashboard-ux --json`.
@@ -139,7 +135,7 @@ Full library map (all IDs, surface → library routing, key queries):
   `builder quality-gate claude-agent-sdk --json`,
   `builder quality-gate product-lifecycle --json`,
   `builder quality-gate state-integrity --json`, and
-  `builder quality-gate architecture-invariants --json`.
+  `builder quality-gate architecture-boundary --json`.
   Keep runtime mechanics subordinate to Builder state and lifecycle contracts.
 - Phase-boundary or operator-question changes:
   `workflow --docs-dir docs summary phase-model`.
@@ -159,6 +155,16 @@ Full library map (all IDs, surface → library routing, key queries):
 - After any import reorganization (moving, extracting, or renaming a module):
   `python3 -c "from <changed_module> import <changed_symbol>"` before
   committing — import errors only surface at pytest collection time.
+- Before staging any new untracked file (`??` in `git status`):
+  `grep -rn "<filename>" src/ tests/ .claude/` — zero results = dead code,
+  do not stage. A file with no callers/importers outside itself ships nothing
+  and must be wired or deleted (the dead-file-committed revert class).
+- Before reporting any fix or feature complete (src/ or tests/ touched):
+  self-initiate `pytest tests/ -q` (must pass) and
+  `builder quality-gate <surface> --json` for the touched surface.
+  Do not wait for the operator to ask — verify proactively and report
+  evidence in the same message as the completion claim.
+  Skip when the change is docs-only (no `src/` or `tests/` modified).
 - When adding `os.environ["X"] = ...` in any non-test file:
   add `"X"` to the `isolate_runtime_settings` delenv list in
   `tests/conftest.py` in the same commit — env var side-effects leak into
@@ -170,7 +176,7 @@ Full library map (all IDs, surface → library routing, key queries):
 - No intermediate commits. Commit only when a ROADMAP item is checked off
   or a fix is complete and verified. Skill evaluation artifacts are exempt
   (never commit them).
-- Before acting on any goal-audit or roadmap-audit recommendation:
+- Before acting on any audit or optimization recommendation:
   `grep -rn "<the claim>" src/` or `builder quality-gate <surface> --json`
   to confirm the gap still exists in current code. Recommendations are
   point-in-time; the codebase may have moved on. Acting on a stale
@@ -187,8 +193,6 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
 |---|---|---|
 | `/start` | session entry, "hi", "where are we", "check AGENTS.md and docs/goal/README.md" | Load framework + STATUS + drift + git log + tactical handoff |
 | `/save-session` | "save session", "checkpoint", context >70% used | Tactical handoff to next session via `.claude/session-data/CURRENT.md` |
-| `/goal-audit` | "are we aligned?", "audit goals", ≥2-day gap | Intent ↔ direction audit; writes `docs/goal/INSIGHTS.md`; may reorder `docs/autoresearch/OPTIMIZE_IDEAS.md` |
-| `/roadmap-audit` | "audit roadmap vs SDK", after KB rubric delta | Cross-check `docs/goal/ROADMAP.md` against KB rubric + live `grep src/` |
 | `/knowledge-base` | "refresh KB", monthly | Maintain `~/.claude/knowledge/` against SDK upstream |
 | `/autoresearch` | "run autoresearch", "baseline", "iterate", "fix the gap" | Three-lane optimization loop (Baseline / Iterate / Fix); owns `docs/autoresearch/` freshness |
 | `/self-optimize` | "self-optimize", "what mistakes am I making", "what keeps going wrong", "analyze recurring issues", "why do I keep correcting you", "encode learnings", "self-introspect", ≥3-day gap with unresolved correction entries in memory | Analyze session transcripts + git fix-commit patterns → cluster recurring mistake themes → map to target surfaces → apply operator-approved edits; tracks last-run history to detect recurred patterns |
@@ -210,10 +214,16 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
 - Generated-app troubleshooting must trace symptoms back to the Builder-owned
   cause. Do not patch generated apps by hand unless the task explicitly asks for
   generated-app source edits.
+- Finding routing: when a session surfaces a defect, improvement, or
+  optimization — route it to the correct surface before acting:
+  **builder-related** (orchestrator, agents, lifecycle, dashboard, CLI) →
+  `docs/goal/ROADMAP.md` via `builder backlog item create --source validation`;
+  **managed-app-related** (feature behavior, UI, app code) → that app's
+  backlog only. Never cross-route. An app finding logged to ROADMAP clutters
+  builder scope; a builder finding logged to an app backlog disappears.
 
 ## Codex Productivity Rules
 
-- Docs are agent-audience by default (see global `~/.claude/CLAUDE.md` Rules). Operator-friendly only on explicit request.
 - Prefer deterministic Builder and workflow evidence before model judgment.
 - Keep the main thread on implementation, review, and final integration.
 - Use Codex subagents only when the task is explicitly delegated or the user
@@ -223,11 +233,6 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
 - Local environment actions are appropriate for repeated run, test, lint, logs,
   metrics, and doctor commands. Do not turn approval-driven lifecycle actions
   into shortcut buttons.
-- Prefer official plugins or native MCP before custom MCP. Avoid local
-  stdio/process MCP unless the user explicitly approves local process and memory
-  cost and no remote option fits.
-- Do not add hooks or automations for unstable workflows. First prove the manual
-  lane, then automate the narrow repeated edge.
 - Subprocess calls in harness, CI, and scripts: use `capture_output=True` and
   write combined stdout+stderr to a named evidence file (e.g.
   `evidence_dir/feature_check.log`). Never rely on `-q` flags or inherited fds
@@ -272,6 +277,7 @@ For tactical session handoff — current intent, next action, blockers, mid-sess
   always-loaded rules.
 - Do not edit managed app files directly as operator — all managed-app product
   work (features, fixes, improvements) must be dispatched through the builder
-  dashboard. Direct file edits in a managed app workspace bypass the builder
-  lifecycle and are invisible to board/backlog state. The operator's write
-  surface is this source repo only.
+  dashboard lane (Agent page → task → approve). Direct file edits in a managed
+  app workspace (any workspace initialized via `builder init`) bypass the
+  builder lifecycle and are invisible to board/backlog state. The operator's
+  write surface is this source repo only.
