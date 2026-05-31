@@ -1,9 +1,0 @@
-{
-  "name": "com.REPLACE-ORG.REPLACE-SLUG",
-  "description": "Native messaging host for REPLACE-NAME",
-  "path": "REPLACE-ABSOLUTE-PATH-TO/host.py",
-  "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://REPLACE-EXTENSION-ID/"
-  ]
-}
