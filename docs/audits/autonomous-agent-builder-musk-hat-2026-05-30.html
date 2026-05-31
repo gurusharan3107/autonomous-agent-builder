@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Musk-Hat Audit — autonomous-agent-builder (elon skill · re-run)</title>
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D; --rust:#B04A3F;
+  --gray-150:#F0EEE6; --gray-300:#D1CFC5; --gray-500:#87867F; --gray-700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--ivory); color:var(--gray-700); font-family:var(--sans); font-size:15px; line-height:1.6; padding:56px 24px 96px}
+.wrap{max-width:1120px; margin:0 auto}
+.eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gray-500); margin-bottom:12px}
+h1{font-family:var(--serif); font-weight:500; font-size:clamp(30px,4.4vw,42px); letter-spacing:-.014em; color:var(--slate); margin:0 0 14px; line-height:1.12}
+h1 em{font-style:italic; color:var(--clay)}
+.lead{font-size:16px; line-height:1.6; color:var(--gray-700); max-width:720px; margin:0 0 8px}
+h2{font-family:var(--serif); font-weight:500; font-size:24px; letter-spacing:-.01em; color:var(--slate); margin:0 0 4px}
+h2 em{font-style:italic; color:var(--clay)}
+.sec-eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--clay); margin-bottom:8px}
+section{margin-top:56px; padding-top:8px}
+.rule{height:1.5px; background:var(--gray-300); border:0; margin:40px 0 0}
+p{margin:0 0 14px}
+code{font-family:var(--mono); font-size:.86em; background:var(--gray-150); padding:1px 5px; border-radius:4px; color:var(--slate)}
+.mono{font-family:var(--mono)}
+.verdict{display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:center; background:var(--paper); border:1.5px solid var(--gray-300); border-radius:12px; padding:28px 32px; margin-top:32px; box-shadow:0 12px 32px rgba(20,20,19,.06)}
+.score-ring{display:flex; flex-direction:column; align-items:center; gap:4px}
+.score-num{font-family:var(--serif); font-size:54px; font-weight:500; color:var(--clay); line-height:1}
+.score-den{font-family:var(--mono); font-size:12px; color:var(--gray-500); letter-spacing:.05em}
+.verdict .punch{font-family:var(--serif); font-style:italic; font-size:19px; color:var(--slate); line-height:1.4; margin-bottom:6px}
+.tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:24px}
+.tile{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:18px 18px 16px}
+.tile .n{font-family:var(--mono); font-size:30px; color:var(--slate); line-height:1; letter-spacing:-.02em}
+.tile .n.bad{color:var(--rust)} .tile .n.good{color:var(--olive)}
+.tile .l{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-500); margin-top:10px}
+table{width:100%; border-collapse:collapse; margin-top:18px; font-size:14px}
+th,td{text-align:left; padding:11px 12px; border-bottom:1.5px solid var(--gray-300); vertical-align:middle}
+th{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-500); font-weight:400}
+td.crit{font-weight:600; color:var(--slate); width:240px}
+.bar-track{display:inline-block; width:120px; height:9px; background:var(--gray-150); border-radius:5px; overflow:hidden; vertical-align:middle; margin-right:10px}
+.bar-track .bar{display:block; height:100%}
+.g-num{font-family:var(--mono); font-weight:600; font-size:13px}
+.evid{color:var(--gray-700); font-size:13.5px}
+.b-bad{background:var(--rust)} .b-mid{background:var(--clay)} .b-good{background:var(--olive)}
+.c-bad{color:var(--rust)} .c-mid{color:var(--clay-d)} .c-good{color:var(--olive)}
+.two{display:grid; grid-template-columns:1fr 320px; gap:40px; margin-top:18px}
+.note{background:var(--gray-150); border-left:3px solid var(--oat); padding:14px 16px; border-radius:0 8px 8px 0; font-size:13.5px}
+.note h4{margin:0 0 6px; font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--clay-d)}
+.cand{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:18px 20px; margin-top:14px; display:grid; grid-template-columns:36px 1fr auto; gap:16px; align-items:start}
+.cand.done{background:var(--gray-150); opacity:.86}
+.cand .rank{font-family:var(--serif); font-size:26px; color:var(--clay); line-height:1}
+.cand h3{margin:0 0 5px; font-size:16px; color:var(--slate); font-family:var(--sans); font-weight:600}
+.cand p{margin:0; font-size:13.5px; color:var(--gray-700)}
+.cand .loc{font-family:var(--mono); font-size:13px; color:var(--rust); white-space:nowrap; text-align:right}
+.cand .loc.olive{color:var(--olive)} .cand .loc.clay{color:var(--clay-d)}
+.cand .loc small{display:block; color:var(--gray-500); font-size:10px; letter-spacing:.05em; text-transform:uppercase; margin-top:3px}
+ul.tight{margin:6px 0 0; padding-left:18px} ul.tight li{margin-bottom:9px; font-size:13.5px}
+.good-list{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:6px 22px 18px}
+.good-list b{color:var(--olive)}
+.method{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px}
+.chip{font-family:var(--mono); font-size:11px; letter-spacing:.04em; background:var(--paper); border:1.5px solid var(--gray-300); border-radius:20px; padding:6px 12px; color:var(--gray-700)}
+.chip.done{background:var(--olive); color:#fff; border-color:var(--olive)}
+.foot{margin-top:64px; padding-top:20px; border-top:1.5px solid var(--gray-300); font-family:var(--mono); font-size:11px; color:var(--gray-500); letter-spacing:.04em; line-height:1.7}
+.caveat{font-size:13px; color:var(--gray-500); font-style:italic; max-width:720px; margin-top:14px}
+.flag{display:inline-block; font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:4px; vertical-align:middle; margin-left:6px}
+.flag.done{background:var(--olive); color:#fff} .flag.prog{background:var(--clay); color:#fff} .flag.open{background:var(--gray-300); color:var(--slate)}
+@media (max-width:880px){ .tiles{grid-template-columns:repeat(2,1fr)} .two{grid-template-columns:1fr} .verdict{grid-template-columns:1fr; text-align:center} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">elon skill · Musk-Hat Audit (re-run / delta) · autonomous-agent-builder · 2026-05-30</div>
+    <h1>A <em>10-day-old</em> shop, already cutting its own parts</h1>
+    <p class="lead">Second pass through Musk's algorithm — question requirements, <strong>delete</strong>, simplify, accelerate, automate-last — scored against fresh git/grep evidence. This run is a <strong>delta</strong> on the earlier same-day audit: it verifies which cuts actually landed, re-traces what's left, and surfaces the fact the first pass missed — <strong>the entire repo is ten days old</strong>, which reframes the "grows-only" verdict.</p>
+    <div class="method">
+      <span class="chip">git numstat (all history)</span>
+      <span class="chip">wc -l · src/**.py</span>
+      <span class="chip">evidence.py seed</span>
+      <span class="chip">import-trace per candidate</span>
+      <span class="chip done">✓ codex_cli deleted since last run</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <div class="score-ring"><div class="score-num">5.3</div><div class="score-den">/ 10 COMPOSITE</div></div>
+    <div>
+      <p class="punch">Fast, disciplined, young — and the deletion habit has started.</p>
+      <p>Composite is flat vs the morning run, which is the honest result: one of three excess runtime adapters is now <strong>gone</strong> (<code>codex_cli</code>, −921 LOC incl. tests) and the duplicate-app teardown has begun (1 of ~10 tests migrated). What remains is small and verified: a 21-LOC dead compat wrapper, a 282-LOC hidden third lane, and a ~1,131-LOC duplicate FastAPI shell. The growth that scores criterion 2 red is mostly a <strong>ten-day greenfield sprint</strong>, not rot.</p>
+    </div>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="n bad">0.087</div><div class="l">Delete : Add · all 10d</div></div>
+    <div class="tile"><div class="n">80,258</div><div class="l">src LOC · 267 files</div></div>
+    <div class="tile"><div class="n bad">15</div><div class="l">files ≥ 1000 LOC</div></div>
+    <div class="tile"><div class="n good">1.26s</div><div class="l">1,564 tests collected</div></div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- WHAT CHANGED -->
+  <section>
+    <div class="sec-eyebrow">Delta Since the Morning Run · what actually moved</div>
+    <h2>The first pass named the cuts; this pass checks the <em>receipts</em></h2>
+    <table>
+      <thead><tr><th>Recommendation (morning audit)</th><th>State now</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td class="crit">Delete <code>codex_cli_runtime.py</code></td>
+          <td><span class="flag done">done</span></td>
+          <td class="evid">commit <code>b69ef80</code> removed 635 src + 286 test LOC; dropped from <code>factory.py</code> maps + <code>legal_pairs</code></td></tr>
+        <tr><td class="crit">Delete <code>opencode_runtime.py</code></td>
+          <td><span class="flag open">open</span></td>
+          <td class="evid">still present (21 LOC); re-trace now <b>upgrades it to clean DEAD</b> — see below</td></tr>
+        <tr><td class="crit">Delete <code>openai_runtime.py</code></td>
+          <td><span class="flag open">open</span></td>
+          <td class="evid">still wired — <code>factory.py:182</code> instantiates it for the <code>openai_agents</code> lane; <b>not clean</b></td></tr>
+        <tr><td class="crit">Tear down duplicate FastAPI shell</td>
+          <td><span class="flag prog">in&nbsp;progress</span></td>
+          <td class="evid">commit <code>e84713b</code> migrated 1 test; <b>9 test files + <code>main.py</code></b> still bind <code>api/app.py</code></td></tr>
+        <tr><td class="crit">Break up files &gt;1700 LOC</td>
+          <td><span class="flag open">open</span></td>
+          <td class="evid">15 files still ≥1000 LOC; largest <code>onboarding.py</code> 1,931 / 59 defs</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="rule">
+
+  <!-- SCORECARD -->
+  <section>
+    <div class="sec-eyebrow">The Scorecard · question-first</div>
+    <h2>Six criteria, graded from cited evidence</h2>
+    <p>The composite is not an average — the hat fixates on the lowest bar that represents <em>unnecessary mass</em> (criterion 2). Each row leads with the question the grade answers.</p>
+    <table>
+      <thead><tr><th>Criterion · its question</th><th>Grade</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td class="crit">1 · Requirements — <em>"who asked?"</em></td>
+          <td><span class="bar-track"><span class="bar b-mid" style="width:50%"></span></span><span class="g-num c-mid">5</span></td>
+          <td class="evid">a dead compat wrapper + a hidden 3rd lane (<code>openai_agents</code>) past the supported <code>["claude","codex_sdk"]</code>; shared core all traces to owners</td></tr>
+        <tr><td class="crit">2 · Deletion ratio — <em>"what can go?"</em> <span style="color:var(--rust)">◆</span></td>
+          <td><span class="bar-track"><span class="bar b-bad" style="width:30%"></span></span><span class="g-num c-bad">3</span></td>
+          <td class="evid"><b>0.087</b> del:add → cardinal band — <b>but all 157k added LOC is &lt;10 days old</b> (repo born 2026-05-20); greenfield, not rot</td></tr>
+        <tr><td class="crit">3 · Idiot index — <em>"earned?"</em></td>
+          <td><span class="bar-track"><span class="bar b-bad" style="width:40%"></span></span><span class="g-num c-bad">4</span></td>
+          <td class="evid">two live FastAPI apps; 15 files ≥1000 LOC (largest <code>onboarding.py</code> 1,931 / 59 defs)</td></tr>
+        <tr><td class="crit">4 · Cycle time — <em>"idea→prod?"</em></td>
+          <td><span class="bar-track"><span class="bar b-good" style="width:80%"></span></span><span class="g-num c-good">8</span></td>
+          <td class="evid">1,564 tests collect in <b>1.26s</b>; this is the asset that de-risks every cut</td></tr>
+        <tr><td class="crit">5 · Automate <span class="mono" style="font-size:10px;color:var(--gray-500)">(last)</span> — <em>"doomed code?"</em></td>
+          <td><span class="bar-track"><span class="bar b-mid" style="width:60%"></span></span><span class="g-num c-mid">6</span></td>
+          <td class="evid">rich skill / CLI tooling atop surfaces (api shell, big files) that should shrink first</td></tr>
+        <tr><td class="crit">6 · Vertical ownership — <em>"end-to-end?"</em></td>
+          <td><span class="bar-track"><span class="bar b-mid" style="width:60%"></span></span><span class="g-num c-mid">6</span></td>
+          <td class="evid">strong boundary docs; dual app + 3 implemented / 2 exposed lanes still violate "one owner per concern"</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="rule">
+
+  <!-- VERIFICATION -->
+  <section>
+    <div class="sec-eyebrow">How This Was Verified · the discipline that overrules the heuristic</div>
+    <h2>Import-trace before the word <em>"delete"</em></h2>
+    <p>The deterministic <code>evidence.py</code> seed flags candidates; the import-trace decides (Hard rule 2). This re-run produced three verdicts the raw heuristic would have gotten wrong — including one the morning run also overruled, held stable here:</p>
+
+    <div class="cand">
+      <div class="rank" style="color:var(--olive)">✓</div>
+      <div>
+        <h3><code>runtime/opencode_runtime.py</code> (21 LOC) — heuristic DEAD, <span style="color:var(--olive)">CONFIRMED DEAD</span></h3>
+        <p>Its one apparent reference (<code>services/runtime_guidance.py:75</code>) is a <em>string-normalization map</em> <code>{"opencode":"openai_agents"}</code> — not an import of the class. The class itself (a <code>"Deprecated OpenCode runtime compatibility wrapper"</code> subclassing <code>OpenAIAgentsRuntime</code>) is <strong>never instantiated</strong>; the factory has no branch for it. Clean delete.</p>
+      </div>
+      <div class="loc olive">DELETE<small>verified dead</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank" style="color:var(--clay)">±</div>
+      <div>
+        <h3><code>runtime/openai_runtime.py</code> (282 LOC) — looked like a clean cut, <span style="color:var(--clay-d)">FLIPPED → CONFIRM-FIRST</span></h3>
+        <p>The morning run bundled this with the other "non-lane adapters" as a clean delete. The trace says otherwise: <code>factory.py:182</code> instantiates <code>OpenAIAgentsRuntime</code> and <code>get_implemented_runtimes()</code> returns <code>["claude","codex_sdk","openai_agents"]</code>. It is a <em>hidden-but-wired</em> third lane (not in the user-facing <code>get_available_runtimes()</code>). Deletable, but only after confirming the lane is truly retired — a deeper coupled edit than a dead file.</p>
+      </div>
+      <div class="loc clay">CONFIRM<small>wired into factory</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank" style="color:var(--olive)">✓</div>
+      <div>
+        <h3><code>quality_gates/runtime_boundary.py</code> (225 LOC) — heuristic DEAD, <span style="color:var(--olive)">REFUTED → KEEP</span></h3>
+        <p>Zero plain importers, so the heuristic flagged it again. As in the morning run, it is a live quality-gate module dispatched by name from the <code>builder quality-gate</code> surface and exercised by tests. Deleting it kills a working gate.</p>
+      </div>
+      <div class="loc olive">KEEP<small>trace overruled</small></div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- DELETION LIST -->
+  <section>
+    <div class="sec-eyebrow">The Roadmap · import-verified · ~1,434 LOC remaining</div>
+    <h2>Deletion list, tiered by risk</h2>
+
+    <div class="cand done">
+      <div class="rank" style="color:var(--olive)">✓</div>
+      <div>
+        <h3>Tier 1a — delete <code>codex_cli_runtime.py</code> <span class="flag done">landed</span></h3>
+        <p>Already executed in commit <code>b69ef80</code>. Adapter + its test removed; <code>factory.py</code> default maps, <code>legal_pairs</code>, and codex provider branch trimmed. This is what a working deletion habit looks like — recorded here as the baseline the rest of the list extends.</p>
+      </div>
+      <div class="loc olive">−921<small>LOC · done</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank">1</div>
+      <div>
+        <h3>Tier 1b — delete <code>opencode_runtime.py</code> <span class="mono" style="font-size:10px;color:var(--olive)">CLEAN</span></h3>
+        <p>Verified-dead deprecated compat wrapper; zero instantiation. <b>Coupled edits (same commit):</b> drop the <code>{"opencode":"openai_agents"}</code> entry in <code>runtime_guidance.py:75</code> and the <code>opencode→opencode_go</code> normalization in <code>factory.py:59-66</code>; delete any <code>opencode</code> rejection-string tests. No factory branch to remove (there never was one).</p>
+      </div>
+      <div class="loc">−21<small>LOC · 1 file</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank">2</div>
+      <div>
+        <h3>Tier 1c — retire <code>openai_runtime.py</code> <span class="mono" style="font-size:10px;color:var(--clay-d)">CONFIRM FIRST</span></h3>
+        <p>The hidden <code>openai_agents</code> lane. <b>Confirm first:</b> is any non-Claude/Codex provider still needed? If not — <b>coupled edits:</b> remove the <code>elif config["sdk"]=="openai_agents"</code> branch (<code>factory.py:182</code>), drop <code>openai_agents</code> from <code>get_implemented_runtimes()</code> and <code>legal_pairs</code>, remove the OpenAI-key validation branch (<code>factory.py:156</code>), and update runtime tests. Doing 1b alone first is safe; 1c needs the product call.</p>
+      </div>
+      <div class="loc clay">−282<small>LOC · after confirm</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank">3</div>
+      <div>
+        <h3>Tier 2 — finish the duplicate app-shell teardown <span class="flag prog">in progress</span></h3>
+        <p>Embedded server near-fully duplicates the api route surface (features 11/10, gates 10/10, projects 3/3). Delete <code>api/app.py</code> + the private route duplicates (<code>features</code>, <code>gates</code>, <code>knowledge</code>, <code>memory_api</code>, <code>projects</code>, <code>main.py</code>, <code>__main__.py</code> = 1,131 LOC). <b>KEEP-SHARED</b> (embedded mounts them): <code>dashboard_api</code>, <code>dispatch</code>, <code>onboarding</code>, <code>readiness</code>, <code>schemas</code>. <b>Remaining coupled edits:</b> migrate the 9 test files still binding <code>api/app.py</code>, repoint <code>main.py:20</code> off <code>api.app:app</code>, and the <code>dashboard/routes.py</code> + <code>knowledge/extractor.py</code> refs.</p>
+      </div>
+      <div class="loc">−1,131<small>LOC · shell</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank">4</div>
+      <div>
+        <h3>Tier 3 — rename <code>api/</code> shared core, don't delete it</h3>
+        <p>The kept core is <em>misnamed shared infrastructure</em>, not a second API. Move it to <code>core/</code> (or <code>shared/</code>). End-state: one app (<code>embedded/server</code>) + one shared core + two thin runtimes — structurally prevents the next accidental duplicate. Zero LOC removed; it's the fix that makes Tier 2 stick.</p>
+      </div>
+      <div class="loc">0<small>structural</small></div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- CREDIT -->
+  <section>
+    <div class="two">
+      <div>
+        <div class="sec-eyebrow">Credit Where Due</div>
+        <h2>What it does right</h2>
+        <p>Rare praise from this lens — and the first two points are why aggressive deletion is <em>safe</em> here.</p>
+        <ul class="good-list tight">
+          <li><b>Cycle time is excellent.</b> 1.26s to collect 1,564 tests. Fast feedback de-risks every cut on this list.</li>
+          <li><b>The deletion habit is real, not aspirational.</b> The morning audit's top clean cut (<code>codex_cli</code>) was actually executed the same day — the rarest thing this hat ever gets to report.</li>
+          <li><b>Ownership is well-articulated.</b> <code>CLAUDE.md</code> names the two supported lanes explicitly; the dead wrapper even documents itself as deprecated. The gap is follow-through, not intent.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h4>The punchline</h4>
+        <p>Ten days old, growing fast, and already pruning. The criterion-2 red is the cost of a greenfield sprint, not decay. Finish 1b→1c→2, rename in 3, and the structure stops re-growing the duplicate.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="caveat">Caveat: a synthesis of Musk's stated engineering algorithm mapped onto software — a deliberately provocative lens, not a balanced rubric. It under-weights correctness, security, and long-horizon maintainability by design, and it penalizes greenfield growth that has not yet had time to be pruned. Pair it <em>with</em> a conventional review (<code>/code-review</code>), don't let it replace one.</p>
+
+  <div class="foot">
+    METHOD · elon skill (re-run) · evidence.py seed (deletion ratio, LOC, dead-import candidates) → deterministic import-trace per candidate · 3 verdicts the heuristic alone would miss (opencode confirmed dead, openai flipped to confirm-first, runtime_boundary kept)<br>
+    GENERATED · 2026-05-30 · branch imp-027-model-driven-task-decomposition · supersedes the morning same-day run · all figures machine-derived, none estimated
+  </div>
+
+</div>
+
+<script type="application/json" id="artifact-data">
+{
+  "audit": "elon (musk-hat) first-principles codebase audit — re-run / delta",
+  "target": "autonomous-agent-builder",
+  "date": "2026-05-30",
+  "supersedes": "same-day morning run (composite 5.3)",
+  "produced_by": "elon skill — evidence.py seed + deterministic import-trace",
+  "repo_age_days": 10,
+  "first_commit": "2026-05-20",
+  "composite": 5.3,
+  "metrics": {
+    "src_loc": 80258, "src_files": 267, "files_over_1000_loc": 15,
+    "test_loc": 50197, "test_files": 168, "tests_collected": 1564, "test_collect_seconds": 1.26,
+    "deletion_ratio_all_history": 0.087, "lines_added": 157285, "lines_removed": 13738,
+    "ratio_30d_equals_90d": true,
+    "largest_file": {"f": "onboarding.py", "loc": 1931, "defs": 59}
+  },
+  "scorecard": [
+    {"criterion": "requirements_sanity", "grade": 5, "evidence": "dead opencode wrapper + hidden openai_agents lane past supported [claude,codex_sdk]"},
+    {"criterion": "deletion_ratio", "grade": 3, "cardinal": true, "context": "all 157k added LOC < 10 days old; greenfield not rot"},
+    {"criterion": "idiot_index_simplicity", "grade": 4, "evidence": "two live FastAPI apps; 15 files >=1000 LOC"},
+    {"criterion": "cycle_time", "grade": 8, "evidence": "1564 tests collect in 1.26s"},
+    {"criterion": "automate_last", "grade": 6},
+    {"criterion": "vertical_ownership", "grade": 6, "evidence": "dual app + 3 implemented / 2 exposed lanes"}
+  ],
+  "delta_since_morning_run": [
+    {"item": "codex_cli_runtime.py", "rec": "delete", "state": "DONE", "evidence": "commit b69ef80, -635 src -286 test"},
+    {"item": "opencode_runtime.py", "rec": "delete", "state": "OPEN", "note": "upgraded to clean DEAD by re-trace"},
+    {"item": "openai_runtime.py", "rec": "delete", "state": "OPEN", "note": "flipped to confirm-first; factory.py:182 instantiates it"},
+    {"item": "api duplicate shell", "rec": "delete", "state": "IN_PROGRESS", "evidence": "commit e84713b migrated 1 test; 9 test files + main.py still bind api/app.py"},
+    {"item": "files >1700 LOC", "rec": "break up", "state": "OPEN"}
+  ],
+  "verification_overrules": [
+    {"file": "runtime/opencode_runtime.py", "loc": 21, "heuristic": "DEAD", "verdict": "CONFIRMED DEAD", "why": "only ref is a string-map entry in runtime_guidance.py:75, not an instantiation; no factory branch"},
+    {"file": "runtime/openai_runtime.py", "loc": 282, "heuristic": "clean-delete (morning run)", "verdict": "CONFIRM-FIRST", "why": "factory.py:182 instantiates it for the openai_agents lane in get_implemented_runtimes()"},
+    {"file": "quality_gates/runtime_boundary.py", "loc": 225, "heuristic": "DEAD", "verdict": "KEEP", "why": "live quality-gate module dispatched by builder quality-gate + used by tests"}
+  ],
+  "deletion_tiers": [
+    {"rank": "1a", "tier": "done", "loc": 921, "action": "delete codex_cli_runtime.py (+test)", "state": "LANDED commit b69ef80"},
+    {"rank": "1b", "tier": "clean", "loc": 21, "action": "delete opencode_runtime.py",
+     "coupled_edits": ["drop {opencode:openai_agents} in runtime_guidance.py:75", "drop opencode->opencode_go normalization in factory.py:59-66", "delete opencode rejection-string tests"]},
+    {"rank": "1c", "tier": "confirm-first", "loc": 282, "action": "retire openai_runtime.py (openai_agents lane)",
+     "confirm_first": "is any non-claude/codex provider still required?",
+     "coupled_edits": ["remove factory.py:182 branch", "drop openai_agents from get_implemented_runtimes() + legal_pairs", "remove OpenAI-key validation factory.py:156", "update runtime tests"]},
+    {"rank": "2", "tier": "after-check / in-progress", "loc": 1131,
+     "delete": [{"f":"api/app.py","loc":null},{"f":"api/routes/features.py"},{"f":"api/routes/gates.py"},{"f":"api/routes/knowledge.py"},{"f":"api/routes/memory_api.py"},{"f":"api/routes/projects.py"},{"f":"api/main.py+__main__.py"}],
+     "keep_shared": ["dashboard_api","dispatch","onboarding","readiness","schemas"],
+     "coupled_edits": ["migrate 9 test files still binding api/app.py", "repoint main.py:20 off api.app:app", "fix dashboard/routes.py + knowledge/extractor.py refs"]},
+    {"rank": "3", "tier": "structural", "loc": 0, "action": "rename api/ shared core -> core/; one app + one shared core + two thin runtimes"}
+  ],
+  "verified_deletable_loc_remaining": 1434,
+  "caveat": "Musk-algorithm lens; under-weights correctness/security/maintainability and penalizes un-pruned greenfield growth; pair with /code-review"
+}
+</script>
+</body>
+</html>

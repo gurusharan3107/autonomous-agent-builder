@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quality-Gate Control-Surface Audit — 2026-05-31</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#6b6b6b; --line:#e3e0d8; --bg:#fbfaf7; --card:#fff;
+    --accent:#3a6b8c; --hard:#2e7d52; --mixed:#b8860b; --soft:#b3503c;
+    --hard-bg:#e8f3ec; --mixed-bg:#f6efda; --soft-bg:#f6e6e1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:48px 28px 96px}
+  header.top{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:8px}
+  h1{font-size:26px;font-weight:650;letter-spacing:-.01em;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:13.5px}
+  .meta{display:flex;flex-wrap:wrap;gap:20px;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  .meta b{color:var(--ink);font-weight:600}
+  h2{font-size:18px;font-weight:620;letter-spacing:-.01em;margin:46px 0 12px;
+    padding-bottom:6px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;font-weight:620;margin:0 0 4px}
+  p{margin:10px 0}
+  .lead{font-size:16px;line-height:1.6}
+  .callout{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    padding:16px 18px;border-radius:4px;margin:18px 0}
+  .callout.warn{border-left-color:var(--soft)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+  .kpi .n{font-size:26px;font-weight:680;letter-spacing:-.02em;line-height:1}
+  .kpi .l{font-size:11.5px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.04em}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+  tbody tr:hover{background:#f4f2ec}
+  td.g{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;font-weight:600}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
+  .hard{background:var(--hard-bg);color:var(--hard)}
+  .mixed{background:var(--mixed-bg);color:var(--mixed)}
+  .soft{background:var(--soft-bg);color:var(--soft)}
+  .score{font-weight:680;font-variant-numeric:tabular-nums}
+  .s9{color:var(--hard)} .s7{color:var(--mixed)} .s5{color:var(--soft)}
+  .bar{height:7px;border-radius:4px;background:var(--line);overflow:hidden;min-width:52px;display:inline-block;vertical-align:middle;width:60px}
+  .bar>i{display:block;height:100%}
+  .enf-track{display:flex;height:30px;border-radius:5px;overflow:hidden;margin:10px 0 4px;border:1px solid var(--line)}
+  .enf-track>div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600}
+  .legend{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-top:6px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .gcard{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+  .gcard .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+  .gcard .nm{font-family:ui-monospace,Menlo,monospace;font-weight:650;font-size:13.5px}
+  .gcard ul{margin:8px 0 0;padding-left:16px}
+  .gcard li{margin:3px 0;font-size:12.5px}
+  .gcard .iss{color:var(--soft);font-weight:600}
+  .gcard .ok{color:var(--hard)}
+  ol.act{padding-left:20px} ol.act li{margin:10px 0}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:#efece4;padding:1px 5px;border-radius:3px}
+  .foot{margin-top:60px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>Quality-Gate Control-Surface Audit</h1>
+  <div class="sub">autonomous-agent-builder · the 17 repo-local <code>builder quality-gate</code> surfaces</div>
+  <div class="meta">
+    <span><b>Date</b> 2026-05-31</span>
+    <span><b>Scope</b> 17 builder gates (global workflow gates excluded)</span>
+    <span><b>Method</b> 5-agent parallel fan-out · verify + assess</span>
+    <span><b>Mean health</b> 7.4 / 10</span>
+  </div>
+</header>
+
+<h2>Executive summary</h2>
+<p class="lead">Every gate's control surface was extracted (commands, expectations, owned files), <b>verified</b>
+against the live CLI and filesystem, then scored 0–10 for scope clarity, overlap, and enforcement strength.
+The surfaces are well-scoped and almost entirely wired correctly — but one structural fact dominates everything below.</p>
+
+<div class="callout warn">
+  <h3>The framework finding — gates are retrieval, not enforcement</h3>
+  <p style="margin-bottom:0"><code>builder quality-gate &lt;surface&gt;</code> is a <b>retrieval surface that always returns <code>status: ok</code></b>.
+  It emits the doc's commands + expectations; it never computes pass/fail. So <b>~73% of all expectations are
+  agent-self-judged prose</b> with no executable backing. Only <b>3 of 17</b> gates pull most of their expectations
+  through to a real test/script/lint. This is by design, but it means gate "passing" mostly measures
+  whether an agent <em>read and reasoned</em>, not whether the property <em>holds</em>.</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="n s9">3</div><div class="l">HARD-enforced gates</div></div>
+  <div class="kpi"><div class="n s7">6</div><div class="l">MIXED-enforced</div></div>
+  <div class="kpi"><div class="n s5">8</div><div class="l">SOFT (prose-only)</div></div>
+  <div class="kpi"><div class="n s5">5</div><div class="l">Dead / non-command refs</div></div>
+</div>
+
+<h3>Enforcement distribution</h3>
+<div class="enf-track">
+  <div class="hard" style="width:17.6%;background:var(--hard)">HARD 3</div>
+  <div class="mixed" style="width:35.3%;background:var(--mixed)">MIXED 6</div>
+  <div class="soft" style="width:47.1%;background:var(--soft)">SOFT 8</div>
+</div>
+<div class="legend">
+  <span><i class="dot" style="background:var(--hard)"></i>HARD — executable test/script/lint backs most expectations</span>
+  <span><i class="dot" style="background:var(--mixed)"></i>MIXED — some levers run, core claims self-judged</span>
+  <span><i class="dot" style="background:var(--soft)"></i>SOFT — prose expectations only</span>
+</div>
+
+<h2>Scorecard — all 17 gates</h2>
+<table>
+<thead><tr>
+  <th>Gate</th><th>Cluster</th><th>Health</th><th>Enforce</th>
+  <th>Cmds&nbsp;ok</th><th>Files&nbsp;ok</th><th>Primary overlap</th><th>Notable issue</th>
+</tr></thead>
+<tbody>
+<tr><td class="g">verification</td><td>Lifecycle</td><td><span class="score s9">9</span> <span class="bar"><i style="width:90%;background:var(--hard)"></i></span></td><td><span class="pill hard">HARD</span></td><td>6/6</td><td>✓</td><td>product-lifecycle (<code>verify --changed</code>)</td><td class="ok">none · ~23 tests back it</td></tr>
+<tr><td class="g">knowledge-base</td><td>Docs</td><td><span class="score s9">9</span> <span class="bar"><i style="width:90%;background:var(--hard)"></i></span></td><td><span class="pill hard">HARD</span></td><td>5/5</td><td>✓</td><td>documentation-agent (defers to it)</td><td class="ok">none · validate backs 9/11</td></tr>
+<tr><td class="g">complexity</td><td>Code</td><td><span class="score s9">9</span> <span class="bar"><i style="width:90%;background:var(--hard)"></i></span></td><td><span class="pill hard">HARD</span></td><td>3/3</td><td>✓</td><td>architecture-boundary (god-files, complementary)</td><td class="ok">none · 6/6 backed by ratchet</td></tr>
+<tr><td class="g">modular-runtime</td><td>Arch</td><td><span class="score s9">9</span> <span class="bar"><i style="width:90%;background:var(--hard)"></i></span></td><td><span class="pill mixed">MIXED</span></td><td>6/6</td><td>✓</td><td>claude-agent-sdk (clean claude/codex split)</td><td class="ok">none · 4 tests + 3 live probes</td></tr>
+<tr><td class="g">architecture-boundary</td><td>Arch</td><td><span class="score s7">8</span> <span class="bar"><i style="width:80%;background:var(--mixed)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>9/9</td><td>✓</td><td>claude-agent-sdk, modular-runtime, product-lifecycle</td><td>broadest gate · 14 expectations, ~1 test</td></tr>
+<tr><td class="g">product-lifecycle</td><td>Lifecycle</td><td><span class="score s7">8</span> <span class="bar"><i style="width:80%;background:var(--mixed)"></i></span></td><td><span class="pill mixed">MIXED</span></td><td>4/4</td><td>✓</td><td>verification, approval (dispatch + verify)</td><td>journey-level prose</td></tr>
+<tr><td class="g">builder-cli</td><td>Meta</td><td><span class="score s7">8</span> <span class="bar"><i style="width:80%;background:var(--mixed)"></i></span></td><td><span class="pill mixed">MIXED</span></td><td>38/38</td><td>✓</td><td>modular-runtime (<code>agent runtime</code>), quality-gates</td><td>41 expectations, mostly soft</td></tr>
+<tr><td class="g">state-integrity</td><td>Lifecycle</td><td><span class="score s7">7</span> <span class="bar"><i style="width:70%;background:var(--mixed)"></i></span></td><td><span class="pill mixed">MIXED</span></td><td>4/4</td><td>✓</td><td>approval (mutation-evidence rule), arch-boundary</td><td>no drift-detecting check</td></tr>
+<tr><td class="g">approval</td><td>Lifecycle</td><td><span class="score s7">7</span> <span class="bar"><i style="width:70%;background:var(--mixed)"></i></span></td><td><span class="pill mixed">MIXED</span></td><td>3/3</td><td>—</td><td>product-lifecycle (next-task dispatch)</td><td class="iss">no related_docs declared</td></tr>
+<tr><td class="g">claude-agent-sdk</td><td>Arch</td><td><span class="score s7">7</span> <span class="bar"><i style="width:70%;background:var(--mixed)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>7/7</td><td>✓</td><td>architecture-boundary (same boundary test)</td><td>16 expectations, ~1 test</td></tr>
+<tr><td class="g">generated-app-acceptance</td><td>Code</td><td><span class="score s7">7</span> <span class="bar"><i style="width:70%;background:var(--mixed)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>2/3</td><td>✓</td><td>agent-quality (<code>logs analyze</code>), build-verify</td><td class="iss">"Use Chrome plugin" listed as a command</td></tr>
+<tr><td class="g">documentation-agent</td><td>Docs</td><td><span class="score s7">7</span> <span class="bar"><i style="width:70%;background:var(--mixed)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>5/6</td><td>✓</td><td>knowledge-base, architecture-boundary</td><td class="iss">dead <code>MISSION.md</code> command</td></tr>
+<tr><td class="g">quality-gates</td><td>Meta</td><td><span class="score s7">7</span> <span class="bar"><i style="width:70%;background:var(--mixed)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>2/2</td><td>✓</td><td>verification, builder-cli (task-status JSON)</td><td class="iss">no related_docs · taxonomy un-governed</td></tr>
+<tr><td class="g">claude-md</td><td>Meta</td><td><span class="score s7">7</span> <span class="bar"><i style="width:70%;background:var(--mixed)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>5/5</td><td>✓</td><td>architecture-boundary (boundary alignment)</td><td class="iss">"concise" criterion unfalsifiable</td></tr>
+<tr><td class="g">agent-quality</td><td>Code</td><td><span class="score s5">6</span> <span class="bar"><i style="width:60%;background:var(--soft)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>10/11</td><td>7/8</td><td>claude-agent-sdk, modular-runtime (restated levers)</td><td class="iss">dead <code>MISSION.md</code> cmd + stale ref</td></tr>
+<tr><td class="g">dashboard-ux</td><td>Docs</td><td><span class="score s5">6</span> <span class="bar"><i style="width:60%;background:var(--soft)"></i></span></td><td><span class="pill soft">SOFT</span></td><td>4/4</td><td>✓</td><td>none (distinct domain)</td><td>16 UI expectations, 0 backed</td></tr>
+<tr><td class="g">codex-subagents</td><td>Arch</td><td><span class="score s5">5</span> <span class="bar"><i style="width:50%;background:var(--soft)"></i></span></td><td><span class="pill mixed">MIXED</span></td><td>3/5</td><td>✓</td><td>agent-quality (recommendation rubric)</td><td class="iss">2 dead refs · check ok:false · missing agent</td></tr>
+</tbody>
+</table>
+<p class="sub">Health: 9–10 strong · 7–8 sound · 5–6 needs work. "Files ok" = all declared <code>related_docs</code> + body code paths exist (✓), em-dash = none declared.</p>
+
+<h2>Concrete defects to fix</h2>
+<p>All verified this run. Ordered by severity. None block the merge you just did — these are pre-existing.</p>
+<ol class="act">
+  <li><b>codex-subagents is degraded (5/10).</b> Three real problems: (a) <code>workflow summary codex-routing-policy</code> errors despite appearing in the hint list; (b) <code>workflow summary codex-project-productivity-setup</code> is a dead doc ref; (c) its deterministic check <code>scripts/check_codex_subagents.py</code> returns <code>ok:false</code> in a clean checkout because <code>.codex/config.toml</code> is gitignored, <em>and</em> the gate's own Pass Criteria require <code>architecture_reviewer.toml</code> which is absent from <code>.codex/agents/</code> (only <code>code-reviewer</code> + <code>code-simplifier</code> present). The gate contradicts itself.</li>
+  <li><b>Dead <code>MISSION.md</code> reference in two gates.</b> <code>agent-quality</code> and <code>documentation-agent</code> both list <code>workflow --docs-dir docs read MISSION.md</code> in their <code>commands[]</code> — it fails at runtime, and both doc bodies already struck it through (<code>~~MISSION.md~~</code>). Front-matter is stale relative to the body. Remove the command + related_doc entry in both.</li>
+  <li><b>generated-app-acceptance lists prose as a command.</b> "Use Chrome plugin against the generated app localhost URL" sits in the structured <code>commands[]</code> array but is a manual instruction, not a resolvable command. Move it to the body.</li>
+  <li><b>Three gates declare no <code>related_docs</code>.</b> <code>approval</code>, <code>verification</code>, and <code>quality-gates</code> have no front-matter owner links (verification compensates with valid inline body refs; approval has none). Add owner links for navigability.</li>
+  <li><b>claude-md's central criterion is unfalsifiable.</b> It demands "concise" with no line/byte threshold while the file it governs is ~197 lines / 1.9k words. Either set a measurable budget or reword the expectation.</li>
+  <li><b>quality-gates hosts an un-governed taxonomy.</b> Its 4 front-matter expectations cover task-surface rendering only, but the body carries a repo-wide validation-routing taxonomy that no expectation governs and no check validates.</li>
+</ol>
+
+<h2>Overlap map</h2>
+<p>Overlap is mostly <b>intentional and self-declared</b>, concentrated on a few hubs. Not a call to merge — a call to keep the disambiguation lines tight.</p>
+<table>
+<thead><tr><th>Shared concern</th><th>Gates that touch it</th><th>Assessment</th></tr></thead>
+<tbody>
+<tr><td>Owner-boundary preservation</td><td class="g">architecture-boundary</td><td>Hub — referenced by <b>8</b> gate docs; restates SDK-runtime-mechanics (claude-agent-sdk) + lane-distinctness (modular-runtime). Self-declared umbrella. All three lean on the single <code>test_runtime_boundary_gate.py</code>.</td></tr>
+<tr><td><code>builder verify --changed --execute</code></td><td class="g">product-lifecycle · verification · approval</td><td>Same command, three gates. verification owns the executable contract; the other two route to it. Tolerable; note the ownership in each summary.</td></tr>
+<tr><td>Approval → next-ready-task dispatch</td><td class="g">approval · product-lifecycle</td><td>Continuation/idempotent dispatch asserted in both. Minor; approval owns visibility, lifecycle owns the journey.</td></tr>
+<tr><td>"No mutation claim without granted tool + evidence"</td><td class="g">state-integrity · approval</td><td>Same rule restated. Pick one canonical owner (state-integrity) and cross-link.</td></tr>
+<tr><td>Claude-SDK tuning levers (tools/perms/hooks/telemetry)</td><td class="g">agent-quality · claude-agent-sdk · modular-runtime</td><td>agent-quality restates SDK + runtime levers verbatim in its expectations. Most diffuse overlap in the set.</td></tr>
+<tr><td><code>builder logs analyze</code> as evidence lane</td><td class="g">agent-quality · generated-app-acceptance</td><td>Shared evidence command, genuinely different concerns (behavior tuning vs ship acceptance). Fine.</td></tr>
+<tr><td>task-status JSON shape</td><td class="g">quality-gates · builder-cli</td><td>Co-owned. builder-cli owns the envelope contract; quality-gates owns task-surface rendering.</td></tr>
+</tbody>
+</table>
+
+<h2>Per-gate evidence</h2>
+<div class="cards">
+
+  <div class="gcard"><div class="hd"><span class="nm">verification</span><span class="score s9">9/10 · HARD</span></div>
+    <div>Post-run lane: bounded gate state + metrics + language-correct build/test/lint proof.</div>
+    <ul><li>6/6 commands resolve; <code>build_verify</code> + <code>change_evidence</code> scripts wired</li>
+    <li>~23 dedicated tests (build-verification + verify-CLI surface)</li>
+    <li class="ok">richest, most testable contract in the set</li>
+    <li>no front-matter related_docs (inline body refs resolve)</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">knowledge-base</span><span class="score s9">9/10 · HARD</span></div>
+    <div><code>builder knowledge validate</code> is the deterministic review engine for KB quality/freshness.</div>
+    <ul><li>9 of 11 expectations backed by the validator pipeline</li>
+    <li>blocking-doc presence, manifest schema, citation + dependency-hash freshness all checked</li>
+    <li class="ok">documentation-agent defers KB enforcement here — clean split</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">complexity</span><span class="score s9">9/10 · HARD</span></div>
+    <div>Ratchet: files &gt;500 / functions &gt;250 lines or &gt;50 branches can't grow without an owner+plan baseline.</div>
+    <ul><li>6/6 expectations mechanically enforced by <code>builder lint</code></li>
+    <li>real owner-annotated <code>complexity-baseline.json</code>; guard test 4/4</li>
+    <li class="ok">only fully-mechanical gate</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">modular-runtime</span><span class="score s9">9/10 · MIXED</span></div>
+    <div>Keeps exactly two user-facing lanes (claude, codex_sdk) distinct with normalized telemetry.</div>
+    <ul><li>4 named tests + 3 live machine-readable probes exercise lane-exclusivity</li>
+    <li>best-instrumented gate; only dashboard-copy claims are prose</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">architecture-boundary</span><span class="score s7">8/10 · SOFT</span></div>
+    <div>Umbrella: builder/orchestrator/SDK/subagent ownership + domain invariants (post-merge).</div>
+    <ul><li>9/9 commands + 11/11 files resolve</li>
+    <li>14 expectations, only the one boundary test backs them</li>
+    <li>broadest surface; overlaps 3 siblings by design</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">product-lifecycle</span><span class="score s7">8/10 · MIXED</span></div>
+    <div>Visible idea→shipped SDLC stays deterministic and dashboard-CLI consistent.</div>
+    <ul><li>4/4 commands; one lifecycle test backs continuation/blocked-state</li>
+    <li>expectations are broad journey assertions</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">builder-cli</span><span class="score s7">8/10 · MIXED</span></div>
+    <div>The whole CLI surface: page-aligned tree, deterministic startup, bounded JSON, exit codes.</div>
+    <ul><li>38/38 commands resolve, 5/5 docs exist</li>
+    <li>anchors to external <code>cli-for-agents</code> benchmark + <code>builder lint</code></li>
+    <li>41 expectations — large, mostly soft</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">state-integrity</span><span class="score s7">7/10 · MIXED</span></div>
+    <div>Active DB stays canonical; artifacts/streams/logs are projections, not truth.</div>
+    <ul><li><code>memory lint</code> is HARD; parity has partial test coverage</li>
+    <li class="iss">core "no CLI/API/UI drift" claim has no bundled drift check</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">approval</span><span class="score s7">7/10 · MIXED</span></div>
+    <div>Approval state visible from CLI, distinct from gate failures, idempotent dispatch.</div>
+    <ul><li>3/3 read commands + approval-route tests</li>
+    <li>sharpest Pass/Fail signals in its cluster</li>
+    <li class="iss">no related_docs declared</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">claude-agent-sdk</span><span class="score s7">7/10 · SOFT</span></div>
+    <div><code>sdk=claude</code> stays runtime-mechanics; no product semantics leak into builder state.</div>
+    <ul><li>7/7 commands + 5/5 files resolve; Claude-vs-Codex split explicit</li>
+    <li>16 expectations on one shared boundary test</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">generated-app-acceptance</span><span class="score s7">7/10 · SOFT</span></div>
+    <div>Forward-eng features ship through the generated app's own visible browser path.</div>
+    <ul><li>tightest, most-focused of its cluster; real related doc</li>
+    <li class="iss">"Use Chrome plugin…" listed in <code>commands[]</code> is prose</li>
+    <li>all enforcement is manual Chrome proof</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">documentation-agent</span><span class="score s7">7/10 · SOFT</span></div>
+    <div>Doc specialist stays an internal bounded lane via canonical doc/KB surfaces.</div>
+    <ul><li>good cross-wiring (defers to knowledge-base + arch-boundary)</li>
+    <li>only KB-freshness expectation has a backing validator</li>
+    <li class="iss">stale <code>MISSION.md</code> command in front-matter</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">quality-gates</span><span class="score s7">7/10 · SOFT</span></div>
+    <div>Meta-gate: how task-scoped gate results render in <code>backlog task</code> views + routing taxonomy.</div>
+    <ul><li>2/2 commands resolve</li>
+    <li class="iss">no related_docs; body taxonomy governed by no expectation</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">claude-md</span><span class="score s7">7/10 · SOFT</span></div>
+    <div>Gates edits to repo CLAUDE.md — concise repo-scoped contract, not a second essay.</div>
+    <ul><li>5/5 commands + 3/3 files resolve; good link to arch-boundary</li>
+    <li class="iss">"concise" undefined; verification commands are themselves retrieval docs</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">agent-quality</span><span class="score s5">6/10 · SOFT</span></div>
+    <div>Anchors agent-behavior tuning to real session evidence, not prompt taste.</div>
+    <ul><li>strong 8-trigger When-To-Load; rich evidence lane</li>
+    <li class="iss">dead <code>MISSION.md</code> command + stale related_doc</li>
+    <li>15 expectations, 0 hard-backed; restates SDK/runtime levers</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">dashboard-ux</span><span class="score s5">6/10 · SOFT</span></div>
+    <div>Operator can see state, next action, evidence, runtime effects — no SDK reasoning.</div>
+    <ul><li>4/4 commands + 2/2 docs resolve; sharp scope</li>
+    <li class="iss">16 dense UI expectations, 0 automated assertions</li>
+    <li>lone command emits a human browser-proof checklist</li></ul></div>
+
+  <div class="gcard"><div class="hd"><span class="nm">codex-subagents</span><span class="score s5">5/10 · MIXED</span></div>
+    <div>Repo-local Codex agents (<code>.codex/agents/*.toml</code>) registered, bounded, read-only.</div>
+    <ul><li class="iss">2 dead workflow refs (codex-routing-policy, codex-project-productivity-setup)</li>
+    <li class="iss"><code>check_codex_subagents.py</code> → ok:false (gitignored config)</li>
+    <li class="iss">required <code>architecture_reviewer.toml</code> missing — contradicts Pass Criteria</li></ul></div>
+
+</div>
+
+<h2>What's healthy</h2>
+<p>Worth stating plainly so the defects above stay in proportion:</p>
+<ul>
+  <li><b>Scope clarity is near-universal.</b> 16 of 17 gates have an unambiguous "When To Load" trigger list. Only the diffuse Claude-SDK-tuning overlap muddies which gate owns a given lever.</li>
+  <li><b>Wiring is almost clean.</b> Across ~90 commands and all declared owner files, only <b>5</b> references are dead/mis-typed — and 3 of those are the same <code>MISSION.md</code> / codex-doc rot, not 5 independent rots.</li>
+  <li><b>The 4 most consequential gates are the best-enforced</b> (verification, knowledge-base, complexity, modular-runtime) — the places where "passing" must mean something mechanical actually do.</li>
+</ul>
+
+<div class="foot">
+  Generated by a 5-agent parallel audit (general-purpose subagents, read-only) over <code>docs/quality-gate/*.md</code> and the live <code>builder</code> CLI.
+  Each gate's commands and owned files were executed/stat-checked; scores reflect verified evidence, not doc prose alone.
+  Complexity gate's explicit score inferred from cluster verdict (6/6 expectations hard-backed, 3/3 commands, guard test 4/4).
+</div>
+
+</div>
+</body>
+</html>

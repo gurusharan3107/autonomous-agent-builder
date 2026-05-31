@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Musk-hat audit — docs/ tree — 2026-05-30</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--ink:#e6e8ec;--dim:#9aa3b2;--line:#262b35;--good:#4ade80;--warn:#fbbf24;--bad:#f87171;--accent:#7dd3fc}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:2.2rem clamp(1rem,4vw,4rem)}
+  h1{font-size:1.5rem;margin:0 0 .2rem} h2{font-size:1.08rem;margin:2rem 0 .6rem;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:.3rem}
+  .sub{color:var(--dim);margin:0 0 1.4rem;font-size:.92rem}
+  table{border-collapse:collapse;width:100%;margin:.4rem 0 1rem;font-size:.88rem}
+  th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--dim);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  code{background:#1f2430;padding:.08rem .35rem;border-radius:4px;font-size:.85em;color:#cfe8ff}
+  .g{font-weight:700} .s9,.s8{color:var(--good)} .s7,.s6{color:var(--warn)} .s5,.s4,.s3{color:var(--bad)}
+  .bar{height:7px;border-radius:4px;background:#222;overflow:hidden;min-width:90px}
+  .bar>i{display:block;height:100%}
+  .tier{border-left:3px solid var(--line);padding:.2rem 0 .2rem 1rem;margin:.8rem 0}
+  .t1{border-color:var(--good)} .t2{border-color:var(--warn)} .t3{border-color:var(--dim)}
+  .pill{display:inline-block;font-size:.7rem;padding:.1rem .5rem;border-radius:10px;border:1px solid var(--line);color:var(--dim);margin-left:.4rem}
+  .refute{color:var(--good)} .keep{color:var(--dim)}
+  .caveat{background:#1a1410;border:1px solid #3a2a14;color:#f5d9a8;padding:.8rem 1rem;border-radius:8px;font-size:.86rem;margin:1.2rem 0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem 1.2rem;margin:.6rem 0}
+  small{color:var(--dim)}
+</style>
+</head>
+<body>
+<h1>First-principles audit — <code>docs/</code> documentation tree</h1>
+<p class="sub">autonomous-agent-builder · 2026-05-30 · 79 markdown files / 828 KB · the Musk hat (delete &gt; simplify &gt; automate), adapted for prose. Evidence: <code>wc</code>, reference-trace grep, 4 read-only sub-agents.</p>
+
+<div class="caveat"><b>Blind-spot caveat.</b> This hat under-weights correctness, accuracy, and long-horizon usefulness of the prose by design. It judges <i>mass vs. value</i>, not whether each doc is <i>right</i>. Pair with a normal review before acting. Two of four merge hypotheses were <b>refuted</b> by tracing — read those first.</p>
+
+<h2>Scorecard</h2>
+<table>
+<thead><tr><th>Criterion</th><th>Grade</th><th></th><th>Evidence that set it</th></tr></thead>
+<tbody>
+<tr><td>Requirements sanity <small>(should each doc exist?)</small></td><td class="g s9">9/10</td><td><div class="bar"><i style="width:90%;background:var(--good)"></i></div></td><td>0 orphans (reference-trace: every <code>.md</code> has ≥1 inbound ref or sits in a CLI-walked dir). <code>REFERENCE.md</code> enforces one-owner-per-concern + tracks its own consolidation; Historical=None.</td></tr>
+<tr><td>Vertical ownership <small>(single owner per concern?)</small></td><td class="g s8">8/10</td><td><div class="bar"><i style="width:80%;background:var(--good)"></i></div></td><td>Canonical owner map in <code>REFERENCE.md</code>, one-owner rule explicit. Docked: <code>goal/INDEX.md</code> re-lists ~80 lines of that map (drift risk).</td></tr>
+<tr><td>Cycle time <small>(per-session read cost)</small></td><td class="g s8">8/10</td><td><div class="bar"><i style="width:80%;background:var(--good)"></i></div></td><td>Hot path already sliced: <code>start</code> skill loads STATUS sections + summaries, not whole files. Only on-demand big reads are heavy.</td></tr>
+<tr><td>Automate-last <small>(governance automation earned?)</small></td><td class="g s7">7/10</td><td><div class="bar"><i style="width:70%;background:var(--warn)"></i></div></td><td>Strong: freshness sweeps, CLI dir-walk, skill-owned lanes. Docked: INDEX scaffolding re-lists REFERENCE = automation atop a surface that should own it alone (mini Tesla-line trap).</td></tr>
+<tr><td>Deletion ratio <small>(removable mass)</small></td><td class="g s6">6/10</td><td><div class="bar"><i style="width:60%;background:var(--warn)"></i></div></td><td>~0 deletable-by-orphan. ~110 lines pure structural duplication removable now (INDEX 80 + OPTIMIZE/METRICS 30). Lean on dead weight.</td></tr>
+<tr><td>Idiot index <small>(byte cost ÷ intrinsic fact value)</small></td><td class="g s7">7/10 <small>(was 5; revised after edit)</small></td><td><div class="bar"><i style="width:70%;background:var(--warn)"></i></div></td><td><b>Refuted my own estimate.</b> Read-only skim guessed 20–40% narrative; edit agents forced to preserve every contract found these docs are <i>contract-dense, not narrative-dense</i> — only 1–10% byte-cuttable (integration −10%, voice −7%, telemetry −2%, builder-cli −1%; all contracts/tables/commands verified intact). The real waste was <i>structural</i> (INDEX dup), not prose.</td></tr>
+</tbody>
+</table>
+<p><small>Composite read: the tree is <b>disciplined, not bloated</b> — its weakness is verbose prose inside good docs and one structural owner-map duplicate, not dead files.</small></p>
+
+<h2>Tiered cut list</h2>
+
+<div class="tier t1">
+<b>TIER 1 — clean, high-confidence, in-scope now</b>
+<table>
+<thead><tr><th>Cut</th><th>Lines</th><th>Coupled edits (same commit)</th><th>Confirm</th></tr></thead>
+<tbody>
+<tr><td><b>Dedup <code>goal/INDEX.md</code> External Owner Map</b> (lines 52–134). Replace the Legacy / Runtime / Rubrics / Quality-gates / Workflows / References / Design re-listings with one pointer: <i>"see <code>docs/REFERENCE.md</code> Owner Map."</i> Keep only goal-unique tables: Memory commands, Validation Workspaces, Track B artifacts, NORTH-STAR.</td><td>~80–85</td><td>Keep the <code>## External Owner Map (the rest of the repo)</code> heading (anchor is live: EVALUATION.md:126, README.md:42). No code reads INDEX. Verify the two inbound anchors still resolve.</td><td>none</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="tier t2">
+<b>TIER 2 — judgment / care, per-file</b>
+<table>
+<thead><tr><th>Cut</th><th>Est.</th><th>Risk &amp; coupled edits</th></tr></thead>
+<tbody>
+<tr><td><b>Compress 4 large reference docs</b> to the agent-audience concise rule — cut "why"/narrative/preamble, keep every contract & fact. <code>claude-agent-sdk-integration.md</code> (~35%), <code>references/realtime-voice-integration.md</code> (~40%), <code>references/claude-agent-sdk-telemetry-observability.md</code> (~20%), <code>references/builder-cli.md</code> (~25%).</td><td>~31 KB / ~750 lines</td><td>Compression, not deletion — these are canonical CLI-walked owners. Per-file diff review; preserve all tables/commands/contracts. <code>builder-cli.md</code>: don't drop anything <code>builder-cli</code> quality-gate asserts.</td></tr>
+<tr><td><b>Slim <code>rubric/autonomous-builder-agents.md</code> agent table</b> (lines 78–100): the tool-column transcription duplicates <code>src/.../agents/definitions.py</code> (source of truth). Keep the rubric's responsibility/can-cannot framing; point tool lists at <code>definitions.py</code>.</td><td>~20</td><td><b>Read first:</b> <code>services/workspace_scaffold.py</code> reads this file — may copy it into generated apps. Confirm scaffold use before trimming. Also cited by EVALUATION/INDEX/REFERENCE/TUNING.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="tier t3">
+<b>TIER 3 — route to owner skill / refuted / keep</b>
+<ul>
+<li><span class="pill">route</span> <b>Merge OPTIMIZE.md + METRICS.md hard-gates</b> (~30 lines, ~80% identical metric/gate prose, OPTIMIZE.md:7–28 vs METRICS.md:11–30). Lives in <code>docs/autoresearch/</code> and <code>compare.py</code>/<code>preflight.py</code> reference OPTIMIZE.md → owned by the <b>autoresearch skill</b>, not a direct edit. Hand off there.</li>
+<li><span class="pill">route</span> <b>Collapse old INSIGHTS.md runs</b> to summary rows (4× 2026-05-22 entries superseded by 2026-05-29) → <b>goal-audit skill's</b> append-only lane. Low priority: only the last header is read on the hot path.</li>
+<li><span class="refute">✓ REFUTED</span> <b>Merge <code>references/phases/*.md</code> into phase-model.md</b> — REFERENCE.md suggested it, but each of the 6 children adds unique executable spec (tool allow/deny, handoff contract, context rules). Parent is index; children are the specs. ~0 lines saved. <b>Keep separate.</b></li>
+<li><span class="refute">✓ REFUTED</span> <b>Dedup sdk-backed vs realtime agent-page rubrics</b> — structure mirrors but scope differs (Samantha owns-vs-delegates / Agent-page owns-vs-approval). Complementary halves, not duplication. <b>Keep separate.</b></li>
+<li><span class="keep">keep</span> <code>autoresearch/PROGRESS.md</code> (75 lines, live decision log), <code>COMPARE.md</code> (distinct protocol), <code>HARNESS.md</code> (already lean-cut to a stub 2026-05-29).</li>
+<li><span class="keep">excluded</span> <code>goal/ROADMAP.md</code> — dirty in working tree (another agent); out of scope per operator.</li>
+</ul>
+</div>
+
+<h2>Bottom line</h2>
+<div class="panel">
+Honest verdict: <b>docs/ is in good shape</b> — the one-owner rule and CLI-walk discipline have kept it free of orphans and historical sludge. The Musk move here is not a purge; it's (1) one structural dedup (INDEX ↔ REFERENCE, ~80 lines, clean) and (2) applying the concise rule already mandated by the global instructions to ~4 verbose reference docs (~750 lines of byte-mass, no fact loss). Everything else either belongs to an owner skill or was refuted by tracing. Total realistically removable: <b>~110 lines structural + ~750 lines prose-compression</b>, against an 828 KB tree.
+</div>
+
+<script type="application/json" id="artifact-data">
+{
+  "audit": "musk-hat-docs",
+  "repo": "autonomous-agent-builder",
+  "date": "2026-05-30",
+  "scope": "docs/ (79 md, 828KB), excludes ROADMAP.md (dirty)",
+  "method": ["wc -l/-c", "reference-trace grep (0 orphans)", "4 read-only Explore sub-agents", "coupled-edit grep"],
+  "scorecard": {
+    "requirements_sanity": {"grade": 9, "evidence": "0 orphans; REFERENCE.md enforces one-owner; Historical=None"},
+    "vertical_ownership": {"grade": 8, "evidence": "canonical owner map; docked for INDEX re-listing ~80 lines"},
+    "cycle_time": {"grade": 8, "evidence": "hot path sliced by start skill; only on-demand big reads heavy"},
+    "automate_last": {"grade": 7, "evidence": "freshness sweeps + CLI-walk strong; INDEX scaffolding atop REFERENCE = drift risk"},
+    "deletion_ratio": {"grade": 6, "evidence": "~0 orphan-deletable; ~110 lines structural dup removable"},
+    "idiot_index": {"grade": 7, "grade_original": 5, "evidence": "REVISED after edit: docs are contract-dense not narrative-dense; only 1-10% byte-cuttable (read-skim 20-40% estimate refuted); real waste was structural INDEX dup"}
+  },
+  "executed_2026-05-30": {
+    "tier1_index_dedup": {"INDEX.md": "174->94 lines"},
+    "tier2_agent_table": {"autonomous-builder-agents.md": "tool column -> classes + definitions.py authority note"},
+    "tier2_ref_compression": {"claude-agent-sdk-integration.md": "694->606", "realtime-voice-integration.md": "370->141", "telemetry-observability.md": "580->518", "builder-cli.md": "531->514 (57 cmds intact, contract gate PASS)"},
+    "anchor_fix": "EVALUATION.md:126 #external-owner-map -> -the-rest-of-the-repo",
+    "totals": "8 docs, -611 lines, -22KB; rumdl baseline reduced or flat (no new failures)"
+  },
+  "tier1": [
+    {"cut": "INDEX.md External Owner Map dedup", "file": "docs/goal/INDEX.md", "lines": "52-134", "reclaim_lines": 82, "coupled": ["keep ## External Owner Map heading (anchors EVALUATION.md:126, README.md:42)", "no code dependency"], "confirm": "none", "confidence": "high"}
+  ],
+  "tier2": [
+    {"cut": "compress 4 large reference docs to concise rule", "files": ["docs/claude-agent-sdk-integration.md~35%","docs/references/realtime-voice-integration.md~40%","docs/references/claude-agent-sdk-telemetry-observability.md~20%","docs/references/builder-cli.md~25%"], "reclaim_kb": 31, "reclaim_lines": 750, "risk": "preserve all contracts/tables/commands; per-file diff review"},
+    {"cut": "slim autonomous-builder-agents.md tool table (dup of definitions.py)", "file": "docs/rubric/autonomous-builder-agents.md", "lines": "78-100", "reclaim_lines": 20, "risk": "workspace_scaffold.py reads it (may copy into generated apps) — confirm scaffold use first"}
+  ],
+  "route_to_owner": [
+    {"cut": "merge OPTIMIZE.md+METRICS.md hard-gates", "owner_skill": "autoresearch", "reclaim_lines": 30, "reason": "docs/autoresearch lane; compare.py/preflight.py ref OPTIMIZE.md"},
+    {"cut": "collapse 4 old INSIGHTS runs to summary rows", "owner_skill": "goal-audit", "reclaim_lines": 150, "reason": "append-only log; low hot-path read cost"}
+  ],
+  "refuted": [
+    {"hypothesis": "merge references/phases/*.md into phase-model.md", "verdict": "keep separate", "reason": "each child adds unique executable spec; ~0 saved"},
+    {"hypothesis": "dedup sdk-backed vs realtime rubrics", "verdict": "keep separate", "reason": "complementary owns-vs-delegate halves, not duplication"}
+  ],
+  "already_done_this_session": ["docs/goal/README.md 98->49", "docs/goal/RESUME.md 125->37", "INDEX.md step-7 anchor fix"]
+}
+</script>
+</body>
+</html>

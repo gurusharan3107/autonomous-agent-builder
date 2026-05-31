@@ -292,6 +292,35 @@ ul.tight{margin:6px 0 0; padding-left:18px} ul.tight li{margin-bottom:7px; font-
 
   <hr class="rule">
 
+  <!-- VERIFICATION -->
+  <section>
+    <div class="sec-eyebrow">How This Was Verified · elon skill run</div>
+    <h2>Deterministic seed, then a <em>parallel</em> trace</h2>
+    <p>This pass was produced by the <code>elon</code> skill: a deterministic <code>scripts/evidence.py</code> seed (deletion ratio, LOC, dead-import candidates) followed by <b>three concurrent read-only Explore subagents</b> — one per subsystem (runtimes · <code>api/</code> shell · the new candidate) — each returning only <code>file:line</code> + a verdict. The point of import-tracing every candidate is that it <em>overrules</em> the heuristic. It did, twice:</p>
+
+    <div class="cand">
+      <div class="rank" style="color:var(--olive)">✓</div>
+      <div>
+        <h3><code>runtime_boundary.py</code> (225 LOC) — flagged DEAD, <span style="color:var(--olive)">REFUTED → KEEP</span></h3>
+        <p>The script saw zero plain importers. The trace found it's a quality-gate module used by <code>tests/test_runtime_boundary_gate.py</code> and dispatched by name from the <code>builder quality-gate</code> surface. A grows-only heuristic would have deleted a live gate — the trace saved it.</p>
+      </div>
+      <div class="loc" style="color:var(--olive)">KEEP<small>trace overruled</small></div>
+    </div>
+
+    <div class="cand">
+      <div class="rank" style="color:var(--clay)">±</div>
+      <div>
+        <h3><code>api/schemas.py</code> (269 LOC) — looked deletable, <span style="color:var(--clay-d)">FLIPPED → KEEP</span></h3>
+        <p>Zero importers <em>outside</em> <code>api/</code> — but it's imported by <code>dispatch.py</code>, which is itself KEEP-SHARED (the embedded server mounts it). Transitively shared. "No external importer" ≠ deletable when a kept sibling uses it.</p>
+      </div>
+      <div class="loc" style="color:var(--clay-d)">KEEP<small>transitively shared</small></div>
+    </div>
+
+    <p style="margin-top:14px; font-size:13.5px; color:var(--gray-500)">This is Hard rule 2 in action — <em>import-trace before the word "delete."</em> The precedent run's −3,628 over-claim is exactly the failure this step now prevents.</p>
+  </section>
+
+  <hr class="rule">
+
   <!-- WHAT IT DOES RIGHT -->
   <section>
     <div class="two">
@@ -315,8 +344,8 @@ ul.tight{margin:6px 0 0; padding-left:18px} ul.tight li{margin-bottom:7px; font-
   <p class="caveat">Caveat: this is a synthesis of Musk's publicly-stated engineering algorithm (Starbase / Tesla) mapped onto software — a deliberately provocative lens, not a balanced rubric. Its blind spots (it under-weights correctness, security, long-horizon maintainability) are real, which is why it pairs well <em>against</em> a conventional review rather than replacing one.</p>
 
   <div class="foot">
-    METHOD · git log --numstat (90d) · wc -l over src/**.py · route extraction via @router decorators · comm-diff of api/routes vs embedded/server/routes · grep ref-count outside runtime/ &amp; tests<br>
-    GENERATED · 2026-05-30 · evidence current as of branch imp-018-015-019-browser-verify · all figures machine-derived, none estimated
+    METHOD · elon skill run · deterministic seed scripts/evidence.py (deletion ratio, LOC, dead-import candidates) → 3 concurrent read-only Explore subagents (import-trace by subsystem) · git log --numstat (90d) · wc -l over src/**.py · grep ref-count outside self/tests/factory<br>
+    GENERATED · 2026-05-30 · evidence current as of branch imp-018-015-019-browser-verify · all figures machine-derived, none estimated · 2 heuristic candidates overruled by trace (runtime_boundary, schemas)
   </div>
 
 </div>
@@ -359,6 +388,13 @@ ul.tight{margin:6px 0 0; padding-left:18px} ul.tight li{margin-bottom:7px; font-
     "note": "product lanes are only claude + codex_sdk per CLAUDE.md and user confirmation"
   },
   "correction": "first pass proposed 'delete api/ -3628 LOC'; import-tracing reduced verified deletable to ~2100 LOC (Tier1 938 + Tier2 1164)",
+  "verification": {
+    "method": "elon skill: deterministic evidence.py seed + 3 concurrent read-only Explore subagents (import-trace by subsystem)",
+    "candidates_overruled_by_trace": [
+      {"file": "quality_gates/runtime_boundary.py", "loc": 225, "heuristic": "DEAD", "verdict": "KEEP", "why": "quality-gate module used by tests + builder quality-gate dispatch"},
+      {"file": "api/schemas.py", "loc": 269, "heuristic": "deletable-shell", "verdict": "KEEP", "why": "transitively shared — imported by kept dispatch.py"}
+    ]
+  },
   "deletion_candidates": [
     {"rank": 1, "tier": "clean", "action": "delete 3 non-lane runtime adapters", "loc_deleted": 938},
     {"rank": 2, "tier": "after-check", "action": "delete duplicate FastAPI app shell (NOT all of api/)", "loc_deleted": 1164},
