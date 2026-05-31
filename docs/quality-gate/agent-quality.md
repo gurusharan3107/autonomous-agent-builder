@@ -3,7 +3,6 @@ title: "Agent quality gate"
 surface: "agent-quality"
 summary: "Use when tuning agent behavior to verify mission alignment, observability coverage, tool/model discipline, and context-efficient execution."
 commands:
-  - "workflow --docs-dir docs read MISSION.md"
   - "workflow --docs-dir docs read references/phase-model"
   - "workflow --docs-dir docs read references/agent-optimization-analysis"
   - "builder quality-gate claude-agent-sdk --json"

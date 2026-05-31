@@ -48,7 +48,7 @@ Capabilities no plain agent CLI matches. Every epoch in [ROADMAP.md](ROADMAP.md)
 6. **Cost-aware execution as a product property.** Token usage, cache ratios, chunk pressure, avoidable-cost flags are first-class evidence in dashboard + CLI. Optimization is the product's job.
 7. **Voice as a peer operator surface.** Realtime voice (Samantha) is first-class. Voice + chat share state + approval flow.
 8. **Resumability after session drop.** New agent pointed at `docs/goal/` continues from `STATUS.md` alone.
-9. **Executable governance via project-local skills.** Audit, optimization, knowledge-freshness, and session-continuity disciplines live as project-local skills under [.claude/skills/](../../.claude/skills/). They aren't optional tooling — they're how this framework runs. Skills auto-trigger on operator phrases (`/start`, `/goal-audit`, etc.), enforce hard rules mechanically (e.g. autoresearch's `freshness_sweep.py`), and chain into each other so the operator stops being the message bus between disciplines.
+9. **Executable governance via project-local skills.** Audit, optimization, knowledge-freshness, and session-continuity disciplines live as project-local skills under [.claude/skills/](../../.claude/skills/). They aren't optional tooling — they're how this framework runs. Skills auto-trigger on operator phrases (`/start`, `/autoresearch`, etc.), enforce hard rules mechanically (e.g. autoresearch's `freshness_sweep.py`), and chain into each other so the operator stops being the message bus between disciplines.
 
 ## Non-Goals
 
@@ -79,6 +79,7 @@ Distinct from product design principles — these govern how the agent works.
 2. **Simplest solution first.** No abstractions / flexibility / generality not asked for. Three similar lines > premature abstraction.
 3. **Don't touch unrelated code.** Not part of current task → don't modify. Scope drift causes regression.
 4. **Flag uncertainty explicitly.** Not confident → say so before proceeding. Saying "I'm not sure if X is the right layer" costs less than patching the wrong layer.
+5. **Subtract before you add.** Apply the first-principles algorithm *while building*, not as later cleanup: question the requirement, delete/reuse before adding, treat every new file/abstraction/doc as permanent token + maintenance mass. Canonical doctrine: `workflow read principles --section Core` (question requirement → delete → simplify → accelerate → automate last). The [`elon`](../../.claude/skills/elon/SKILL.md) skill is only the retrospective backstop — the default is to build this way.
 
 ## When This File Changes
 

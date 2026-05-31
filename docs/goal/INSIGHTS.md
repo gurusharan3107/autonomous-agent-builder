@@ -1,10 +1,8 @@
 # Insights — Direction Audit Log
 
-> Output surface for the `goal-audit` skill. Read [README.md](README.md) first.
+> **Frozen historical log.** The `goal-audit` and `roadmap-audit` skills that wrote this file have been retired; no new entries are appended. Kept as an audit trail — `start`'s `check_status_drift.py` still reads the last entry's alignment verdict. Read [README.md](README.md) first.
 
-Each entry is appended by `goal-audit` (project-local at [`.claude/skills/goal-audit/`](../../.claude/skills/goal-audit/SKILL.md)) and contains: **intent vs current focus** (alignment between recent sessions and STATUS/ROADMAP), **autoresearch focus candidates** (Builder CLI evidence mapped to [OPTIMIZE_IDEAS.md](../autoresearch/OPTIMIZE_IDEAS.md)), and **recommended actions**.
-
-Invocation, edit scope, and the auto-trim of closed prior-entry actions live in the skill itself — see [SKILL.md](../../.claude/skills/goal-audit/SKILL.md). Closed recommendations are absorbed by [ROADMAP.md](ROADMAP.md) as `[x]` items; this file is the audit trail, not the completed-work checklist.
+Each historical entry contains: **intent vs current focus** (alignment between sessions and STATUS/ROADMAP at the time), **autoresearch focus candidates** (Builder CLI evidence mapped to [OPTIMIZE_IDEAS.md](../autoresearch/OPTIMIZE_IDEAS.md)), and **recommended actions**. Closed recommendations were absorbed by [ROADMAP.md](ROADMAP.md) as `[x]` items; this file is the audit trail, not the completed-work checklist.
 
 ## Entries
 

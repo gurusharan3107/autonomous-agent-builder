@@ -160,7 +160,6 @@ Treat these as explicit review traps for this branch:
 ## Useful Checks
 
 ```bash
-builder quality-gate architecture-invariants --json
 builder quality-gate architecture-boundary --json
 builder quality-gate state-integrity --json
 builder lint --complexity-report --json
@@ -173,7 +172,6 @@ and Observability remain coherent.
 
 ## Related Docs
 
-- `docs/quality-gate/architecture-invariants.md`
 - `docs/quality-gate/architecture-boundary.md`
 - `docs/quality-gate/state-integrity.md`
 - `docs/references/phase-model.md`

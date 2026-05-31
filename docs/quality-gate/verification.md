@@ -14,6 +14,9 @@ expectations:
   - "metrics remain queryable independently from gate details"
   - "generated Node/React/Vite apps run npm lint/build/test instead of warning unsupported language"
   - "Node package tests run through the package's declared test script; do not append runner-specific flags unless the script contract requires them"
+related_docs:
+  - "docs/quality-gate/quality-gates.md"
+  - "docs/quality-gate/product-lifecycle.md"
 ---
 
 # Verification lane contract

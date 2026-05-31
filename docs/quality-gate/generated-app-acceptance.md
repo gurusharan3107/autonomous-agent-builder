@@ -5,7 +5,6 @@ summary: "Validate generated-app features through the same visible browser path 
 commands:
   - "builder quality-gate generated-app-acceptance --json"
   - "builder logs analyze --session <id-or-prefix> --json"
-  - "Use Chrome plugin against the generated app localhost URL"
 expectations:
   - "the generated app runs from the disposable target repo, not host builder state"
   - "the feature is reachable through visible navigation without typing a guessed route"
@@ -24,7 +23,8 @@ related_docs:
 
 Use this gate before accepting a forward-engineering feature in a generated app.
 The check proves the shipped behavior through the generated app itself, not by
-inspecting host builder state or manually entering hidden routes.
+inspecting host builder state or manually entering hidden routes. Drive the
+proof with the Chrome plugin against the generated app's localhost URL.
 
 ## When To Load
 

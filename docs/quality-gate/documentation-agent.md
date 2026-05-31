@@ -4,7 +4,6 @@ surface: "documentation-agent"
 summary: "Use when changing the documentation specialist lane to verify that doc work stays internal, bounded, and routed through canonical repo-local doc and knowledge surfaces."
 commands:
   - "workflow --docs-dir docs read references/documentation-agent"
-  - "workflow --docs-dir docs read MISSION.md"
   - "builder quality-gate architecture-boundary --json"
   - "builder quality-gate knowledge-base --json"
   - "builder quality-gate documentation-agent --json"

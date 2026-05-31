@@ -15,7 +15,7 @@ expectations:
   - "report mode remains non-blocking so agents can inspect hotspots before deciding whether to split code or update the baseline"
 related_docs:
   - "docs/REFERENCE.md"
-  - "docs/quality-gate/architecture-invariants.md"
+  - "docs/quality-gate/architecture-boundary.md"
 ---
 
 # Complexity Ratchet Quality Gate

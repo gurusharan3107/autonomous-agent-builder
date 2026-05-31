@@ -9,6 +9,19 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-05-31 - IMP-023 Fix B (real root cause: telemetry clobbering) + chat-turn annotation repair
+
+builder-test static→DB root-cause dig on the live pomodoro forward-eng app. Two fixes, both root-cause not symptom.
+
+### Fixed
+
+- **IMP-023 Fix B** (`observability/timeline_analysis.py`) — `builder logs analyze` reported `total_cost_usd=0` (and pre-fallback `total_tokens=0`) for chat sessions. DB inspection of session `2d97e274` proved the cost WAS persisted (`chat_run_status_payload` writes `cost_usd`/`tokens_used`; one run_status carried `cost_usd=0.1041185, tokens_used=946`). Root cause: a single prompt emits several run_status events — initial running marker, the real model-run total, then deterministic continuation/dispatch/terminal markers carrying **zeros** — and `build_timeline_prompts` folded them all into the one prompt with **last-write-wins**, so a trailing zero marker clobbered the real totals. Fix: `_merge_run_status_telemetry` **accumulates** additive telemetry (`cost_usd`, `tokens_used`, `tokens_input/output/cached`, `raw_tokens`, `noncached_plus_output_tokens`, `duration_ms`) across a prompt's run_status events; keeps last-non-empty for status scalars. Streaming partial usage is live-SSE only (`publish_stream_usage` never persists run_status) so summing cannot double-count. **Live-verified**: `total_cost_usd 0 → 0.1041185`, `total_tokens 0 → 946` (the accurate per-prompt figure; supersedes the Fix-A 4445 raw-aggregate fallback that over-counted by pulling the dispatched task's runs into the chat-session headline). The Fix-A fallback stays for the distinct no-run_status (agent_run-only) case.
+- **chat-turn prompt-plan annotations** (`embedded/server/chat_turn_prompting.py`) — the M1.3-extracted wrapper annotated `documentation_context` as `str | None` and `forward_engineering_context` as `str | None`, but the real runtime types are `dict[str, Any] | None` (from `ActiveSpecialistRoute.context`) and `bool` (from `_needs_init_project_bootstrap`). Corrected both; clears 4 propagated Pyright errors across `chat_turn_prompting.py` + `routes/agent.py`. Annotation-only; runtime behavior unchanged.
+
+### Validation
+
+- `tests/test_timeline_analysis.py` (new, 3 tests: trailing-zero survival, multi-real-invocation sum, observability promotion). 189 chat/timeline/cli/observability tests green; 57 CLI-surface tests green (incl. the Fix-A `…falls_back_to_raw_aggregate_imp023` guard, still passing). Live re-check of `builder logs analyze --session 2d97e274` confirms non-zero cost+token headline.
+
 ## 2026-05-30 - Token-cost work: IMP-027a/c task sizing + IMP-028 workspace map; IMP-021 doc-tests fixed
 
 Cheaper-per-change work (goal: beat codex/claude-code on enterprise cost-per-change). Root cause of the burn was DB-verified as **planning-time over-decomposition**, not within-phase reruns: deterministic verifier phases (build-verifier / evidence-collector / feature-acceptance-tests) record `0,0,0,0` tokens. ROADMAP items IMP-027/028 remain `[ ]` (027b per-task phase planner + 028 live A/B and preset experiment still open); only the delivered portions are recorded here.

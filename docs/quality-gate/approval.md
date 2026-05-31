@@ -11,6 +11,9 @@ expectations:
   - "Agent-page approval and question controls render readable operator labels"
   - "gate failures and pending approvals stay distinguishable"
   - "approval resolution can trigger the next ready task without duplicate dispatch"
+related_docs:
+  - "docs/quality-gate/product-lifecycle.md"
+  - "docs/workflows/autonomous-lifecycle-validation.md"
 ---
 
 # Approval verification contract

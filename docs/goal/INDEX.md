@@ -24,7 +24,7 @@ Before creating any new doc, check here. Per [docs/REFERENCE.md § Control Owner
 | Tuning methodology: continuous CLI monitoring + per-prompt tuning loop | [TUNING.md](TUNING.md) | Manual / interactive counterpart to the autoresearch loop. |
 | Live project state: current epoch, milestone, item, next action, blockers, evidence pointers, tier snapshot | [STATUS.md](STATUS.md) | Agent-updated per milestone transition. Keep under ~120 lines. |
 | Resume protocol after session drop / handover | [RESUME.md](RESUME.md) | Four modes: Continue / Continue-Track-B / Re-pick / Ask. |
-| Direction-audit log (skill output) | [INSIGHTS.md](INSIGHTS.md) | Append-only log written by the `goal-audit` skill at `.claude/skills/goal-audit/`. One dated entry per invocation. |
+| Direction-audit log (frozen) | [INSIGHTS.md](INSIGHTS.md) | Historical append-only log from the retired `goal-audit`/`roadmap-audit` skills. No longer written to; `start`'s drift check still reads its last verdict. |
 | This routing map | [INDEX.md](INDEX.md) | What you are reading. |
 
 ### Executable governance layer
@@ -36,139 +36,58 @@ Project-local skills are the executable side of this framework. Triggered by sin
 | Session entry (primary) | [.claude/skills/start/](../../.claude/skills/start/SKILL.md) | `/start`, "begin", "hi", "where are we", "check AGENTS.md and docs/goal/README.md". Loads framework + STATUS + drift + git log + tactical handoff when fresh. |
 | Session entry (tactical-first) | [.claude/skills/resume-session/](../../.claude/skills/resume-session/SKILL.md) | `/resume-session`. Reads CURRENT.md first, then chains into `start` for the rest. |
 | Session exit | [.claude/skills/save-session/](../../.claude/skills/save-session/SKILL.md) | `/save-session`. Writes tactical checkpoint to `.claude/session-data/CURRENT.md`. |
-| Direction audit | [.claude/skills/goal-audit/](../../.claude/skills/goal-audit/SKILL.md) | "are we aligned?", "audit goals". Writes [INSIGHTS.md](INSIGHTS.md); may reorder [docs/autoresearch/OPTIMIZE_IDEAS.md](../autoresearch/OPTIMIZE_IDEAS.md). |
-| Roadmap audit | [.claude/skills/roadmap-audit/](../../.claude/skills/roadmap-audit/SKILL.md) | "revalidate the roadmap", "audit roadmap vs SDK". Cross-checks ROADMAP against the Claude Agent SDK rubric + live `grep src/`. |
+| Self-optimize | [.claude/skills/self-optimize/](../../.claude/skills/self-optimize/SKILL.md) | "self-optimize", "what mistakes am I making". Clusters recurring corrections from session transcripts → maps to target surfaces → applies operator-approved edits. |
 | Knowledge base | [.claude/skills/knowledge-base/](../../.claude/skills/knowledge-base/SKILL.md) | "refresh the KB", "what's new in SDK". Maintains the global `~/.claude/knowledge/` against upstream SDK changelogs. |
 | Autoresearch loop | [.claude/skills/autoresearch/](../../.claude/skills/autoresearch/SKILL.md) | "run autoresearch", "baseline", "iterate". Single entry + 3 lanes (Baseline / Iterate / Fix); owns [docs/autoresearch/](../autoresearch/) freshness via bundled `freshness_sweep.py`. |
-| Design (anti-AI-slop) | [.claude/skills/hallmark/](../../.claude/skills/hallmark/SKILL.md) | Used for high-design surfaces (e.g. `autonomous-agent-builder-runtime-explainer.html`). Sibling skill `html-artifact` (global, `~/.claude/skills/html-artifact/`) covers single-file explainer / spec / report / editor outputs — produced `docs/autoresearch/autoresearch-explainer.html`. |
+| Design (anti-AI-slop) | `~/.claude/skills/hallmark/` (global) | Used for high-design surfaces (e.g. `autonomous-agent-builder-runtime-explainer.html`). Sibling skill `html-artifact` (also global, `~/.claude/skills/html-artifact/`) covers single-file explainer / spec / report / editor outputs — produced `docs/autoresearch/autoresearch-explainer.html`. |
 | Repo automation | [.claude/skills/run-gates/](../../.claude/skills/run-gates/SKILL.md), [.claude/skills/new-migration/](../../.claude/skills/new-migration/SKILL.md) | Deterministic slash-command-only skills (disable-model-invocation). Run quality gates / scaffold Alembic migrations. |
 
 ---
 
 ## External Owner Map (the rest of the repo)
 
-References existing surfaces; doesn't duplicate. [docs/REFERENCE.md](../REFERENCE.md) is authoritative for doc concerns; this section binds most-used owners to `docs/goal/` use cases.
+**Repo-wide owner map lives in [docs/REFERENCE.md § Owner Map](../REFERENCE.md#owner-map)** — single source for every rubric, quality-gate, workflow, reference, and design-doc owner. Don't re-list it here (drift). REFERENCE.md wins for non-`docs/goal/` concerns; this file wins for `docs/goal/` concerns. Below: only bindings REFERENCE.md doesn't carry.
 
-### Legacy strategic docs (still authoritative for their narrow concerns)
-
-| Legacy file | What it owned | Migration status |
-| --- | --- | --- |
-| [docs/PROMPT.md](../PROMPT.md) | Operator prompt scripts for SDK-backed Agent and Realtime Voice rubric validation, in both runtime lanes. | **Stays.** [EVALUATION.md § Tier 2.5](EVALUATION.md#25--rubric--quality-gate-pass-bar) and [OPERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.md) cite PROMPT.md as the source for prompt wording during tier runs. |
-| [docs/REFERENCE.md](../REFERENCE.md) | Authoritative doc-type taxonomy and owner map for the whole repo. | **Stays.** This INDEX.md inherits and respects REFERENCE.md's ownership rules. If they diverge, REFERENCE.md wins for non-`docs/goal/` concerns; INDEX.md wins for `docs/goal/` concerns. |
-| [CHANGELOG.md](../../CHANGELOG.md) | Compact reverse-chronological change history. | **Stays.** Reference from STATUS.md when latest changes matter; do not duplicate. |
-
-### Runtime contracts (always-on policy)
+### Always-on policy surfaces
 
 | Concern | Owner |
 | --- | --- |
-| Claude Agent SDK runtime contract for this repo | [CLAUDE.md](../../CLAUDE.md) |
-| Codex agent operating rules for this repo | [AGENTS.md](../../AGENTS.md) |
-| Project mission (consumed by CLAUDE.md / AGENTS.md and external references) | [NORTH-STAR.md](NORTH-STAR.md) |
+| Claude Agent SDK runtime contract | [CLAUDE.md](../../CLAUDE.md) |
+| Codex agent operating rules | [AGENTS.md](../../AGENTS.md) |
+| Project mission (consumed by CLAUDE.md / AGENTS.md) | [NORTH-STAR.md](NORTH-STAR.md) |
 
-### Rubrics (what an agent or capability can do, must ask for, cannot do)
+### Memory and knowledge access
 
-| Concern | Owner |
+| Concern | How to access |
 | --- | --- |
-| SDK-backed Agent page behavior | [docs/rubric/sdk-backed-agent-page-agent.md](../rubric/sdk-backed-agent-page-agent.md) |
-| Realtime Voice (Samantha) behavior | [docs/rubric/realtime-voice-agent-page-agent.md](../rubric/realtime-voice-agent-page-agent.md) |
-| Operator capability limits | [docs/rubric/operator-limits.md](../rubric/operator-limits.md) |
-| Autonomous Builder agent catalog | [docs/rubric/autonomous-builder-agents.md](../rubric/autonomous-builder-agents.md) |
-| Deterministic vs model-backed agent behavior | [docs/rubric/deterministic-vs-model-backed-agent-behavior.md](../rubric/deterministic-vs-model-backed-agent-behavior.md) |
-| Frontend React architecture | [docs/rubric/frontend-react-architecture.md](../rubric/frontend-react-architecture.md) |
-| Backend service architecture | [docs/rubric/backend-service-architecture.md](../rubric/backend-service-architecture.md) |
-
-### Quality gates (pass/fail expectations and verification commands)
-
-| Concern | Owner |
-| --- | --- |
-| Claude Agent SDK runtime quality | [docs/quality-gate/claude-agent-sdk.md](../quality-gate/claude-agent-sdk.md) |
-| Modular runtime (both-lane) integrity | [docs/quality-gate/modular-runtime.md](../quality-gate/modular-runtime.md) |
-| Product lifecycle behavior | [docs/quality-gate/product-lifecycle.md](../quality-gate/product-lifecycle.md) |
-| State integrity (DB / artifact / projection) | [docs/quality-gate/state-integrity.md](../quality-gate/state-integrity.md) |
-| Agent quality / context efficiency | [docs/quality-gate/agent-quality.md](../quality-gate/agent-quality.md) |
-| Architecture invariants | [docs/quality-gate/architecture-invariants.md](../quality-gate/architecture-invariants.md) |
-| Architecture boundary | [docs/quality-gate/architecture-boundary.md](../quality-gate/architecture-boundary.md) |
-| Dashboard UX | [docs/quality-gate/dashboard-ux.md](../quality-gate/dashboard-ux.md) |
-| Complexity / god-file ratchet | [docs/quality-gate/complexity.md](../quality-gate/complexity.md) (baseline: [complexity-baseline.json](../quality-gate/complexity-baseline.json)) |
-| Approval safety | [docs/quality-gate/approval.md](../quality-gate/approval.md) |
-| Builder CLI behavior | [docs/quality-gate/builder-cli.md](../quality-gate/builder-cli.md) |
-| Knowledge base format and freshness | [docs/quality-gate/knowledge-base.md](../quality-gate/knowledge-base.md) |
-| Generated-app acceptance | [docs/quality-gate/generated-app-acceptance.md](../quality-gate/generated-app-acceptance.md) |
-| Codex subagents | [docs/quality-gate/codex-subagents.md](../quality-gate/codex-subagents.md) |
-| Documentation agent | [docs/quality-gate/documentation-agent.md](../quality-gate/documentation-agent.md) |
-| Verification | [docs/quality-gate/verification.md](../quality-gate/verification.md) |
-| Quality gates (meta) | [docs/quality-gate/quality-gates.md](../quality-gate/quality-gates.md) |
-
-### Workflows (multi-step procedures)
-
-| Concern | Owner |
-| --- | --- |
-| Dashboard-first lifecycle validation | [docs/workflows/autonomous-lifecycle-validation.md](../workflows/autonomous-lifecycle-validation.md) |
-| Agent quality tuning loop | [docs/workflows/agent-quality-tuning-loop.md](../workflows/agent-quality-tuning-loop.md) |
-| System improvement / real-user debugging | [docs/workflows/system-improvement-loop.md](../workflows/system-improvement-loop.md) |
-| Architecture boundary review | [docs/workflows/architecture-boundary-review.md](../workflows/architecture-boundary-review.md) |
-| Task workspace isolation | [docs/workflows/task-workspace-isolation.md](../workflows/task-workspace-isolation.md) |
-| Memory retrieval | [docs/workflows/memory-retrieval-guide.md](../workflows/memory-retrieval-guide.md) |
-
-### References (stable contracts and architecture facts)
-
-| Concern | Owner |
-| --- | --- |
-| Phase model and boundaries | [docs/references/phase-model.md](../references/phase-model.md) |
-| Day-0 readiness contract | [docs/references/day-0-readiness.md](../references/day-0-readiness.md) |
-| Runtime settings and supported SDK lanes | [docs/references/runtime-settings.md](../references/runtime-settings.md) |
-| Runtime switching dashboard behavior | [docs/references/runtime-switch-dashboard-contract.md](../references/runtime-switch-dashboard-contract.md) |
-| Claude SDK telemetry and observability | [docs/references/claude-agent-sdk-telemetry-observability.md](../references/claude-agent-sdk-telemetry-observability.md) |
-| Builder CLI contract | [docs/references/builder-cli.md](../references/builder-cli.md) |
-| Realtime Voice integration | [docs/references/realtime-voice-integration.md](../references/realtime-voice-integration.md) |
-| Filesystem trust boundaries | [docs/references/filesystem-boundaries.md](../references/filesystem-boundaries.md) |
-| Documentation agent contract | [docs/references/documentation-agent.md](../references/documentation-agent.md) |
-
-### Design docs (rationale, options, tradeoffs)
-
-| Concern | Owner |
-| --- | --- |
-| Design language and dashboard visual rules | [docs/design-docs/design-language.md](../design-docs/design-language.md) |
-| Agent page hierarchy | [docs/design-docs/agent-page-hierarchy.md](../design-docs/agent-page-hierarchy.md) |
-| Modular runtime architecture | [docs/design-docs/modular-runtime-architecture.md](../design-docs/modular-runtime-architecture.md) |
-| Knowledge graph / KB UI patterns | (removed — design docs orphaned) |
-
-### Memory and knowledge (durable durable learnings and system docs)
-
-| Concern | Surface | How to access |
-| --- | --- | --- |
-| Repo-local memory (corrections, decisions, patterns) | [.memory/](../../.memory/) under the Builder source repo | `builder memory search "<query>" --tag <tag>` (from Builder source repo, not managed-app workspaces — see IMP-005) |
-| Repo-local knowledge base | Builder DB / `docs/` system docs | `builder knowledge summary "<query>"`, `builder knowledge validate --json`, `builder knowledge extract --force` |
-| Memory write contract | [FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-the-learning-is-durable) | `builder memory add --type correction|pattern|decision --tag <tags>` |
-| Memory invalidation | [FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-the-learning-is-durable) and IMP-005 in IMPROVEMENTS.md | `builder memory invalidate <slug> --reason <one-line>` |
+| Repo-local memory (corrections, decisions, patterns) | `builder memory search "<query>" --tag <tag>` — from Builder source repo only (not managed-app workspaces; IMP-005) |
+| Repo-local knowledge base | `builder knowledge summary "<query>"`, `builder knowledge validate --json`, `builder knowledge extract --force` |
+| Memory write / invalidate contract | [FIX-STANDARD.md § Step 7](FIX-STANDARD.md#step-7--write-memory-back-if-durable) — `builder memory add\|invalidate ...` |
 
 ### Validation workspaces (where the agent runs live tests)
 
-| Workspace | Path | Purpose | Notes |
-| --- | --- | --- | --- |
-| Builder source repo | This repo's root | Code/docs/memory changes, complexity ratchet, source-side quality gates | Never run `builder init` here; do not use for managed-app session sweeps. |
-| `Builder-Workspace/devpulse` | `/home/gurusharangupta/Builder-Workspace/devpulse` | Primary managed app for live operator-flow validation | Current Track A validation target; IMP-001 to IMP-004 surfaced here. |
-| `Workspace/todo-app` | `/home/gurusharangupta/Workspace/todo-app` | Prior validation workspace; reverse-engineering scenarios | Reference for completed sprints; useful for Tier 2.3 reverse-engineering tests. |
-| Fresh managed apps | Created on demand via `builder init` from `/home/gurusharangupta/Builder-Workspace/` | Forward-engineering scenarios (fresh app from scratch) | Bootstrap before any first-product test. |
+| Workspace | Path | Purpose |
+| --- | --- | --- |
+| Builder source repo | this repo root | Code/docs/memory changes, quality gates. Never `builder init` here; no managed-app session sweeps. |
+| `Builder-Workspace/devpulse` | `/home/gurusharangupta/Builder-Workspace/devpulse` | Primary managed app for live operator-flow validation (Track A target). |
+| `Workspace/todo-app` | `/home/gurusharangupta/Workspace/todo-app` | Prior workspace; reverse-engineering / Tier 2.3 scenarios. |
+| Fresh managed apps | via `builder init` from `/home/gurusharangupta/Builder-Workspace/` | Forward-engineering (fresh app) scenarios. |
 
-### Track B (ACTIVATING — see autoresearch/README.md)
+### Track B — autoresearch (ACTIVATING)
 
 | Concern | Owner |
 | --- | --- |
-| Autoresearch loop contract docs | [docs/autoresearch/README.md](../autoresearch/README.md), [docs/autoresearch/OPTIMIZE.md](../autoresearch/OPTIMIZE.md), [docs/autoresearch/OPTIMIZE_IDEAS.md](../autoresearch/OPTIMIZE_IDEAS.md), [docs/autoresearch/HARNESS.md](../autoresearch/HARNESS.md), [docs/autoresearch/METRICS.md](../autoresearch/METRICS.md), [docs/autoresearch/COMPARE.md](../autoresearch/COMPARE.md), [docs/autoresearch/baseline_variance.md](../autoresearch/baseline_variance.md), [docs/autoresearch/fixtures.md](../autoresearch/fixtures.md) |
-| Autoresearch lane discipline + folder freshness | [.claude/skills/autoresearch/](../../.claude/skills/autoresearch/SKILL.md) — owns Baseline / Iterate / Fix lanes + bundled `freshness_sweep.py` |
-| Autoresearch runner (5 Python scripts) | [scripts/autoresearch/](../../scripts/autoresearch/) — `run.py`, `baseline.py`, `compare.py`, `loop.py`, `extract_context_breakdown.py` |
-| Autoresearch result artifacts | [docs/autoresearch/optimize_results.tsv](../autoresearch/optimize_results.tsv), [docs/autoresearch/baseline_runs.tsv](../autoresearch/baseline_runs.tsv), [docs/autoresearch/per_prompt_results.tsv](../autoresearch/per_prompt_results.tsv), [docs/autoresearch/autoresearch-explainer.html](../autoresearch/autoresearch-explainer.html) (living explainer with auto-updated baseline + iterations sections), [docs/autoresearch/iterations.json](../autoresearch/iterations.json), [docs/autoresearch/INTROSPECTION.md](../autoresearch/INTROSPECTION.md) |
+| Loop contract docs + result artifacts | [docs/autoresearch/](../autoresearch/) — README, OPTIMIZE, OPTIMIZE_IDEAS, HARNESS, METRICS, COMPARE, baseline_variance, fixtures; `*.tsv`, `iterations.json`, `autoresearch-explainer.html` |
+| Lane discipline + folder freshness | [autoresearch skill](../../.claude/skills/autoresearch/SKILL.md) — Baseline / Iterate / Fix + `freshness_sweep.py` |
+| Runner scripts | [scripts/autoresearch/](../../scripts/autoresearch/) — `run.py`, `baseline.py`, `compare.py`, `loop.py`, `extract_context_breakdown.py` |
 
-Activation status is in [docs/autoresearch/README.md § Status](../autoresearch/README.md#status). Roadmap milestone: [ROADMAP § M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b).
+Activation status: [autoresearch README § Status](../autoresearch/README.md#status). Milestone: [ROADMAP § M3.5](ROADMAP.md#m35--optimization-loop-activation-autoresearch-track-b).
 
 ---
 
 ## When To Update This File
 
 - New file in `docs/goal/` → row in [Internal Map](#internal-map-within-docsgoal).
-- New rubric / gate / workflow / reference → row in relevant [External Owner Map](#external-owner-map-the-rest-of-the-repo) section.
-- Legacy doc retired/absorbed → update its row; don't delete (history matters).
-- Ownership boundary moves → update both rows.
-
-New concern not fitting any row → also update [docs/REFERENCE.md](../REFERENCE.md) (repo-wide owner map; this inherits).
+- New rubric / gate / workflow / reference / design-doc → row in [docs/REFERENCE.md § Owner Map](../REFERENCE.md#owner-map) (this file no longer re-lists them).
+- New goal-specific binding (workspace, Track B artifact, memory command) → row in the matching [External Owner Map](#external-owner-map-the-rest-of-the-repo) table.
+- Ownership boundary moves → update the owner in REFERENCE.md.

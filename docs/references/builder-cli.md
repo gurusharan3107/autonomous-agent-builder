@@ -32,14 +32,12 @@ It owns:
 - agent session metadata
 - project metrics
 
-It does not own:
+It does not own (these remain in `workflow`):
 
 - global doctrine or cross-project retrieval
 - repo workflow-document retrieval
 - broad global knowledge search
 - user-simulated lifecycle actions during dashboard-first validation
-
-Those remain in `workflow`.
 
 During forward-engineering and reverse-engineering validation, `builder` CLI is
 allowed for bootstrap, readiness, observability, read-only state inspection, and
@@ -68,9 +66,7 @@ These may remain first-level because they are operator entrypoints rather than p
 ### `builder init`
 
 `builder init` creates repo-local builder state and ensures the target repo has
-project guidance for the selected runtime.
-
-Behavior contract:
+project guidance for the selected runtime. It must:
 
 - create `.agent-builder/` state, config, database, embedded assets, and
   scripts
@@ -123,11 +119,11 @@ dump. It must preserve complete section counts, current blocked/active work,
 compact task identifiers, sprint summary fields, and direct next commands while
 omitting raw `description`, `acceptance_criteria`, `sprint_execution`,
 `observability`, `agent_runs`, `activity_timeline`, and verification evidence
-blocks. The default section limit is intentionally small; agents should follow
-`builder backlog task status <task-id> --json` for focused task diagnosis.
+blocks. The default section limit is intentionally small; follow `builder
+backlog task status <task-id> --json` for focused task diagnosis.
 
-`builder board show --json --full --limit <n>` is still bounded. It expands
-board task fields for the selected section limit, but replaces repeated nested
+`builder board show --json --full --limit <n>` is still bounded: it expands
+board task fields for the selected section limit but replaces repeated nested
 runtime and timeline blobs with compact summaries. It must not reintroduce the
 full dashboard payload or sprint transcript as a single command output.
 
@@ -146,17 +142,17 @@ Owns reusable deterministic script-library behavior:
 
 The script surface must merge project-copied scripts with packaged builder
 scripts so already-initialized workspaces can use newly shipped deterministic
-helpers without rerunning `builder init`. Project-local scripts remain the
-override point; packaged scripts are the compatibility fallback.
+helpers without rerunning `builder init`. Project-local scripts are the override
+point; packaged scripts are the compatibility fallback.
 
-`build_verify` is the deterministic proof command for repeated verifier work.
-It infers workspace checks from local project files, runs package-owned
-`npm run lint`, `npm run build`, and `npm test` scripts when present, and can
-add a bounded HTTP app-smoke check through `app_url` and `paths` arguments.
+`build_verify` is the deterministic proof command for repeated verifier work. It
+infers workspace checks from local project files, runs package-owned `npm run
+lint`, `npm run build`, and `npm test` scripts when present, and can add a
+bounded HTTP app-smoke check through `app_url` and `paths` arguments.
 
 `change_evidence` is the deterministic changed-file evidence command. It
-captures the same bounded diff summary shape used by builder runs so agents can
-collect PR/review evidence without spending a model turn when there is no real
+captures the same bounded diff summary shape used by builder runs, letting
+agents collect PR/review evidence without a model turn when there is no real
 remote PR target.
 
 ### Nested Backlog Surface
@@ -178,9 +174,8 @@ and progress artifacts stay in sync.
 
 ## Startup Contract
 
-`builder start` is the single public startup owner for the local product.
-
-It owns all of these steps:
+`builder start` is the single public startup owner for the local product. It
+owns all of these steps:
 
 1. load repo-local environment from `.env`
 2. choose the local port
@@ -196,7 +191,7 @@ Do not add parallel public startup lanes such as:
 - separate dashboard-publish scripts as a primary operator path
 - alternate top-level startup aliases
 
-`builder server` is not a startup lane. It owns lifecycle inspection and
+`builder server` is not a startup lane; it owns lifecycle inspection and
 cleanup for builder-owned local server processes:
 
 - `builder server status --json`
@@ -209,9 +204,7 @@ the listener is safe to stop.
 
 ## Serving Model
 
-The local product runs as one Python FastAPI process on one port.
-
-That process serves:
+The local product runs as one Python FastAPI process on one port, serving:
 
 - the local API under `/api/...`
 - the dashboard static assets from `.agent-builder/dashboard/`
@@ -225,13 +218,10 @@ Route code must resolve project-local state through the app-scoped project root,
 not the server process current working directory. Route-level `Path.cwd()` and
 relative `.agent-builder` reads are intentionally blocked by static tests.
 
-So locally:
-
-- the backend is Python and real
-- the dashboard is served by that same backend process
-- the CLI and dashboard talk to the same local backend
-
-There is not a separate default frontend dev-server port in the repo-local `builder start` flow.
+Locally: the backend is Python and real; the dashboard is served by that same
+backend process; the CLI and dashboard talk to the same local backend. There is
+not a separate default frontend dev-server port in the repo-local `builder
+start` flow.
 
 ## Port Contract
 
@@ -295,17 +285,15 @@ diagnostics require `--full`.
 
 Owns repo-local embedded run diagnostics from `.agent-builder/agent_builder.db`.
 
-Behavior contract:
-
 - `builder logs` is the canonical agent-facing debug lane for autonomous builder runs
 - `builder logs --compact --json` should prefer stable compact diagnostics over raw tool-output blobs
-- compact log entries should help an agent answer, cheaply: what failed, where it failed, what artifact or input was in scope, and what the next useful debugging step is
+- compact log entries should cheaply answer: what failed, where, what artifact or input was in scope, and the next useful debugging step
 - raw tool payloads remain available as secondary drill-down, not the default debugging abstraction
-- the Agent page may render the same underlying log events in a more user-friendly summary form; CLI compactness and UI readability do not need identical presentation
-- CLI log output should stay bounded by default so a debugging agent can stay context-efficient; session scoping is explicit via `--session`
-- `builder logs --error` remains the fastest path for failure-first diagnosis and is project-wide by default so older failed runtime or realtime voice tool outputs are not hidden by a newer clean session
-- `builder logs --info --compact` remains the default success-path inspection lane when an agent needs structured progress evidence without replaying full raw payloads
-- `builder logs analyze --session <id-or-prefix> --json` is the prompt-by-prompt session review lane and should expose observability coverage plus runtime aggregates so agents can distinguish local chat-event evidence from missing OpenTelemetry metrics, logs, and traces without ad hoc database queries
+- the Agent page may render the same log events in a friendlier summary form; CLI compactness and UI readability need not match
+- CLI log output should stay bounded by default for context efficiency; session scoping is explicit via `--session`
+- `builder logs --error` is the fastest path for failure-first diagnosis and is project-wide by default so older failed runtime or realtime voice tool outputs are not hidden by a newer clean session
+- `builder logs --info --compact` is the default success-path inspection lane when an agent needs structured progress evidence without replaying full raw payloads
+- `builder logs analyze --session <id-or-prefix> --json` is the prompt-by-prompt session review lane; it should expose observability coverage plus runtime aggregates so agents can distinguish local chat-event evidence from missing OpenTelemetry metrics, logs, and traces without ad hoc database queries
 - `builder logs analyze --session <id-or-prefix> --json` also mirrors the dashboard telemetry decision
   contract: `selected_runtime`, `runtime_native_telemetry_health`,
   `builder_product_telemetry_health`, full `telemetry_health`, and
@@ -330,8 +318,6 @@ Owns repo-local knowledge operations under `.agent-builder/knowledge/`:
 - `extract`
 - `validate`
 - `lint`
-
-Behavior contract:
 
 - `builder knowledge add` and `builder knowledge update` are the canonical write path for repo-local KB docs
 - `system-docs` is only one doc type inside the broader knowledge root
@@ -368,8 +354,6 @@ Owns saved agent-session inspection and stable runtime metadata:
 - `runtime`
 - `documentation-refresh`
 
-Behavior contract:
-
 - `builder agent sessions --json` should expose a compact repo-scoped chat
   session list with `sdk_session_id` when present, bounded previews,
   `actionable_next`, `progressive_disclosure`, and `token_estimate` so an agent
@@ -385,13 +369,12 @@ Behavior contract:
 - local read-only inspection mode should preserve the same repo-local semantics
   for session lookup, runtime metadata, transcript boundaries, and telemetry
   fields when the API is unavailable
-- `builder agent runtime show --json` reads the active runtime settings,
-  validation errors, capabilities, and telemetry-lane state
+- `builder agent runtime show --json` reads active runtime settings, validation
+  errors, capabilities, and telemetry-lane state
 - `builder agent runtime probe --json` checks the selected harness without
   mutating product lifecycle state
 - `builder agent runtime models --json` lists models when the selected runtime
-  supports model discovery and returns a compact unsupported-capability payload
-  when it does not
+  supports model discovery, else returns a compact unsupported-capability payload
 - `builder agent runtime set --sdk <runtime> --json` is the CLI mutation path for
   the same runtime settings changed by onboarding and dashboard Settings; it
   must update `.env` runtime keys and keep Claude OTEL versus Codex telemetry
@@ -412,8 +395,8 @@ raw database inspection. Full phase breakdowns and wider driver detail require
 
 Metrics payloads should also include `optimization_decision`,
 `runtime_decision_summary`, and `deterministic_script_candidates` when enough
-structured run evidence exists. These fields let an agent choose the next
-optimization without scraping the dashboard:
+structured run evidence exists, so an agent can choose the next optimization
+without scraping the dashboard:
 
 - `optimization_decision.next_action` names the current best optimization move
 - `optimization_decision.target_area` names the owner area to improve
@@ -440,11 +423,11 @@ optimization without scraping the dashboard:
   under `summary`, should limit `recent_runs` to the newest three compact
   analysis pointers, and should keep per-run storage ids plus expanded phase
   decisions behind `--full --limit`
-- full metrics payloads are still bounded evidence, not transcript dumps:
-  generated dependency/build paths, raw previews, stdout/stderr, and other
-  forensic blobs are excluded from metrics and observability serialization;
-  realtime voice ledger output remains compact totals plus recent failures; and
-  larger historical sweeps require an explicit `--limit`
+- full metrics payloads are bounded evidence, not transcript dumps: generated
+  dependency/build paths, raw previews, stdout/stderr, and other forensic blobs
+  are excluded from metrics and observability serialization; realtime voice
+  ledger output stays compact totals plus recent failures; larger historical
+  sweeps require an explicit `--limit`
 
 ## Machine Contract
 

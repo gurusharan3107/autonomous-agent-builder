@@ -123,7 +123,7 @@ Prove memory/KB makes a future session faster or more correct than the original:
 
 ### 2.5 — Rubric / quality-gate pass bar
 
-Milestone passes its owning rubrics + gates per [INDEX.md § External Owner Map](INDEX.md#external-owner-map). Active set:
+Milestone passes its owning rubrics + gates per [INDEX.md § External Owner Map](INDEX.md#external-owner-map-the-rest-of-the-repo). Active set:
 
 - `docs/rubric/sdk-backed-agent-page-agent.md`
 - `docs/rubric/realtime-voice-agent-page-agent.md`
@@ -137,7 +137,6 @@ Milestone passes its owning rubrics + gates per [INDEX.md § External Owner Map]
 - `docs/quality-gate/product-lifecycle.md`
 - `docs/quality-gate/state-integrity.md`
 - `docs/quality-gate/agent-quality.md`
-- `docs/quality-gate/architecture-invariants.md`
 - `docs/quality-gate/architecture-boundary.md`
 - `docs/quality-gate/dashboard-ux.md`
 - `docs/quality-gate/complexity.md`

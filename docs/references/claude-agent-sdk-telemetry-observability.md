@@ -8,9 +8,7 @@ created: "2026-04-26"
 # Claude Agent SDK Telemetry and Observability
 
 Canonical repo-local reference for how `autonomous-agent-builder` should use
-Claude Agent SDK telemetry and observability.
-
-Use this doc as the owner surface when changing:
+Claude Agent SDK telemetry and observability. Owner surface when changing:
 
 - OpenTelemetry environment configuration for Claude child processes
 - the split between builder-local session history and OTEL-exported signals
@@ -33,30 +31,18 @@ events, app workspaces, and Codex transcript productivity signals, see
 
 ## Purpose
 
-This repo should use telemetry to improve builder quality and context
-efficiency without turning observability into a second transcript store.
-
-The target outcome is:
-
-- strong runtime visibility
-- low user burden
-- bounded high-signal analysis
-- explicit privacy discipline
-- clear owner boundaries between builder-local state and external observability
-
-That aligns with ~~MISSION.md~~:
-the builder should choose workflow, model, tools, and execution strategy for
-the user, while leaving behind durable and inspectable state.
+Use telemetry to improve builder quality and context efficiency without turning
+observability into a second transcript store. Target outcome: strong runtime
+visibility, low user burden, bounded high-signal analysis, explicit privacy
+discipline, and clear owner boundaries between builder-local state and external
+observability.
 
 ## Core Model
 
-Claude Agent SDK does not emit telemetry independently of Claude Code CLI.
-
-The SDK launches Claude Code as a child process. The CLI is the process that
-emits traces, metrics, and log events when telemetry is enabled. The SDK
-passes configuration through the environment.
-
-Implication for this repo:
+Claude Agent SDK does not emit telemetry independently of Claude Code CLI. The
+SDK launches Claude Code as a child process; the CLI emits traces, metrics, and
+log events when telemetry is enabled, and the SDK passes configuration through
+the environment. Implication for this repo:
 
 - builder owns repo-local session history, interpretation, and tuning policy
 - Claude Agent SDK owns runtime execution and telemetry mechanics
@@ -68,7 +54,7 @@ Use a hybrid split.
 
 ### Builder-local history is the source of truth for output review
 
-Keep these in builder-local history and retrieval surfaces such as:
+Keep these in builder-local history and retrieval surfaces:
 
 - `builder agent sessions --json`
 - `builder agent history --session <id> --json`
@@ -85,7 +71,7 @@ Builder-local history should remain the source of truth for:
 
 ### OTEL should carry structural telemetry
 
-Use OTEL for cross-run structural signals such as:
+Use OTEL for cross-run structural signals:
 
 - interaction spans
 - LLM request spans
@@ -148,7 +134,7 @@ app's telemetry instead of returning the source-repo guardrail error.
 
 ### Recommendations contract
 
-Metrics and Observability share one optimization decision model:
+Metrics and Observability share one optimization decision model.
 
 - Metrics owns scores, run totals, gate pass rate, cost/token aggregates,
   large-output/chunk-pressure aggregates, benchmark status, top cost drivers,
@@ -182,8 +168,8 @@ machine-friendly via:
 
 ## High-Signal Default Policy
 
-The default telemetry policy for this repo should optimize for tuning value per
-token and per privacy risk.
+Optimize the default telemetry policy for tuning value per token and per privacy
+risk.
 
 ### High-signal signals to keep
 
@@ -209,23 +195,20 @@ token and per privacy risk.
 
 ### Signals to avoid exporting by default
 
-Do not export raw content by default:
+Do not export raw content by default; keep these local unless a narrowly
+approved debugging case requires them:
 
 - user prompt bodies
 - tool input arguments
 - tool output bodies
 - raw Anthropic Messages API request or response bodies
 
-These should remain local unless a narrowly approved debugging case requires
-them.
-
 ### Claude Agent SDK context and cost policy
 
-The Claude Agent SDK agent loop should remain the owner of tool-choice mechanics
-for `sdk=claude` turns. Builder should optimize this lane by shaping context and
-observability, not by converting judgment prompts into deterministic shortcuts.
-
-Official SDK guidance to preserve in Builder behavior:
+The Claude Agent SDK agent loop owns tool-choice mechanics for `sdk=claude`
+turns. Builder optimizes this lane by shaping context and observability, not by
+converting judgment prompts into deterministic shortcuts. Official SDK guidance
+to preserve in Builder behavior:
 
 - The loop accumulates system prompt, tool definitions, conversation history,
   tool inputs, and tool outputs across a session. Large tool outputs and long
@@ -290,8 +273,8 @@ instead of the full prior history.
 
 ## Minimal Recommended OTEL Environment
 
-Use OTLP export and enable all three signals, while keeping content-export
-flags off by default.
+Use OTLP export and enable all three signals, keeping content-export flags off
+by default.
 
 ```python
 OTEL_ENV = {
@@ -348,8 +331,8 @@ with:
 - `memory_limiter` before `batch` in every pipeline
 - `debug` export at basic verbosity for proof without local storage
 
-The launcher prefers Apple's `container` CLI when available and falls back to
-Docker or Podman. Override defaults with:
+The launcher prefers Apple's `container` CLI, falling back to Docker or Podman.
+Override defaults with:
 
 ```bash
 AAB_OTEL_COLLECTOR_MEMORY=256M \
@@ -368,7 +351,7 @@ Without exporting raw transcripts, the target setup should give:
 - `claude_code.llm_request`
 - `claude_code.tool`
 
-These should support:
+Supporting:
 
 - model choice review
 - latency review
@@ -384,7 +367,7 @@ Expect metrics such as:
 - cost usage
 - tool decision counts
 
-These should support:
+Supporting:
 
 - cheap-vs-expensive lane analysis
 - per-workflow cost baselining
@@ -411,16 +394,12 @@ Use events for:
 Treat builder-local evidence plus structural OTEL as the foundation for agent
 optimization. The product should infer when to use a stronger model, lower
 effort, a specialist tool, or a narrower context lane; the user should only need
-to express product intent.
-
-Use:
+to express product intent. Use these before changing prompts, model policy, tool
+contracts, phase boundaries, or asking for richer content export:
 
 - `builder logs analyze --session <id-or-prefix> --json`
 - builder session history
 - bounded OTEL spans and metrics
-
-before changing prompts, model policy, tool contracts, phase boundaries, or
-asking for richer content export.
 
 For dispatch-only continuation turns, builder-local analysis should expose the
 terminal chat-turn status and dispatch correlation without requiring transcript
@@ -429,14 +408,13 @@ with the correlated task id/status in `builder logs analyze`.
 
 ### Keep content export opt-in and narrow
 
-Only enable content-heavy flags for a narrow, explicit debugging case:
+Only enable content-heavy flags for a narrow, explicit debugging case, then turn
+them back off after the window closes:
 
 - `OTEL_LOG_USER_PROMPTS`
 - `OTEL_LOG_TOOL_DETAILS`
 - `OTEL_LOG_TOOL_CONTENT`
 - `OTEL_LOG_RAW_API_BODIES`
-
-Turn them back off after the debugging window closes.
 
 ### Keep service identity stable
 
@@ -445,86 +423,46 @@ is easy to separate from unrelated services.
 
 ### Prefer repo-owned analysis surfaces
 
-Builder should remain the first diagnostic surface for:
-
-- prompt-by-prompt review
-- context-efficiency interpretation
-- repo-specific output-quality analysis
-
+Builder should remain the first diagnostic surface for prompt-by-prompt review,
+context-efficiency interpretation, and repo-specific output-quality analysis.
 OTEL should strengthen this lane, not replace it.
 
 ### Use telemetry to improve builder-owned surfaces
 
 Telemetry findings should map back to concrete repo-owned changes such as:
-
-- prompt shaping
-- model selection rules
-- tool allowlists
-- phase permissions
-- subagent boundaries
-- KB or doc placement
-- builder log summaries
+prompt shaping, model selection rules, tool allowlists, phase permissions,
+subagent boundaries, KB or doc placement, and builder log summaries.
 
 ### Use the Claude docs assistant only as a docs-advisory companion
 
-For Claude-Agent-SDK-specific questions, the Claude docs assistant can be a
-useful bounded advisory lane when:
-
-- the question is about SDK usage patterns
-- the answer is tied to an exact docs page or section
-- the result is treated as official-doc interpretation, not repo-runtime proof
-
-Good use cases:
-
-- permission mode selection
-- session semantics clarification
-- subagent or hook pattern fit
-- telemetry and observability setup questions
-
-The assistant should strengthen repo workflow by accelerating doc retrieval and
-interpretation. It should not replace builder-local evidence, code inspection,
-or testing.
+For Claude-Agent-SDK-specific questions, the Claude docs assistant is a bounded
+advisory lane when the question is about SDK usage patterns, the answer is tied
+to an exact docs page or section, and the result is treated as official-doc
+interpretation, not repo-runtime proof. Good use cases: permission mode
+selection, session semantics clarification, subagent or hook pattern fit, and
+telemetry/observability setup questions. It accelerates doc retrieval and
+interpretation; it does not replace builder-local evidence, code inspection, or
+testing.
 
 ## Anti-Patterns
 
-### Using OTEL as a transcript warehouse
-
-This adds privacy risk and retrieval noise while duplicating builder-local
-history.
-
-### Exporting raw content by default
-
-Do not enable prompt, tool-body, or raw API-body export as the standard mode.
-
-### Tuning from traces alone
-
-Traces can show timing and structure, but not the full product-state context.
-Use builder-local history as the paired evidence lane.
-
-### Using the docs assistant as implementation truth
-
-The Claude docs assistant cannot see this repo's code, runtime state, or test
-results. Do not accept it as proof that the current builder implementation is
-correct.
-
-If the question is "what does our builder actually do?" or "is our
-implementation correct?", the next step is repo evidence, not another docs
-assistant question.
-
-### Ignoring observability gaps
-
-If spans, metrics, or events are missing, report that explicitly instead of
-pretending the tuning recommendation is complete.
-
-### Over-collecting low-signal data
-
-If a signal does not change a concrete builder decision, it should not be a
-default export candidate.
-
-### Blurring product and runtime ownership
-
-Do not move backlog, approval, KB, memory, or tuning semantics into the SDK or
-observability backend.
+- **Using OTEL as a transcript warehouse** — adds privacy risk and retrieval
+  noise while duplicating builder-local history.
+- **Exporting raw content by default** — do not enable prompt, tool-body, or raw
+  API-body export as the standard mode.
+- **Tuning from traces alone** — traces show timing and structure, not full
+  product-state context; pair with builder-local history.
+- **Using the docs assistant as implementation truth** — it cannot see this
+  repo's code, runtime state, or test results. For "what does our builder
+  actually do?" or "is our implementation correct?", the next step is repo
+  evidence, not another docs assistant question.
+- **Ignoring observability gaps** — if spans, metrics, or events are missing,
+  report that explicitly instead of pretending the tuning recommendation is
+  complete.
+- **Over-collecting low-signal data** — if a signal does not change a concrete
+  builder decision, it should not be a default export candidate.
+- **Blurring product and runtime ownership** — do not move backlog, approval,
+  KB, memory, or tuning semantics into the SDK or observability backend.
 
 ## Validation Checklist
 
@@ -559,7 +497,7 @@ Before calling telemetry setup complete, verify:
 
 ## Current Repo Recommendation
 
-For `autonomous-agent-builder` specifically:
+For `autonomous-agent-builder`:
 
 - keep builder-local history as the source of truth for output review and
   quality tuning

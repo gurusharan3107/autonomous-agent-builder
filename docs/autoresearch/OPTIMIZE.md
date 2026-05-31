@@ -4,28 +4,9 @@ Status: **dormant** (see [`README.md`](README.md) prerequisites).
 
 This is the agent's program for the autoresearch loop. The agent loops continuously, editing one bounded surface of the Builder at a time, measuring through `builder` CLI, and keeping or reverting based on a single composite metric under hard gates.
 
-## Primary metric (lower is better)
+## Metric and hard gates
 
-```
-composite = noncached_plus_output_tokens
-```
-
-Measured per shipped feature for a given fixture (see [`fixtures.md`](fixtures.md)). Averaged across `N=3` runs of the same fixture to suppress single-run noise. **P16 (2026-05-23):** dropped the prior `× operator_turns × wallclock_seconds` factors — they are correlated with token count (longer fixture runs produce more of each) and aren't billed, so the product compounded variance instead of averaging it (fixture-A CV went 77.5% → 14.7% after the change).
-
-**An improvement only counts as a win if `composite_after < composite_before − 2σ_baseline`** where `σ_baseline` is computed per [`baseline_variance.md`](baseline_variance.md). Anything inside 2σ is noise.
-
-## Hard gates (binary filters)
-
-A run is **discarded regardless of composite metric** if any of these fail:
-
-1. `cache_ratio > 5×` after turn 2 (every turn in the session).
-2. `chunk_pressure_risk == false` for every run in the session.
-3. `avoidable_cost_flags == []` for every run.
-4. `gate_pass_rate == 1.0` (all quality gates pass).
-5. Feature correctness: `npm run build && npm run test` passes in the devpulse workspace after the feature ships.
-6. The full feature shipped (board reaches `done` state, not blocked or partial).
-
-If any gate fails, set `decision=discard` regardless of composite.
+**Canonical definitions: [METRICS.md § Composite Metric](METRICS.md#composite-metric-loop-primary) + [§ Hard Gates](METRICS.md#hard-gates-binary-filters)** (source commands, fields, P16 rationale). In short: minimize `composite = noncached_plus_output_tokens` (per shipped feature, averaged over `N=3` runs; see [`fixtures.md`](fixtures.md)). A change **wins only if `composite_after < composite_before − 2σ_baseline`** (per [`baseline_variance.md`](baseline_variance.md)); anything inside 2σ is noise. A run is **discarded regardless of composite** if any of the 6 binary gates fail: `cache_ratio > 5×` after turn 2, `chunk_pressure_risk == false`, `avoidable_cost_flags == []`, `gate_pass_rate == 1.0`, feature correctness (`npm run build && npm run test`), and full ship.
 
 ## The loop
 

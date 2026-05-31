@@ -10,6 +10,9 @@ expectations:
   - "--json is the stable machine contract"
   - "use task-scoped gate retrieval through builder backlog task surfaces instead of scraping logs"
   - "follow-up action stays obvious when a gate fails"
+related_docs:
+  - "docs/quality-gate/verification.md"
+  - "docs/quality-gate/builder-cli.md"
 ---
 
 # Quality gate contract
@@ -93,6 +96,6 @@ product gates:
   migrations, persistence, and embedded-vs-main parity.
 - `dashboard-ux`: visible state clarity across Agent, Board, Metrics,
   Observability, Knowledge, Memory, Backlog, Inbox, and Compare.
-- `architecture-invariants`: stricter architecture review for domain model,
-  layering, adapter design, extensibility, failure isolation, and pattern
-  discipline when `architecture-boundary` is too broad.
+- `architecture-boundary`: owner-boundary review plus the stricter architecture
+  invariants for domain model, layering, adapter design, extensibility, failure
+  isolation, and pattern discipline.
