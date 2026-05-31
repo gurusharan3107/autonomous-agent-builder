@@ -23,6 +23,28 @@ Copy and fill placeholders — do not start from a blank file.
 
 ---
 
+## Reference-file naming — the conditional quartet
+
+`reference/workflow.md` + `patterns.md` above are the **minimal** default. For richer skills, prefer this **canonical role-named quartet** so an agent gets a predictable map across every skill (`hermes-chrome`, `agent-feedback-artifact`, `elon` all use it):
+
+| File | Concern it owns | Include it **only when** |
+|---|---|---|
+| `operate.md` | how to **run** the procedure (helpers, action levels, compound patterns) | there's a non-trivial run procedure |
+| `optimize.md` | how to **debug / recover** from runtime failure | **the skill operates a runtime that can break** (a server, socket, bridge, external process) |
+| `agent-handbook.md` | how to **modify the skill / its source** | the skill is non-trivial to edit (plugin source, multi-file) |
+| `best-practices.md` | the **rubric / scoring / conventions** | the skill grades, scores, or has house defaults worth stating |
+
+**Archetype-gate, do not mandate.** The quartet tracks *what the skill is*, not house style:
+
+- **Runtime-service skill** (drives a live server/bridge/process) → full quartet. `optimize.md` is load-bearing. **Exemplar: `hermes-chrome`** — its bridge fails many ways (dead socket, invisible cursor, screenshot timeout), so a whole debug surface is core.
+- **Judgment skill** (scores/audits, no runtime) → `operate.md` + `best-practices.md` + `agent-handbook.md`, **no `optimize.md`**. **Counter-example: `elon`** — its handbook states the omission outright: *"no runtime services to debug; failure recovery is a procedure step in operate.md."*
+- **Router / lane-dispatcher** → lane-named refs (e.g. this skill's `create.md`/`refine.md`/`audit.md`) fit better than the quartet.
+- **Trivial prose skill** → just `SKILL.md`; no reference files.
+
+**Rule: the tell for `optimize.md` is "is there a runtime that fails?" Never scaffold an empty quartet file** — a stub `optimize.md` on a judgment skill is exactly the dead mass an audit should flag. Adopt a name when its concern is real; omit it otherwise.
+
+---
+
 ## SKILL.md template
 
 ```markdown
