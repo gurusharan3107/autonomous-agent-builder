@@ -9,7 +9,7 @@
 ### When to choose this lane
 
 - First-time activation (no `baseline_runs_summary.json`).
-- After a `roadmap-audit` flips an SDK lever `[ ]` → `[x]` (prompt-shape change → re-baseline).
+- After a `knowledge-base` refresh shifts the Claude Agent SDK rubric or an SDK lever flips `[ ]` → `[x]` in ROADMAP (prompt-shape change → re-baseline).
 - After a Fix lane closes that changed prompt assembly, runtime policy, or telemetry surface.
 - When `baseline_runs_summary.json` is older than 14 days.
 - When any fixture's σ/mean > 25% (timing-fragile; re-baseline that fixture).
@@ -96,20 +96,6 @@ PushNotification(
 ```
 
 Skip when `PushNotification` is unavailable.
-
-#### Baseline-lane cross-skill trigger
-
-A fresh σ-floor is the highest-quality input for the next `goal-audit` Section A (Builder telemetry signal). Schedule a goal-audit 24 hours out so the day-after audit reads the new baseline numbers:
-
-```
-CronCreate(
-  schedule: "in 24 hours",
-  prompt: "goal-audit run — analyze last 7d (post-Baseline)",
-  description: "Auto-scheduled by autoresearch Baseline closeout."
-)
-```
-
-Skip when unavailable or when `CronList` already shows a goal-audit cron in the next 48h.
 
 **Baseline writes to PROGRESS.md, not ROADMAP** — Baseline is calibration, not delivery. No ROADMAP `[x]` from this lane. ROADMAP M3.5 milestone ticks only when the Iterate lane ships a kept change.
 

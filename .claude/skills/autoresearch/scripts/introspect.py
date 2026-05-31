@@ -56,9 +56,9 @@ GATE_NAMES = ["cache", "chunk", "avoid", "rate", "build", "ship"]
 FIXTURES = ["A", "B", "C", "D", "E"]
 
 # KB queries we run on every close-out. Tags + keywords aimed at "make the
-# loop leaner" rather than "find new optimizations to try" — the latter is
-# goal-audit's job. Pinning the queries keeps the report stable iteration to
-# iteration so the operator can spot when a new article lands.
+# loop leaner" rather than "find new optimizations to try". Pinning the queries
+# keeps the report stable iteration to iteration so the operator can spot when
+# a new article lands.
 KB_QUERIES = [
     "prompt caching token cost",
     "context engineering token reduction",
@@ -561,7 +561,7 @@ def build_recommendations(findings: dict) -> list[str]:
         if remaining < 3:
             recs.append(
                 f"**Only {remaining} unattempted ideas remaining in `OPTIMIZE_IDEAS.md`.** "
-                "Schedule a `goal-audit` pass to surface new candidates before the loop stalls."
+                "Add new candidates to `OPTIMIZE_IDEAS.md` before the loop stalls."
             )
 
     return recs

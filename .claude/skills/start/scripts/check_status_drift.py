@@ -152,14 +152,14 @@ def main() -> int:
                 "severity": "hard",
                 "field": "INSIGHTS alignment verdict",
                 "claim": verdict,
-                "evidence": "most-recent goal-audit run reports STATUS-vs-intent drift",
+                "evidence": "most-recent INSIGHTS entry reports STATUS-vs-intent drift",
             })
         elif normalized == "ambiguous":
             findings.append({
                 "severity": "soft",
                 "field": "INSIGHTS alignment verdict",
                 "claim": verdict,
-                "evidence": "most-recent goal-audit run could not resolve alignment",
+                "evidence": "most-recent INSIGHTS entry could not resolve alignment",
             })
 
     emit(findings, args.json)

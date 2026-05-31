@@ -102,7 +102,7 @@ End with: **"Suggested next move: \<derived from STATUS § Next Action OR first 
 3. **Honest about staleness.** If STATUS `Last Update` is more than 7 days ago, flag: "STATUS is N days old — verify against git log." If CURRENT.md is 24–48h old, flag the age inline.
 4. **Terse synthesis.** ≤30 lines output. The point is fast orientation, not re-reading docs verbatim. The operator can `Read` more themselves.
 5. **No auto-execution.** Operator must pick a direction before any state-changing tool runs.
-6. **Never reorder STATUS / ROADMAP / OPTIMIZE_IDEAS.** Drift findings stay advisory in chat; durable edits route through their owner skill (`goal-audit`, `roadmap-audit`, `autoresearch`).
+6. **Never reorder STATUS / ROADMAP / OPTIMIZE_IDEAS.** Drift findings stay advisory in chat; durable edits route through their owner skill (e.g. `autoresearch`) or the operator.
 
 ## Gotchas
 
@@ -110,7 +110,7 @@ End with: **"Suggested next move: \<derived from STATUS § Next Action OR first 
 - **STATUS `Current Position` vs `Last Update` can diverge.** Current Position is the *claimed* current item; Last Update is the *actual* most recent change. If they tell a different story, that's a drift signal worth surfacing even before the script runs.
 - **`.claude/session-data/CURRENT.md` is gitignored.** Do not warn the operator about it being untracked — that's intentional (machine-local fast-resume; cross-machine continuity rides on STATUS).
 - **If `git status` is dirty at session start, surface that early.** Uncommitted work from a prior session that didn't `/save-session` is the highest-priority context to flag; the operator may want to inspect or stash before any new work.
-- **Do not auto-invoke `goal-audit` from `start`.** If drift warnings surface, *recommend* `/goal-audit` as a follow-up; let the operator choose. `start` is the entry; goal-audit is its own deliberate cycle.
+- **Surface drift, don't act on it.** If drift warnings surface, flag them in chat and let the operator choose the follow-up. `start` is read-only orientation; it never edits STATUS / ROADMAP or kicks off a remediation cycle itself.
 
 ## Relationship to other skills
 
@@ -118,9 +118,8 @@ End with: **"Suggested next move: \<derived from STATUS § Next Action OR first 
 |---|---|
 | [`resume-session`](../resume-session/SKILL.md) | Sister entry skill — reads CURRENT.md tactical block first, then chains into this skill for framework + STATUS load. Both paths converge to the same loaded state. |
 | [`save-session`](../save-session/SKILL.md) | Writes `.claude/session-data/CURRENT.md`; `start` Step 3 optionally folds it in. |
-| [`goal-audit`](../goal-audit/SKILL.md) | If `start` Step 2 surfaces drift warnings, `goal-audit` is the next-step skill. `start` does not invoke it; the operator does. |
 | [`autoresearch`](../autoresearch/SKILL.md) | If STATUS Recent Decisions names an open autoresearch lane (Baseline / Iterate / Fix), `start` mentions it under "Suggested next move" so the operator can pick it up. |
-| [`roadmap-audit`](../roadmap-audit/SKILL.md) | If `start` notices the SDK version in INSIGHTS rubric entry differs from current, suggest `roadmap-audit` as a follow-up. |
+| [`self-optimize`](../self-optimize/SKILL.md) | If drift warnings or recurring-correction signals surface, `self-optimize` is a candidate follow-up. `start` does not invoke it; the operator does. |
 
 ## Bundled script
 

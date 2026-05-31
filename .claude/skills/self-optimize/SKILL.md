@@ -1,11 +1,11 @@
 ---
 name: self-optimize
-description: "Analyze recent Claude Code session transcripts and git history to surface recurring mistakes, map each to its root cause and the correct surface to fix it, and apply targeted edits. Use when the operator asks 'what mistakes am I making', 'what keeps going wrong', 'self-optimize', 'analyze recurring issues', 'improve yourself', 'encode learnings from sessions', 'why do I keep correcting you', 'update surfaces for recurring mistakes', 'self-introspect on what went wrong', 'surface recurring patterns', or any variant pairing session analysis / recurring mistakes / self-improvement / surface update / recurring corrections language with execution. Also use proactively at session entry after a >3-day gap when memory contains unresolved correction entries. Reads ~/.claude/projects/ transcripts via scripts/cluster.py (which calls goal-audit's analyze-sessions.mjs) and git log for fix-commit patterns. Clusters corrections into themes with frequency counts, maps each theme to: (a) root cause — missing rule, rule exists but not enforced, or wrong surface; (b) target surface — global CLAUDE.md, local AGENTS.md, specific skill SKILL.md, tests/conftest.py, or workflow doc. Presents ranked findings to the operator, applies only operator-approved edits, and saves learnings to project memory. Also handles content-targeted 'where did the agent hit <failure X>' asks (browser-testing errors, rollback exceptions, tool failures) via scripts/mine_sessions.py, which mines agent-side evidence (assistant prose + tool_result errors) rather than operator prompts. Full procedure in references/workflow.md."
+description: "Analyze recent Claude Code session transcripts and git history to surface recurring mistakes, map each to its root cause and the correct surface to fix it, and apply targeted edits. Use when the operator asks 'what mistakes am I making', 'what keeps going wrong', 'self-optimize', 'analyze recurring issues', 'improve yourself', 'encode learnings from sessions', 'why do I keep correcting you', 'update surfaces for recurring mistakes', 'self-introspect on what went wrong', 'surface recurring patterns', or any variant pairing session analysis / recurring mistakes / self-improvement / surface update / recurring corrections language with execution. Also use proactively at session entry after a >3-day gap when memory contains unresolved correction entries. Reads ~/.claude/projects/ transcripts via scripts/cluster.py (which consumes the bundled scripts/analyze-sessions.mjs output) and git log for fix-commit patterns. Clusters corrections into themes with frequency counts, maps each theme to: (a) root cause — missing rule, rule exists but not enforced, or wrong surface; (b) target surface — global CLAUDE.md, local AGENTS.md, specific skill SKILL.md, tests/conftest.py, or workflow doc. Presents ranked findings to the operator, applies only operator-approved edits, and saves learnings to project memory. Also handles content-targeted 'where did the agent hit <failure X>' asks (browser-testing errors, rollback exceptions, tool failures) via scripts/mine_sessions.py, which mines agent-side evidence (assistant prose + tool_result errors) rather than operator prompts. Full procedure in references/workflow.md."
 model: sonnet
 effort: high
 allowed-tools: Read, Edit, Bash, Write, AskUserQuestion
 compatibility:
-  - node >= 18   # for goal-audit/scripts/analyze-sessions.mjs
+  - node >= 18   # for scripts/analyze-sessions.mjs
   - python3 >= 3.9  # for scripts/cluster.py
   - git  # for correction-commit pattern analysis
 ---
@@ -41,7 +41,7 @@ Default to the clustering lane. Switch to (or add) the mining lane when the oper
 ## Preflight
 
 1. Confirm `node --version` returns >= 18.
-2. Confirm analyzer exists: `ls .claude/skills/goal-audit/scripts/analyze-sessions.mjs`
+2. Confirm analyzer exists: `ls .claude/skills/self-optimize/scripts/analyze-sessions.mjs`
 3. Confirm git is available and the working directory is a repo: `git rev-parse --show-toplevel`
 4. Confirm project memory directory exists (used for step 6 memory writes).
 
@@ -74,7 +74,7 @@ Abort with a clear message if any precondition fails.
 - [`scripts/cluster.py`](scripts/cluster.py) — deterministic theme clustering of operator prompts (session JSON + git log → ranked JSON)
 - [`scripts/mine_sessions.py`](scripts/mine_sessions.py) — structural content-miner for agent-side failures (assistant prose + `tool_result` errors → deduped, capped findings). Complement to cluster.py; `--preset browser_testing` curated, or `--pattern REGEX`.
 - [`scripts/validate.sh`](scripts/validate.sh) — self-validation wrapper
-- `.claude/skills/goal-audit/scripts/analyze-sessions.mjs` — session transcript analyzer (required dependency)
+- [`scripts/analyze-sessions.mjs`](scripts/analyze-sessions.mjs) — session transcript analyzer (bundled; vendored from the retired goal-audit skill)
 - Project memory dir — write target for step 6
 
 ## Why this skill exists

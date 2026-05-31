@@ -1,6 +1,6 @@
 ---
 name: autoresearch
-description: "Single entry point for the M3.5 Track B autoresearch optimization loop. Three lanes — Baseline (establish σ-floor), Iterate (pick idea → run → verdict), Fix (source-patch a gap the loop surfaced and can't patch itself). On invocation, ALWAYS asks the operator which lane via AskUserQuestion; only skips the question when the typed prompt unambiguously names one (e.g. 'run baseline', 'iterate on idea 4', 'fix the telemetry gap'). Use whenever the operator asks to 'run autoresearch', 'start the loop', 'kick off baseline', 'run baseline', 'try the next optimize idea', 'iterate on optimization #N', 'compare a candidate', 'add a new optimize idea', 'fix the gap raised by autoresearch', 'address the autoresearch blocker', 'patch the telemetry/contract/schema gap', or any variant pairing autoresearch / loop / optimize / baseline / fixture / gap / blocker language with execution. ALSO use proactively after `goal-audit` reorders `docs/autoresearch/OPTIMIZE_IDEAS.md` (new top → Iterate), after `roadmap-audit` flips an SDK lever `[ ]` → `[x]` (re-baseline → Baseline), whenever STATUS.md says ACTIVATING/ACTIVE but the last `baseline_runs_summary.json` is older than 14 days (Baseline), and when STATUS Recent Decisions or autoresearch closeout artifacts surface a defect the loop can't patch itself (Fix)."
+description: "Single entry point for the M3.5 Track B autoresearch optimization loop. Three lanes — Baseline (establish σ-floor), Iterate (pick idea → run → verdict), Fix (source-patch a gap the loop surfaced and can't patch itself). On invocation, ALWAYS asks the operator which lane via AskUserQuestion; only skips the question when the typed prompt unambiguously names one (e.g. 'run baseline', 'iterate on idea 4', 'fix the telemetry gap'). Use whenever the operator asks to 'run autoresearch', 'start the loop', 'kick off baseline', 'run baseline', 'try the next optimize idea', 'iterate on optimization #N', 'compare a candidate', 'add a new optimize idea', 'fix the gap raised by autoresearch', 'address the autoresearch blocker', 'patch the telemetry/contract/schema gap', or any variant pairing autoresearch / loop / optimize / baseline / fixture / gap / blocker language with execution. ALSO use proactively when a `knowledge-base` refresh shifts the Claude Agent SDK rubric (re-baseline → Baseline), whenever STATUS.md says ACTIVATING/ACTIVE but the last `baseline_runs_summary.json` is older than 14 days (Baseline), and when STATUS Recent Decisions or autoresearch closeout artifacts surface a defect the loop can't patch itself (Fix)."
 model: sonnet
 effort: high
 allowed-tools: Read, Edit, Bash, Write, AskUserQuestion
@@ -79,7 +79,7 @@ After the lane is chosen, run the universal preflight (load [`references/lifecyc
 | Lane | When | Procedure |
 |---|---|---|
 | **Baseline** | First-time activation, after SDK lever flip, after Fix that changed prompt assembly, when `baseline_runs_summary.json` > 14 days old | [`references/lanes/baseline.md`](references/lanes/baseline.md) |
-| **Iterate** | After Baseline closeout when σ-floor is fresh and OPTIMIZE_IDEAS has unattempted entries; after `goal-audit` reorder; verdict half via `compare.py` | [`references/lanes/iterate.md`](references/lanes/iterate.md) |
+| **Iterate** | After Baseline closeout when σ-floor is fresh and OPTIMIZE_IDEAS has unattempted entries; verdict half via `compare.py` | [`references/lanes/iterate.md`](references/lanes/iterate.md) |
 | **Fix** | Loop surfaces a contract violation, named gap in handoff doc, kept iteration exposes generalizable bug, operator types "fix the gap" | [`references/lanes/fix.md`](references/lanes/fix.md) |
 
 ## Reference index — load as needed
@@ -110,9 +110,7 @@ After the lane is chosen, run the universal preflight (load [`references/lifecyc
 - Activation status: [`docs/autoresearch/README.md`](../../../docs/autoresearch/README.md).
 - Fix procedure: [`docs/goal/FIX-STANDARD.md`](../../../docs/goal/FIX-STANDARD.md).
 - Related skills:
-  - `goal-audit` — reorders `OPTIMIZE_IDEAS.md` based on session intent + autoresearch focus signals; check its INSIGHTS output before Iterate.
-  - `roadmap-audit` — flags SDK levers that should trigger re-baseline when flipped `[ ]` → `[x]`.
-  - `knowledge-base` — refreshes the Claude Agent SDK rubric those audits consume.
+  - `knowledge-base` — refreshes the Claude Agent SDK rubric; a rubric shift is a signal to re-baseline.
 
 ## Why this skill exists
 

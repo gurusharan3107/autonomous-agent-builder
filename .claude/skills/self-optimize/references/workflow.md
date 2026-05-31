@@ -33,7 +33,7 @@ WINDOW="<operator-chosen: 7d|14d|30d>"
 FILTER="autonomous-agent-builder-codex"   # project key substring
 
 # Session transcript analysis
-node .claude/skills/goal-audit/scripts/analyze-sessions.mjs \
+node .claude/skills/self-optimize/scripts/analyze-sessions.mjs \
   --json --since "$WINDOW" --filter-pattern "$FILTER" \
   > /tmp/self-optimize-session.json 2>/tmp/self-optimize-errors.log
 

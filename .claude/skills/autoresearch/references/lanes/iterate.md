@@ -9,7 +9,6 @@
 ### When to choose this lane
 
 - After Baseline closeout when the σ-floor is fresh and `OPTIMIZE_IDEAS.md` has unattempted entries.
-- After `goal-audit` reorders OPTIMIZE_IDEAS (new top is the next candidate).
 - After a previous iteration's verdict landed and the operator wants the next one.
 - For "compare a candidate" — same lane, just runs the verdict half (compare.py) on an existing `run_id`.
 
@@ -116,21 +115,9 @@ PushNotification(
 
 Skip when `PushNotification` is unavailable in the current environment.
 
-#### Iterate-lane KEEP cross-skill triggers
+#### Iterate-lane KEEP re-baseline trigger
 
-On a KEEP that ships (merged to main), the kept optimization usually flips an SDK lever or changes prompt shape — both of which change inputs for `roadmap-audit` and require a re-baseline by the next `Baseline` lane invocation. Schedule both via `CronCreate`:
-
-```
-CronCreate(
-  schedule: "in 24 hours",
-  prompt: "roadmap-audit — autoresearch KEEP iteration #<N> flipped an SDK lever; revalidate ROADMAP",
-  description: "Auto-scheduled by autoresearch Iterate KEEP closeout."
-)
-```
-
-Also surface a recommendation in chat: "Iteration #<N> KEEP changed prompt shape; consider running Baseline lane to re-establish σ-floor before the next Iterate run." Do not auto-schedule Baseline — Baseline is a 2-hour, ~$5–10 lane and needs operator consent.
-
-Skip the CronCreate when unavailable, or when `CronList` already shows a roadmap-audit cron scheduled within the next 48h.
+On a KEEP that ships (merged to main), the kept optimization usually flips an SDK lever or changes prompt shape, which requires a re-baseline by the next `Baseline` lane invocation. Surface a recommendation in chat: "Iteration #<N> KEEP changed prompt shape; consider running Baseline lane to re-establish σ-floor before the next Iterate run." Do not auto-schedule Baseline — Baseline is a 2-hour, ~$5–10 lane and needs operator consent.
 
 **Hard rule:** never hand-edit `optimize_results.tsv decision` columns to fake a keep. The verdict is mechanical — if it crashed it's `crash`, if compare returned `discard` it's `discard`. Re-running is cheaper than carrying a false win into the σ floor.
 

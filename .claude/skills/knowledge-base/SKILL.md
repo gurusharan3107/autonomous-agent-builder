@@ -129,9 +129,9 @@ If new surfaces emerged (e.g., new SDK family), surface to user — DO NOT auto-
 
 ### Phase F — Cross-skill triggers + self-schedule
 
-REFRESH closeout has two responsibilities beyond the KB itself: signal `roadmap-audit` when a rubric changed, and reschedule itself.
+REFRESH closeout has two responsibilities beyond the KB itself: record a rubric-change marker, and reschedule itself.
 
-**1. Rubric-updated marker for `roadmap-audit`.** For each of the four surface rubrics, after Phase D updates rows: append/update a `"last_rubric_update"` field in `.claude/skills/knowledge-base/state.json` with `{ "<rubric-slug>": "<ISO date>" }`. The `roadmap-audit` skill reads this field on its Step 1 bootstrap and uses it to decide whether the rubric has shifted since its last INSIGHTS entry — if shifted, the audit runs; if not, it short-circuits. This is how SDK signature drift flows from KB refresh → roadmap audit → ROADMAP additions without operator prompting.
+**1. Rubric-updated marker.** For each of the four surface rubrics, after Phase D updates rows: append/update a `"last_rubric_update"` field in `.claude/skills/knowledge-base/state.json` with `{ "<rubric-slug>": "<ISO date>" }`. A shifted Claude Agent SDK rubric is a re-baseline signal — surface it to the operator as an `autoresearch` Baseline trigger (see `autoresearch/references/lanes/baseline.md`). This is how SDK signature drift flows from KB refresh → re-baseline without silently going stale.
 
 **2. Prompt operator to run `/knowledge-base REFRESH` next month.** `CronCreate` is session-bound and does not persist — do not use it. Instead, tell the user: "Next REFRESH due ~30 days from now. Use `/schedule` to set a recurring remote routine if you want it automated."
 
