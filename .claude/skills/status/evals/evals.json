@@ -1,0 +1,53 @@
+{
+  "skill": "status",
+  "cases": [
+    {
+      "name": "trigger_open",
+      "prompt": "/status open",
+      "expect_activation": true,
+      "assertions": [
+        "activates the status skill",
+        "runs xdg-open on docs/goal/goal-overview.html",
+        "does not modify any file"
+      ]
+    },
+    {
+      "name": "trigger_update_natural_language",
+      "prompt": "the goal overview numbers look stale, can you refresh it?",
+      "expect_activation": true,
+      "assertions": [
+        "activates the status skill update lane",
+        "runs scripts/build_goal_overview.py",
+        "reports the change summary or 'no change'"
+      ]
+    },
+    {
+      "name": "update_is_deterministic_and_idempotent",
+      "prompt": "/status update",
+      "expect_activation": true,
+      "shell_check": "cd \"$(git rev-parse --show-toplevel)\" && python3 .claude/skills/status/scripts/build_goal_overview.py >/dev/null && python3 .claude/skills/status/scripts/build_goal_overview.py --check",
+      "expect_exit": 0,
+      "assertions": [
+        "second run with --check exits 0 (no drift after a patch)"
+      ]
+    },
+    {
+      "name": "artifact_data_counts_match_section_aware_grep",
+      "prompt": "/status update",
+      "expect_activation": true,
+      "shell_check": "cd \"$(git rev-parse --show-toplevel)\" && python3 .claude/skills/status/scripts/build_goal_overview.py >/dev/null && C=$(awk '/^### M[0-9]/{f=1} f' docs/goal/ROADMAP.md | grep -oE '\\[x\\]' | wc -l) && O=$(awk '/^### M[0-9]/{f=1} f' docs/goal/ROADMAP.md | grep -oE '\\[ \\]' | wc -l) && python3 -c \"import json,re,sys; j=json.loads(re.search(r'id=.artifact-data.>\\s*(\\{.*?\\})\\s*</script>',open('docs/goal/goal-overview.html').read(),re.S).group(1)); t=j['roadmap_totals']; sys.exit(0 if (t['closed']==$C and t['open']==$O) else 1)\"",
+      "expect_exit": 0,
+      "assertions": [
+        "artifact-data closed/open equal the section-aware [x]/[ ] occurrence counts from the first '### M' heading onward"
+      ]
+    },
+    {
+      "name": "no_trigger_on_unrelated",
+      "prompt": "update the ROADMAP to add a new milestone",
+      "expect_activation": false,
+      "assertions": [
+        "does NOT activate — editing ROADMAP/STATUS source is out of scope (one-way: markdown -> HTML)"
+      ]
+    }
+  ]
+}

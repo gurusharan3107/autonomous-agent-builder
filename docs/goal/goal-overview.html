@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autonomous Agent Builder — Goal Folder Overview</title>
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D; --rust:#B04A3F;
+  --gray-150:#F0EEE6; --gray-300:#D1CFC5; --gray-500:#87867F; --gray-700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ivory);color:var(--gray-700);font-family:var(--sans);
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--clay-d);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.86em;background:var(--gray-150);
+  padding:1px 5px;border-radius:4px;color:var(--slate)}
+
+/* Layout */
+.shell{display:grid;grid-template-columns:264px 1fr;max-width:1320px;margin:0 auto;
+  gap:0;align-items:start}
+nav.toc{position:sticky;top:0;height:100vh;overflow-y:auto;padding:32px 20px 48px;
+  border-right:1.5px solid var(--gray-300);background:var(--ivory)}
+nav.toc .brand{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--gray-500);margin-bottom:18px;line-height:1.4}
+nav.toc a{display:block;color:var(--gray-700);font-size:13.5px;padding:5px 10px;
+  border-radius:6px;margin-bottom:1px;border-left:2px solid transparent}
+nav.toc a:hover{background:var(--gray-150);text-decoration:none}
+nav.toc a.section-lead{font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--gray-500);margin-top:16px;padding-left:10px;
+  pointer-events:none}
+main{padding:48px 56px 96px;min-width:0;max-width:1000px}
+@media(max-width:880px){
+  .shell{grid-template-columns:1fr}
+  nav.toc{position:static;height:auto;border-right:none;
+    border-bottom:1.5px solid var(--gray-300)}
+  main{padding:32px 24px 80px}
+}
+
+/* Header */
+header.page{margin-bottom:14px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--gray-500);margin-bottom:10px}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(30px,4vw,40px);
+  letter-spacing:-.015em;margin:0 0 12px;color:var(--slate);line-height:1.1}
+h1 em{font-style:italic;color:var(--clay)}
+.lead{font-size:15.5px;line-height:1.6;color:var(--gray-700);max-width:680px}
+
+/* Sections */
+section{scroll-margin-top:24px;padding-top:40px;margin-top:40px;
+  border-top:1.5px solid var(--gray-300)}
+section:first-of-type{border-top:none;margin-top:28px}
+h2{font-family:var(--serif);font-weight:500;font-size:26px;letter-spacing:-.01em;
+  color:var(--slate);margin:0 0 6px}
+h2 .num{font-family:var(--mono);font-size:13px;color:var(--clay);
+  font-weight:400;margin-right:10px;letter-spacing:.05em}
+.sub{font-size:13.5px;color:var(--gray-500);margin:0 0 22px}
+h3{font-family:var(--sans);font-weight:650;font-size:15px;color:var(--slate);
+  margin:26px 0 10px}
+
+/* Cards */
+.card{background:var(--paper);border:1.5px solid var(--gray-300);border-radius:12px;
+  padding:22px 24px;margin-bottom:16px}
+.grid{display:grid;gap:14px}
+.grid.c2{grid-template-columns:1fr 1fr}
+.grid.c3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:720px){.grid.c2,.grid.c3{grid-template-columns:1fr}}
+
+/* Hero status card */
+.hero{box-shadow:0 12px 32px rgba(20,20,19,.10);border-color:var(--oat)}
+.kv{display:grid;grid-template-columns:170px 1fr;gap:8px 18px;font-size:14px}
+.kv dt{font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--gray-500);padding-top:2px}
+.kv dd{margin:0;color:var(--gray-700)}
+
+/* Badges */
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:20px;
+  border:1.5px solid var(--gray-300);color:var(--gray-700);vertical-align:middle}
+.badge.active{background:var(--clay);color:#fff;border-color:var(--clay)}
+.badge.pass{background:#eef1e8;color:#4d5e36;border-color:#c3d0ab}
+.badge.pend{background:var(--gray-150);color:var(--gray-500)}
+.badge.done{background:#eef1e8;color:#4d5e36;border-color:#c3d0ab}
+
+/* Bars */
+.epoch-tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--gray-500);margin:24px 0 10px;
+  border-bottom:1.5px solid var(--oat);padding-bottom:6px}
+.epoch-tag.cur{color:var(--clay)}
+.ms{display:grid;grid-template-columns:1fr 132px;gap:6px 16px;align-items:center;
+  padding:12px 0;border-bottom:1px solid var(--gray-150)}
+.ms:last-child{border-bottom:none}
+.ms .name{font-weight:600;color:var(--slate);font-size:14px}
+.ms .name .id{font-family:var(--mono);font-size:11.5px;color:var(--clay);
+  margin-right:8px}
+.ms .goal{grid-column:1/2;font-size:13px;color:var(--gray-500);margin-top:2px}
+.ms .meter{grid-column:2/3;grid-row:1/3}
+.bar{height:7px;background:var(--gray-150);border-radius:5px;overflow:hidden;
+  margin-bottom:4px}
+.bar>span{display:block;height:100%;background:var(--olive);border-radius:5px}
+.bar.zero>span{background:var(--gray-300)}
+.bar.full>span{background:var(--olive)}
+.meter small{font-family:var(--mono);font-size:10.5px;color:var(--gray-500)}
+.ms.curms{background:linear-gradient(90deg,rgba(217,119,87,.06),transparent);
+  margin:0 -12px;padding:12px;border-radius:8px;border-bottom:1px solid var(--gray-150)}
+
+/* Lists */
+ul.tight{margin:8px 0;padding-left:20px}
+ul.tight li{margin-bottom:6px}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+ol.steps li{position:relative;padding:10px 0 10px 44px;
+  border-bottom:1px solid var(--gray-150)}
+ol.steps li:last-child{border-bottom:none}
+ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;
+  top:10px;width:28px;height:28px;border-radius:50%;background:var(--slate);color:#fff;
+  font-family:var(--mono);font-size:13px;display:flex;align-items:center;
+  justify-content:center}
+ol.steps li b{color:var(--slate)}
+.rules{list-style:none;padding:0;margin:0;counter-reset:r}
+.rules li{position:relative;padding:9px 0 9px 38px;font-size:14px;
+  border-bottom:1px solid var(--gray-150)}
+.rules li:last-child{border-bottom:none}
+.rules li::before{counter-increment:r;content:counter(r);position:absolute;left:0;
+  top:9px;width:24px;height:24px;border-radius:6px;background:var(--oat);
+  color:var(--slate);font-family:var(--mono);font-size:12px;display:flex;
+  align-items:center;justify-content:center}
+.rules li b{color:var(--slate)}
+
+/* Bars table */
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--gray-150)}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--gray-500);border-bottom:1.5px solid var(--gray-300)}
+td code{font-size:.82em}
+
+/* Prompt good/bad */
+.prompt{font-family:var(--mono);font-size:12.5px;padding:8px 12px;border-radius:7px;
+  margin-bottom:6px;line-height:1.4}
+.prompt.good{background:#eef1e8;border-left:3px solid var(--olive);color:#3f4d2c}
+.prompt.bad{background:#f7ece9;border-left:3px solid var(--rust);color:#7a342b}
+.banned{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.banned span{font-family:var(--mono);font-size:11px;background:#f7ece9;color:#8a3a30;
+  padding:2px 8px;border-radius:5px;border:1px solid #e6c9c2}
+
+/* Tier blocks */
+.tier{border-left:3px solid var(--clay);padding-left:16px;margin-bottom:18px}
+.tier h3{margin-top:0}
+.tier.t2{border-color:var(--olive)}
+.tier.t3{border-color:var(--gray-500)}
+
+/* File map */
+.files a.file{display:flex;justify-content:space-between;gap:16px;padding:11px 14px;
+  border:1.5px solid var(--gray-300);border-radius:9px;margin-bottom:8px;
+  background:var(--paper);color:var(--gray-700)}
+.files a.file:hover{border-color:var(--clay);text-decoration:none;
+  background:var(--gray-150)}
+.files .fn{font-family:var(--mono);font-size:13px;color:var(--clay-d);
+  font-weight:600;white-space:nowrap}
+.files .fd{font-size:13px;color:var(--gray-700);text-align:right}
+
+/* Timeline */
+.tl{border-left:2px solid var(--oat);padding-left:18px;margin-left:6px}
+.tl .ev{margin-bottom:16px;position:relative}
+.tl .ev::before{content:"";position:absolute;left:-25px;top:5px;width:9px;height:9px;
+  border-radius:50%;background:var(--clay);border:2px solid var(--ivory)}
+.tl .date{font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+  color:var(--gray-500);text-transform:uppercase}
+.tl .ev p{margin:3px 0 0;font-size:13.5px}
+
+.note{font-size:12.5px;color:var(--gray-500);font-style:italic;margin-top:10px}
+footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
+  font-size:12.5px;color:var(--gray-500)}
+.pill{font-family:var(--mono);font-size:11px;color:var(--gray-500)}
+.diff-list{columns:2;column-gap:28px}
+@media(max-width:720px){.diff-list{columns:1}}
+.diff-list .d{break-inside:avoid;margin-bottom:12px}
+.diff-list .d b{display:block;color:var(--slate);font-size:14px}
+.diff-list .d span{font-size:13px;color:var(--gray-700)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="toc">
+  <div class="brand">Autonomous&nbsp;Agent&nbsp;Builder<br>docs/goal/ &middot; overview</div>
+  <a href="#status">Current Status</a>
+  <a href="#northstar">North Star</a>
+  <a href="#roadmap">Roadmap</a>
+  <a href="#evaluation">Evaluation Tiers</a>
+  <a class="section-lead">Doctrine</a>
+  <a href="#rules">Hard Rules</a>
+  <a href="#fix">Fix Standard</a>
+  <a href="#operator">Operator Language</a>
+  <a href="#tuning">Tuning &amp; Autoresearch</a>
+  <a class="section-lead">Reference</a>
+  <a href="#files">File Map</a>
+  <a href="#decisions">Recent Decisions</a>
+</nav>
+
+<main>
+<header class="page">
+  <div class="eyebrow">Operating Guide &middot; generated view of docs/goal/</div>
+  <h1>From idea to <em>shipped</em> — one operating environment</h1>
+  <p class="lead">A friendly tour of the goal folder that steers the Autonomous Agent Builder:
+  the mission, where work stands today, the roadmap spine, and the doctrine every agent
+  follows. The Markdown files remain canonical — this page just makes them navigable.</p>
+</header>
+
+<!-- ===================== STATUS ===================== -->
+<section id="status">
+  <h2><span class="num">01</span>Current Status</h2>
+  <p class="sub">Live snapshot from <a href="STATUS.md">STATUS.md</a> &middot; last updated <!-- gen:snapshot_date -->2026-05-30<!-- /gen:snapshot_date -->.
+  If this disagrees with the dashboard, STATUS.md is the source of truth — re-read it.</p>
+
+  <div class="card hero">
+    <dl class="kv">
+      <dt>Epoch</dt><dd><span class="badge active"><!-- gen:epoch -->Epoch 1 — Stabilize<!-- /gen:epoch --></span></dd>
+      <dt>Milestone</dt><dd><!-- gen:milestone --><b>M3.5</b> — Optimization loop activation (autoresearch Track B)<!-- /gen:milestone --></dd>
+      <dt>In flight</dt><dd>Fixture A baseline stable — 3/5 ships at gate_pass_rate 1.0
+        (μ=216,497, σ=31,831, 2σ-floor=152,835). Fixtures B–E re-baseline pending.</dd>
+      <dt>Active workspace</dt><dd><code>/home/.../Builder-Workspace/devpulse</code></dd>
+      <dt>Runtime lane</dt><dd>Claude SDK <span class="badge pass">complete</span>
+        &nbsp; Codex SDK <span class="badge pend">deferred (M1.2)</span></dd>
+      <dt>Blockers</dt><dd><span class="badge pass">None</span></dd>
+    </dl>
+  </div>
+
+  <div class="grid c2">
+    <div class="card">
+      <h3 style="margin-top:0">Next action</h3>
+      <ol class="tight" style="padding-left:18px">
+        <li>Re-read README, NORTH-STAR, STATUS.</li>
+        <li><b>Continue M1.4</b> — forward-engineering on a fresh workspace, then
+          reverse-engineering on an existing one (Claude lane).</li>
+        <li>Exercise the deferred <b>M1.2 Codex SDK lane</b>: same devpulse sprint +
+          Tier-1 evidence.</li>
+        <li>Regressions → follow the Fix Standard.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Tier snapshot</h3>
+      <table>
+        <tr><th>Tier</th><th>Status</th></tr>
+        <tr><td>Tier 1 — Token + UX</td><td><span class="badge pass">All 5 bars (2026-05-22)</span></td></tr>
+        <tr><td>Tier 2 — Lifecycle</td><td><span class="badge pend">Pending — runs at M2.1</span></td></tr>
+        <tr><td>Tier 3 — Head-to-head</td><td><span class="badge pend">Pending — runs at M3.4</span></td></tr>
+      </table>
+      <p class="note">Last completed milestone: <b>M1.3</b> — god-file decomposition,
+      0 complexity violations (closed 2026-05-21).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== NORTH STAR ===================== -->
+<section id="northstar">
+  <h2><span class="num">02</span>North Star</h2>
+  <p class="sub">The mission and the definition of "preferred" &middot; <a href="NORTH-STAR.md">NORTH-STAR.md</a></p>
+
+  <div class="card" style="border-color:var(--oat)">
+    <p style="margin:0;font-size:16px;color:var(--slate)">Make Autonomous Agent Builder the
+    <b>preferred</b> app for taking software from idea to shipped — over Codex CLI and
+    Claude Code — for both non-technical operators and experienced developers. One
+    chat-first, dashboard-backed operating environment that runs identically on the
+    Claude Agent SDK or the Codex SDK.</p>
+    <p class="note">Not a model-provider wrapper. The operating environment for agent-era software delivery.</p>
+  </div>
+
+  <h3>Three bars for "preferred" — all must hold</h3>
+  <div class="grid c3">
+    <div class="card"><b>Bar 1 — Operator UX win</b>
+      <p style="font-size:13.5px">Idea → shipped feature with zero exposure to lifecycle /
+      sprint / task / worktree / gate / MCP / SDK. Builder asks only product questions.</p>
+      <span class="pill">Tier 1</span></div>
+    <div class="card"><b>Bar 2 — Developer economics win</b>
+      <p style="font-size:13.5px">Same feature ships with fewer tokens, turns, wall-clock
+      and approvals — plus stronger durable state. <code>cache_ratio&gt;5x</code>,
+      <code>chunk_pressure_risk:false</code>.</p>
+      <span class="pill">Tier 1 + Tier 3</span></div>
+    <div class="card"><b>Bar 3 — Lifecycle completeness win</b>
+      <p style="font-size:13.5px">Only tool covering requirements → design → backlog →
+      implementation → verification → ship → optimize as one resumable loop.</p>
+      <span class="pill">Tier 2</span></div>
+  </div>
+
+  <h3>Differentiators no plain agent CLI matches</h3>
+  <div class="card">
+    <div class="diff-list">
+      <div class="d"><b>Chat-only surface, real dashboard</b><span>No flags, no model picker. Status and approvals live in product surfaces.</span></div>
+      <div class="d"><b>Durable lifecycle state</b><span>Backlog, sprints, approvals, recovery persist across sessions, lanes, restarts.</span></div>
+      <div class="d"><b>Builder-owned agent intelligence</b><span>Model, effort, allowlist, prompt, context are product policy — operator says what, Builder decides how.</span></div>
+      <div class="d"><b>Native two-lane runtime</b><span>First-class Claude + Codex SDK with identical product behavior.</span></div>
+      <div class="d"><b>Memory &amp; knowledge as system jobs</b><span>Durable lessons accumulate automatically; future sessions inherit precedent.</span></div>
+      <div class="d"><b>Cost-aware execution</b><span>Tokens, cache ratios, chunk pressure are first-class dashboard evidence.</span></div>
+      <div class="d"><b>Voice as a peer surface</b><span>Realtime voice (Samantha) shares state and approval flow with chat.</span></div>
+      <div class="d"><b>Resumability after drop</b><span>A fresh agent pointed at docs/goal/ continues from STATUS.md alone.</span></div>
+      <div class="d"><b>Executable governance via skills</b><span>Audit, optimization, continuity disciplines run as project-local skills.</span></div>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card"><h3 style="margin-top:0">Non-goals</h3>
+      <ul class="tight">
+        <li>Thin wrapper over Codex CLI / Claude Code with a UI.</li>
+        <li>Manual orchestration where the user picks model / tools / context.</li>
+        <li>Doc store with no execution.</li>
+        <li>"Power-user" tool requiring internals knowledge.</li>
+        <li>Single-runtime product (Claude-only or Codex-only).</li>
+      </ul></div>
+    <div class="card"><h3 style="margin-top:0">Design principles (always-on)</h3>
+      <ul class="tight">
+        <li>Chat-first for the user; structured execution underneath.</li>
+        <li>Durable state over ephemeral agent behavior.</li>
+        <li>Retrieval before guesswork.</li>
+        <li>System-owned workflow decisions over user micromanagement.</li>
+        <li>Root causes over symptom patches — SDK-grounded, never workarounds.</li>
+      </ul></div>
+  </div>
+</section>
+
+<!-- ===================== ROADMAP ===================== -->
+<section id="roadmap">
+  <h2><span class="num">03</span>Roadmap</h2>
+  <p class="sub">Three epochs, the spine of all work &middot; <a href="ROADMAP.md">ROADMAP.md</a>
+  &middot; <!-- gen:roadmap_totals -->52 items closed, 84 open<!-- /gen:roadmap_totals -->. Bars show closed&nbsp;/&nbsp;total per milestone.</p>
+
+  <div class="card">
+    <div class="epoch-tag cur">Epoch 1 — Stabilize &nbsp;·&nbsp; current</div>
+    <div class="ms curms"><div class="name"><span class="id">M1.1</span>Close open operator-facing defects</div>
+      <div class="goal">Each IMP closed with root cause, SDK-grounded fix, regression test, evidence.</div>
+      <div class="meter"><div class="bar"><span style="width:59%"></span></div><small>17 / 29</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M1.2</span>Both lanes ship one feature on devpulse</div>
+      <div class="goal">Forward-engineering scenario, both lanes, same operator wording.</div>
+      <div class="meter"><div class="bar"><span style="width:67%"></span></div><small>6 / 9</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M1.3</span>God-file decomposition ratchet <span class="badge done">done</span></div>
+      <div class="goal">Active complexity violations → zero.</div>
+      <div class="meter"><div class="bar full"><span style="width:100%"></span></div><small>13 / 13</small></div></div>
+    <div class="ms curms"><div class="name"><span class="id">M1.4</span>Two-workspace validation rotation</div>
+      <div class="goal">Forward + reverse scenarios validated, both lanes.</div>
+      <div class="meter"><div class="bar"><span style="width:33%"></span></div><small>2 / 6</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M1.5</span>Realtime Voice (Samantha) parity</div>
+      <div class="goal">Voice is a peer operator surface, not a bolt-on.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 5</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M1.6</span>Deletion-debt paydown (Musk-hat audit)</div>
+      <div class="goal">~2,102 LOC import-verified deletable; deletion ratio 0.081.</div>
+      <div class="meter"><div class="bar"><span style="width:57%"></span></div><small>4 / 7</small></div></div>
+  </div>
+
+  <div class="card">
+    <div class="epoch-tag">Epoch 2 — Differentiate</div>
+    <div class="ms"><div class="name"><span class="id">M2.1</span>Lifecycle completeness proof</div>
+      <div class="goal">Full requirements→ship→optimize loop, dashboard-visible &amp; resumable.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 7</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M2.2</span>Memory &amp; knowledge as differentiators</div>
+      <div class="goal">Compound across sessions; prevent re-litigating settled questions.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 4</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M2.3</span>Cost-aware execution surface</div>
+      <div class="goal">Token / cache / chunk / avoidable-cost telemetry first-class everywhere.</div>
+      <div class="meter"><div class="bar"><span style="width:50%"></span></div><small>6 / 12</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M2.4</span>Operator-UX polish — no internals leakage</div>
+      <div class="goal">Every surface respects the banned-term contract.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 5</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M2.5</span>Architecture &amp; design-language coherence</div>
+      <div class="goal">The dashboard feels like one product.</div>
+      <div class="meter"><div class="bar"><span style="width:12%"></span></div><small>1 / 8</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M2.6</span>Autopilot mode</div>
+      <div class="goal">Orchestrator owns approval, recovery, continuation when enabled.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 8</small></div></div>
+  </div>
+
+  <div class="card">
+    <div class="epoch-tag">Epoch 3 — Scale</div>
+    <div class="ms"><div class="name"><span class="id">M3.1</span>Complex multi-feature app delivery</div>
+      <div class="goal">15+ features, real DB / auth / deployment, both lanes.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 3</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M3.2</span>Long-horizon session continuity</div>
+      <div class="goal">Survives 30+ day gaps and multi-machine usage.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 3</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M3.3</span>Multi-operator collaboration</div>
+      <div class="goal">Two operators on one project without stepping on each other.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 3</small></div></div>
+    <div class="ms"><div class="name"><span class="id">M3.4</span>Head-to-head benchmark wins</div>
+      <div class="goal">Canonical task set vs Codex CLI &amp; Claude Code; defensible claim.</div>
+      <div class="meter"><div class="bar zero"><span style="width:0%"></span></div><small>0 / 6</small></div></div>
+    <div class="ms curms"><div class="name"><span class="id">M3.5</span>Optimization loop activation <span class="badge active">in flight</span></div>
+      <div class="goal">Autoresearch Track B — activates after prerequisites pass.</div>
+      <div class="meter"><div class="bar zero"><span style="width:38%"></span></div><small>3 / 8</small></div></div>
+  </div>
+</section>
+
+<!-- ===================== EVALUATION ===================== -->
+<section id="evaluation">
+  <h2><span class="num">04</span>Evaluation Tiers</h2>
+  <p class="sub">No <code>[x]</code> without the claimed tier passing with cited evidence
+  &middot; <a href="EVALUATION.md">EVALUATION.md</a></p>
+
+  <div class="tier">
+    <h3>Tier 1 — Token + UX &nbsp;<span class="badge pass">every release</span></h3>
+    <p style="font-size:13.5px;margin-top:4px">The floor. No release below these bars on either lane.</p>
+    <table>
+      <tr><th>Bar</th><th>Threshold</th></tr>
+      <tr><td>Cache ratio after turn 2</td><td><code>cache_ratio &gt; 5x</code></td></tr>
+      <tr><td>Chunk pressure</td><td><code>chunk_pressure_risk: false</code></td></tr>
+      <tr><td>Avoidable cost flags</td><td><code>avoidable_cost_flags: []</code></td></tr>
+      <tr><td>Recommended next change</td><td><code>maintain_current_flow</code></td></tr>
+      <tr><td>Banned operator terms</td><td>Zero leakage across all surfaces</td></tr>
+      <tr><td>Both-lane parity</td><td>Every bar holds on <code>claude</code> and <code>codex_sdk</code></td></tr>
+    </table>
+  </div>
+
+  <div class="tier t2">
+    <h3>Tier 2 — Lifecycle Coverage &nbsp;<span class="badge pend">every milestone</span></h3>
+    <p style="font-size:13.5px;margin-top:4px">Proves Builder owns the full SDLC. Requirements,
+    design, backlog, sprint, implementation, verification, ship and optimization each produce
+    visible dashboard evidence. Plus resumability (restart, lane switch, fresh-agent resume,
+    30+ day gap) and memory/knowledge compounding.</p>
+  </div>
+
+  <div class="tier t3">
+    <h3>Tier 3 — Head-to-Head &nbsp;<span class="badge pend">to declare "preferred"</span></h3>
+    <p style="font-size:13.5px;margin-top:4px">Canonical task set run through Codex CLI, Claude
+    Code, and both Builder lanes. To win: majority on tokens-per-feature,
+    success-without-intervention, and wall-clock — both lanes — and be the sole completer of
+    the lifecycle-coverage task. Autoresearch (Track B) produces this evidence.</p>
+  </div>
+</section>
+
+<!-- ===================== RULES ===================== -->
+<section id="rules">
+  <h2><span class="num">05</span>Hard Rules</h2>
+  <p class="sub">Non-negotiable, every session &middot; <a href="README.md">README.md</a></p>
+  <div class="card">
+    <ol class="rules">
+      <li><b>STATUS.md must not lie.</b> Update on every transition. Wrong STATUS = Tier 1 resumability failure.</li>
+      <li><b>Everything maps to ROADMAP.</b> No ad-hoc work; new work lands in the right epoch first.</li>
+      <li><b>EVALUATION is the bar.</b> Done only when the claimed tier passes with evidence.</li>
+      <li><b>INDEX is the owner map.</b> One owner per concern; check before creating/editing any doc.</li>
+      <li><b>Both lanes first-class.</b> Claims must hold in <code>claude</code> and <code>codex_sdk</code>.</li>
+      <li><b>Operator-language mandatory</b> on operator surfaces.</li>
+      <li><b>The model owns prompt interpretation.</b> Deterministic routing on exact wording is a hard violation.</li>
+      <li><b>Fix root causes</b> per the Fix Standard. SDK-grounded, no workarounds.</li>
+      <li><b>Inspect neighbouring surfaces when testing.</b> One-surface verification is unverified.</li>
+      <li><b>Memory is bidirectional.</b> Read precedent before fixing; write durable learnings back.</li>
+      <li><b>Autoresearch (Track B) is activating.</b> Don't run it on broken behavior.</li>
+      <li><b>A <code>[x]</code> isn't closed until pushed.</b></li>
+      <li><b>Commit only on <code>[x]</code> close</b> — CHANGELOG → tick → STATUS → one commit → push.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== FIX STANDARD ===================== -->
+<section id="fix">
+  <h2><span class="num">06</span>Fix Standard — the Seven Steps</h2>
+  <p class="sub">Doctrine for every non-trivial fix; ordered &middot; <a href="FIX-STANDARD.md">FIX-STANDARD.md</a></p>
+  <div class="card">
+    <ol class="steps">
+      <li><b>Load repo precedent.</b> <code>builder memory search</code> from the source repo — 90+ memories encode prior decisions.</li>
+      <li><b>Explore the codebase.</b> Find the real owning module; don't guess by filename.</li>
+      <li><b>Load required triggers.</b> Quality gate + workflow summary before touching CLAUDE.md / AGENTS.md / runtime / CLI.</li>
+      <li><b>Ground the fix in SDK docs.</b> Cite the SDK feature — no workarounds. Needs something the SDK lacks → wrong layer.</li>
+      <li><b>Apply at the correct layer.</b> Orchestrator → route → runtime adapter → frontend. Don't patch UI if the backend is wrong.</li>
+      <li><b>Verify with gates + a regression test</b> that fails without the fix and passes with it. The test is the durable artifact.</li>
+      <li><b>Write memory back if durable.</b> Owner boundaries, recurring traps, SDK gotchas. Invalidate stale memory.</li>
+    </ol>
+    <p class="note">Forbidden: symptom-level patches, workarounds in lieu of SDK grounding,
+    bypassing visible surfaces (raw API/DB/CLI writes), generated-app hand-patches.</p>
+  </div>
+</section>
+
+<!-- ===================== OPERATOR LANGUAGE ===================== -->
+<section id="operator">
+  <h2><span class="num">07</span>Operator Language</h2>
+  <p class="sub">A real operator is non-technical &middot; <a href="OPERATOR-LANGUAGE.md">OPERATOR-LANGUAGE.md</a></p>
+
+  <div class="grid c2">
+    <div class="card"><h3 style="margin-top:0">Good prompts (use for testing)</h3>
+      <div class="prompt good">"I want a developer pulse dashboard for my team's GitHub activity."</div>
+      <div class="prompt good">"Add a search box to the page I just saw."</div>
+      <div class="prompt good">"This button is broken — fix it."</div>
+      <div class="prompt good">"What's the holdup?"</div>
+      <div class="prompt good">"Make it faster."</div>
+    </div>
+    <div class="card"><h3 style="margin-top:0">Bad prompts (never)</h3>
+      <div class="prompt bad">"Recover the blocked task and dispatch it through the lifecycle."</div>
+      <div class="prompt bad">"Use the scaffold tool to set up the workspace."</div>
+      <div class="prompt bad">"Override the permission policy so Write is enabled."</div>
+      <div class="prompt bad">"Run telemetry analysis with compact logs."</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Banned operator-facing terms</h3>
+    <p style="font-size:13px;color:var(--gray-500);margin-top:0">Forbidden in operator UI, transcripts,
+    Board, Backlog, Inbox, Settings — unless the operator typed them verbatim first.</p>
+    <div class="banned">
+      <span>write hook</span><span>permission mode</span><span>allowlist</span><span>dispatch</span>
+      <span>gate</span><span>worktree</span><span>scaffold</span><span>blocked_reason</span>
+      <span>can_use_tool</span><span>MCP</span><span>subagent</span><span>SDK</span>
+      <span>session_id</span><span>cwd</span><span>lifecycle</span><span>phase</span>
+      <span>quality gate</span><span>code-gen</span><span>agent-chat</span><span>recover</span>
+      <span>backlog</span><span>sprint</span><span>task id</span><span>chunk</span>
+      <span>token pressure</span><span>tool approval</span>
+    </div>
+  </div>
+  <p class="note">Scenarios are scripted as Forward (F1–F10), Edge/Failure (E1–E9), and
+  Reverse (R1–R3) — see OPERATOR-LANGUAGE.md and docs/PROMPT.md.</p>
+</section>
+
+<!-- ===================== TUNING ===================== -->
+<section id="tuning">
+  <h2><span class="num">08</span>Tuning &amp; Autoresearch</h2>
+  <p class="sub">Two cadences for "less spend per shipped feature" &middot;
+  <a href="TUNING.md">TUNING.md</a></p>
+  <div class="grid c2">
+    <div class="card"><h3 style="margin-top:0">Manual tuning (this folder)</h3>
+      <ul class="tight">
+        <li>Interactive, within a test cycle; tester judgment.</li>
+        <li>Continuous CLI monitoring during a run (board / logs analyze / errors).</li>
+        <li>Per-prompt loop: enumerate tool calls → is each in the agent's job? → remove or delegate → re-run.</li>
+        <li>Output: tool-allowlist + boundary changes.</li>
+      </ul></div>
+    <div class="card"><h3 style="margin-top:0">Autoresearch (Track B)</h3>
+      <ul class="tight">
+        <li>Autonomous, measured, continuous.</li>
+        <li>Hard-gate + 2σ composite test from a baseline variance floor.</li>
+        <li>Three lanes: Baseline → Iterate → Fix.</li>
+        <li>Output: prompt-shape + context-block changes; feeds Tier-3 evidence.</li>
+      </ul></div>
+  </div>
+</section>
+
+<!-- ===================== FILE MAP ===================== -->
+<section id="files">
+  <h2><span class="num">09</span>File Map</h2>
+  <p class="sub">One owner per concern &middot; <a href="INDEX.md">INDEX.md</a> is the routing layer</p>
+  <div class="files">
+    <a class="file" href="README.md"><span class="fn">README.md</span><span class="fd">Bootstrap rules — read first, every session</span></a>
+    <a class="file" href="NORTH-STAR.md"><span class="fn">NORTH-STAR.md</span><span class="fd">Mission, three-fold success bar, differentiators, non-goals</span></a>
+    <a class="file" href="ROADMAP.md"><span class="fn">ROADMAP.md</span><span class="fd">Three-epoch roadmap — the spine of all work</span></a>
+    <a class="file" href="STATUS.md"><span class="fn">STATUS.md</span><span class="fd">Live project state — agent-updated per transition</span></a>
+    <a class="file" href="EVALUATION.md"><span class="fn">EVALUATION.md</span><span class="fd">Tiered scorecard + verification commands</span></a>
+    <a class="file" href="FIX-STANDARD.md"><span class="fn">FIX-STANDARD.md</span><span class="fd">Seven-step fix standard for every non-trivial defect</span></a>
+    <a class="file" href="OPERATOR-LANGUAGE.md"><span class="fn">OPERATOR-LANGUAGE.md</span><span class="fd">Banned terms, good/bad prompts, F/E/R scenarios</span></a>
+    <a class="file" href="TUNING.md"><span class="fn">TUNING.md</span><span class="fd">Continuous monitoring + per-prompt tuning loop</span></a>
+    <a class="file" href="RESUME.md"><span class="fn">RESUME.md</span><span class="fd">Session-drop protocol — Continue / Re-pick / Ask</span></a>
+    <a class="file" href="INDEX.md"><span class="fn">INDEX.md</span><span class="fd">Owner map — internal + external routing</span></a>
+    <a class="file" href="INSIGHTS.md"><span class="fn">INSIGHTS.md</span><span class="fd">Direction-audit log (frozen, historical)</span></a>
+  </div>
+</section>
+
+<!-- ===================== DECISIONS ===================== -->
+<section id="decisions">
+  <h2><span class="num">10</span>Recent Decisions</h2>
+  <p class="sub">Durable decisions, one line each &middot; from <a href="STATUS.md">STATUS.md</a></p>
+  <div class="tl">
+    <div class="ev"><div class="date">2026-05-30</div>
+      <p>Token-cost lever work. DB-verified that trivial-feature burn is <b>planning-time
+      over-decomposition</b>, not verifier reruns. Shipped IMP-027a/c (model-driven task sizing —
+      a trivial ask now yields 1 task, not a 5-task sprint) and IMP-028 (compact workspace-map
+      into code-gen). Full suite 1574 passed, 0 failed.</p></div>
+    <div class="ev"><div class="date">2026-05-30</div>
+      <p>IMP-020 resolved as a design call: the chat lane must never edit the generated app
+      directly — that bypasses the dashboard-first visible SDLC. Mutating built-ins are routed
+      to <code>task_dispatch</code> instead of an Approve/Deny card.</p></div>
+    <div class="ev"><div class="date">2026-05-30</div>
+      <p>Operator-driven validation on a fresh app (recall-loop). IMP-018 (interview free-text →
+      structured AskUserQuestion) and IMP-015 (feature mislabeled as improvement) closed live;
+      IMP-019 real-browser self-verification built over the Hermes bridge.</p></div>
+    <div class="ev"><div class="date">2026-05-29</div>
+      <p>Goal folder revalidated against live code. Closed phantom work, narrowed to true gaps
+      (M1.5 query()→ClaudeSDKClient, M2.6 subagent can_use_tool deny), confirmed G3 SessionStore absent.</p></div>
+    <div class="ev"><div class="date">2026-05-23</div>
+      <p>M1.3 0-violation complexity gate fully re-closed across two commits; M3.5 N=5 baseline
+      unblocked. <code>builder logs analyze</code> made honestly session-scoped.</p></div>
+    <div class="ev"><div class="date">2026-05-22</div>
+      <p>M2.3 P0 confirmed by a live devpulse run: code-gen cache 56x per-run / 72.4x fleet,
+      <code>avoidable_cost_flags=[]</code>, all 5 Tier-1 bars confirmed,
+      <code>recommended_next_change: maintain_current_flow</code>.</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Generated view of <code>docs/goal/</code> — the Markdown files remain canonical and
+  agent-readable. Regenerate when STATUS / ROADMAP change materially. Snapshot reflects
+  STATUS.md as of <b>2026-05-30</b> and ROADMAP checkbox tallies as of generation
+  (49 closed / 83 open).</p>
+</footer>
+</main>
+</div>
+
+<script type="application/json" id="artifact-data">
+{
+  "source": "docs/goal/*.md (canonical)",
+  "snapshot_date": "2026-05-30",
+  "epoch": "Epoch 1 \u2014 Stabilize",
+  "milestone": "M3.5 \u2014 Optimization loop activation (autoresearch Track B)",
+  "roadmap_totals": {
+    "closed": 52,
+    "open": 84
+  },
+  "tiers": {
+    "tier1": "all 5 bars (2026-05-22)",
+    "tier2": "pending @ M2.1",
+    "tier3": "pending @ M3.4"
+  },
+  "milestones": [
+    {
+      "id": "M1.1",
+      "done": 17,
+      "open": 12
+    },
+    {
+      "id": "M1.2",
+      "done": 6,
+      "open": 3
+    },
+    {
+      "id": "M1.3",
+      "done": 13,
+      "open": 0
+    },
+    {
+      "id": "M1.4",
+      "done": 2,
+      "open": 4
+    },
+    {
+      "id": "M1.5",
+      "done": 0,
+      "open": 5
+    },
+    {
+      "id": "M1.6",
+      "done": 4,
+      "open": 3
+    },
+    {
+      "id": "M2.1",
+      "done": 0,
+      "open": 7
+    },
+    {
+      "id": "M2.2",
+      "done": 0,
+      "open": 4
+    },
+    {
+      "id": "M2.3",
+      "done": 6,
+      "open": 6
+    },
+    {
+      "id": "M2.4",
+      "done": 0,
+      "open": 5
+    },
+    {
+      "id": "M2.6",
+      "done": 0,
+      "open": 8
+    },
+    {
+      "id": "M2.5",
+      "done": 1,
+      "open": 7
+    },
+    {
+      "id": "M3.1",
+      "done": 0,
+      "open": 3
+    },
+    {
+      "id": "M3.2",
+      "done": 0,
+      "open": 3
+    },
+    {
+      "id": "M3.3",
+      "done": 0,
+      "open": 3
+    },
+    {
+      "id": "M3.4",
+      "done": 0,
+      "open": 6
+    },
+    {
+      "id": "M3.5",
+      "done": 3,
+      "open": 5
+    }
+  ]
+}
+</script>
+</body>
+</html>
