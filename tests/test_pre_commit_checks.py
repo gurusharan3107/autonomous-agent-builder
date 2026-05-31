@@ -17,6 +17,9 @@ checks_for_files = pre_commit_checks.checks_for_files
 changed_files = pre_commit_checks.changed_files
 changelog_sync_result = pre_commit_checks.changelog_sync_result
 docs_sync_result = pre_commit_checks.docs_sync_result
+# NB: do not bind tests_sync_result to a module-level name starting with "test" —
+# pytest's python_functions=test* glob would collect the alias as a test case.
+run_tests_sync = pre_commit_checks.tests_sync_result
 
 
 def _codes(files: list[str]) -> set[str]:
@@ -87,6 +90,47 @@ def test_changelog_sync_does_not_require_changelog_for_tests_only_change():
 
     assert payload["status"] == "passed"
     assert payload["tracked_changes"] == []
+
+
+def test_tests_sync_fails_for_behavioral_src_without_test_update():
+    payload = run_tests_sync(["src/autonomous_agent_builder/agents/definitions.py"])
+
+    assert payload["status"] == "failed"
+    assert payload["exit_code"] == 4
+    assert payload["code_changes"] == ["src/autonomous_agent_builder/agents/definitions.py"]
+    assert payload["test_changes"] == []
+
+
+def test_tests_sync_passes_when_src_ships_with_a_test_change():
+    payload = run_tests_sync(
+        [
+            "src/autonomous_agent_builder/agents/definitions.py",
+            "tests/test_definitions.py",
+        ]
+    )
+
+    assert payload["status"] == "passed"
+    assert payload["test_changes"] == ["tests/test_definitions.py"]
+
+
+def test_tests_sync_does_not_require_test_for_tests_only_change():
+    payload = run_tests_sync(["tests/test_memory_cli.py"])
+
+    assert payload["status"] == "passed"
+    assert payload["code_changes"] == []
+
+
+def test_tests_sync_ignores_non_src_and_static_changes():
+    payload = run_tests_sync(
+        [
+            "docs/goal/ROADMAP.md",
+            "scripts/seed_demo.py",
+            "src/autonomous_agent_builder/dashboard/static/app.js",
+        ]
+    )
+
+    assert payload["status"] == "passed"
+    assert payload["code_changes"] == []
 
 
 def test_memory_and_hook_changes_select_bounded_tests():

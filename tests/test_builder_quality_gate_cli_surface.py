@@ -109,7 +109,7 @@ def test_quality_gate_lists_surfaces_json():
     assert any(item["surface"] == "product-lifecycle" for item in payload["surfaces"])
     assert any(item["surface"] == "state-integrity" for item in payload["surfaces"])
     assert any(item["surface"] == "dashboard-ux" for item in payload["surfaces"])
-    assert any(item["surface"] == "architecture-invariants" for item in payload["surfaces"])
+    assert not any(item["surface"] == "architecture-invariants" for item in payload["surfaces"])
     assert not any(item["surface"] == "nonexistent" for item in payload["surfaces"])
 
 
@@ -119,7 +119,6 @@ def test_quality_gate_lists_surfaces_json():
         "product-lifecycle",
         "state-integrity",
         "dashboard-ux",
-        "architecture-invariants",
     ),
 )
 def test_product_quality_gate_surfaces_json(surface: str):
@@ -137,7 +136,7 @@ def test_quality_gate_architecture_boundary_surface_json():
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload["title"] == "Architecture boundary quality gate"
+    assert payload["title"] == "Architecture quality gate"
     assert any(
         item.startswith("runtime-boundary changes preserve the ownership split already documented")
         for item in payload["expectations"]

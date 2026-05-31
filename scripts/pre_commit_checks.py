@@ -111,6 +111,21 @@ def _requires_changelog_entry(path: str) -> bool:
     } or path.startswith(".codex/agents/")
 
 
+def _requires_test_update(path: str) -> bool:
+    """Behavioral product code whose change should come with a tests/ change.
+
+    Scoped to importable builder Python under src/ — the surface where a
+    behavioral change (renamed symbol, changed return/string an assertion
+    pins) silently breaks the suite. Excludes static assets (no test
+    coverage) and frontend (separate test story).
+    """
+    if not path.startswith("src/autonomous_agent_builder/"):
+        return False
+    if path.startswith("src/autonomous_agent_builder/dashboard/static/"):
+        return False
+    return path.endswith(".py")
+
+
 def docs_sync_result(files: list[str]) -> dict[str, object]:
     code_changes = [path for path in files if _is_product_code_change(path)]
     doc_changes = [path for path in files if _is_repo_doc_change(path)]
@@ -155,6 +170,41 @@ def changelog_sync_result(files: list[str]) -> dict[str, object]:
             else (
                 "Commit-worthy product, docs, hook, or operator-surface changes are staged "
                 "without CHANGELOG.md. Add a compact evidence-first changelog entry before committing."
+            )
+        ),
+    }
+
+
+def tests_sync_result(files: list[str]) -> dict[str, object]:
+    """Behavioral src/ change must be staged with a matching tests/ change.
+
+    Peer to docs_sync_result / changelog_sync_result. Encodes the rule that
+    repeatedly failed as prose: a behavioral change without a test update ships
+    breakage that surfaces only when the suite is later run. The escape hatch is
+    deliberate friction — stage the covering test (even a regression test) with
+    the code, or, for a genuinely test-neutral change, an unrelated tests/ touch.
+    """
+    code_changes = [path for path in files if _requires_test_update(path)]
+    test_changes = [path for path in files if path.startswith("tests/")]
+    passed = not code_changes or bool(test_changes)
+    return {
+        "code": "tests_sync_required",
+        "command": "stage a matching tests/ change with behavioral src/ changes",
+        "why": "behavioral product code must ship with the test that proves it (root cause of recurring broken-suite commits)",
+        "exit_code": 0 if passed else 4,
+        "status": "passed" if passed else "failed",
+        "code_changes": code_changes,
+        "test_changes": test_changes,
+        "stdout_tail": "",
+        "stderr_tail": (
+            ""
+            if passed
+            else (
+                "Behavioral src/ code changed without a matching tests/ change. "
+                "Stage the covering test (a regression test for the new behavior, or "
+                "the updated assertions) before committing. If the change is genuinely "
+                "test-neutral (docstrings, comments), stage the relevant test anyway to "
+                "record that it was considered."
             )
         ),
     }
@@ -422,6 +472,7 @@ def main() -> int:
     results = [
         docs_sync_result(files),
         changelog_sync_result(files),
+        tests_sync_result(files),
         *[_run_check(check, repo_root) for check in checks],
     ]
     failed = [result for result in results if result["status"] == "failed"]

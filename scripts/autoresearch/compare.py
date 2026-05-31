@@ -6,7 +6,7 @@ Outputs JSON to stdout: {"decision": "keep|discard|crash", "reason": str, "detai
 
 Logic:
 1. Crash check — non-zero exit on build/test gate → discard.
-2. Six hard gates (from OPTIMIZE.md) — any fail → discard.
+2. Six hard gates (from METRICS.md § Hard Gates) — any fail → discard.
 3. 2σ composite test — candidate must beat baseline mean by ≥ 2σ.
 4. Per-prompt sanity — max single-prompt regression < 50%.
 

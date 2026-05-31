@@ -7,6 +7,53 @@ from typing import Any
 
 from autonomous_agent_builder.logs.diagnostics import summarize_chat_event
 
+# A single chat prompt can emit several run_status events: an initial
+# running marker (zeros), the real model-run total, then deterministic
+# continuation / dispatch / terminal markers that also carry zeros
+# (delivery-permission handling, sprint planning, task_dispatched). Streaming
+# partial usage is never persisted as a run_status event, so every persisted
+# run_status holds a complete per-invocation total. Overwriting telemetry with
+# the last run_status therefore lets a trailing zero marker clobber the real
+# cost/token totals and blank the analyze headline (IMP-023). Sum the additive
+# fields across a prompt's run_status events; keep last-non-empty for status
+# scalars.
+_ADDITIVE_TELEMETRY_FIELDS = (
+    "tokens_used",
+    "tokens_input",
+    "tokens_output",
+    "tokens_cached",
+    "raw_tokens",
+    "noncached_plus_output_tokens",
+    "cost_usd",
+    "duration_ms",
+)
+_STATUS_TELEMETRY_FIELDS = (
+    "running",
+    "current_turn",
+    "max_turns",
+    "stop_reason",
+    "sdk_session_id",
+    "error",
+    "dispatch",
+)
+
+
+def _merge_run_status_telemetry(
+    existing: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
+    merged = dict(existing)
+    for key in _ADDITIVE_TELEMETRY_FIELDS:
+        value = payload.get(key)
+        if value in ("", None):
+            continue
+        merged[key] = (merged.get(key) or 0) + value
+    for key in _STATUS_TELEMETRY_FIELDS:
+        value = payload.get(key)
+        if value in ("", None):
+            continue
+        merged[key] = value
+    return merged
+
 
 def build_timeline_prompts(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build per-prompt analysis records from persisted chat timeline events."""
@@ -38,32 +85,12 @@ def build_timeline_prompts(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         if event_type == "run_status":
             diagnostic = summarize_chat_event(event_type, payload)
-            current["telemetry"] = {
-                key: payload.get(key)
-                for key in (
-                    "running",
-                    "current_turn",
-                    "max_turns",
-                    "tokens_used",
-                    "tokens_input",
-                    "tokens_output",
-                    "tokens_cached",
-                    "raw_tokens",
-                    "noncached_plus_output_tokens",
-                    "cost_usd",
-                    "duration_ms",
-                    "stop_reason",
-                    "sdk_session_id",
-                    "error",
-                    "observability",
-                    "dispatch",
-                )
-                if payload.get(key) not in ("", None)
-            }
-            if "observability" in current["telemetry"]:
-                snapshot = current["telemetry"].pop("observability")
-                if isinstance(snapshot, dict):
-                    current["observability"] = snapshot
+            current["telemetry"] = _merge_run_status_telemetry(
+                current.get("telemetry") or {}, payload
+            )
+            snapshot = payload.get("observability")
+            if isinstance(snapshot, dict) and snapshot:
+                current["observability"] = snapshot
             if diagnostic.get("outcome") == "error":
                 current.setdefault("risks", []).append("run_error")
             continue
