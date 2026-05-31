@@ -60,9 +60,6 @@ dev = [
 observability = [
     "langfuse>=2.57.0",
 ]
-openai-agents = [
-    "openai-agents",
-]
 
 [dependency-groups]
 dev = [

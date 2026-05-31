@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from autonomous_agent_builder.knowledge.architecture_evidence import (
+from autonomous_agent_builder.knowledge.proof_contract import (
     compute_dependency_hash,
     verify_evidence_manifest,
 )

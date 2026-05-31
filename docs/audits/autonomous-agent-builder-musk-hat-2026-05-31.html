@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Musk-hat audit — autonomous-agent-builder — 2026-05-31</title>
+<style>
+  :root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D; --rust:#B04A3F;
+  --gray-150:#F0EEE6; --gray-300:#D1CFC5; --gray-500:#87867F; --gray-700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;}
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--ivory); color:var(--gray-700); font-family:var(--sans); font-size:15px; line-height:1.6; padding:56px 24px 96px}
+  .wrap{max-width:1000px; margin:0 auto}
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gray-500); margin-bottom:12px}
+  h1{font-family:var(--serif); font-weight:500; font-size:clamp(30px,4.4vw,42px); letter-spacing:-.014em; color:var(--slate); margin:0 0 14px; line-height:1.12}
+  h1 em{font-style:italic; color:var(--clay)}
+  .lead{font-size:16px; line-height:1.6; color:var(--gray-700); max-width:760px; margin:0 0 8px}
+  h2{font-family:var(--serif); font-weight:500; font-size:24px; letter-spacing:-.01em; color:var(--slate); margin:0 0 4px}
+  h2 em{font-style:italic; color:var(--clay)}
+  .sec-eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--clay); margin-bottom:8px; margin-top:0}
+  .rule{height:1.5px; background:var(--gray-300); border:0; margin:44px 0 28px}
+  code{font-family:var(--mono); font-size:.86em; background:var(--gray-150); padding:1px 5px; border-radius:4px; color:var(--slate)}
+  .mono{font-family:var(--mono)}
+  .verdict{display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:center; background:var(--paper); border:1.5px solid var(--gray-300); border-radius:12px; padding:28px 32px; margin-top:32px; box-shadow:0 12px 32px rgba(20,20,19,.06)}
+  .score-num{font-family:var(--serif); font-size:54px; font-weight:500; color:var(--clay); line-height:1}
+  .score-den{font-family:var(--mono); font-size:12px; color:var(--gray-500); letter-spacing:.05em}
+  .verdict .punch{font-family:var(--serif); font-style:italic; font-size:19px; color:var(--slate); line-height:1.4; margin-bottom:6px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:24px}
+  .tile{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:18px 18px 16px}
+  .tile .n{font-family:var(--mono); font-size:30px; color:var(--slate); line-height:1; letter-spacing:-.02em}
+  .tile .n.bad{color:var(--rust)} .tile .n.good{color:var(--olive)}
+  .tile .l{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-500); margin-top:10px}
+  table{width:100%; border-collapse:collapse; margin-top:18px; font-size:14px}
+  th,td{text-align:left; padding:11px 12px; border-bottom:1.5px solid var(--gray-300); vertical-align:top}
+  th{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gray-500); font-weight:400}
+  td.crit{font-weight:600; color:var(--slate); width:210px}
+  .bar-track{display:inline-block; width:110px; height:9px; background:var(--gray-150); border-radius:5px; overflow:hidden; vertical-align:middle; margin-right:10px}
+  .bar-track i{display:block; height:100%}
+  .g-num{font-family:var(--mono); font-weight:600; font-size:13px}
+  .evid{color:var(--gray-700); font-size:13.5px}
+  .b-bad{background:var(--rust)} .b-mid{background:var(--clay)} .b-good{background:var(--olive)}
+  .c-bad{color:var(--rust)} .c-mid{color:var(--clay-d)} .c-good{color:var(--olive)}
+  .note{background:var(--gray-150); border-left:3px solid var(--oat); padding:14px 16px; border-radius:0 8px 8px 0; font-size:13.5px; margin-top:18px}
+  .note h4{margin:0 0 6px; font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--clay-d)}
+  .cand{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:18px 20px; margin-top:14px; display:grid; grid-template-columns:42px 1fr; gap:16px; align-items:start}
+  .cand.done{background:var(--gray-150); opacity:.82}
+  .cand .rank{font-family:var(--serif); font-size:22px; color:var(--clay); line-height:1.1}
+  .cand h3{margin:0 0 4px; font-size:16px; color:var(--slate); font-family:var(--sans); font-weight:600}
+  .cand .meta{font-family:var(--mono); font-size:11.5px; color:var(--gray-500); margin-bottom:8px}
+  .cand ul{margin:6px 0 0; padding-left:18px} .cand li{margin:2px 0; font-size:13px}
+  .pill{display:inline-block; font-family:var(--mono); font-size:10px; letter-spacing:.05em; text-transform:uppercase; padding:2px 8px; border-radius:20px; border:1.2px solid var(--gray-300); color:var(--gray-700)}
+  .pill.new{background:#FBEFE9; border-color:var(--clay); color:var(--clay-d)}
+  .pill.done{background:var(--olive); color:#fff; border-color:var(--olive)}
+  .pill.track{background:var(--gray-150)}
+  .footer{margin-top:40px; font-size:12.5px; color:var(--gray-500); font-style:italic; border-top:1.5px solid var(--gray-300); padding-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Musk-hat · first-principles audit · 2026-05-31</p>
+  <h1>autonomous-agent-builder — <em>how much of this should exist?</em></h1>
+  <p class="lead">Second pass of the Elon hat on this repo. The first (2026-05-30) seeded milestone <strong>M1.6 deletion-debt paydown</strong>; Tiers&nbsp;1a/1b/1c shipped (three runtime lanes deleted). This pass re-scores against fresh git/grep evidence and surfaces one orphan the prior sweep missed. Every number traces to a command; impressions discarded.</p>
+
+  <div class="verdict">
+    <div>
+      <div class="score-num">3 / 10</div>
+      <div class="score-den">LOW-BAR = DELETION RATIO</div>
+    </div>
+    <div>
+      <p class="punch">Grows-only — but the curve is bending, and cycle time makes the cuts safe.</p>
+      <p style="margin:0; font-size:14px;">90-day deletion ratio is <strong>0.092</strong> (157,394 added / 14,427 removed) — still inside the cardinal-sin band (&lt;0.15), though up from 0.081 last pass. The live M1.6 campaign is real (3 lanes gone) and import speed (74&nbsp;ms) + a single 96-line CI gate mean a one-line change reaches prod in minutes — exactly what de-risks aggressive deletion. New find this pass: <code>architecture_evidence.py</code> (944 LOC) is wired to nothing but its own test.</p>
+    </div>
+  </div>
+
+  <div class="grid4">
+    <div class="tile"><div class="n bad">0.092</div><div class="l">Del : Add (90d)</div></div>
+    <div class="tile"><div class="n">79,916</div><div class="l">LOC · 265 files</div></div>
+    <div class="tile"><div class="n">15</div><div class="l">Files ≥ 1000 LOC</div></div>
+    <div class="tile"><div class="n good">74 ms</div><div class="l">Cold import</div></div>
+  </div>
+
+  <hr class="rule">
+
+  <p class="sec-eyebrow">The scorecard</p>
+  <h2>Six criteria, <em>each from a cited command</em></h2>
+  <table>
+    <thead><tr><th>Criterion</th><th>Grade</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="crit">1 · Requirements sanity<br><span class="mono" style="font-size:11px;color:var(--gray-500)">who asked?</span></td>
+        <td><span class="bar-track"><i class="b-mid" style="width:70%"></i></span><span class="g-num c-mid">7</span></td>
+        <td class="evid">Most surfaces trace to a named ROADMAP owner. Voice (4,260 LOC, 11 files) is requirement-backed — M1.5/NORTH-STAR call it "a peer operator surface, not a bolt-on", so it is <em>not</em> a cut. Retired lanes (codex_cli, openai_agents) prove dead requirements get killed. Docked for one orphan (<code>architecture_evidence.py</code>, justified only by its own test) + a stale <code>openai-agents</code> dependency declaration left after Tier&nbsp;1c.</td>
+      </tr>
+      <tr>
+        <td class="crit">2 · Deletion ratio<br><span class="mono" style="font-size:11px;color:var(--gray-500)">what can go?</span></td>
+        <td><span class="bar-track"><i class="b-bad" style="width:30%"></i></span><span class="g-num c-bad">3</span></td>
+        <td class="evid"><code>evidence.py</code>: 0.092 over 90d → grows-only, the cardinal sin. A 3 not a 1 because the trend improved (0.081→0.092) <em>and</em> a tracked campaign is actively pruning — but the absolute number is still deep in the &lt;0.15 band. 157k lines added in a quarter dwarfs the 14k removed.</td>
+      </tr>
+      <tr>
+        <td class="crit">3 · Idiot index / simplicity<br><span class="mono" style="font-size:11px;color:var(--gray-500)">complexity earned?</span></td>
+        <td><span class="bar-track"><i class="b-bad" style="width:40%"></i></span><span class="g-num c-bad">4</span></td>
+        <td class="evid">15 files ≥1000 LOC (<code>onboarding.py</code> 1931, <code>evidence_graph.py</code> 1817, <code>dashboard_api.py</code> 1736). Mass concentrates in a few giant modules. The dual FastAPI app is framework-on-framework duplication (Tier&nbsp;2). M2 already ratchets some hot files &lt;1500 — partial credit.</td>
+      </tr>
+      <tr>
+        <td class="crit">4 · Cycle time<br><span class="mono" style="font-size:11px;color:var(--gray-500)">idea → prod?</span></td>
+        <td><span class="bar-track"><i class="b-good" style="width:80%"></i></span><span class="g-num c-good">8</span></td>
+        <td class="evid"><strong>The praise.</strong> <code>import autonomous_agent_builder</code> = 74&nbsp;ms; ~1,551 tests collect fast; CI is a single 96-line doc-freshness workflow. A one-line change reaches prod in minutes. This speed is what makes the deletion campaign low-risk — call it out.</td>
+      </tr>
+      <tr>
+        <td class="crit">5 · Automate (last)<br><span class="mono" style="font-size:11px;color:var(--gray-500)">automating doomed code?</span></td>
+        <td><span class="bar-track"><i class="b-mid" style="width:60%"></i></span><span class="g-num c-mid">6</span></td>
+        <td class="evid">CI is minimal (one workflow) — no clever tooling wrapped around deletable surfaces, which is the right order. The substantial <code>builder</code> quality-gate/CLI tooling sits atop the live product, not doomed code. No Tesla-line trap detected.</td>
+      </tr>
+      <tr>
+        <td class="crit">6 · Vertical ownership<br><span class="mono" style="font-size:11px;color:var(--gray-500)">one head, end-to-end?</span></td>
+        <td><span class="bar-track"><i class="b-mid" style="width:50%"></i></span><span class="g-num c-mid">5</span></td>
+        <td class="evid">The dual FastAPI app (<code>api/app.py</code> vs <code>embedded/server</code>) is the sync-coupled-twin antipattern: route divergence + 9 tests still pinned to the stale twin. Being collapsed (Tier&nbsp;2/3). Owner boundaries are otherwise crisply documented (CLAUDE.md/AGENTS.md), and the voice subsystem is cohesive (each module has exactly one importer → <code>voice_operator.py</code>).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr class="rule">
+
+  <p class="sec-eyebrow">Phase 2 · Delete</p>
+  <h2>Tiered deletion list — <em>every cut import-verified</em></h2>
+
+  <div class="cand">
+    <div class="rank">A1</div>
+    <div>
+      <span class="pill new">New this pass</span>
+      <h3>Orphan feature: <code>knowledge/architecture_evidence.py</code></h3>
+      <div class="meta">944 LOC · class <code>ArchitectureEvidencePlanner</code> · last touched 2026-05-20 (extracted, never wired)</div>
+      <p style="margin:0 0 4px;font-size:13.5px;">Import-trace: <strong>zero importers anywhere in <code>src/</code></strong>. The only consumer is <code>tests/test_system_architecture_mvp.py</code> — production code that exists solely to satisfy its own test. Not referenced by <code>knowledge/__init__.py</code>, no CLI/route wiring, no dynamic import.</p>
+      <strong style="font-size:12.5px">Coupled-edit checklist (same commit):</strong>
+      <ul>
+        <li>Delete <code>src/.../knowledge/architecture_evidence.py</code> (944) + <code>tests/test_system_architecture_mvp.py</code> (254).</li>
+        <li>Grep docs for "ArchitectureEvidencePlanner" / "architecture_evidence" as a <em>live feature</em> claim; the module's own strings self-reference (lines 631/755) — those go with the file.</li>
+        <li><strong>Confirm-first:</strong> ask the maintainer whether <code>ArchitectureEvidencePlanner</code> is a <em>parked/planned</em> KB-extract feature. If yes → wire it into the extract path (requirement exists but unbuilt); if no → delete. ~1,198 LOC removed.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cand">
+    <div class="rank">A2</div>
+    <div>
+      <span class="pill new">New this pass</span>
+      <h3>Stale dependency: <code>openai-agents</code> extra in <code>pyproject.toml</code></h3>
+      <div class="meta">pyproject.toml:63–64 · the lane it served was retired in Tier 1c (commit 5532f10)</div>
+      <p style="margin:0 0 4px;font-size:13.5px;"><code>grep openai_agents src</code> → 0 hits, but the <code>[project.optional-dependencies] openai-agents = ["openai-agents"]</code> block survives. Dead install surface.</p>
+      <strong style="font-size:12.5px">Coupled-edit checklist:</strong>
+      <ul>
+        <li>Delete the 2-line <code>openai-agents</code> extra from <code>pyproject.toml</code>.</li>
+        <li>Grep docs/CI for <code>pip install ...[openai-agents]</code> refs; remove if any. Refresh <code>uv.lock</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cand">
+    <div class="rank">B</div>
+    <div>
+      <span class="pill track">Already tracked · in progress</span>
+      <h3>Tier 2 — collapse the dual FastAPI app onto the embedded server</h3>
+      <div class="meta">~1,164 LOC (prior trace) · embedded server is canonical; <code>api/app.py</code> removed</div>
+      <p style="margin:0 0 4px;font-size:13.5px;">Fresh trace this pass confirms it is live-but-stale: 4 <code>src</code> importers (<code>dashboard/routes.py</code>, <code>knowledge/architecture_evidence.py</code>†, <code>knowledge/extractor.py</code>, <code>main.py</code>) + <strong>9 tests still pinned to <code>api.app</code></strong>. Per-file migrate-or-delete until no test builds <code>api.app</code>, then delete <code>api/app.py</code> + divergent routes. († one importer is the A1 orphan — deleting A1 shrinks this surface.)</p>
+    </div>
+  </div>
+
+  <div class="cand done">
+    <div class="rank">✓</div>
+    <div>
+      <span class="pill done">Done</span>
+      <h3>Tier 1a/1b/1c — three runtime lanes retired (~938 LOC)</h3>
+      <div class="meta">codex_cli (635) · opencode wrapper (21) · openai_agents/opencode_go (282) — commits b69ef80, 589a950, 5532f10</div>
+      <p style="margin:0;font-size:13.5px;">End state: <code>get_implemented == get_available == [claude, codex_sdk]</code>. Full suite collects 1,551 clean. This is the campaign working.</p>
+    </div>
+  </div>
+
+  <div class="cand">
+    <div class="rank">C</div>
+    <div>
+      <span class="pill track">Tracked · structural · 0 LOC</span>
+      <h3>Tier 3 — rename <code>api/</code> shared core → <code>core/</code></h3>
+      <div class="meta">blocked on Tier 2 · end-state: one app + one shared core + two thin runtimes</div>
+      <p style="margin:0;font-size:13.5px;"><code>api/</code> is misnamed shared infrastructure the embedded server depends on. Pure rename once Tier 2 settles direction.</p>
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <p class="sec-eyebrow">Verification refutations</p>
+  <h2>What the heuristics flagged that import-trace <em>rejected</em></h2>
+  <p style="font-size:13.5px;max-width:760px">Proof the discipline ran. Hard rule 2: a surface is only "delete" after grepping importers outside itself + tests. These were caught lying.</p>
+  <table>
+    <thead><tr><th>Flagged</th><th>By</th><th>Verdict</th><th>Why KEEP</th></tr></thead>
+    <tbody>
+      <tr><td><code>evidence_graph.py</code> (1817)</td><td>Explore agent → "DEAD"</td><td class="c-good g-num">KEEP</td><td class="evid">Agent scoped grep <em>outside</em> <code>knowledge/</code>. Real trace: imported by <code>quality_gate.py</code>, <code>extractor.py</code>, 3 generators. Live.</td></tr>
+      <tr><td><code>extractor.py</code> (1314)</td><td>Explore agent → "DEAD"</td><td class="c-good g-num">KEEP</td><td class="evid">Imported by <code>routes/knowledge_extraction.py</code>, <code>cli/commands/kb.py</code>, <code>__init__.py</code>. Live.</td></tr>
+      <tr><td><code>proof_contract.py</code></td><td>Explore agent → "DEAD"</td><td class="c-good g-num">KEEP</td><td class="evid">Imported by 4 sibling knowledge modules. Live.</td></tr>
+      <tr><td><code>runtime_boundary.py</code> (225)</td><td><code>evidence.py</code> heuristic</td><td class="c-good g-num">KEEP</td><td class="evid">Used by <code>codex_subagents.py</code>. (Matches prior audit's KEEP.)</td></tr>
+      <tr><td><code>services/voice_*.py</code> (×11)</td><td>"orphan" suspicion</td><td class="c-good g-num">KEEP</td><td class="evid">One importer each → <code>voice_operator.py</code> = cohesive subsystem, requirement-backed (M1.5). Cohesion ≠ dead.</td></tr>
+      <tr><td><code>runtime_settings.py</code></td><td>Explore agent → "DUPLICATE-of-runtime_guidance"</td><td class="c-mid g-num">UNVERIFIED</td><td class="evid">Low-confidence agent claim, not import-traced this pass. Do <em>not</em> cut without confirming the overlap is real duplication vs a legitimate settings/guidance split.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <h4>The mandatory caveat</h4>
+    This is a synthesis of Musk's stated engineering algorithm (Starbase/Tesla) mapped onto software — a deliberately provocative lens, not a balanced rubric. It under-weights correctness, security, and long-horizon maintainability <em>by design</em>. The 944-LOC <code>architecture_evidence.py</code> cut especially should pair with a <code>/code-review</code> read of its test to confirm no live behaviour depends on it transitively before deletion. Pair this hat <em>with</em> a conventional review; don't let it replace one.
+  </div>
+
+  <p class="footer">Generated by the <code>elon</code> skill · evidence: <code>scripts/evidence.py --json</code>, git numstat (90d), import-trace grep, 2× read-only Explore agents · supersedes the 2026-05-30 pass (ratio 0.081 → 0.092). Route new finds A1/A2 to <code>docs/goal/ROADMAP.md</code> M1.6 or <code>builder backlog item create --type optimization --source validation</code>.</p>
+
+  <!-- machine-readable mirror -->
+  <script type="application/json" id="artifact-data">
+  {
+    "audit": "musk-hat", "repo": "autonomous-agent-builder", "date": "2026-05-31",
+    "supersedes": "2026-05-30 (ratio 0.081)",
+    "evidence": {
+      "deletion_ratio_90d": {"added": 157394, "removed": 14427, "ratio": 0.092, "band": "grows-only (cardinal sin)"},
+      "mass": {"total_loc": 79916, "file_count": 265, "files_ge_1000": 15},
+      "cycle_time": {"cold_import_s": 0.074, "tests_collected": 1551, "ci_workflows": 1, "ci_lines": 96}
+    },
+    "scorecard": [
+      {"n": 1, "criterion": "requirements_sanity", "grade": 7, "evidence": "most surfaces trace to ROADMAP owner; voice requirement-backed (M1.5); docked for architecture_evidence orphan + stale openai-agents dep"},
+      {"n": 2, "criterion": "deletion_ratio", "grade": 3, "evidence": "0.092 90d grows-only; improving 0.081->0.092 + active M1.6 campaign keeps it off the floor"},
+      {"n": 3, "criterion": "idiot_index_simplicity", "grade": 4, "evidence": "15 files >=1000 LOC; dual-app duplication; M2 ratcheting partial"},
+      {"n": 4, "criterion": "cycle_time", "grade": 8, "evidence": "74ms import; 1551 tests collect fast; single 96-line CI gate"},
+      {"n": 5, "criterion": "automate_last", "grade": 6, "evidence": "minimal CI; tooling sits atop live product, no Tesla-line trap"},
+      {"n": 6, "criterion": "vertical_ownership", "grade": 5, "evidence": "dual FastAPI app sync-coupled twin (Tier2); otherwise crisp boundaries"}
+    ],
+    "low_bar": "deletion_ratio",
+    "deletion_list": [
+      {"tier": "A1", "status": "new", "target": "knowledge/architecture_evidence.py", "loc": 944, "with_test": 254, "verdict": "ORPHAN — 0 src importers, only tests/test_system_architecture_mvp.py", "confirm_first": "is ArchitectureEvidencePlanner a parked KB-extract feature?"},
+      {"tier": "A2", "status": "new", "target": "pyproject.toml openai-agents extra", "loc": 2, "verdict": "stale dep after Tier 1c lane retirement"},
+      {"tier": "B", "status": "in_progress_tracked", "target": "api/app.py dual FastAPI collapse", "loc": 1164, "verdict": "embedded canonical; 4 src importers + 9 tests still on api.app"},
+      {"tier": "1a/1b/1c", "status": "done", "target": "codex_cli + opencode + openai_agents lanes", "loc": 938, "verdict": "shipped — [claude, codex_sdk] only"},
+      {"tier": "C", "status": "tracked_structural", "target": "rename api/ -> core/", "loc": 0, "verdict": "blocked on Tier 2"}
+    ],
+    "refutations": [
+      {"target": "evidence_graph.py", "claimed": "DEAD", "actual": "KEEP", "reason": "imported by quality_gate/extractor/3 generators"},
+      {"target": "extractor.py", "claimed": "DEAD", "actual": "KEEP", "reason": "imported by routes/kb cli/__init__"},
+      {"target": "proof_contract.py", "claimed": "DEAD", "actual": "KEEP", "reason": "imported by 4 sibling modules"},
+      {"target": "runtime_boundary.py", "claimed": "dead-heuristic", "actual": "KEEP", "reason": "used by codex_subagents.py"},
+      {"target": "voice_*.py x11", "claimed": "orphan", "actual": "KEEP", "reason": "cohesive subsystem, M1.5 requirement"},
+      {"target": "runtime_settings.py", "claimed": "DUPLICATE", "actual": "UNVERIFIED", "reason": "low-confidence agent claim, not import-traced"}
+    ]
+  }
+  </script>
+</div>
+</body>
+</html>
