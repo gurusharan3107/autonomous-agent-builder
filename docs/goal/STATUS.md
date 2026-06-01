@@ -16,7 +16,7 @@ Live state. If it lies, system is blind.
 | Current Item In Flight | Fixture A baseline stable (3/5 ships at gate_pass_rate=1.0, μ=216,497, σ=31,831, 2σ-floor=152,835). B–E re-baseline pending on post-pytest-asyncio seed. Per-patch detail: [`docs/autoresearch/PROGRESS.md`](../autoresearch/PROGRESS.md). |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-05-30 — Token-cost work landed on branch `imp-027-model-driven-task-decomposition`: **IMP-027a/c** model-driven task sizing (`851ba75` — trivial ask → 1 task not a 5-task sprint; live-proven), **IMP-028** compact workspace-map into code-gen (`1ebb84b`), and **IMP-021 fixed** (`1d1545f` — 3 pre-existing doc-routing tests; compact-JSON staleness + IMP-020 Bash-deny fallout, test-only). Full suite `1574 passed, 0 failed`. CHANGELOG recorded retroactively this session (catch-up bookkeeping). IMP-027/028 stay `[ ]` (027b + 028 A/B open). *(Autoresearch M3.5 remains the in-flight focus.)* |
+| Last Update | 2026-06-01 — Operator-driven closes (feedback-widget lane) on branch `imp-027-…`: **M1.5** chat→`ClaudeSDKClient` + **M2.6** `can_use_tool` phase deny (`d03aff4`), **IMP-017** backlog cancel state/route/CLI/dashboard (`efe81e5`, bundle rebuild pending), **G3 task 1** `PostgresSessionStore` + SDK conformance (`4ad77d4`; tasks 2–4 open, G3 stays `[ ]`). Prior (2026-05-30): IMP-027a/c `851ba75`, IMP-028 `1ebb84b`, IMP-021 `1d1545f`. *(Autoresearch M3.5 remains the tracked in-flight focus.)* |
 
 ---
 

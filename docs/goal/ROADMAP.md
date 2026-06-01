@@ -36,7 +36,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [ ] `P1` **IMP-014** — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale errors that never age out (9 tool_errors from 2026-05-20 still "unresolved" 8d later). Fix error-trend retention/resolution + rec gating.
 - [x] **IMP-015** — `type=feature` items shown/announced as "improvement". `BacklogPage.tsx itemTypeLabel` + type-aware `save_note` (`agent_chat_result_publisher.py`); `test_agent_feature_spec_capture_routes.py`. (frontend render needs dashboard rebuild.)
 - [ ] `P1` **IMP-016** — chat agent mis-routes builder-improvement asks into the managed-app backlog; no self-improvement lane. Add intent classification "improve app" vs "improve builder".
-- [ ] `P1` **IMP-017** — no operator way to remove/cancel/archive a backlog item (no control, no CLI delete, no terminal state, no DELETE route). Add retire/cancel state + control (dashboard+CLI+route).
+- [x] **IMP-017** — terminal `cancelled` state + cancel route/CLI/dashboard control across the stack. `efe81e5` (dashboard bundle rebuild pending).
 - [x] **IMP-018** — requirements interview fell back to free-text (AskUserQuestion dead under `permission_mode="dontAsk"`). Per-agent `AgentDefinition.permission_mode`; chat→`"default"` + `preapproved_tools` guard; `test_chat_permission_mode_questions.py`.
 - [ ] **IMP-019** — builder can't self-verify the generated app in a real browser (jsdom overstates "shipped"). Shipped in-process `browser` SDK MCP (`mcp__browser__*`, `agents/tools/browser_tools.py`) wired into feature/build-verifier, live-proven on recall-loop. Remaining: enforce real-browser gate for user-facing web features + queryable evidence-tier; serve-from-task-workspace; `page_context` empty on div apps.
 - [x] **IMP-020** — chat lane under `default` surfaced approval cards for direct edits to the generated app (bypasses dashboard-first). Design call: chat never edits the app — deny ungranted Edit/Write/Bash, route to `mcp__builder__task_dispatch` (`agent_tool_policy.chat_mutating_builtin_denial`); `test_chat_permission_mode_questions.py`.
@@ -102,7 +102,7 @@ Voice is a peer operator surface, not a bolt-on.
 - [ ] Voice-initiated feature shipped e2e with browser proof, both lanes.
 - [ ] Realtime auth boundary holds (Realtime=`OPENAI_API_KEY`; runtime auth not leaked; Codex-sub runs strip OpenAI creds).
 - [ ] Voice delegations rebind to the delegated Agent session; no orphan transcripts.
-- [ ] `P0` **Migrate chat runtime `query()` → `ClaudeSDKClient` context manager.** Subagent path done (`runner.py:690`); gap = chat path `claude_runtime.py:265` still bare `sdk_query`. `__aexit__` then cancels monitor tasks deterministically.
+- [x] **Chat runtime → `ClaudeSDKClient` context manager** — chat path migrated; `__aexit__` cancels monitor tasks deterministically. `d03aff4`.
 
 ### M1.6 — Deletion-debt paydown (Musk-hat audit)
 
@@ -181,7 +181,7 @@ When enabled: orchestrator owns approval, recovery, continuation — no operator
 - [ ] Operator can disable autopilot mid-sprint; in-flight work not interrupted.
 - [ ] All autopilot actions dashboard-visible (who approved/recovered: operator vs autopilot).
 - [ ] Autopilot won't approve design/plan without operator scope confirm; implementation-onward only by default.
-- [ ] `P0` **`can_use_tool` enforces subagent phase boundaries** (autopilot precondition). Deny exists for chat tools (`agent_tool_policy.py:52`); subagent path `claude_runtime.py:236 _auto_approve` always allows — extend deny there, one layer above `dispatch_lock.py`.
+- [x] **`can_use_tool` enforces phase boundaries** — `_auto_approve` denies ungranted mutating built-ins via `chat_mutating_builtin_denial`. `d03aff4`.
 - [ ] Retry/cycle state machine from typed SDK errors (`ResultMessage.is_error/errors/api_error_status`, `AssistantMessageError`, `RateLimitEvent`); increment cycle counter on the transition. Extend `runner.py:818`.
 - [ ] **G5** `permissionDecision="defer"` + `DeferredToolUse` for mid-run approval gates (high-risk calls don't dead-end BLOCKED under autopilot). Absent in src.
 
