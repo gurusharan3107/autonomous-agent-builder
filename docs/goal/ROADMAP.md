@@ -36,7 +36,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [ ] `P1` **IMP-014** — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale errors that never age out (9 tool_errors from 2026-05-20 still "unresolved" 8d later). Fix error-trend retention/resolution + rec gating. `T:backend:pending` `T:browser:pending`
 - [x] **IMP-015** — `type=feature` items shown as "improvement". `BacklogPage.tsx itemTypeLabel` + type-aware `save_note`; `test_agent_feature_spec_capture_routes.py`. `T:backend` `T:browser`
 - [ ] `P1` **IMP-016** — chat agent mis-routes builder-improvement asks into the managed-app backlog; no self-improvement lane. Add intent classification "improve app" vs "improve builder". `T:backend:pending` `T:browser:pending`
-- [x] **IMP-017** — terminal `cancelled` state + cancel route/CLI/dashboard control across the stack. `efe81e5` (dashboard bundle rebuild pending). `T:backend` `T:browser:pending`
+- [x] **IMP-017** — terminal `cancelled` state + cancel route/CLI/dashboard control across the stack. `efe81e5`; dashboard "Cancel item" live-verified (item→`cancelled`). `T:backend` `T:browser`
 - [x] **IMP-018** — interview fell back to free-text (AskUserQuestion dead). Fix: per-agent `permission_mode`, chat→`"default"`; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser`
 - [ ] `P0` **IMP-019** — builder can't self-verify the generated app in a real browser (jsdom overstates "shipped"). Shipped in-process `browser` SDK MCP (`mcp__browser__*`); remaining: real-browser gate for user-facing features + queryable evidence-tier. `T:browser` `T:backend:pending`
 - [x] **IMP-020** — chat `default` showed approval cards for app edits. Fix: chat never edits app — deny ungranted Edit/Write/Bash; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser:pending`
@@ -50,7 +50,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
   - **Done (027a/c) —** intake emits `proposed_tasks` sized to the change; planner scales task count (`agent_feature_payloads.py`, `services/sprint_execution.py`); live-confirmed 1 task for a trivial ask (was 5).
   - **Open (027b) —** per-task phase planner: deterministic floor table + model additions, finalized post-scaffold, rendered as the board artifact. Owner: orchestrator phase routing.
 - [ ] `P0` **IMP-028** — code-gen replays ~20.5k context/turn (~89% of run cost). Shipped `compact_workspace_map` in the code-gen prompt (`workspace_tools.py`, ~77 tok). Remaining: live A/B of tool-call counts; ~13–15k preset-trim experiment. `T:backend:pending` `T:browser:na`
-- [ ] `P1` **IMP-029** — decision card could lock its answer controls: `/api/agent/chat/respond` had no timeout, so a hung respond never cleared `submittingEventId`. Fixed `AgentPage.tsx` (AbortSignal.timeout + reset-on-item-change); live-verify pending. `T:backend:pending` `T:browser:pending`
+- [x] **IMP-029** — answer controls could lock on a hung `/api/agent/chat/respond`. Fixed `AgentPage.tsx` (AbortSignal.timeout + reset-on-item-change); live-verified answerable. `T:backend:pending` `T:browser`
 - [x] **IMP-030** — repeatable dashboard build→sync pipeline (`scripts/build_dashboard.sh`); rebuilt + served fresh bundle `index-jlc1ZA4V.js` (was stale 2026-05-20). `T:backend` `T:browser:na`
 
 ### M1.2 — Both lanes ship one feature on devpulse end-to-end
