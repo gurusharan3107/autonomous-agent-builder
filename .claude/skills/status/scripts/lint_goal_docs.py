@@ -51,7 +51,7 @@ PRI = re.compile(r"^`(P[0-3])`\s*")
 IF_TOKEN = re.compile(r"`IF`")
 T_TOKEN = re.compile(r"`T:(\w+)(?::(\w+))?`")
 T_KINDS = {"backend", "browser"}
-T_STATES = {"pending"}
+T_STATES = {"pending", "na"}
 # Recognized split sub-item (IMP-027a/b/c style) or labelled task — an allowed child.
 SPLIT_CHILD = re.compile(r"^\s*-\s+\*\*(IMP-\d+[a-z]|[A-Z][^*]*—)")
 # The DEFINING id of an item = the bold token right after the checkbox (+ optional Pn).
@@ -85,7 +85,15 @@ def lint_roadmap(text: str) -> list[tuple[str, int, str]]:
             if kind not in T_KINDS or (st is not None and st not in T_STATES):
                 out.append(("WARN", lineno, f"unknown test token `T:{kind}"
                             f"{':' + st if st else ''}` — expected "
-                            "`T:backend`/`T:browser` (optionally `:pending`)"))
+                            "`T:backend`/`T:browser` (optionally `:pending`/`:na`)"))
+        # Both lanes must be classified — every checkbox carries a backend + browser
+        # token (pass / `:pending` / `:na`). No untagged "—" resting state.
+        kinds_present = {tk.group(1) for tk in T_TOKEN.finditer(raw)}
+        missing = [k for k in ("backend", "browser") if k not in kinds_present]
+        if missing:
+            toks = "`/`".join(f"T:{k}" for k in missing)
+            out.append(("WARN", lineno, f"checkbox missing `{toks}` token — tag both lanes "
+                        "(pass / `:pending` / `:na`); no untagged — state"))
         # `IF`/`T:*` are metadata, not prose — exclude from the char budget.
         stripped = T_TOKEN.sub("", IF_TOKEN.sub("", raw))
         body = strip_md(PRI.sub("", stripped))

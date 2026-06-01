@@ -43,7 +43,7 @@ PRI_RANK = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 PRI_CAP = {"P0": 3, "P1": 3, "P2": 3, "P3": 1}
 # Manual metadata tokens (backtick-wrapped) parsed off a roadmap line. Not prose.
 IF_TOKEN = re.compile(r"`IF`")
-T_TOKEN = re.compile(r"`T:(backend|browser)(?::(pending))?`")
+T_TOKEN = re.compile(r"`T:(backend|browser)(?::(pending|na))?`")
 # Heading name: `### M1.5 — Realtime Voice (Samantha) parity …` -> the part after the id.
 MS_NAME = re.compile(r"^\s*[—-]\s*(.*)$")
 
@@ -137,7 +137,7 @@ def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict], list[dic
                     st = "none"
                     for tk in T_TOKEN.finditer(rest):
                         if tk.group(1) == kind:
-                            st = "pending" if tk.group(2) else "pass"
+                            st = tk.group(2) or "pass"  # "pending" | "na" | "pass"
                     return st
 
                 tasks.append({
@@ -203,15 +203,16 @@ def priorities_html(priorities: list[dict]) -> str:
     return "".join(rows)
 
 
-_TICK = {"pass": "✓", "pending": "⏳", "none": "—"}
-_TICK_CLS = {"pass": "tk pass", "pending": "tk pend", "none": "tk na"}
+_TICK = {"pass": "✓", "pending": "⏳", "na": "✗", "none": "—"}
+_TICK_CLS = {"pass": "tk pass", "pending": "tk pend", "na": "tk cross", "none": "tk na"}
 
 
 def tasks_html(tasks: list[dict]) -> str:
     """Render every roadmap item as a task row, bucketed completed→in-flight→pending.
 
     Each row: milestone id+name · Pn badge (blank if none) · label · three status cells
-    (Done / Browser / Backend) rendered ✓ / ⏳ / —. Bucket headers separate the groups.
+    (Done / Browser / Backend) rendered ✓ pass / ⏳ pending / ✗ not-applicable / —
+    untagged. Bucket headers separate the groups.
     """
     if not tasks:
         return '<div class="empty">No roadmap items found.</div>'

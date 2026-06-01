@@ -56,16 +56,24 @@ Default to the shortest form that survives a re-read by a cold agent. When in do
 
 - **Open** — `` - [ ] `Pn` **<id/title>** — <one-line intent + what "done" looks like>. ``
   Carries a priority token (`P0`–`P3`); without it the item is invisible to the
-  overview's Open-priorities view. State acceptance, not a work-log.
+  overview's Open-priorities view. State acceptance, not a work-log. **Tag both test
+  lanes** — `` `T:backend:…` `` + `` `T:browser:…` `` (a new open item is normally
+  `:pending`/`:pending`, or `:na` for whichever lane can't reach it).
 - **Closed** — `` - [x] **<id>** — <one-line outcome>. <evidence pointer>. `` where the
   pointer is a commit hash, `test_…` name, file, `.memory` slug, or date. The full
-  story moves to git/CHANGELOG/`.memory`; do not re-narrate it inline.
+  story moves to git/CHANGELOG/`.memory`; do not re-narrate it inline. **Tag both test
+  lanes** — bare `` `T:backend` ``/`` `T:browser` `` only with real evidence, else `:na`.
 - **Splits** (e.g. `IMP-027a/b/c`) are allowed as child bullets; running logs are not.
 - **Metadata tokens** (feed the Tasks matrix; excluded from char budgets):
-  `` `IF` `` on an open item = in-flight bucket (else pending). `` `T:backend` ``
-  / `` `T:browser` `` = that test passed; append `:pending` (`` `T:browser:pending` ``)
-  for in-progress. Backend = builder-CLI/pytest; browser = `/hermes-chrome` real-browser.
-  Add only on real evidence (a `test_…`/count for backend; live-browser proof for browser).
+  `` `IF` `` on an open item = in-flight bucket (else pending). **Every checkbox carries
+  both a `` `T:backend` `` and a `` `T:browser` `` token** (lint WARNs on a missing lane —
+  there is no untagged "—" resting state; "—" only ever means *not yet triaged*). Each lane
+  is one of three states: bare (`` `T:backend` ``) = that test **passed** → ✓; `:pending`
+  (`` `T:browser:pending` ``) = testable in that lane but **not yet verified** → ⏳; `:na`
+  (`` `T:browser:na` ``) = that lane **structurally cannot** test the item (pure
+  runtime/infra/refactor/storage/deletion/CLI/docs) → ✗. Backend = builder-CLI/pytest;
+  browser = `/hermes-chrome` real-browser. Use the bare pass form only on real evidence (a
+  `test_…`/count for backend; live-browser proof for browser); otherwise `:pending`/`:na`.
 
 ### Compactness budgets (linted)
 
@@ -91,8 +99,9 @@ view. Tag an item by adding the token; re-prioritize by editing it. The full pri
 backlog (uncapped) is in the Tasks matrix.
 
 **Tasks** = every roadmap checkbox, bucketed completed → in-flight → pending, each row
-milestone + `Pn` + label + Done/Browser/Backend ticks (driven by the `IF`/`T:` tokens).
-Rendered last on the page.
+milestone + `Pn` + label + Done/Browser/Backend ticks (driven by the `IF`/`T:` tokens):
+✓ passed · ⏳ pending & doable · ✗ not applicable to that lane · — not yet triaged (lint
+WARNs — every checkbox should be tagged in both lanes). Rendered last on the page.
 
 ## Workflow
 

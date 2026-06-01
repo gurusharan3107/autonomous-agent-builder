@@ -20,101 +20,103 @@ Spine of all work. Non-roadmap work → add to the right epoch first; no ad-hoc.
 
 Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Full detail in git log + `.memory/`.
 
-- [x] **IMP-001** — feature-request context lost after intake follow-up. `agent_prompt_builders.py`/`chat_turn_prompting.py`/`routes/agent.py`; `test_agent_feature_spec_prompt_contracts.py`. `T:backend`
-- [x] **IMP-002** — gates-first not enforced (27-turn run pre-infra). Scaffold commits 1fae0bd, c1a39c8, a88ee2c.
-- [x] **IMP-003** — `metrics show` 0 tokens for in-progress runs. `dashboard_metrics.py`; `test_metrics_active_run_injects_diagnostic_note`. `T:backend`
-- [x] **IMP-004** — Recover 409 on gate-infra-blocked tasks. Backend (IMP-002) + frontend 8799f1b.
-- [x] **IMP-006** — scaffold used shell heredoc not Write tool. Prompt constraint in `agents/definitions.py`.
-- [x] **IMP-007** — simultaneous dispatch → pool exhaustion. Prompt constraint + project dispatch lock; `test_dispatch_guards.py`. `T:backend`
-- [x] **IMP-008** — `git worktree add` fails on unborn HEAD. Guard in `workspace/manager.py`; `test_workspace_manager_creates_initial_commit_for_unborn_head`. `T:backend`
-- [x] **IMP-009** — dispatch before scaffold done. 300s scaffold timeout + scaffold-running guard; `test_dispatch_guards.py`. `T:backend`
-- [x] **IMP-010** — session rollback during long scaffold. try/finally + flush-error log `agent_run_lifecycle.py` + rollback guard `orchestrator.py`; event `agent_run_lifecycle_flush_error`.
-- [x] **IMP-011** — SSE streams held pool conns for client lifetime. `dashboard_api.py` scopes session to initial snapshot.
-- [x] **IMP-012** — dispatch session invalid after ~90s. `persist_realtime_run_update` → short-lived `get_session_factory()`. Task 128e02f6 done 11:25.
-- [x] **IMP-013** — orphan branch refuses FF merge (unrelated histories). Rebase-before-integrate `workspace_integration.py`.
-- [x] Re-verify all closures e2e on devpulse, both lanes (M1.2 prereq). 79/79 regression tests (2026-05-21). `T:backend`
-- [ ] `P1` **IMP-014** — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale errors that never age out (9 tool_errors from 2026-05-20 still "unresolved" 8d later). Fix error-trend retention/resolution + rec gating.
-- [x] **IMP-015** — `type=feature` items shown/announced as "improvement". `BacklogPage.tsx itemTypeLabel` + type-aware `save_note` (`agent_chat_result_publisher.py`); `test_agent_feature_spec_capture_routes.py`. (frontend render needs dashboard rebuild.) `T:backend`
-- [ ] `P1` **IMP-016** — chat agent mis-routes builder-improvement asks into the managed-app backlog; no self-improvement lane. Add intent classification "improve app" vs "improve builder".
+- [x] **IMP-001** — feature-request context lost after intake follow-up. `agent_prompt_builders.py`; `test_agent_feature_spec_prompt_contracts.py`. `T:backend` `T:browser:na`
+- [x] **IMP-002** — gates-first not enforced (27-turn run pre-infra). Scaffold commits 1fae0bd, c1a39c8, a88ee2c. `T:backend` `T:browser:na`
+- [x] **IMP-003** — `metrics show` 0 tokens for in-progress runs. `dashboard_metrics.py`; `test_metrics_active_run_injects_diagnostic_note`. `T:backend` `T:browser:pending`
+- [x] **IMP-004** — Recover 409 on gate-infra-blocked tasks. Backend (IMP-002) + frontend 8799f1b. `T:backend` `T:browser`
+- [x] **IMP-006** — scaffold used shell heredoc not Write tool. Prompt constraint in `agents/definitions.py`. `T:backend` `T:browser:na`
+- [x] **IMP-007** — simultaneous dispatch → pool exhaustion. Prompt constraint + project dispatch lock; `test_dispatch_guards.py`. `T:backend` `T:browser:na`
+- [x] **IMP-008** — `git worktree add` fails on unborn HEAD. Guard in `workspace/manager.py`; `test_workspace_manager_creates_initial_commit_for_unborn_head`. `T:backend` `T:browser:na`
+- [x] **IMP-009** — dispatch before scaffold done. 300s scaffold timeout + scaffold-running guard; `test_dispatch_guards.py`. `T:backend` `T:browser:na`
+- [x] **IMP-010** — session rollback during long scaffold. try/finally + rollback guard (`agent_run_lifecycle.py`/`orchestrator.py`); event `agent_run_lifecycle_flush_error`. `T:backend` `T:browser:na`
+- [x] **IMP-011** — SSE streams held pool conns for client lifetime. `dashboard_api.py` scopes session to initial snapshot. `T:backend` `T:browser:na`
+- [x] **IMP-012** — dispatch session invalid after ~90s. `persist_realtime_run_update` → short-lived `get_session_factory()`. Task 128e02f6 done 11:25. `T:backend` `T:browser:na`
+- [x] **IMP-013** — orphan branch refuses FF merge (unrelated histories). Rebase-before-integrate `workspace_integration.py`. `T:backend` `T:browser:na`
+- [x] Re-verify all closures e2e on devpulse, both lanes (M1.2 prereq). 79/79 regression tests (2026-05-21). `T:backend` `T:browser`
+- [ ] `P1` **IMP-014** — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale errors that never age out (9 tool_errors from 2026-05-20 still "unresolved" 8d later). Fix error-trend retention/resolution + rec gating. `T:backend:pending` `T:browser:pending`
+- [x] **IMP-015** — `type=feature` items shown as "improvement". `BacklogPage.tsx itemTypeLabel` + type-aware `save_note`; `test_agent_feature_spec_capture_routes.py`. `T:backend` `T:browser`
+- [ ] `P1` **IMP-016** — chat agent mis-routes builder-improvement asks into the managed-app backlog; no self-improvement lane. Add intent classification "improve app" vs "improve builder". `T:backend:pending` `T:browser:pending`
 - [x] **IMP-017** — terminal `cancelled` state + cancel route/CLI/dashboard control across the stack. `efe81e5` (dashboard bundle rebuild pending). `T:backend` `T:browser:pending`
-- [x] **IMP-018** — requirements interview fell back to free-text (AskUserQuestion dead under `permission_mode="dontAsk"`). Per-agent `AgentDefinition.permission_mode`; chat→`"default"` + `preapproved_tools` guard; `test_chat_permission_mode_questions.py`. `T:backend`
-- [ ] `P0` **IMP-019** — builder can't self-verify the generated app in a real browser (jsdom overstates "shipped"). Shipped in-process `browser` SDK MCP (`mcp__browser__*`, `agents/tools/browser_tools.py`) wired into feature/build-verifier, live-proven on recall-loop. Remaining: enforce real-browser gate for user-facing web features + queryable evidence-tier; serve-from-task-workspace; `page_context` empty on div apps. `T:browser`
-- [x] **IMP-020** — chat lane under `default` surfaced approval cards for direct edits to the generated app (bypasses dashboard-first). Design call: chat never edits the app — deny ungranted Edit/Write/Bash, route to `mcp__builder__task_dispatch` (`agent_tool_policy.chat_mutating_builtin_denial`); `test_chat_permission_mode_questions.py`. `T:backend`
-- [x] **IMP-021** — 3 pre-existing doc-routing test failures (compact-JSON staleness + IMP-020 Bash-deny fallout); test-only fix, 11 green. `cdb8be8`.
-- [ ] `P1` **IMP-022** — dashboard can't open phase-level agent runs (feature-verifier, gate-remediator, …). Frontend gap `TaskDetailSidebar.tsx:35` drops phase runs; backend already serves `GET /tasks/{id}/runs`. Render each phase run as a clickable trace row incl. in-flight.
-- [x] **IMP-023** — cost/token analyze headline read 0 (telemetry clobbered last-write-wins across run_status events). `_merge_run_status_telemetry` accumulates additive fields (`observability/timeline_analysis.py`); live `cost 0→0.104`, `tokens 0→946`; `tests/test_timeline_analysis.py`. `T:backend`
-- [ ] `P1` **IMP-024** — `cache_ratio` >> 1 (15797): divides by non-cached input. Fix `cache_ratio = cached/(cached+input)` clamp 0–1; 4 call sites (`logs.py`, `services/codex_optimization.py`) + fixtures.
-- [ ] `P3` **IMP-025** — *superseded by IMP-027* (token burn is planning-time over-decomposition, not within-phase reruns). Residual to watch: code-gen ran 14 turns on a "Verify" task.
-- [ ] `P1` **IMP-026** — builder MCP tool-call schema/param mismatches cause retry burn (`'path'/'test_p' not allowed`, `feature_id required`, File-not-read). Tighten schemas/descriptions + self-correcting errors; surface in `builder logs --error`.
-- [ ] `P0` **IMP-027** — complexity-proportional SDLC: ceremony must scale with risk, not be uniform (trivial footer → 5-task sprint, 2.46M cached). Invariant: model proposes, deterministic policy floors mandated gates (security / user-facing / schema); never regress to one-shot. Key on risk/blast-radius, not LOC. Phase plan = visible board artifact.
+- [x] **IMP-018** — interview fell back to free-text (AskUserQuestion dead). Fix: per-agent `permission_mode`, chat→`"default"`; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser`
+- [ ] `P0` **IMP-019** — builder can't self-verify the generated app in a real browser (jsdom overstates "shipped"). Shipped in-process `browser` SDK MCP (`mcp__browser__*`); remaining: real-browser gate for user-facing features + queryable evidence-tier. `T:browser` `T:backend:pending`
+- [x] **IMP-020** — chat `default` showed approval cards for app edits. Fix: chat never edits app — deny ungranted Edit/Write/Bash; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser:pending`
+- [x] **IMP-021** — 3 pre-existing doc-routing test failures (compact-JSON staleness + IMP-020 Bash-deny fallout); test-only fix, 11 green. `cdb8be8`. `T:backend` `T:browser:na`
+- [ ] `P1` **IMP-022** — dashboard can't open phase-level agent runs (feature-verifier, gate-remediator). Frontend gap `TaskDetailSidebar.tsx:35` drops phase runs (backend serves `GET /tasks/{id}/runs`). Render each phase run as a clickable trace row. `T:backend:na` `T:browser:pending`
+- [x] **IMP-023** — cost/token analyze headline read 0 (last-write-wins clobber). `_merge_run_status_telemetry` sums additive fields; `test_timeline_analysis.py`. `T:backend` `T:browser`
+- [ ] `P1` **IMP-024** — `cache_ratio` >> 1 (15797): divides by non-cached input. Fix `cache_ratio = cached/(cached+input)` clamp 0–1; 4 call sites (`logs.py`, `services/codex_optimization.py`) + fixtures. `T:backend:pending` `T:browser:na`
+- [ ] `P3` **IMP-025** — *superseded by IMP-027* (token burn is planning-time over-decomposition, not within-phase reruns). Residual to watch: code-gen ran 14 turns on a "Verify" task. `T:backend:na` `T:browser:na`
+- [ ] `P1` **IMP-026** — builder MCP tool-call schema/param mismatches cause retry burn (`'path'/'test_p' not allowed`, `feature_id required`, File-not-read). Tighten schemas/descriptions + self-correcting errors; surface in `builder logs --error`. `T:backend:pending` `T:browser:na`
+- [ ] `P0` **IMP-027** — complexity-proportional SDLC: ceremony scales with risk, not uniform (trivial footer → 5-task sprint). Invariant: model proposes, policy floors mandated gates (security/user-facing/schema). Phase plan = visible board artifact. `T:backend:pending` `T:browser:pending`
   - **Done (027a/c) —** intake emits `proposed_tasks` sized to the change; planner scales task count (`agent_feature_payloads.py`, `services/sprint_execution.py`); live-confirmed 1 task for a trivial ask (was 5).
   - **Open (027b) —** per-task phase planner: deterministic floor table + model additions, finalized post-scaffold, rendered as the board artifact. Owner: orchestrator phase routing.
-- [ ] `P0` **IMP-028** — code-gen replays ~20.5k context/turn (~89% of run cost). Shipped `compact_workspace_map` injected into the code-gen prompt (`agents/tools/workspace_tools.py`, ~77 tok vs ~20k exploration turns). Remaining: live A/B of tool-call counts; the ~13–15k preset-trim experiment.
+- [ ] `P0` **IMP-028** — code-gen replays ~20.5k context/turn (~89% of run cost). Shipped `compact_workspace_map` in the code-gen prompt (`workspace_tools.py`, ~77 tok). Remaining: live A/B of tool-call counts; ~13–15k preset-trim experiment. `T:backend:pending` `T:browser:na`
+- [ ] `P1` **IMP-029** — new instruction into an already-shipped chat session → blocked decision card with disabled answer controls (Resume doesn't help); only New thread starts delivery. Fix: re-enable on reused sessions or auto-route to a fresh thread. (2026-06-01) `T:backend:pending` `T:browser:pending`
+- [ ] `P2` **IMP-030** — `embedded/dashboard` bundle built 2026-05-20 (`4c008cb`) predates IMP-017, so its cancel control isn't served (blocks IMP-017/IMP-003 browser verify). Add a repeatable build→sync→restart target for `frontend`→`embedded/dashboard`. `T:backend:pending` `T:browser:na`
 
 ### M1.2 — Both lanes ship one feature on devpulse end-to-end
 
 Forward-engineering scenario, both lanes, same operator wording.
 
-- [x] Fresh devpulse boots via `builder init`; readiness gate green.
-- [x] Claude lane: devpulse 5/5 tasks, $2.08 (2026-05-21); all gates pass, 127 tests green. `T:backend`
-- [x] Source-repo gate bugs unblocked Claude lane: pytest-asyncio autoload, `.py` test-suffix coverage, `run-tests.js` shim.
-- [x] `docs/goal/` framework + goal-audit skill stabilized (5 runs, 3 skill bugs fixed).
-- [x] goal-audit `--since-run` deltas mode.
-- [x] goal-audit memory write: prefer recency- over token-weighted intent.
-- [ ] `P1` Codex SDK lane: same wording/outcome + Codex telemetry / app-server / native-input evidence. *(deferred — Claude lane complete)*
-- [ ] `P1` Both lanes meet 4 Tier-1 thresholds (`cache_ratio>5x`, `chunk_pressure_risk:false`, `avoidable_cost_flags:[]`, gate-pass 1.0). *(pending Codex)*
-- [ ] `P1` Session evidence archived under [STATUS.md § Evidence Pointers](STATUS.md#evidence-pointers). *(pending Codex)*
+- [x] Fresh devpulse boots via `builder init`; readiness gate green. (2026-05-21) `T:backend` `T:browser:na`
+- [x] Claude lane: devpulse 5/5 tasks, $2.08 (2026-05-21); all gates pass, 127 tests green. `T:backend` `T:browser:na`
+- [x] Source-repo gate bugs unblocked Claude lane: pytest-asyncio autoload, `.py` test-suffix coverage, `run-tests.js` shim. `T:backend` `T:browser:na`
+- [x] `docs/goal/` framework + goal-audit skill stabilized (5 runs, 3 skill bugs fixed; `README.md`). `T:backend:na` `T:browser:na`
+- [x] goal-audit `--since-run` deltas mode. `c5fcdae` (migrated → self-optimize). `T:backend:na` `T:browser:na`
+- [x] goal-audit memory write: prefer recency- over token-weighted intent. `T:backend:na` `T:browser:na`
+- [ ] `P1` Codex SDK lane: same wording/outcome + Codex telemetry / app-server / native-input evidence. *(deferred — Claude lane complete)* `T:backend:pending` `T:browser:pending`
+- [ ] `P1` Both lanes meet 4 Tier-1 thresholds (`cache_ratio>5x`, `chunk_pressure_risk:false`, `avoidable_cost_flags:[]`, gate-pass 1.0). *(pending Codex)* `T:backend:pending` `T:browser:na`
+- [ ] `P1` Session evidence archived under [STATUS.md § Evidence Pointers](STATUS.md#evidence-pointers). *(pending Codex)* `T:backend:na` `T:browser:na`
 
 ### M1.3 — God-file decomposition ratchet complete
 
 Source: [docs/quality-gate/complexity.md](../quality-gate/complexity.md) + `complexity-baseline.json`. Active violations → zero.
 
-- [x] Every `complexity-baseline.json` violation split <500 or registered as a documented historical baseline.
-- [x] `voice_operator.py`/`summary.py`/`orchestrator.py`/`routes/agent.py` each <1500 (1471/540/1345/1326).
-- [x] `builder lint --complexity-report --json` → 0 violations.
-- [x] Constraint: sequential single-agent extraction, never parallel (`.memory/feedback_extraction_constraints.md`).
-- [x] Project-local save/resume-session skills at `.claude/skills/` (replaced compaction-triggering globals). (2026-05-23)
-- [x] Re-close the 0-violation gate (2026-05-23 regression). Path B — extract not ratchet:
-    - [x] `cli/commands/logs.py` 1679→1346 (split `logs_runtime_aggregates.py` + `logs_db_utils.py`).
-    - [x] `services/sprint_execution.py` 828→825 (inlined helpers).
-    - [x] `db/models.py` 679→676 (docstring trim).
-    - [x] `embedded/server/agent_sprint_planning.py` 502→499.
-    - [x] `tests/test_builder_cli_surfaces.py` 2734→2574 (extracted runtime cases). `T:backend`
-    - [x] `.claude/skills/autoresearch/scripts/introspect.py` 806 — baseline entry (tooling).
-    - [x] `scripts/autoresearch/run.py` 636 — baseline entry (tooling).
+- [x] Every `complexity-baseline.json` violation split <500 or registered as a documented historical baseline. `T:backend` `T:browser:na`
+- [x] `voice_operator.py`/`summary.py`/`orchestrator.py`/`routes/agent.py` each <1500 (1471/540/1345/1326). `T:backend` `T:browser:na`
+- [x] `builder lint --complexity-report --json` → 0 violations. (2026-05-23) `T:backend` `T:browser:na`
+- [x] Constraint: sequential single-agent extraction, never parallel (`.memory/feedback_extraction_constraints.md`). `T:backend:na` `T:browser:na`
+- [x] Project-local save/resume-session skills at `.claude/skills/` (replaced compaction-triggering globals). (2026-05-23) `T:backend:na` `T:browser:na`
+- [x] Re-close the 0-violation gate (2026-05-23 regression). Path B — extract not ratchet: `T:backend` `T:browser:na`
+    - [x] `cli/commands/logs.py` 1679→1346 (split `logs_runtime_aggregates.py` + `logs_db_utils.py`). `T:backend` `T:browser:na`
+    - [x] `services/sprint_execution.py` 828→825 (inlined helpers). `T:backend` `T:browser:na`
+    - [x] `db/models.py` 679→676 (docstring trim). `T:backend` `T:browser:na`
+    - [x] `embedded/server/agent_sprint_planning.py` 502→499. `T:backend` `T:browser:na`
+    - [x] `tests/test_builder_cli_surfaces.py` 2734→2574 (extracted runtime cases). `T:backend` `T:browser:na`
+    - [x] `.claude/skills/autoresearch/scripts/introspect.py` 806 — baseline entry (tooling). `T:backend` `T:browser:na`
+    - [x] `scripts/autoresearch/run.py` 636 — baseline entry (tooling). `T:backend` `T:browser:na`
 
 ### M1.4 — Two-workspace validation rotation
 
 Forward + reverse scenarios validated. Both lanes per scenario.
 
-- [ ] `P1` **Forward:** fresh app in a new workspace (devpulse or equivalent). Both lanes.
-- [ ] `P1` **Reverse:** operate on an existing app workspace (todo-app / checked-out external repo). Both lanes.
-- [ ] `P1` Identical operator-visible behavior across lanes; lane attribution preserved after a runtime switch.
-- [ ] `P1` [docs/PROMPT.md](../PROMPT.md) scripts run in both lanes; rubric pass for [sdk-backed](../rubric/sdk-backed-agent-page-agent.md) + [voice](../rubric/realtime-voice-agent-page-agent.md) agent-page rubrics.
-- [x] Per-phase subagent `allowed_tools` allowlists; `SubagentDefinition.max_turns` → SDK `maxTurns`.
-- [x] Deterministic CLI preflight probes before `query()` (`git rev-parse HEAD` hard-fail for git phases; ruff/pyproject soft warns).
+- [ ] `P1` **Forward:** fresh app in a new workspace (devpulse or equivalent). Both lanes. `T:backend:pending` `T:browser:pending`
+- [ ] `P1` **Reverse:** operate on an existing app workspace (todo-app / checked-out external repo). Both lanes. `T:backend:pending` `T:browser:pending`
+- [ ] `P1` Identical operator-visible behavior across lanes; lane attribution preserved after a runtime switch. `T:backend:pending` `T:browser:pending`
+- [ ] `P1` [docs/PROMPT.md](../PROMPT.md) scripts run in both lanes; rubric pass for [sdk-backed](../rubric/sdk-backed-agent-page-agent.md) + [voice](../rubric/realtime-voice-agent-page-agent.md) agent-page rubrics. `T:backend:pending` `T:browser:pending`
+- [x] Per-phase subagent `allowed_tools` allowlists; `SubagentDefinition.max_turns` → SDK `maxTurns`. `definitions.py`/`runner_options.py`. `T:backend` `T:browser:na`
+- [x] Deterministic CLI preflight probes before `query()` (`git rev-parse HEAD` hard-fail for git phases; ruff/pyproject soft warns). `runner.py`. `T:backend` `T:browser:na`
 
 ### M1.5 — Realtime Voice (Samantha) parity with Agent page
 
 Voice is a peer operator surface, not a bolt-on.
 
-- [ ] `P1` Voice + Agent share session, approvals, pending-question cards.
-- [ ] `P1` Voice-initiated feature shipped e2e with browser proof, both lanes.
-- [ ] `P1` Realtime auth boundary holds (Realtime=`OPENAI_API_KEY`; runtime auth not leaked; Codex-sub runs strip OpenAI creds).
-- [ ] `P1` Voice delegations rebind to the delegated Agent session; no orphan transcripts.
-- [x] **Chat runtime → `ClaudeSDKClient` context manager** — chat path migrated; `__aexit__` cancels monitor tasks deterministically. `d03aff4`. `T:backend`
+- [ ] `P1` Voice + Agent share session, approvals, pending-question cards. `T:backend:pending` `T:browser:pending`
+- [ ] `P1` Voice-initiated feature shipped e2e with browser proof, both lanes. `T:backend:pending` `T:browser:pending`
+- [ ] `P1` Realtime auth boundary holds (Realtime=`OPENAI_API_KEY`; runtime auth not leaked; Codex-sub runs strip OpenAI creds). `T:backend:pending` `T:browser:na`
+- [ ] `P1` Voice delegations rebind to the delegated Agent session; no orphan transcripts. `T:backend:pending` `T:browser:pending`
+- [x] **Chat runtime → `ClaudeSDKClient` context manager** — chat path migrated; `__aexit__` cancels monitor tasks deterministically. `d03aff4`. `T:backend` `T:browser:na`
 
 ### M1.6 — Deletion-debt paydown (Musk-hat audit)
 
 Source: `elon` audits — `docs/audits/autonomous-agent-builder-musk-hat-2026-05-30.html` + `-2026-05-31.html`. 90-day deletion ratio 0.081→0.092 (grows-only). All LOC import-verified.
 
-- [x] **Tier 1a** — deleted `codex_cli` adapter (635 LOC; superseded by `codex_sdk`). `factory.py`/`runtime_settings.py` trimmed; 96 tests green. `T:backend`
-- [x] **Tier 1b** — deleted dead `opencode` wrapper (21 LOC). Commit 589a950.
-- [x] **Tier 1c** — retired `openai_agents`/`opencode_go` lane (282 LOC); `get_implemented==get_available==[claude,codex_sdk]`; 189 tests. Commit 5532f10.
-- [x] **Tier 1d** — deleted `knowledge/architecture_evidence.py` (944, dup of `proof_contract.py`) + `quality_gates/runtime_boundary.py` (225, 0 importers) + stale `openai-agents` extra. 1554 collects clean.
-- [ ] `P1` **Tier 2** — collapse the dual FastAPI app onto the embedded server (`embedded/server/app.py` canonical; remove `api/app.py`). Blocker: 45 conftest-`client` test files bind `api.app`; zero free deletes (both twin candidates carry unique coverage). Migrate per-file with reconciliation, smallest-delta first. KEEP-SHARED dispatch/onboarding/readiness/schemas → Tier 3. *(detail: git + `…musk-hat-2026-05-31.html`)*
-- [ ] `P1` **Tier 3** — rename `api/` shared core → `core/` (one app + one shared core + two thin runtimes). Blocked on Tier 2.
-- [ ] `P1` Overlaps M1.3: 16 files ≥1000 LOC (onboarding 1931, evidence_graph 1817, dashboard_api 1736, kb 1735) — refactor via M1.3 extraction, not deletes.
+- [x] **Tier 1a** — deleted `codex_cli` adapter (635 LOC; superseded by `codex_sdk`). `factory.py`/`runtime_settings.py` trimmed; 96 tests green. `T:backend` `T:browser:na`
+- [x] **Tier 1b** — deleted dead `opencode` wrapper (21 LOC). Commit 589a950. `T:backend` `T:browser:na`
+- [x] **Tier 1c** — retired `openai_agents`/`opencode_go` lane (282 LOC); `get_implemented==get_available==[claude,codex_sdk]`; 189 tests. Commit 5532f10. `T:backend` `T:browser:na`
+- [x] **Tier 1d** — deleted `architecture_evidence.py` (dup of `proof_contract.py`) + `runtime_boundary.py` (0 importers) + stale `openai-agents` extra. 1554 collects clean. `T:backend` `T:browser:na`
+- [ ] `P1` **Tier 2** — collapse the dual FastAPI app onto the embedded server (`embedded/server/app.py` canonical; remove `api/app.py`). Blocker: 45 conftest-`client` files bind `api.app`. Migrate per-file with reconciliation, smallest-delta first. `T:backend:pending` `T:browser:na`
+- [ ] `P1` **Tier 3** — rename `api/` shared core → `core/` (one app + one shared core + two thin runtimes). Blocked on Tier 2. `T:backend:pending` `T:browser:na`
+- [ ] `P1` Overlaps M1.3: 16 files ≥1000 LOC (onboarding 1931, evidence_graph 1817, dashboard_api 1736, kb 1735) — refactor via M1.3 extraction, not deletes. `T:backend:pending` `T:browser:na`
 
 ---
 
@@ -128,75 +130,75 @@ Source: `elon` audits — `docs/audits/autonomous-agent-builder-musk-hat-2026-05
 
 Full requirements → design → backlog → implementation → verification → ship → optimize, dashboard-visible, resumable, durable.
 
-- [ ] `P2` One e2e project on devpulse, every phase dashboard-visible incl. post-ship optimization lane.
-- [ ] `P2` Resumability: kill the dashboard mid-sprint, restart, exact state restored (no loss, no stale "running", no orphan approvals).
-- [ ] `P2` Runtime switch mid-project (`claude`→`codex_sdk`) preserves history; future work uses the new lane.
-- [ ] `P2` Multi-operator handover: a 2nd operator sees the same Board/Backlog/Inbox/Agent.
-- [ ] `P2` Codify flag+drain for `receive_response()` loops (hardening; single site `runner.py:692`, no early break today). Downgraded P0→hardening.
-- [ ] `P2` Auto-complete a feature when all its tasks `done` (forward-only; no revert; manual changes independent).
-- [ ] `P2` Auto-complete a backlog item when all its tasks finish.
+- [ ] `P2` One e2e project on devpulse, every phase dashboard-visible incl. post-ship optimization lane. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Resumability: kill the dashboard mid-sprint, restart, exact state restored (no loss, no stale "running", no orphan approvals). `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Runtime switch mid-project (`claude`→`codex_sdk`) preserves history; future work uses the new lane. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Multi-operator handover: a 2nd operator sees the same Board/Backlog/Inbox/Agent. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Codify flag+drain for `receive_response()` loops (hardening; single site `runner.py:692`, no early break today). Downgraded P0→hardening. `T:backend:pending` `T:browser:na`
+- [ ] `P2` Auto-complete a feature when all its tasks `done` (forward-only; no revert; manual changes independent). `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Auto-complete a backlog item when all its tasks finish. `T:backend:pending` `T:browser:pending`
 
 ### M2.2 — Memory and knowledge as decisive differentiators
 
 Memory + KB compound across sessions; prevent re-litigating settled questions.
 
-- [ ] `P2` Memory-retrieval workflow is the documented step 0 of every non-trivial fix.
-- [ ] `P2` KB freshness gate (`builder knowledge validate --json`) wired into the doc-refresh gate before PR in every sprint.
-- [ ] `P2` Memory write-back: every closed IMP with a non-obvious boundary / single-owner pattern / recurring trap → `builder memory add`.
-- [ ] `P2` Demonstrate compounding: a fresh session reaches a correct decision faster via memory+KB.
+- [ ] `P2` Memory-retrieval workflow is the documented step 0 of every non-trivial fix. `T:backend:na` `T:browser:na`
+- [ ] `P2` KB freshness gate (`builder knowledge validate --json`) wired into the doc-refresh gate before PR in every sprint. `T:backend:pending` `T:browser:na`
+- [ ] `P2` Memory write-back: every closed IMP with a non-obvious boundary / single-owner pattern / recurring trap → `builder memory add`. `T:backend:na` `T:browser:na`
+- [ ] `P2` Demonstrate compounding: a fresh session reaches a correct decision faster via memory+KB. `T:backend:pending` `T:browser:na`
 
 ### M2.3 — Cost-aware execution surface complete
 
 Token / cache / chunk / avoidable-cost telemetry first-class: Metrics page, Session rail, `builder metrics show`, `builder logs analyze`, observability recs.
 
-- [ ] `P2` `builder metrics show` + Metrics page agree with raw `builder logs --compact` cost every run.
-- [ ] `P2` Per-turn noncached+output / raw / cached tokens accurate in the Agent Session rail, both lanes.
-- [ ] `P2` Observability recs separate optimization candidates from workflow-state warnings (approval/blocked → state, not optimization).
-- [ ] `P2` Optimization-agent runs only on post-ship candidate evidence, never on generated-app residuals.
-- [ ] `P2` **G14** — full OTel spans/metrics, not just env checks (`observability/runtime.py:145` wires none). Emit spans/metrics for hook exec + cache hits + token usage to a queryable sink.
-- [ ] `P3` **G15** — Codex per-server MCP `[env]` + OAuth. CONDITIONAL/P3 — N/A until MCP servers are wired into the Codex lane.
-- [x] `logs analyze --session` honestly session-scoped (`tasks.chat_session_id` FK). `test_logs_analyze_scopes_runtime_aggregates_to_chat_session`. (2026-05-23) `T:backend`
-- [x] First-class `RateLimitEvent` surface driven by `StopFailure` hook (`runner.py`; `provider_limit` dict). (2026-05-22)
-- [x] **G2** `exclude_dynamic_sections=True` on preset (runner/claude_runtime/onboarding); unblocks `cache_ratio>5x`. (2026-05-22)
-- [x] **G12** `updatedToolOutput` truncation hook (`agents/hooks.py`, 8k ceiling). (2026-05-22)
-- [x] **G1** `include_partial_messages=True` + per-turn token Session rail (`stream_usage` SSE → `AgentPage.tsx`). (2026-05-22)
-- [x] **G7** `strict_mcp_config=True` on client. (2026-05-22)
+- [ ] `P2` `builder metrics show` + Metrics page agree with raw `builder logs --compact` cost every run. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Per-turn noncached+output / raw / cached tokens accurate in the Agent Session rail, both lanes. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Observability recs separate optimization candidates from workflow-state warnings (approval/blocked → state, not optimization). `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Optimization-agent runs only on post-ship candidate evidence, never on generated-app residuals. `T:backend:pending` `T:browser:na`
+- [ ] `P2` **G14** — full OTel spans/metrics, not just env checks (`observability/runtime.py:145` wires none). Emit spans/metrics for hook exec + cache hits + token usage to a queryable sink. `T:backend:pending` `T:browser:na`
+- [ ] `P3` **G15** — Codex per-server MCP `[env]` + OAuth. CONDITIONAL/P3 — N/A until MCP servers are wired into the Codex lane. `T:backend:pending` `T:browser:na`
+- [x] `logs analyze --session` honestly session-scoped (`tasks.chat_session_id` FK). `test_logs_analyze_scopes_runtime_aggregates_to_chat_session`. (2026-05-23) `T:backend` `T:browser:na`
+- [x] First-class `RateLimitEvent` surface driven by `StopFailure` hook (`runner.py`; `provider_limit` dict). (2026-05-22) `T:backend` `T:browser:na`
+- [x] **G2** `exclude_dynamic_sections=True` on preset (runner/claude_runtime/onboarding); unblocks `cache_ratio>5x`. (2026-05-22) `T:backend` `T:browser:na`
+- [x] **G12** `updatedToolOutput` truncation hook (`agents/hooks.py`, 8k ceiling). (2026-05-22) `T:backend` `T:browser:na`
+- [x] **G1** `include_partial_messages=True` + per-turn token Session rail (`stream_usage` SSE → `AgentPage.tsx`). (2026-05-22) `T:backend` `T:browser`
+- [x] **G7** `strict_mcp_config=True` on client. (2026-05-22) `T:backend` `T:browser:na`
 
 ### M2.4 — Operator UX polish to "no internals leakage"
 
 Every operator-facing surface respects [OPERATOR-LANGUAGE.md](OPERATOR-LANGUAGE.md).
 
-- [ ] `P2` Banned-term audit across all operator surfaces: zero leakage of lifecycle/scaffold/dispatch/worktree/SDK/MCP/gate/chunk/etc. unless the operator typed it first.
-- [ ] `P2` All pending questions/approvals render readable labels (no `[object Object]`, no payload objects).
-- [ ] `P2` Inline question/approval controls in the composer/footer (one owner); timeline entries evidence-only.
-- [ ] `P2` Recover button shows only when blocked-reason is recoverable; else an actionable next-step.
-- [ ] `P2` **G6** `include_hook_events=True` → `HookEventMessage` on the Agent page (render the real block reason in operator language). Absent in src.
+- [ ] `P2` Banned-term audit across all operator surfaces: zero leakage of lifecycle/scaffold/dispatch/worktree/SDK/MCP/gate/chunk/etc. unless the operator typed it first. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` All pending questions/approvals render readable labels (no `[object Object]`, no payload objects). `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Inline question/approval controls in the composer/footer (one owner); timeline entries evidence-only. `T:backend:na` `T:browser:pending`
+- [ ] `P2` Recover button shows only when blocked-reason is recoverable; else an actionable next-step. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` **G6** `include_hook_events=True` → `HookEventMessage` on the Agent page (render the real block reason in operator language). Absent in src. `T:backend:pending` `T:browser:pending`
 
 ### M2.6 — Autopilot mode
 
 When enabled: orchestrator owns approval, recovery, continuation — no operator intervention. Operator opts in.
 
-- [ ] `P2` Autopilot toggle in Settings, persisted per project.
-- [ ] `P2` Autopilot on: auto-approve ready tasks, auto-recover `capability_limit`/`cycle-detected`, auto-advance after completion.
-- [ ] `P2` Operator can disable autopilot mid-sprint; in-flight work not interrupted.
-- [ ] `P2` All autopilot actions dashboard-visible (who approved/recovered: operator vs autopilot).
-- [ ] `P2` Autopilot won't approve design/plan without operator scope confirm; implementation-onward only by default.
-- [x] **`can_use_tool` enforces phase boundaries** — `_auto_approve` denies ungranted mutating built-ins via `chat_mutating_builtin_denial`. `d03aff4`. `T:backend`
-- [ ] `P2` Retry/cycle state machine from typed SDK errors (`ResultMessage.is_error/errors/api_error_status`, `AssistantMessageError`, `RateLimitEvent`); increment cycle counter on the transition. Extend `runner.py:818`.
-- [ ] `P2` **G5** `permissionDecision="defer"` + `DeferredToolUse` for mid-run approval gates (high-risk calls don't dead-end BLOCKED under autopilot). Absent in src.
+- [ ] `P2` Autopilot toggle in Settings, persisted per project. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Autopilot on: auto-approve ready tasks, auto-recover `capability_limit`/`cycle-detected`, auto-advance after completion. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Operator can disable autopilot mid-sprint; in-flight work not interrupted. `T:backend:pending` `T:browser:pending`
+- [ ] `P2` All autopilot actions dashboard-visible (who approved/recovered: operator vs autopilot). `T:backend:pending` `T:browser:pending`
+- [ ] `P2` Autopilot won't approve design/plan without operator scope confirm; implementation-onward only by default. `T:backend:pending` `T:browser:pending`
+- [x] **`can_use_tool` enforces phase boundaries** — `_auto_approve` denies ungranted mutating built-ins via `chat_mutating_builtin_denial`. `d03aff4`. `T:backend` `T:browser:na`
+- [ ] `P2` Retry/cycle state machine from typed SDK errors (`ResultMessage.is_error/errors/api_error_status`, `AssistantMessageError`, `RateLimitEvent`); increment cycle counter on the transition. Extend `runner.py:818`. `T:backend:pending` `T:browser:na`
+- [ ] `P2` **G5** `permissionDecision="defer"` + `DeferredToolUse` for mid-run approval gates (high-risk calls don't dead-end BLOCKED under autopilot). Absent in src. `T:backend:pending` `T:browser:pending`
 
 ### M2.5 — Architecture and design language coherence
 
 The dashboard feels like one product.
 
-- [ ] `P2` Frontend React rubric passes on all surfaces; no god components.
-- [ ] `P2` Backend service rubric passes; clear ownership, no second control owners.
-- [ ] `P2` Design language applied; primitives only, no ad-hoc styles.
-- [ ] `P2` Codify the short-lived-session pattern in the backend rubric (dispatch session idle during run; per-chunk `get_session_factory()`; SSE no `Depends(get_db)` past snapshot).
-- [ ] `P2` Empty-response envelope convention in the backend rubric (`state` + `note` on every aggregation endpoint).
-- [x] `AgentDefinition.maxTurns` per subagent (`definitions.py`=20; `runner_options.py:61`). (M1.4 dup)
-- [ ] `P2` **G4** file checkpointing for scope-limited subagents (checkpoint/revert vs the "never delete" prompt rule). Absent in src.
-- [ ] `P2` **G13** `effort:"xhigh"` carve-out for planner/designer above a complexity threshold (`execution_policy.py` plumbs low/med/high/none only).
+- [ ] `P2` Frontend React rubric passes on all surfaces; no god components. `T:backend:na` `T:browser:na`
+- [ ] `P2` Backend service rubric passes; clear ownership, no second control owners. `T:backend:na` `T:browser:na`
+- [ ] `P2` Design language applied; primitives only, no ad-hoc styles. `T:backend:na` `T:browser:pending`
+- [ ] `P2` Codify the short-lived-session pattern in the backend rubric (dispatch session idle during run; per-chunk `get_session_factory()`; SSE no `Depends(get_db)` past snapshot). `T:backend:na` `T:browser:na`
+- [ ] `P2` Empty-response envelope convention in the backend rubric (`state` + `note` on every aggregation endpoint). `T:backend:pending` `T:browser:na`
+- [x] `AgentDefinition.maxTurns` per subagent (`definitions.py`=20; `runner_options.py:61`). (M1.4 dup) `T:backend` `T:browser:na`
+- [ ] `P2` **G4** file checkpointing for scope-limited subagents (checkpoint/revert vs the "never delete" prompt rule). Absent in src. `T:backend:pending` `T:browser:na`
+- [ ] `P2` **G13** `effort:"xhigh"` carve-out for planner/designer above a complexity threshold (`execution_policy.py` plumbs low/med/high/none only). `T:backend:pending` `T:browser:na`
 
 ---
 
@@ -210,36 +212,36 @@ The dashboard feels like one product.
 
 Non-trivial app (15+ features, integrations, real DB/auth/deployment), e2e, both lanes.
 
-- [ ] `P3` Project plan, sprints, backlog, approvals, shipped evidence persist across the full delivery.
-- [ ] `P3` Both lanes reach the same shipped state given the same operator prompts.
-- [ ] `P3` Total tokens / turns / wall-clock / operator interventions tracked per lane in STATUS evidence.
+- [ ] `P3` Project plan, sprints, backlog, approvals, shipped evidence persist across the full delivery. `T:backend:pending` `T:browser:pending`
+- [ ] `P3` Both lanes reach the same shipped state given the same operator prompts. `T:backend:pending` `T:browser:pending`
+- [ ] `P3` Total tokens / turns / wall-clock / operator interventions tracked per lane in STATUS evidence. `T:backend:pending` `T:browser:na`
 
 ### M3.2 — Long-horizon session continuity
 
 Survives 30+ day gaps and multi-machine usage with no operator confusion.
 
-- [ ] `P1` **G3 — `SessionStore` adapter (Postgres) + conformance harness.** `IF` HARD PREREQ for M3.2/M3.3. Today resume = local JSONL + `Task.session_id` by cwd; a 30-day gap / 2nd machine breaks it. SDK parity since 0.1.64; PostgresSessionStore landed `4ad77d4`. `T:backend`
-- [ ] `P3` Operator returns after 30+ days; same Board/Backlog/Inbox/Agent, no stale "running", memory+KB still relevant.
-- [ ] `P3` Same project resumed from a second machine with consistent state.
+- [ ] `P1` **G3 — `SessionStore` adapter (Postgres) + conformance harness.** `IF` HARD PREREQ for M3.2/M3.3. Today resume = local JSONL + `Task.session_id` by cwd; a 30-day gap / 2nd machine breaks it. SDK parity since 0.1.64; PostgresSessionStore landed `4ad77d4`. `T:backend` `T:browser:na`
+- [ ] `P3` Operator returns after 30+ days; same Board/Backlog/Inbox/Agent, no stale "running", memory+KB still relevant. `T:backend:pending` `T:browser:pending`
+- [ ] `P3` Same project resumed from a second machine with consistent state. `T:backend:pending` `T:browser:pending`
 
 ### M3.3 — Multi-operator collaboration
 
 Two operators on one project, no stepping on each other.
 
-- [ ] `P3` Two concurrent Agent sessions on one project → consistent state. **Depends on G3 (M3.2).**
-- [ ] `P3` Approvals attributable to the operator who granted them.
-- [ ] `P3` Memory + KB capture the team's learning, not one operator's.
+- [ ] `P3` Two concurrent Agent sessions on one project → consistent state. **Depends on G3 (M3.2).** `T:backend:pending` `T:browser:pending`
+- [ ] `P3` Approvals attributable to the operator who granted them. `T:backend:pending` `T:browser:pending`
+- [ ] `P3` Memory + KB capture the team's learning, not one operator's. `T:backend:pending` `T:browser:na`
 
 ### M3.4 — Head-to-head benchmark wins
 
 Defensible "preferred" claim. Canonical task set through Codex CLI, Claude Code, Builder. Record in `docs/goal/benchmarks/` (created at M3.4 start).
 
-- [ ] `P3` Define the canonical task set (5–10 tasks, varying complexity) + the measurement protocol.
-- [ ] `P3` Build the harness: scripted runs against all three tools; metrics captured uniformly.
-- [ ] `P3` Builder wins on tokens-per-feature on a majority of tasks, both lanes.
-- [ ] `P3` Builder wins on success-without-intervention on a majority of tasks, both lanes.
-- [ ] `P3` Builder wins on wall-clock for shipped outcome (incl. operator time).
-- [ ] `P3` Lifecycle-coverage tasks (multi-sprint, durable state, resumability) — Builder is the only tool that completes them.
+- [ ] `P3` Define the canonical task set (5–10 tasks, varying complexity) + the measurement protocol. `T:backend:na` `T:browser:na`
+- [ ] `P3` Build the harness: scripted runs against all three tools; metrics captured uniformly. `T:backend:pending` `T:browser:na`
+- [ ] `P3` Builder wins on tokens-per-feature on a majority of tasks, both lanes. `T:backend:pending` `T:browser:na`
+- [ ] `P3` Builder wins on success-without-intervention on a majority of tasks, both lanes. `T:backend:pending` `T:browser:na`
+- [ ] `P3` Builder wins on wall-clock for shipped outcome (incl. operator time). `T:backend:pending` `T:browser:na`
+- [ ] `P3` Lifecycle-coverage tasks (multi-sprint, durable state, resumability) — Builder is the only tool that completes them. `T:backend:pending` `T:browser:pending`
 
 ### M3.5 — Optimization loop activation (autoresearch Track B)
 
@@ -247,10 +249,10 @@ Source: [docs/autoresearch/](../autoresearch/). Activates only after [autoresear
 
 **Per-patch / per-run detail: [docs/autoresearch/PROGRESS.md](../autoresearch/PROGRESS.md).** Milestone-scope items only here; skill closeouts write to PROGRESS.md.
 
-- [ ] `P3` All Track B prerequisites met (IMP-001..004 closed, baseline variance measured, gate-pass 1.0, complexity 0 violations).
-- [ ] `P3` Autoresearch loop produces ≥1 optimization that survives variance gating and ships.
-- [ ] `P3` Optimizations reflected back into runtime policy (`execution_policy.py`) + prompt shape, not just the results TSV.
-- [ ] `P3` After-fix sibling search — a bounded `repo-researcher` scans for same-pattern siblings before the sprint ends. OPTIMIZE_IDEAS #11; promote on recurring same-pattern regressions.
+- [ ] `P3` All Track B prerequisites met (IMP-001..004 closed, baseline variance measured, gate-pass 1.0, complexity 0 violations). `T:backend:pending` `T:browser:na`
+- [ ] `P3` Autoresearch loop produces ≥1 optimization that survives variance gating and ships. `T:backend:pending` `T:browser:na`
+- [ ] `P3` Optimizations reflected back into runtime policy (`execution_policy.py`) + prompt shape, not just the results TSV. `T:backend:pending` `T:browser:na`
+- [ ] `P3` After-fix sibling search — a bounded `repo-researcher` scans for same-pattern siblings before the sprint ends. OPTIMIZE_IDEAS #11; promote on recurring same-pattern regressions. `T:backend:pending` `T:browser:na`
 
 ---
 
@@ -267,5 +269,6 @@ Source: [docs/autoresearch/](../autoresearch/). Activates only after [autoresear
 ## How To Update This File
 
 - Compact always: one line per item; open = `Pn` + intent + acceptance; closed = outcome + evidence pointer. Work-logs → STATUS *Current Item In Flight*; closure detail → git/CHANGELOG/`.memory`. Rules + budgets: [status SKILL.md](../../.claude/skills/status/SKILL.md).
+- **Every item states its test lanes.** Tag each checkbox with both `T:backend:…` and `T:browser:…` — bare `T:backend`/`T:browser` = that test passed, `:pending` = testable in that lane but not yet verified, `:na` = that lane structurally can't test it. `/status lint` WARNs on a missing lane; there is no untagged "—".
 - `/status lint` before and after editing; `/status update` to resync [goal-overview.html](goal-overview.html).
 - New milestone/item → correct epoch here + note in [STATUS.md § Recent Decisions](STATUS.md#recent-decisions); success-bar change → [EVALUATION.md](EVALUATION.md) same change.
