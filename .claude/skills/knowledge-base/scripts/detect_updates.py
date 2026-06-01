@@ -4,6 +4,17 @@
 Detects upstream changes across four surfaces (Claude Code, Claude Agent SDK
 Python+TS, Claude Managed Agents, Codex SDK) since the last KB refresh.
 
+A fifth surface — OpenAI API platform (Responses API + GPT-5.x), rubric slug
+`openai-api-rubric` — is maintained but NOT wired here: its docs have no
+machine-readable release/CHANGELOG feed, and commit_state() fails loudly on any
+fetch error, so a brittle source would break every refresh. Audit Surface 5
+manually against https://developers.openai.com/api/docs (see references/surface-urls.md).
+
+A sixth surface — Agent Skills (open SKILL.md format), rubric slug
+`agent-skills-rubric` — is likewise maintained but not wired: it has no version
+feed. Diff https://agentskills.io/llms.txt against ingested articles to spot new
+pages (see references/surface-urls.md).
+
 Two modes:
   --json          Read current upstream state, diff against state.json, emit delta.
   --commit-state  Write current upstream versions to state.json after a successful refresh.

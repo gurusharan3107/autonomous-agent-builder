@@ -1,6 +1,6 @@
 # Surface URL Map
 
-Canonical per-feature docs URLs for the four surfaces this skill maintains. Used by Phase A (delta detection — fetch overview/whats-new) and Phase B (per-article source_url citation).
+Canonical per-feature docs URLs for the six surfaces this skill maintains. Used by Phase A (delta detection — fetch overview/whats-new) and Phase B (per-article source_url citation).
 
 **Verified against:** Python SDK 0.2.85, Claude CLI 2.1.148, Codex CLI 0.133.0 on 2026-05-22.
 
@@ -127,6 +127,7 @@ Prefix all relative paths with `https://platform.claude.com`.
 | IDE extensions | `https://developers.openai.com/codex/ide` |
 | Enterprise access tokens | `https://developers.openai.com/codex/enterprise/access-tokens` |
 | Use cases | `https://developers.openai.com/codex/use-cases` |
+| Cookbook (Codex recipes) | `https://developers.openai.com/cookbook/topic/codex` |
 | `codex exec` non-interactive | `https://developers.openai.com/codex/cli/reference` (exec section) |
 | MCP support | `https://developers.openai.com/codex/config` (mcp section) |
 | Credential storage | `https://developers.openai.com/codex/auth` (credential cache section) |
@@ -134,6 +135,47 @@ Prefix all relative paths with `https://platform.claude.com`.
 URLs at `developers.openai.com/codex/...` move occasionally. Re-verify when ingesting; check GitHub README for canonical pointers.
 
 **Watch for:** new releases land roughly weekly; the autonomous-agent-builder Codex SDK lane uses bundled Codex binary, so version pin matters.
+
+## Surface 5 — OpenAI API platform (Responses API + GPT-5.x)
+
+**Surface overview:** `https://developers.openai.com/api/docs`
+**Rubric slug:** `openai-api-rubric`
+
+The OpenAI model API *beneath* Codex — the autonomous-agent-builder `codex_sdk` lane runs on it. Codex-CLI/SDK-specific features stay in Surface 4; this surface is the model API, Responses API, and platform features.
+
+| Feature | Canonical URL |
+|---|---|
+| Prompt guidance (GPT-5.x, `reasoning_effort`, `text.verbosity`, `phase`) | `/api/docs/guides/prompt-guidance` |
+| Computer use tool | `/api/docs/guides/tools-computer-use` |
+| WebSocket mode (Responses API) | `/api/docs/guides/websocket-mode` |
+| Webhooks | `/api/docs/guides/webhooks` |
+| Cost optimization (Batch, Flex, model selection) | `/api/docs/guides/cost-optimization` |
+
+Prefix all relative paths with `https://developers.openai.com`.
+
+**Watch for:** GPT-5.x model controls evolve; the Responses API (`/v1/responses`) is the primary agentic endpoint. No automated delta source wired yet — audit manually against the overview page.
+
+## Surface 6 — Agent Skills (open SKILL.md format)
+
+**Surface overview:** `https://agentskills.io/specification`
+**Docs index (delta source):** `https://agentskills.io/llms.txt`
+**Reference library:** `https://github.com/agentskills/agentskills` (`skills-ref validate`)
+**Rubric slug:** `agent-skills-rubric`
+
+The vendor-neutral Agent Skills standard — the `SKILL.md` format itself, portable across Claude Code, OpenAI Codex, and GitHub Copilot. This surface owns the *format and authoring discipline*; product-specific skill hosting stays in the respective product rubric.
+
+| Page | Canonical URL |
+|---|---|
+| Specification (SKILL.md format) | `/specification` |
+| Quickstart | `/skill-creation/quickstart` |
+| Best practices | `/skill-creation/best-practices` |
+| Optimizing descriptions | `/skill-creation/optimizing-descriptions` |
+| Evaluating skills | `/skill-creation/evaluating-skills` |
+| Using scripts | `/skill-creation/using-scripts` |
+
+Prefix all relative paths with `https://agentskills.io`.
+
+**Watch for:** `https://agentskills.io/llms.txt` lists all pages — diff it against ingested articles to spot new guides. No version feed; audit manually.
 
 ## Maintenance
 
