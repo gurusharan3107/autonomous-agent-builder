@@ -50,8 +50,8 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
   - **Done (027a/c) —** intake emits `proposed_tasks` sized to the change; planner scales task count (`agent_feature_payloads.py`, `services/sprint_execution.py`); live-confirmed 1 task for a trivial ask (was 5).
   - **Open (027b) —** per-task phase planner: deterministic floor table + model additions, finalized post-scaffold, rendered as the board artifact. Owner: orchestrator phase routing.
 - [ ] `P0` **IMP-028** — code-gen replays ~20.5k context/turn (~89% of run cost). Shipped `compact_workspace_map` in the code-gen prompt (`workspace_tools.py`, ~77 tok). Remaining: live A/B of tool-call counts; ~13–15k preset-trim experiment. `T:backend:pending` `T:browser:na`
-- [ ] `P1` **IMP-029** — new instruction into an already-shipped chat session → blocked decision card with disabled answer controls (Resume doesn't help); only New thread starts delivery. Fix: re-enable on reused sessions or auto-route to a fresh thread. (2026-06-01) `T:backend:pending` `T:browser:pending`
-- [ ] `P2` **IMP-030** — `embedded/dashboard` bundle built 2026-05-20 (`4c008cb`) predates IMP-017, so its cancel control isn't served (blocks IMP-017/IMP-003 browser verify). Add a repeatable build→sync→restart target for `frontend`→`embedded/dashboard`. `T:backend:pending` `T:browser:na`
+- [ ] `P1` **IMP-029** — decision card could lock its answer controls: `/api/agent/chat/respond` had no timeout, so a hung respond never cleared `submittingEventId`. Fixed `AgentPage.tsx` (AbortSignal.timeout + reset-on-item-change); live-verify pending. `T:backend:pending` `T:browser:pending`
+- [x] **IMP-030** — repeatable dashboard build→sync pipeline (`scripts/build_dashboard.sh`); rebuilt + served fresh bundle `index-jlc1ZA4V.js` (was stale 2026-05-20). `T:backend` `T:browser:na`
 
 ### M1.2 — Both lanes ship one feature on devpulse end-to-end
 

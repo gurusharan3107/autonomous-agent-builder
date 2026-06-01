@@ -695,6 +695,13 @@ export default function AgentPage() {
   const pendingBlockingItem = useMemo(() => findPendingBlockingItem(items), [items]);
   const pendingBlockingItemId = pendingBlockingItem?.id ?? null;
 
+  // A changed/new blocking item must never inherit a stale in-flight submit lock
+  // (a hung prior respond would otherwise leave its answer controls permanently
+  // disabled, stranding the operator on a "waiting for your answer" card). IMP-029.
+  useEffect(() => {
+    setSubmittingEventId(null);
+  }, [pendingBlockingItemId]);
+
   useEffect(() => {
     const transcriptScroller = transcriptScrollRef.current;
     if (pendingBlockingItemId) {
@@ -849,6 +856,9 @@ export default function AgentPage() {
           selected_options: selectedOptions,
           custom_text: customText,
         }),
+        // Bound the request so a hung respond can't permanently lock the answer
+        // controls (the finally re-enables them on abort). IMP-029.
+        signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) {
         throw new Error(await getResponseError(response));
@@ -891,6 +901,9 @@ export default function AgentPage() {
           decision,
           reason,
         }),
+        // Bound the request so a hung respond can't permanently lock the
+        // approval controls (the finally re-enables them on abort). IMP-029.
+        signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) {
         throw new Error(await getResponseError(response));
