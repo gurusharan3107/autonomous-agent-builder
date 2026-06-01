@@ -15,8 +15,11 @@ operator comments → widget POST /api/feedback → server writes queue.json (DU
 Push end-to-end via inotify/FSEvents, zero polling. Arm in operating-sequence step 4:
 ```
 Monitor({ description:"agent-feedback markers from <slug>", persistent:true,
-  command:"node ~/.claude/skills/agent-feedback-artifact/scripts/agent-feedback-watch.mjs --root <serve-root>" })
+  command:"node <skill-dir>/scripts/agent-feedback-watch.mjs --root <serve-root>" })
 ```
+`<skill-dir>` = this skill's actual install path; a project-local
+`.claude/skills/agent-feedback-artifact` overrides global `~/.claude/...` (hardcoding
+`~/.claude/...` fails with `MODULE_NOT_FOUND` on a repo-local install).
 Each new marker → one ~140-char line: `{"id":"afw-...","markerId":"af-...","route":"...","status":"queued","artifactPath":"/","summary":"..."}`. Surfaces as a notification. Act on the summary, or pull `agent-feedback-details.mjs <id>` (style routes rarely need it).
 
 - **Backfill:** on (re)start, every `status:"queued"` item is re-emitted once — restarts don't drop work.
@@ -34,7 +37,7 @@ Widget reads `reloadMode` from `/api/feedback/status` (`css`|`full`); across a b
 
 ## (a') File-watch + any harness
 ```bash
-node ~/.claude/skills/agent-feedback-artifact/scripts/agent-feedback-watch.mjs --root <serve-root> | <your wake bridge>
+node <skill-dir>/scripts/agent-feedback-watch.mjs --root <serve-root> | <your wake bridge>
 ```
 e.g. `while read line; do my-cli notify "$line"; done`, a sentinel-file writer, or a Slack/email forwarder.
 

@@ -24,8 +24,12 @@ preflight → add widget → serve → arm/heal wake → process markers → dis
 Push-only `fs.watch` on queue.json, zero polling. Arm (Claude Code):
 ```
 Monitor({ description:"agent-feedback markers from <slug>", persistent:true,
-  command:"node ~/.claude/skills/agent-feedback-artifact/scripts/agent-feedback-watch.mjs --root <serve-root>" })
+  command:"node <skill-dir>/scripts/agent-feedback-watch.mjs --root <serve-root>" })
 ```
+`<skill-dir>` = this skill's actual install path (absolute). **A project-local
+`.claude/skills/agent-feedback-artifact` overrides the global
+`~/.claude/skills/agent-feedback-artifact`** — use the one you were invoked from;
+a hardcoded `~/.claude/...` fails with `MODULE_NOT_FOUND` when the skill is repo-local.
 Each marker → one line `{id, markerId, route, status, url, origin, artifactTitle, artifactPath, summary, visibleText, sentAt, createdAt, emittedAt}`. `origin`+`visibleText` let you act directly (localhost+clear → act; external+clear question → answer from URL; `visibleText` disambiguates deictic phrases). Any harness: `agent-feedback-watch.mjs --root <root> | <adapter>`. Hermes: webhook path → [`wake-bridge.md`](wake-bridge.md).
 
 **Self-heal — the push path can die silently** (Monitor auto-stop / orphaned watcher; marker stays `queued` but never wakes you, and an absent operator won't tell you). At session entry / each (re)invocation / on suspicion:
