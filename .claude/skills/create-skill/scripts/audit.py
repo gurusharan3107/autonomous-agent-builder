@@ -115,6 +115,8 @@ def audit_skill(skill_path: Path, strict: bool = False) -> list[dict]:
     imperative = first_word.rstrip(',').lower() in {
         "use", "analyze", "build", "create", "run", "generate", "produce",
         "scaffold", "automate", "extract", "search", "check", "verify",
+        "install", "deploy", "configure", "set", "wire", "bootstrap",
+        "optimize", "audit", "refine", "manage", "fix", "review", "process",
     }
     finding("A11", "description starts imperative", "soft", imperative,
             f"starts with {first_word!r}")

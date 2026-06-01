@@ -45,7 +45,10 @@ Skip the question when the prompt is unambiguous:
 |---|---|---|
 | `name` | yes | kebab-case, equals directory name |
 | `description` | yes | ≤1024 chars; imperative; trigger-centric |
-| `allowed-tools` | no | minimize; omit if pure prose |
+| `allowed-tools` | no | minimize; omit if pure prose (experimental, support varies) |
+| `license` | no | license name or bundled-file reference |
+| `compatibility` | no | ≤500 chars; only if real env requirements (product, packages, network) |
+| `metadata` | no | string→string map for client-specific extras (e.g. `author`, `version`) |
 
 ## Workflow
 
@@ -89,7 +92,8 @@ create-skill itself does not follow that pattern; it is a simple router.
 - [reference/create.md](reference/create.md) — Create lane (preflight → explore → author → validate → closeout)
 - [reference/refine.md](reference/refine.md) — Refine lane (audit → scope changes → apply → re-validate)
 - [reference/audit.md](reference/audit.md) — Audit lane (conformance checks, output format)
-- [reference/templates.md](reference/templates.md) — Output skill scaffold (SKILL.md, evals, commands)
+- [reference/templates.md](reference/templates.md) — Output skill scaffold (SKILL.md, evals, commands, agent-safe scripts)
 - [reference/description-testing.md](reference/description-testing.md) — Trigger eval loop (train/validation split, iteration)
+- [reference/output-eval.md](reference/output-eval.md) — Output-quality eval; load in VALIDATE to prove the skill beats its no-skill baseline (with/without runs, benchmark delta)
 - [reference/quality-gate.md](reference/quality-gate.md) — Done checklist (all CPs must pass before declaring done)
 - External: [agentskills.io/skill-creation/best-practices](https://agentskills.io/skill-creation/best-practices)

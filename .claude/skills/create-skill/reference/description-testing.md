@@ -20,7 +20,10 @@ description precision matters most.
 
 ## Step 1 — Write eval queries
 
-Create `outputs/<skill-name>/eval_queries.json`:
+Aim for **~20 queries (8-10 should-trigger, 8-10 should-not)** — enough to split
+train/validation meaningfully. 10 (5+5) is the absolute floor for a quick check.
+Create `outputs/<skill-name>/eval_queries.json` (the 5+5 below is the minimum
+shape — add more, varying phrasing/explicitness/detail/complexity):
 
 ```json
 [

@@ -15,7 +15,8 @@ Loaded when the operator picks Refine or types "refine / improve / fix / shrink 
 | "Skill never activates" | Description too narrow → description-testing loop |
 | "Skill fires on wrong prompts" | Description too broad → add boundary clause |
 | "Skill body is too long / slow" | Progressive disclosure → move bulk to reference/ |
-| "Skill produces wrong output" | Workflow gap → add step, guard, or gotcha |
+| "Skill produces wrong output" | Workflow gap → add step, guard, or gotcha; confirm with output-eval baseline ([output-eval.md](output-eval.md)) |
+| "Not sure the skill even helps" | Run output-quality baseline ([output-eval.md](output-eval.md)) — measure the with/without delta before adding more |
 | "Hard Rules are vague" | Sharpen rules → make domain-specific, add "why" |
 | "No evals / evals outdated" | Add/update evals/evals.json |
 

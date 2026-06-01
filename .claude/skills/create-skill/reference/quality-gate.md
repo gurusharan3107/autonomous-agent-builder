@@ -25,7 +25,7 @@ order; stop and fix before continuing.
 - [ ] Description starts with an imperative ("Use when...", "Analyze...", "Build...")
 - [ ] Description names ≥3 trigger phrases operators would actually type
 - [ ] Description has a boundary clause if the skill overlaps with adjacent skills
-- [ ] Description trigger test passed: ≥80% pass rate on 10 queries (5 should-trigger, 5 should-not-trigger)
+- [ ] Description trigger test passed: ≥80% pass rate on ~20 queries (8-10 should-trigger, 8-10 should-not; 5+5 is the floor)
 
 ## Gate 3 — Workflow completeness
 
@@ -56,6 +56,9 @@ order; stop and fix before continuing.
 - [ ] Each `expected_output` is observable (names an artifact or value — not "looks good")
 - [ ] Each assertion is verifiable pass/fail (not a subjective quality judgment)
 - [ ] At least one test case covers an edge case or boundary condition
+- [ ] Output-quality baseline run (with_skill vs without_skill) shows a positive
+  benchmark delta — the skill beats no-skill (see [output-eval.md](output-eval.md));
+  or skip is explicitly justified for a trivial prose skill
 
 ## Gate 6 — Closeout (final)
 

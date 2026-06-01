@@ -103,7 +103,7 @@ Walk scope.md CP by CP. Tick only with concrete evidence.
 ### CP1 — Trigger test
 Load the new skill and test the description against prompts.
 See [description-testing.md](description-testing.md) for the full eval loop.
-Minimum bar: 5 should-trigger + 5 should-not-trigger prompts, ≥80% pass rate.
+Target ~20 prompts (8-10 each side); 5+5 is the floor. ≥80% pass rate.
 If failing: description too narrow (broaden scope) or too broad (add boundary clause).
 
 ### CP2 — Hard Rules review
@@ -140,11 +140,17 @@ print('PASS' if len(text) <= 1024 else 'FAIL — over 1024 chars')
 Also check: does the description start with an imperative? Does it name trigger phrases
 the operator would actually type?
 
-### CP6 — Evals review
+### CP6 — Evals review + output-quality baseline
 Open `evals/evals.json`. For each test case:
 - Is the prompt realistic (specific, has context, not vague)?
 - Is the expected_output observable (not "looks good")?
 - Are the assertions verifiable (pass/fail without judgment)?
+
+Then **prove the skill beats no-skill**: run the output-quality eval loop in
+[output-eval.md](output-eval.md) — paired with_skill / without_skill runs, graded
+assertions, and a benchmark **delta** (pass-rate lift vs. token/time cost). A skill
+that doesn't beat its baseline isn't earning its context — rescope or cut it.
+Skip only for trivial prose skills, and say so explicitly.
 
 If any CP fails: diagnose the specific issue, fix the skill file, re-validate that CP.
 Do not declare done with any CP open.

@@ -345,3 +345,37 @@ Refer to `reference/workflow.md` for the detailed step expansion.
 - [ ] CP5: Description — ≤1024 chars, starts with imperative, names trigger phrases
 - [ ] CP6: Evals — 2-3 test prompts with observable expected outputs and assertions
 ```
+
+---
+
+## scripts/ — design for agentic use
+
+When a skill bundles a script the agent runs, the agent reads stdout/stderr to
+decide its next move. Design every bundled script to these rules (the global
+`cli-for-agents` skill and `workflow quality-gate cli-for-agents-quality-gate`
+cover the full discipline):
+
+- **Non-interactive — hard requirement.** Agents run in non-interactive shells;
+  a TTY prompt, password dialog, or confirmation menu **hangs forever**. Accept
+  all input via flags, env vars, or stdin. Fail with a clear usage error instead
+  of waiting.
+- **Self-contained dependencies.** Declare deps inline so the agent runs the
+  script with one command — Python [PEP 723](https://peps.python.org/pep-0723/)
+  (`# /// script` block, `uv run scripts/x.py`), Deno `npm:`/`jsr:` specifiers,
+  Bun runtime auto-install, or Ruby `bundler/inline`. For one-off tool calls,
+  reference a pinned package directly (`uvx ruff@0.8.0`, `npx eslint@9`) — no
+  `scripts/` file needed until the command grows hard to get right.
+- **Structured output.** Emit JSON/CSV/TSV on **stdout**, send progress and
+  diagnostics to **stderr**, so the parent agent captures clean parseable data.
+- **`--help` is the interface.** Document flags, examples, and exit-code meanings
+  there — it's how the agent learns the script. Keep it concise.
+- **Helpful errors.** Say what went wrong, what was expected, what to try
+  (`Error: --format must be one of json|csv|table. Received: "xml"`).
+- **Idempotent + safe.** Agents retry — prefer "create if not exists". Offer
+  `--dry-run` for destructive ops; require `--confirm`/`--force` where risk
+  warrants; use distinct, documented exit codes.
+- **Bounded output size.** Many harnesses truncate tool output beyond ~10-30K
+  chars. Default to a summary, support `--offset`/`--output` for more.
+
+Reference bundled scripts by **relative path from the skill root** in SKILL.md
+(the agent runs commands from there), and list them so the agent knows they exist.
