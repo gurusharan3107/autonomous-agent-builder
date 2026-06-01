@@ -214,16 +214,23 @@ async def _run_claude_sdk_prompt(
     from claude_agent_sdk import (
         AssistantMessage,
         ClaudeAgentOptions,
+        ClaudeSDKClient,
         ResultMessage,
         SystemMessage,
     )
-    from claude_agent_sdk import (
-        query as sdk_query,
+    from claude_agent_sdk.types import PermissionResultAllow, PermissionResultDeny
+
+    from autonomous_agent_builder.embedded.server.agent_tool_policy import (
+        chat_mutating_builtin_denial,
     )
-    from claude_agent_sdk.types import PermissionResultAllow
 
     source_env = builder_source_env()
     observability = resolve_claude_observability(source_env)
+
+    # Phase/context value the deny policy needs: the tools this helper lane was
+    # explicitly granted for the current phase. Anything in this set is allowed;
+    # ungranted mutating built-ins are denied by the shared phase-boundary policy.
+    granted_tools = frozenset(allowed_tools or [])
 
     async def _prompt_stream():
         yield {
@@ -235,7 +242,16 @@ async def _run_claude_sdk_prompt(
 
     async def _auto_approve(
         tool_name: str, input_data: object, context: object
-    ) -> PermissionResultAllow:
+    ) -> PermissionResultAllow | PermissionResultDeny:
+        # M2.6: enforce phase boundaries one layer above dispatch_lock. A tool
+        # granted for this phase executes; an ungranted mutating built-in is
+        # denied via the shared chat-lane deny policy (single owner) so this
+        # helper lane cannot edit the workspace directly outside the visible
+        # backlog -> task -> approval -> execution lifecycle.
+        if tool_name not in granted_tools:
+            deny, reason = chat_mutating_builtin_denial(tool_name)
+            if deny:
+                return PermissionResultDeny(message=reason)
         return PermissionResultAllow(updated_input=input_data)  # type: ignore[arg-type]
 
     merged_env = {**observability.env}
@@ -262,21 +278,28 @@ async def _run_claude_sdk_prompt(
     output_parts: list[str] = []
     error_result: str | None = None
 
-    async for message in sdk_query(prompt=_prompt_stream(), options=options):
-        if isinstance(message, SystemMessage):
-            continue
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                text = getattr(block, "text", None)
-                if text:
-                    output_parts.append(text)
-            continue
-        if isinstance(message, ResultMessage):
-            if getattr(message, "is_error", False):
-                error_result = (
-                    message.result or "\n".join(output_parts).strip() or "Claude SDK query failed."
-                )
-            continue
+    # M1.5: run under the ClaudeSDKClient context manager (mirrors runner.py:691)
+    # so __aexit__ deterministically cancels the monitor/streaming tasks on exit,
+    # rather than relying on bare query() generator finalization.
+    async with ClaudeSDKClient(options=options) as client:
+        await client.query(_prompt_stream())
+        async for message in client.receive_response():
+            if isinstance(message, SystemMessage):
+                continue
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    text = getattr(block, "text", None)
+                    if text:
+                        output_parts.append(text)
+                continue
+            if isinstance(message, ResultMessage):
+                if getattr(message, "is_error", False):
+                    error_result = (
+                        message.result
+                        or "\n".join(output_parts).strip()
+                        or "Claude SDK query failed."
+                    )
+                continue
 
     if error_result:
         raise RuntimeError(error_result)

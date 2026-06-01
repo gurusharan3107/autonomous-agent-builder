@@ -17,6 +17,78 @@ def _write_builder_source_env(monkeypatch, tmp_path: Path, text: str) -> Path:
     return path
 
 
+def _make_fake_client_cls(messages: list, events: list[str], holder: dict):
+    """Build a fake ClaudeSDKClient that mirrors the SDK 0.2.85 API.
+
+    Records context-manager entry/exit and the query payload so tests can assert
+    that the chat path runs under `async with ClaudeSDKClient(...)` and that
+    `__aexit__` runs deterministically (the M1.5 cleanup guarantee).
+    """
+
+    class FakeClaudeSDKClient:
+        def __init__(self, *, options):
+            holder["options"] = options
+            holder["client"] = self
+
+        async def __aenter__(self):
+            events.append("enter")
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            events.append("exit")
+            return False
+
+        async def query(self, prompt):
+            events.append("query")
+            holder["prompt"] = prompt
+
+        async def receive_response(self):
+            for message in messages:
+                yield message
+
+    return FakeClaudeSDKClient
+
+
+def _install_fake_sdk(
+    monkeypatch,
+    options_cls,
+    assistant_cls,
+    result_cls,
+    messages: list,
+    *,
+    events: list[str] | None = None,
+    holder: dict | None = None,
+):
+    events = events if events is not None else []
+    holder = holder if holder is not None else {}
+    holder.setdefault("events", events)
+
+    class FakeSystemMessage:
+        pass
+
+    class FakePermissionResultAllow:
+        def __init__(self, updated_input=None):
+            self.updated_input = updated_input
+
+    class FakePermissionResultDeny:
+        def __init__(self, message: str = "", interrupt: bool = False):
+            self.message = message
+            self.interrupt = interrupt
+
+    fake_sdk = ModuleType("claude_agent_sdk")
+    fake_sdk.AssistantMessage = assistant_cls
+    fake_sdk.ClaudeAgentOptions = options_cls
+    fake_sdk.ResultMessage = result_cls
+    fake_sdk.SystemMessage = FakeSystemMessage
+    fake_sdk.ClaudeSDKClient = _make_fake_client_cls(messages, events, holder)
+    fake_sdk_types = ModuleType("claude_agent_sdk.types")
+    fake_sdk_types.PermissionResultAllow = FakePermissionResultAllow
+    fake_sdk_types.PermissionResultDeny = FakePermissionResultDeny
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_sdk)
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk.types", fake_sdk_types)
+    return holder
+
+
 @pytest.fixture(autouse=True)
 def empty_builder_source_env(monkeypatch, tmp_path: Path) -> Path:
     return _write_builder_source_env(monkeypatch, tmp_path, "")
@@ -307,29 +379,13 @@ async def test_run_claude_sdk_prompt_uses_builder_source_env_not_onecli(
         is_error = False
         result = ""
 
-    async def fake_query(*, prompt, options):
-        captured["prompt"] = prompt
-        captured["options"] = options
-        yield FakeAssistantMessage()
-        yield FakeResultMessage()
-
-    class FakeSystemMessage:
-        pass
-
-    class FakePermissionResultAllow:
-        def __init__(self, updated_input=None):
-            self.updated_input = updated_input
-
-    fake_sdk = ModuleType("claude_agent_sdk")
-    fake_sdk.AssistantMessage = FakeAssistantMessage
-    fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
-    fake_sdk.ResultMessage = FakeResultMessage
-    fake_sdk.SystemMessage = FakeSystemMessage
-    fake_sdk.query = fake_query
-    fake_sdk_types = ModuleType("claude_agent_sdk.types")
-    fake_sdk_types.PermissionResultAllow = FakePermissionResultAllow
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_sdk)
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk.types", fake_sdk_types)
+    client_holder = _install_fake_sdk(
+        monkeypatch,
+        FakeClaudeAgentOptions,
+        FakeAssistantMessage,
+        FakeResultMessage,
+        [FakeAssistantMessage(), FakeResultMessage()],
+    )
     result = await claude_runtime._run_claude_sdk_prompt(
         "Reply with exactly OK.",
         workspace_path=Path("/tmp/workspace"),
@@ -338,6 +394,7 @@ async def test_run_claude_sdk_prompt_uses_builder_source_env_not_onecli(
         permission_mode="acceptEdits",
     )
 
+    captured["options"] = client_holder["options"]
     assert result == "OK"
     assert captured["options_kwargs"]["system_prompt"] == {
         "type": "preset",
@@ -367,27 +424,13 @@ async def test_run_claude_sdk_prompt_uses_empty_env_mapping(monkeypatch):
         is_error = False
         result = ""
 
-    class FakeSystemMessage:
-        pass
-
-    class FakePermissionResultAllow:
-        def __init__(self, updated_input):
-            self.updated_input = updated_input
-
-    async def fake_query(*, prompt, options):
-        yield FakeAssistantMessage()
-        yield FakeResultMessage()
-
-    fake_sdk = ModuleType("claude_agent_sdk")
-    fake_sdk.AssistantMessage = FakeAssistantMessage
-    fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
-    fake_sdk.ResultMessage = FakeResultMessage
-    fake_sdk.SystemMessage = FakeSystemMessage
-    fake_sdk.query = fake_query
-    fake_sdk_types = ModuleType("claude_agent_sdk.types")
-    fake_sdk_types.PermissionResultAllow = FakePermissionResultAllow
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_sdk)
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk.types", fake_sdk_types)
+    _install_fake_sdk(
+        monkeypatch,
+        FakeClaudeAgentOptions,
+        FakeAssistantMessage,
+        FakeResultMessage,
+        [FakeAssistantMessage(), FakeResultMessage()],
+    )
     result = await claude_runtime._run_claude_sdk_prompt(
         "Reply with exactly OK.",
         workspace_path=Path("/tmp/workspace"),
@@ -420,27 +463,13 @@ async def test_run_claude_sdk_prompt_uses_builder_source_oauth_and_suppresses_ap
         is_error = False
         result = ""
 
-    class FakeSystemMessage:
-        pass
-
-    class FakePermissionResultAllow:
-        def __init__(self, updated_input):
-            self.updated_input = updated_input
-
-    async def fake_query(*, prompt, options):
-        yield FakeAssistantMessage()
-        yield FakeResultMessage()
-
-    fake_sdk = ModuleType("claude_agent_sdk")
-    fake_sdk.AssistantMessage = FakeAssistantMessage
-    fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
-    fake_sdk.ResultMessage = FakeResultMessage
-    fake_sdk.SystemMessage = FakeSystemMessage
-    fake_sdk.query = fake_query
-    fake_sdk_types = ModuleType("claude_agent_sdk.types")
-    fake_sdk_types.PermissionResultAllow = FakePermissionResultAllow
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_sdk)
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk.types", fake_sdk_types)
+    _install_fake_sdk(
+        monkeypatch,
+        FakeClaudeAgentOptions,
+        FakeAssistantMessage,
+        FakeResultMessage,
+        [FakeAssistantMessage(), FakeResultMessage()],
+    )
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "real-token-from-env")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-be-used")
     _write_builder_source_env(
@@ -478,28 +507,14 @@ async def test_run_claude_sdk_prompt_drains_error_result_before_raising(monkeypa
         is_error = True
         result = "Not logged in · Please run /login"
 
-    class FakeSystemMessage:
-        pass
-
-    class FakePermissionResultAllow:
-        def __init__(self, updated_input):
-            self.updated_input = updated_input
-
-    async def fake_query(*, prompt, options):
-        events.append("start")
-        yield FakeResultMessage()
-        events.append("drained")
-
-    fake_sdk = ModuleType("claude_agent_sdk")
-    fake_sdk.AssistantMessage = FakeAssistantMessage
-    fake_sdk.ClaudeAgentOptions = FakeClaudeAgentOptions
-    fake_sdk.ResultMessage = FakeResultMessage
-    fake_sdk.SystemMessage = FakeSystemMessage
-    fake_sdk.query = fake_query
-    fake_sdk_types = ModuleType("claude_agent_sdk.types")
-    fake_sdk_types.PermissionResultAllow = FakePermissionResultAllow
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_sdk)
-    monkeypatch.setitem(sys.modules, "claude_agent_sdk.types", fake_sdk_types)
+    holder = _install_fake_sdk(
+        monkeypatch,
+        FakeClaudeAgentOptions,
+        FakeAssistantMessage,
+        FakeResultMessage,
+        [FakeResultMessage()],
+        events=events,
+    )
     with pytest.raises(RuntimeError, match="/login"):
         await claude_runtime._run_claude_sdk_prompt(
             "Reply with exactly OK.",
@@ -509,7 +524,133 @@ async def test_run_claude_sdk_prompt_drains_error_result_before_raising(monkeypa
             permission_mode="acceptEdits",
         )
 
-    assert events == ["start", "drained"]
+    # M1.5: the error result is drained inside the context manager and __aexit__
+    # still runs deterministically before the RuntimeError surfaces.
+    assert holder["events"] == ["enter", "query", "exit"]
+
+
+@pytest.mark.asyncio
+async def test_run_claude_sdk_prompt_runs_under_client_context_manager(monkeypatch):
+    """M1.5: chat path executes inside `async with ClaudeSDKClient(...)` and
+    __aexit__ fires after a successful response (deterministic cleanup)."""
+    events: list[str] = []
+
+    class FakeClaudeAgentOptions:
+        def __init__(self, **_kwargs):
+            pass
+
+    class FakeAssistantMessage:
+        def __init__(self):
+            self.content = [SimpleNamespace(text="OK")]
+
+    class FakeResultMessage:
+        is_error = False
+        result = ""
+
+    holder = _install_fake_sdk(
+        monkeypatch,
+        FakeClaudeAgentOptions,
+        FakeAssistantMessage,
+        FakeResultMessage,
+        [FakeAssistantMessage(), FakeResultMessage()],
+        events=events,
+    )
+    result = await claude_runtime._run_claude_sdk_prompt(
+        "Reply with exactly OK.",
+        workspace_path=Path("/tmp/workspace"),
+        model="haiku",
+        allowed_tools=None,
+        permission_mode="acceptEdits",
+    )
+
+    assert result == "OK"
+    assert holder["events"] == ["enter", "query", "exit"]
+    # query() received the streamed prompt payload, not a bare string.
+    assert holder["prompt"] is not None
+
+
+@pytest.mark.asyncio
+async def test_auto_approve_denies_ungranted_mutating_builtin(monkeypatch):
+    """M2.6: the permission callback denies an ungranted mutating built-in via
+    the shared phase-boundary deny policy, with a routing reason."""
+    captured: dict[str, object] = {}
+
+    class FakeClaudeAgentOptions:
+        def __init__(self, **kwargs):
+            captured["options_kwargs"] = kwargs
+
+    class FakeAssistantMessage:
+        def __init__(self):
+            self.content = [SimpleNamespace(text="OK")]
+
+    class FakeResultMessage:
+        is_error = False
+        result = ""
+
+    _install_fake_sdk(
+        monkeypatch,
+        FakeClaudeAgentOptions,
+        FakeAssistantMessage,
+        FakeResultMessage,
+        [FakeAssistantMessage(), FakeResultMessage()],
+    )
+    await claude_runtime._run_claude_sdk_prompt(
+        "Reply with exactly OK.",
+        workspace_path=Path("/tmp/workspace"),
+        model="haiku",
+        allowed_tools=["Read"],
+        permission_mode="acceptEdits",
+    )
+
+    can_use_tool = captured["options_kwargs"]["can_use_tool"]
+    # Write is a mutating built-in and was NOT granted -> deny with a reason.
+    decision = await can_use_tool("Write", {"file_path": "x"}, None)
+    assert type(decision).__name__ == "FakePermissionResultDeny"
+    assert "chat lane" in decision.message
+    assert "task_dispatch" in decision.message
+
+
+@pytest.mark.asyncio
+async def test_auto_approve_allows_granted_and_readonly_tools(monkeypatch):
+    """M2.6: a tool granted for this phase is allowed even when it is a mutating
+    built-in; a non-mutating tool is always allowed."""
+    captured: dict[str, object] = {}
+
+    class FakeClaudeAgentOptions:
+        def __init__(self, **kwargs):
+            captured["options_kwargs"] = kwargs
+
+    class FakeAssistantMessage:
+        def __init__(self):
+            self.content = [SimpleNamespace(text="OK")]
+
+    class FakeResultMessage:
+        is_error = False
+        result = ""
+
+    _install_fake_sdk(
+        monkeypatch,
+        FakeClaudeAgentOptions,
+        FakeAssistantMessage,
+        FakeResultMessage,
+        [FakeAssistantMessage(), FakeResultMessage()],
+    )
+    await claude_runtime._run_claude_sdk_prompt(
+        "Reply with exactly OK.",
+        workspace_path=Path("/tmp/workspace"),
+        model="haiku",
+        allowed_tools=["Bash"],
+        permission_mode="acceptEdits",
+    )
+
+    can_use_tool = captured["options_kwargs"]["can_use_tool"]
+    # Bash is mutating but explicitly granted for this phase -> allow.
+    granted = await can_use_tool("Bash", {"command": "ls"}, None)
+    assert type(granted).__name__ == "FakePermissionResultAllow"
+    assert granted.updated_input == {"command": "ls"}
+    # Read is non-mutating and not in the deny set -> allow.
+    readonly = await can_use_tool("Read", {"file_path": "x"}, None)
+    assert type(readonly).__name__ == "FakePermissionResultAllow"
 
 
 @pytest.mark.asyncio
