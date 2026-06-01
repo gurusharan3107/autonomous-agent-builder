@@ -6,9 +6,16 @@ Patches three kinds of region, never the hand-authored narrative prose:
   1. the <script type="application/json" id="artifact-data"> block (derivable keys only;
      non-derivable keys like `tiers`/`source` are preserved from the existing block).
   2. <!-- gen:NAME -->…<!-- /gen:NAME --> marker regions: snapshot_date, roadmap_totals,
-     epoch, milestone.
+     epoch, milestone, priorities.
   3. per-milestone meters: each `.ms` block keyed by <span class="id">MX.Y</span> gets its
      <small>D / T</small> and bar width:NN% recomputed.
+
+Priority convention (source of truth = ROADMAP.md): an OPEN item may carry an inline
+backtick-wrapped priority token immediately after its checkbox, e.g.
+  - [ ] `P0` **can_use_tool enforces subagent phase boundaries** …
+Tagged open items (P0–P3) are collected and rendered into the `priorities` marker,
+sorted P0→P3 then file order. Untagged items are ignored by the priorities view but
+still counted in the milestone meters.
 
 Usage:
   build_goal_overview.py [--root DIR] [--check]
@@ -26,6 +33,9 @@ from typing import NoReturn
 MS_HEADING = re.compile(r"^###\s+(M\d+\.\d+)\b(.*)$")
 CLOSED = re.compile(r"\[x\]", re.IGNORECASE)
 OPEN = re.compile(r"\[ \]")
+# An open item line, capturing an optional inline `Pn` priority token + the rest.
+OPEN_ITEM = re.compile(r"^\s*-\s*\[ \]\s*(?:`(P[0-3])`\s*)?(.*)$")
+PRI_RANK = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 
 
 def die(msg: str) -> NoReturn:
@@ -33,10 +43,28 @@ def die(msg: str) -> NoReturn:
     raise SystemExit(2)
 
 
-def parse_roadmap(text: str) -> tuple[list[dict], int, int]:
-    """Return (per-milestone [{id,done,open}], total_closed, total_open).
+def item_label(rest: str, cap: int = 90) -> str:
+    """Strip markdown emphasis/code/links from an item line and shorten to one phrase."""
+    s = rest
+    s = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)  # [text](url) -> text
+    s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)          # **bold**
+    s = re.sub(r"`([^`]*)`", r"\1", s)              # `code`
+    s = re.sub(r"\*(.+?)\*", r"\1", s)              # *italic*
+    s = re.sub(r"\s+", " ", s).strip()
+    dot = s.find(". ")
+    if 0 <= dot < cap:                              # cut at first sentence end if early
+        s = s[:dot]
+    elif len(s) > cap:
+        s = s[:cap].rstrip() + "…"
+    return s
+
+
+def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict]]:
+    """Return (per-milestone [{id,done,open}], total_closed, total_open, priorities).
 
     Splits by `### M<x.y>` headings; counts [x]/[ ] checkboxes at any indent per section.
+    `priorities` = open items carrying an inline `Pn` token, sorted P0→P3 then file order:
+    [{"pri","milestone","label"}].
     """
     lines = text.splitlines()
     sections: list[tuple[str, list[str]]] = []
@@ -56,6 +84,8 @@ def parse_roadmap(text: str) -> tuple[list[dict], int, int]:
         die("no '### M<x.y>' milestone headings found in ROADMAP.md")
 
     milestones, tot_done, tot_open = [], 0, 0
+    priorities: list[dict] = []
+    order = 0
     for mid, body in sections:
         blob = "\n".join(body)
         done = len(CLOSED.findall(blob))
@@ -63,7 +93,41 @@ def parse_roadmap(text: str) -> tuple[list[dict], int, int]:
         milestones.append({"id": mid, "done": done, "open": opn})
         tot_done += done
         tot_open += opn
-    return milestones, tot_done, tot_open
+        for line in body:
+            im = OPEN_ITEM.match(line)
+            if im and im.group(1):
+                priorities.append({
+                    "pri": im.group(1),
+                    "milestone": mid,
+                    "label": item_label(im.group(2)),
+                    "_order": order,
+                })
+            order += 1
+    priorities.sort(key=lambda p: (PRI_RANK[p["pri"]], p["_order"]))
+    for p in priorities:
+        p.pop("_order", None)
+    return milestones, tot_done, tot_open, priorities
+
+
+def _esc(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def priorities_html(priorities: list[dict]) -> str:
+    """Render tagged open items as priority rows (P0→P3), each with a colored badge."""
+    if not priorities:
+        return ('<div class="empty">No prioritized items — tag a ROADMAP item with '
+                "<code>`P0`</code>/<code>`P1`</code>/<code>`P2`</code> after its "
+                "checkbox.</div>")
+    rows = []
+    for p in priorities:
+        cls = p["pri"].lower()
+        rows.append(
+            f'<div class="prow"><span class="badge {cls}">{p["pri"]}</span>'
+            f'<span class="plabel">{_esc(p["label"])}</span>'
+            f'<span class="pms">{p["milestone"]}</span></div>'
+        )
+    return "".join(rows)
 
 
 def parse_status(text: str) -> dict:
@@ -158,7 +222,8 @@ def main() -> int:
         if not p.exists():
             die(f"missing {p}")
 
-    milestones, closed, opn = parse_roadmap((goal / "ROADMAP.md").read_text(encoding="utf-8"))
+    milestones, closed, opn, priorities = parse_roadmap(
+        (goal / "ROADMAP.md").read_text(encoding="utf-8"))
     status = parse_status((goal / "STATUS.md").read_text(encoding="utf-8"))
     html = original = html_path.read_text(encoding="utf-8")
 
@@ -169,6 +234,7 @@ def main() -> int:
         "milestone": re.sub(r"\*\*", "", status["milestone_raw"]),
         "roadmap_totals": {"closed": closed, "open": opn},
         "milestones": milestones,
+        "priorities": priorities,
     }
     html, ch = replace_artifact_data(html, payload)
     if ch:
@@ -178,6 +244,7 @@ def main() -> int:
         ("epoch", status["epoch"]),
         ("milestone", milestone_html(status["milestone_raw"])),
         ("roadmap_totals", f"{closed} items closed, {opn} open"),
+        ("priorities", priorities_html(priorities)),
     ):
         html, ch = replace_marker(html, name, value)
         if ch:

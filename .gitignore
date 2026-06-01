@@ -59,3 +59,6 @@ __pycache__/
 *.pyc
 # Windows ADS sidecar files created under WSL
 *Zone.Identifier
+
+# agent-feedback runtime queue (per-run state, not source)
+docs/goal/data/

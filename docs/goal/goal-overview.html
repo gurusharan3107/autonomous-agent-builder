@@ -87,6 +87,18 @@ h3{font-family:var(--sans);font-weight:650;font-size:15px;color:var(--slate);
 .badge.pass{background:#eef1e8;color:#4d5e36;border-color:#c3d0ab}
 .badge.pend{background:var(--gray-150);color:var(--gray-500)}
 .badge.done{background:#eef1e8;color:#4d5e36;border-color:#c3d0ab}
+.badge.p0{background:#f4e2dc;color:#9a3b1f;border-color:#dd9b86}
+.badge.p1{background:#f6efdc;color:#7a5a16;border-color:#d9c184}
+.badge.p2{background:var(--gray-150);color:var(--gray-700);border-color:var(--gray-300)}
+.badge.p3{background:var(--gray-150);color:var(--gray-500);border-color:var(--gray-300)}
+
+/* Priority list */
+.prilist .prow{display:flex;align-items:center;gap:10px;padding:7px 0;
+  border-bottom:1px solid var(--gray-150)}
+.prilist .prow:last-child{border-bottom:none}
+.prilist .plabel{flex:1;font-size:13.5px;color:var(--slate)}
+.prilist .pms{font-family:var(--mono);font-size:11px;color:var(--clay)}
+.prilist .empty{color:var(--gray-500);font-size:13px}
 
 /* Bars */
 .epoch-tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
@@ -255,6 +267,13 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
       0 complexity violations (closed 2026-05-21).</p>
     </div>
   </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3 style="margin-top:0">Open priorities
+      <span class="note" style="font-weight:400">— tagged open items, P0 first ·
+      source: <a href="ROADMAP.md">ROADMAP.md</a></span></h3>
+    <div class="prilist"><!-- gen:priorities --><div class="prow"><span class="badge p0">P0</span><span class="plabel">Migrate chat runtime query() → ClaudeSDKClient context manager</span><span class="pms">M1.5</span></div><div class="prow"><span class="badge p0">P0</span><span class="plabel">can_use_tool enforces subagent phase boundaries (autopilot precondition)</span><span class="pms">M2.6</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-014 — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale err…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-016 — chat agent mis-routes builder-improvement asks into the managed-app backlog; no…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-017 — no operator way to remove/cancel/archive a backlog item (no control, no CLI dele…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">G3 — SessionStore adapter (Postgres) + conformance harness</span><span class="pms">M3.2</span></div><div class="prow"><span class="badge p2">P2</span><span class="plabel">G14 — full OTel spans/metrics, not just env checks (observability/runtime.py:145 wires non…</span><span class="pms">M2.3</span></div><div class="prow"><span class="badge p2">P2</span><span class="plabel">G13 effort:"xhigh" carve-out for planner/designer above a complexity threshold (execution_…</span><span class="pms">M2.5</span></div><!-- /gen:priorities --></div>
+  </div>
 </section>
 
 <!-- ===================== NORTH STAR ===================== -->
@@ -327,13 +346,13 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
 <section id="roadmap">
   <h2><span class="num">03</span>Roadmap</h2>
   <p class="sub">Three epochs, the spine of all work &middot; <a href="ROADMAP.md">ROADMAP.md</a>
-  &middot; <!-- gen:roadmap_totals -->52 items closed, 84 open<!-- /gen:roadmap_totals -->. Bars show closed&nbsp;/&nbsp;total per milestone.</p>
+  &middot; <!-- gen:roadmap_totals -->53 items closed, 82 open<!-- /gen:roadmap_totals -->. Bars show closed&nbsp;/&nbsp;total per milestone.</p>
 
   <div class="card">
     <div class="epoch-tag cur">Epoch 1 — Stabilize &nbsp;·&nbsp; current</div>
     <div class="ms curms"><div class="name"><span class="id">M1.1</span>Close open operator-facing defects</div>
       <div class="goal">Each IMP closed with root cause, SDK-grounded fix, regression test, evidence.</div>
-      <div class="meter"><div class="bar"><span style="width:59%"></span></div><small>17 / 29</small></div></div>
+      <div class="meter"><div class="bar"><span style="width:64%"></span></div><small>18 / 28</small></div></div>
     <div class="ms"><div class="name"><span class="id">M1.2</span>Both lanes ship one feature on devpulse</div>
       <div class="goal">Forward-engineering scenario, both lanes, same operator wording.</div>
       <div class="meter"><div class="bar"><span style="width:67%"></span></div><small>6 / 9</small></div></div>
@@ -600,8 +619,8 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
   "epoch": "Epoch 1 \u2014 Stabilize",
   "milestone": "M3.5 \u2014 Optimization loop activation (autoresearch Track B)",
   "roadmap_totals": {
-    "closed": 52,
-    "open": 84
+    "closed": 53,
+    "open": 82
   },
   "tiers": {
     "tier1": "all 5 bars (2026-05-22)",
@@ -611,8 +630,8 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
   "milestones": [
     {
       "id": "M1.1",
-      "done": 17,
-      "open": 12
+      "done": 18,
+      "open": 10
     },
     {
       "id": "M1.2",
@@ -693,6 +712,48 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
       "id": "M3.5",
       "done": 3,
       "open": 5
+    }
+  ],
+  "priorities": [
+    {
+      "pri": "P0",
+      "milestone": "M1.5",
+      "label": "Migrate chat runtime query() \u2192 ClaudeSDKClient context manager"
+    },
+    {
+      "pri": "P0",
+      "milestone": "M2.6",
+      "label": "can_use_tool enforces subagent phase boundaries (autopilot precondition)"
+    },
+    {
+      "pri": "P1",
+      "milestone": "M1.1",
+      "label": "IMP-014 \u2014 Observability \"Runtime Error Trend\" fires the dispatch-blocking rec on stale err\u2026"
+    },
+    {
+      "pri": "P1",
+      "milestone": "M1.1",
+      "label": "IMP-016 \u2014 chat agent mis-routes builder-improvement asks into the managed-app backlog; no\u2026"
+    },
+    {
+      "pri": "P1",
+      "milestone": "M1.1",
+      "label": "IMP-017 \u2014 no operator way to remove/cancel/archive a backlog item (no control, no CLI dele\u2026"
+    },
+    {
+      "pri": "P1",
+      "milestone": "M3.2",
+      "label": "G3 \u2014 SessionStore adapter (Postgres) + conformance harness"
+    },
+    {
+      "pri": "P2",
+      "milestone": "M2.3",
+      "label": "G14 \u2014 full OTel spans/metrics, not just env checks (observability/runtime.py:145 wires non\u2026"
+    },
+    {
+      "pri": "P2",
+      "milestone": "M2.5",
+      "label": "G13 effort:\"xhigh\" carve-out for planner/designer above a complexity threshold (execution_\u2026"
     }
   ]
 }

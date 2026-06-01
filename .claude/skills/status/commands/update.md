@@ -7,6 +7,11 @@ markdown. Deterministic and idempotent.
 python3 .claude/skills/status/scripts/build_goal_overview.py
 ```
 
+Regenerates: `#artifact-data` JSON, the `<!-- gen:* -->` markers (`snapshot_date`,
+`epoch`, `milestone`, `roadmap_totals`, `priorities`), and per-milestone meters.
+The `priorities` region lists open `[ ]` items carrying an inline `` `Pn` `` token,
+sorted P0→P3. Run `/status lint` first if you just edited ROADMAP/STATUS.
+
 Then:
 1. Report the printed change summary + new totals (or "no change — already in sync").
 2. On non-zero exit, surface the error verbatim and STOP — a required file or

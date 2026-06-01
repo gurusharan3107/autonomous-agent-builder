@@ -42,11 +42,33 @@
       ]
     },
     {
+      "name": "lint_runs_and_classifies",
+      "prompt": "/status lint",
+      "expect_activation": true,
+      "shell_check": "cd \"$(git rev-parse --show-toplevel)\" && python3 .claude/skills/status/scripts/lint_goal_docs.py; rc=$?; test $rc -ne 1",
+      "expect_exit": 0,
+      "assertions": [
+        "runs scripts/lint_goal_docs.py",
+        "exit 0 (warnings only) or 2 (structural errors) — never 1 without --strict",
+        "reports the contract findings (over-budget items, missing priority, duplicate ids)"
+      ]
+    },
+    {
+      "name": "lint_consulted_before_roadmap_edit",
+      "prompt": "I'm about to compact the ROADMAP — what are the rules?",
+      "expect_activation": true,
+      "assertions": [
+        "activates the status skill contract lane",
+        "surfaces where pending vs completed items live + compactness budgets",
+        "does not edit ROADMAP/STATUS itself"
+      ]
+    },
+    {
       "name": "no_trigger_on_unrelated",
-      "prompt": "update the ROADMAP to add a new milestone",
+      "prompt": "what's the weather today?",
       "expect_activation": false,
       "assertions": [
-        "does NOT activate — editing ROADMAP/STATUS source is out of scope (one-way: markdown -> HTML)"
+        "does NOT activate — unrelated to goal-docs governance or the overview"
       ]
     }
   ]
