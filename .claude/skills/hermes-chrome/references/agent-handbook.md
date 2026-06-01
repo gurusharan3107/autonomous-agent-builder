@@ -146,6 +146,14 @@ locations Chrome and native-host actually read from:
 
 **Fix:** Before removing the old element, read its `style.transform` and `classList.contains('hermes-visible')`. After creating the new element, restore the transform, parse it back into `cursorX/Y`, and re-add `hermes-visible` if it was set. The cursor stays parked where it was, visibly. **Whenever you change `createOverlay()`, preserve this contract.**
 
+### `popup.js` init must be fault-isolated — never gate a critical control behind a throwable `await`
+
+**Symptom:** A new popup feature with an unguarded `await` (e.g. `chrome.storage.local.get`) placed early in the `DOMContentLoaded` handler silently **bricks the whole popup** — the Feedback Mode toggle and status panel never wire up, because one throw aborts the rest of the async handler.
+
+**Why:** The handler is one async function running independent concerns sequentially. With no fault isolation, ordering decides survival: any `await` that throws skips everything after it. Critical controls placed *after* a fragile optional feature die with it.
+
+**Fix:** Each concern runs in its own guard via `safeInit(label, fn)` (try/catch + `console.error` + non-fatal `err` surface) so a failure degrades alone. **Order critical controls first** (status → tab/content-script → Feedback Mode toggle), optional features last (queue-origin). **Attach interaction listeners (`addEventListener`) BEFORE any throwable `await`** so the control is operable even if its state read fails. When adding any popup/service-worker init feature, isolate it the same way — an optional feature must never precede or share a failure path with a critical control. (Regression-tested: with `chrome.storage.local.get` throwing, the toggle's click listener still attaches.)
+
 ---
 
 ## Diagnostic recipes
