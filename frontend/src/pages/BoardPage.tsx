@@ -161,6 +161,12 @@ export default function BoardPage() {
     setError(null);
     try {
       await recoverTask(task.id);
+      // IMP-031: recover only resets task state to a dispatchable phase — it
+      // does NOT start an agent run (the orchestrator has no auto-dispatch loop).
+      // Chain a dispatch so "Recover" actually resumes the work; the dispatch
+      // consumes the recovery_context recover just wrote. Without this the task
+      // lands in an active-looking phase and silently never runs.
+      await dispatchTask(task.id);
       setBoard(await fetchBoard());
     } catch (recoverError) {
       setError(recoverError instanceof Error ? recoverError.message : "Failed to recover task");

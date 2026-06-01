@@ -22,7 +22,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 
 - [x] **IMP-001** — feature-request context lost after intake follow-up. `agent_prompt_builders.py`; `test_agent_feature_spec_prompt_contracts.py`. `T:backend` `T:browser:na`
 - [x] **IMP-002** — gates-first not enforced (27-turn run pre-infra). Scaffold commits 1fae0bd, c1a39c8, a88ee2c. `T:backend` `T:browser:na`
-- [x] **IMP-003** — `metrics show` 0 tokens for in-progress runs. `dashboard_metrics.py`; `test_metrics_active_run_injects_diagnostic_note`. `T:backend` `T:browser:pending`
+- [x] **IMP-003** — metrics showed 0 tokens for in-progress runs. Backend note (`dashboard_metrics.py`) + Metrics page now renders `active_runs_note`; live-verified. `T:backend` `T:browser`
 - [x] **IMP-004** — Recover 409 on gate-infra-blocked tasks. Backend (IMP-002) + frontend 8799f1b. `T:backend` `T:browser`
 - [x] **IMP-006** — scaffold used shell heredoc not Write tool. Prompt constraint in `agents/definitions.py`. `T:backend` `T:browser:na`
 - [x] **IMP-007** — simultaneous dispatch → pool exhaustion. Prompt constraint + project dispatch lock; `test_dispatch_guards.py`. `T:backend` `T:browser:na`
@@ -52,6 +52,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [ ] `P0` **IMP-028** — code-gen replays ~20.5k context/turn (~89% of run cost). Shipped `compact_workspace_map` in the code-gen prompt (`workspace_tools.py`, ~77 tok). Remaining: live A/B of tool-call counts; ~13–15k preset-trim experiment. `T:backend:pending` `T:browser:na`
 - [x] **IMP-029** — answer controls could lock on a hung `/api/agent/chat/respond`. Fixed `AgentPage.tsx` (AbortSignal.timeout + reset-on-item-change); live-verified answerable. `T:backend:na` `T:browser`
 - [x] **IMP-030** — repeatable dashboard build→sync pipeline (`scripts/build_dashboard.sh`); rebuilt + served fresh bundle `index-jlc1ZA4V.js` (was stale 2026-05-20). `T:backend` `T:browser:na`
+- [x] **IMP-031** — Board "Recover" reset a blocked task without dispatching it → stranded. Fixed `BoardPage.tsx` to chain `dispatchTask`; live-verified `active_runs` 0→1. `T:backend:na` `T:browser`
 
 ### M1.2 — Both lanes ship one feature on devpulse end-to-end
 

@@ -136,6 +136,14 @@ function EfficiencyPanel({ data }: { data: MetricsData }) {
       >
         Efficiency
       </SectionLabel>
+      {summary.active_runs_note ? (
+        <p
+          className="rounded-[0.85rem] border border-status-review/35 bg-[color:var(--status-review-soft)] px-3 py-2 text-[12px] leading-5 text-foreground"
+          aria-live="polite"
+        >
+          {summary.active_runs_note}
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

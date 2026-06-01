@@ -277,6 +277,11 @@ export interface OptimizationSummary {
   };
   top_cost_drivers: OptimizationDriver[];
   recommended_next_change: string;
+  // Present only while ≥1 agent run is in progress (IMP-003): headline token
+  // figures reflect completed runs, so surface this so an in-progress run's
+  // not-yet-recorded tokens aren't misread as 0.
+  active_runs?: number;
+  active_runs_note?: string;
   benchmark: {
     target_min_raw_tokens: number;
     target_max_raw_tokens: number;
