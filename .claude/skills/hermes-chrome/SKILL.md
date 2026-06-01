@@ -85,6 +85,7 @@ Quick surface map:
 | Screenshot timeout / too large | `service_worker.js` + `native_host.py` |
 | Cursor not visible | `cursor-agent.js` + `images/` assets |
 | Bridge not responding | `native_host.py` |
+| Feedback "Send failed" / markers don't arrive | Delivery capability owned by **`agent-feedback-artifact`** — first check the widget's queue origin: popup "Queue origin" field, default `http://localhost:4177`; and open the **served** URL, not `file://`. Don't debug in hermes prose. |
 | Preflight green but actions still fail | [`references/optimize.md` §preflight-green](references/optimize.md#preflight-exits-0-but-chrome-is-still-unstable) |
 
 After any plugin fix: `sync.sh` → re-run preflight → confirm ready.

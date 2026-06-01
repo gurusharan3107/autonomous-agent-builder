@@ -48,7 +48,7 @@
       "id": 4,
       "name": "process-queued-marker-by-route",
       "prompt": "There's a queued marker at /tmp/agent-feedback-devpulse with the comment 'make the brand text larger'. Process it.",
-      "expected_output": "Agent uses scripts/agent-feedback-next.mjs to claim, recognizes the style intent → no_worker_main_agent_direct route, applies the fix in the appropriate surface, marks the marker done via agent-feedback-mark.mjs with a brief reply. Does NOT pull full marker JSON unnecessarily for a style-route marker.",
+      "expected_output": "Agent reads the next queued marker via scripts/agent-feedback-next.mjs (read-only peek; note dispatch --claim is what leases a marker to processing for durability), recognizes the style intent → no_worker_main_agent_direct route, handles it INLINE in the appropriate surface, marks the marker done via agent-feedback-mark.mjs with a brief reply. Does NOT pull full marker JSON unnecessarily for a style-route marker.",
       "files": [],
       "assertions": [
         "Agent reads the queue via agent-feedback-next.mjs (NOT cat or direct JSON read)",

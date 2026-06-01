@@ -7,7 +7,7 @@ import { createReadStream, existsSync } from "node:fs";
 import { createHmac } from "node:crypto";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { classifyWorkItem, routeSummary, summarizeThread } from "./agent-feedback-routing.mjs";
+import { classifyWorkItem, routeSummary, summarizeThread, reclaimExpired } from "./agent-feedback-routing.mjs";
 
 const root = resolve(process.argv[2] || process.cwd());
 const port = Number(process.env.PORT || process.argv[3] || 4177);
@@ -16,6 +16,13 @@ const queuePath = resolve(dataDir, "feedback-queue.json");
 const webhookUrl = process.env.AGENT_FEEDBACK_WEBHOOK_URL || "";
 const webhookSecret = process.env.AGENT_FEEDBACK_WEBHOOK_SECRET || "";
 const webhookTimeoutMs = Number(process.env.AGENT_FEEDBACK_WEBHOOK_TIMEOUT_MS || 2500);
+// Durability supervisor: a claimed (processing) marker carries a lease. If its
+// worker dies without reaching a terminal state, the lease expires and the
+// periodic sweep requeues it (or blocks it after too many attempts) so no
+// marker is ever silently orphaned for an absent operator.
+const leaseTtlMs = Number(process.env.AGENT_FEEDBACK_LEASE_TTL_MS || 600_000);
+const sweepIntervalMs = Number(process.env.AGENT_FEEDBACK_SWEEP_INTERVAL_MS || 30_000);
+const maxAttempts = Number(process.env.AGENT_FEEDBACK_MAX_ATTEMPTS || 3);
 let queueLock = Promise.resolve();
 
 await mkdir(dataDir, { recursive: true });
@@ -187,9 +194,17 @@ const server = createServer(async (req, res) => {
         if (!item) return { code: 200, body: { item: null } };
         attachRouteMetadata(item);
         item.workerStatus = claim ? "processing" : "routed";
-        if (claim) item.status = "processing";
+        if (claim) {
+          item.status = "processing";
+          item.attempts = (item.attempts || 0) + 1;
+          const nowMs = Date.now();
+          item.lastHeartbeatAt = new Date(nowMs).toISOString();
+          item.leaseUntil = new Date(nowMs + leaseTtlMs).toISOString();
+        }
         item.updatedAt = new Date().toISOString();
-        return { code: 200, body: { item: summarizeItem(item) } };
+        // Return the full route summary (workerPrompt, spawn, dispatch) so the
+        // CLI/agent gets everything it needs from the single authoritative writer.
+        return { code: 200, body: { item: { ...summarizeItem(item), ...routeSummary(item) } } };
       });
       return json(res, result.code, result.body);
     }
@@ -210,18 +225,40 @@ const server = createServer(async (req, res) => {
       const result = await updateQueue((queue) => {
         const item = queue.find((entry) => entry.id === id);
         if (!item) return { code: 404, body: { error: "not_found" } };
-        item.status = String(patch.status || item.status);
+        const TERMINAL = ["done", "blocked", "canceled"];
+        const requestedStatus = String(patch.status || item.status);
+        // Terminal-state guard: once a marker is terminal (e.g. blocked by the
+        // reclaim sweep), a late/crashed worker may not move it back to a
+        // non-terminal state — prevents un-blocking a poison marker.
+        if (TERMINAL.includes(item.status) && !TERMINAL.includes(requestedStatus)) {
+          return { code: 409, body: { error: "already_terminal", status: item.status } };
+        }
+        item.status = requestedStatus;
         item.workerStatus = String(patch.workerStatus || patch.status || item.workerStatus || item.status);
         item.agentMessage = String(patch.agentMessage || item.agentMessage || "");
         if (patch.threadSummary) item.threadSummary = String(patch.threadSummary);
         if (patch.reload) item.reload = true;
-        if (["done", "blocked", "canceled"].includes(item.status)) {
+        if (patch.reloadMode) item.reloadMode = String(patch.reloadMode);
+        if (TERMINAL.includes(item.status)) {
           item.lastProcessedAt = new Date().toISOString();
           if (!item.threadSummary) item.threadSummary = summarizeThread(item, item.agentMessage);
+        } else if (item.status === "processing") {
+          // Heartbeat: a worker re-asserting "processing" refreshes the lease so
+          // legitimately long work is not reclaimed mid-flight.
+          const nowMs = Date.now();
+          item.lastHeartbeatAt = new Date(nowMs).toISOString();
+          item.leaseUntil = new Date(nowMs + leaseTtlMs).toISOString();
         }
         item.updatedAt = new Date().toISOString();
         broadcastArtifact = artifactPathFor(item);
-        return { code: 200, body: { id: item.id, status: item.status } };
+        return { code: 200, body: {
+          id: item.id,
+          markerId: item.markerId || item.marker?.id || item.payload?.comments?.[0]?.id || null,
+          status: item.status,
+          workerStatus: item.workerStatus,
+          reload: Boolean(item.reload),
+          reloadMode: item.reloadMode || null
+        } };
       });
       if (broadcastArtifact !== null && result.code === 200) broadcast(broadcastArtifact || "*");
       return json(res, result.code, result.body);
@@ -254,6 +291,17 @@ server.listen(port, () => {
   console.log(`Queue: ${queuePath}`);
   console.log(`Webhook: ${webhookUrl ? webhookUrl : "not configured"}`);
 });
+
+// Durability sweep: periodically reclaim markers whose lease expired (worker
+// died without reaching a terminal state). Runs inside updateQueue so it
+// serializes with all other queue mutations. unref() so it never holds the
+// process open.
+const sweepTimer = setInterval(() => {
+  updateQueue((queue) => reclaimExpired(queue, Date.now(), { maxAttempts }))
+    .then((changed) => { if (changed) broadcast("*"); })
+    .catch((err) => console.error("reclaim sweep failed:", err));
+}, sweepIntervalMs);
+sweepTimer.unref?.();
 
 function resolveStaticPath(pathname) {
   const decoded = decodeURIComponent(pathname);
@@ -338,12 +386,21 @@ function createWorkItem(payload, comment, now, queue = []) {
     artifactTitle: payload.artifactTitle,
     artifactVersion: payload.artifactVersion || "unversioned",
     selector: marker.selector,
-    visibleText: marker.selectedText || marker.text || latestUserMessage(marker),
+    // The marked element's own text. Prefer an explicit mouse selection, then
+    // the clicked element's textContent. Never fall back to the comment — that
+    // duplicated the operator's words and masked WHAT was marked.
+    visibleText: marker.selectedText || marker.elementText || "",
     latestUserMessage: latestUserMessage(marker),
     ui: marker.ui || null,
     rect: marker.rect || null,
     threadSummary: inheritedSummary,
     lastProcessedAt: null,
+    // Durability/lease fields. leaseUntil stays null until a worker claims the
+    // item; a null lease is never reclaimed (back-compat for pre-supervisor items).
+    leaseUntil: null,
+    attempts: 0,
+    lastHeartbeatAt: null,
+    reclaimReason: null,
     marker,
     payload: {
       artifactPath: payload.artifactPath,
@@ -459,7 +516,7 @@ function summarizeItem(item) {
     artifactTitle: item.artifactTitle || item.payload?.artifactTitle,
     artifactVersion: item.artifactVersion || item.payload?.artifactVersion,
     selector: item.selector || marker.selector,
-    visibleText: item.visibleText || marker.selectedText || marker.text || "",
+    visibleText: item.visibleText || marker.selectedText || marker.elementText || "",
     latestUserMessage: item.latestUserMessage || latestUserMessage(marker),
     threadSummary: item.threadSummary || "",
     lastProcessedAt: item.lastProcessedAt || null,
@@ -479,5 +536,8 @@ function summarizeItem(item) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  process.on("SIGTERM", () => server.close(() => process.exit(0)));
+  process.on("SIGTERM", () => {
+    clearInterval(sweepTimer);
+    server.close(() => process.exit(0));
+  });
 }

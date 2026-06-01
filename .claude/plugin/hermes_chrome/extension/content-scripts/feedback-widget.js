@@ -11,19 +11,31 @@
  * 'inline-speculation-rules' chrome-extension://<id>/`). Scripts served from the
  * extension URL are allowed because the extension's own URL is in that CSP.
  *
- * Queue origin (e.g. http://127.0.0.1:4177) is passed via data-queue-origin on the
- * mount node; the runtime reads it from there and uses it as the fetch base.
+ * Queue origin defaults to the feedback server's default port (http://localhost:4177)
+ * and is passed via data-queue-origin on the mount node; the runtime reads it from
+ * there and uses it as the fetch base. When the server runs on a non-default port or
+ * a different origin, the operator sets it in the popup and the service worker injects
+ * the override (window.__HERMES_FEEDBACK_QUEUE_ORIGIN).
  */
 (() => {
   const FLAG = "__hermesFeedbackWidgetInjected";
   if (window[FLAG]) return;
   window[FLAG] = true;
 
-  // Use `localhost`, NOT `127.0.0.1`. WSL2 Node bound to IPv6 wildcard (::) is reachable
-  // from Windows-side Chrome via `localhost` (→ [::1]) but NOT via `127.0.0.1` (IPv4
-  // forwarding bridge for Node's IPv6 socket fails). The artifact-feedback-server
-  // could be bound to 0.0.0.0 to fix this at the server side, but using `localhost`
-  // here works for both WSL and macOS without any server change.
+  // Queue origin resolution (most specific wins):
+  //   1. window.__HERMES_FEEDBACK_QUEUE_ORIGIN — injected by the service worker from
+  //      the operator's persisted setting (chrome.storage `feedbackQueueOrigin`). Set
+  //      this in the popup whenever the feedback server runs on a non-default port or
+  //      a remote/different origin than the page being annotated.
+  //   2. http://localhost:4177 — the feedback server's DEFAULT port (see
+  //      artifact-feedback-server.mjs and wake-bridge.md). This is the correct default
+  //      for the extension's primary mode: annotating a SEPARATE running app while the
+  //      feedback queue server runs as a fixed sidecar on 4177. location.origin would
+  //      be wrong there (it points at the app, not the queue server).
+  //
+  // Use `localhost`, NOT `127.0.0.1`: WSL2 Node bound to IPv6 wildcard (::) is
+  // reachable from Windows-side Chrome via `localhost` (→ [::1]) but NOT via
+  // `127.0.0.1`. If the server runs on a non-default port, set the popup override.
   const QUEUE_ORIGIN =
     (window.__HERMES_FEEDBACK_QUEUE_ORIGIN) || "http://localhost:4177";
 

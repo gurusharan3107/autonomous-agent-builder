@@ -92,6 +92,7 @@ The reply shows in the widget's top-right status bar. Operators see it in real t
 
 ## Critical-arg defaults
 
-- **`--root` is required** for every script that reads/writes the queue: `agent-feedback-next.mjs`, `agent-feedback-details.mjs`, `agent-feedback-mark.mjs`, `agent-feedback-watch.mjs`, `agent-feedback-closeout.mjs`. Use the same path you passed to `artifact-feedback-server.mjs`.
-- **`--port` defaults to 4177** for server + preflight + closeout. Match across all three.
+- **Mutating CLIs are HTTP clients of the server** (single authoritative writer): `agent-feedback-dispatch.mjs` and `agent-feedback-mark.mjs` take **`--port`** (default `4177`) or `--url`, not `--root`. The server must be running.
+- **`--root` is required** for the read-only / file-based scripts: `agent-feedback-next.mjs`, `agent-feedback-details.mjs`, `agent-feedback-watch.mjs`, `agent-feedback-closeout.mjs`, `agent-feedback-preflight.mjs`. Use the same path you passed to `artifact-feedback-server.mjs`.
+- **`--port` defaults to 4177** for server + preflight + closeout + the mutating CLIs. Match across all of them.
 - **`QUEUE_ORIGIN` defaults to `http://localhost:4177`** in the extension widget. Don't change to `127.0.0.1` — see WSL2 IPv6 note in [`agent-handbook.md`](agent-handbook.md).

@@ -5,6 +5,12 @@ export function classifyWorkItem(item) {
   const styleIntent = /\b(bigger|smaller|larger|wider|narrower|taller|shorter|font|typography|weight|stronger|bold|italic|underline|cursive|color|colour|red|orange|yellow|green|blue|purple|pink|teal|cyan|magenta|brown|beige|tan|gold|silver|maroon|navy|olive|coral|salmon|lime|indigo|violet|black|white|gray|grey|dark|light|hex|rgb|hsl|spacing|align|center|centre|left|right|top|bottom|above|below|beside|near|beneath|under|padding|margin|gap|ui|style|layout|theme|button|icon|copy|text|wording|phrasing|language|cursive|hover|background|border|radius|shadow|opacity|visible|hidden|show|hide|move|reorder|sort|subtitle|tagline|caption|label|heading|header|footer|title|nav|navigation|badge|pill|chip|panel|card|modal|tooltip|notice|alert|hint|helper|placeholder|link|image|logo|brand)\b/i.test(haystack);
   const dataIntent = /\b(total|gross|taxable|tax|refund|liability|income|calculate|recalculate|dependent|derive|amount|number|incorrect|wrong)\b|₹|rs\.?/i.test(haystack);
   const explanationIntent = /\b(explain|why|what changed|reply|answer|clarify|summari[sz]e)\b/i.test(haystack);
+  // Imperative work-request: the operator is asking the agent to go DO real
+  // engineering work (start a roadmap item, implement, build, migrate...),
+  // not adjust this one marked element. These belong to the main agent with
+  // full context, never a cheap marker-scoped worker. `route` is advisory —
+  // the main agent makes the final call from the comment.
+  const actionIntent = /\b(take action|take care|take this|act on|work on|works on|begin work|start working|kick off|implement|build out|create the|add the feature|refactor|migrate|ship|wire up|integrate|develop|tackle|pick up|handle|address|resolve|complete|finish|fix|proceed with|get (?:this|it) done|do this)\b/i.test(haystack);
 
   if (styleIntent && !dataIntent) {
     return {
@@ -80,6 +86,17 @@ export function classifyWorkItem(item) {
     };
   }
 
+  if (actionIntent) {
+    return {
+      route: "no_worker_main_agent_direct",
+      contextTier: "T2",
+      workerLifecycle: "none",
+      model: null,
+      reasoningEffort: null,
+      reason: "The comment is an imperative work-request (real engineering work, not a marker-scoped tweak), so the main agent owns it directly with full context."
+    };
+  }
+
   return {
     route: "cheap_marker_worker",
     contextTier: "T1",
@@ -135,12 +152,53 @@ export function routeSummary(item, route = classifyWorkItem(item)) {
     route: route.route,
     contextTier: route.contextTier,
     workerLifecycle: route.workerLifecycle,
+    // How the main agent should run this marker:
+    //   "inline"          → handle in the main thread (cheap single-element tweaks).
+    //   "background_task" → dispatch a Task subagent (run_in_background) so the
+    //                       main thread stays free and work is context-isolated.
+    dispatch: route.workerLifecycle === "none" ? "inline" : "background_task",
+    // NOTE: model / reasoningEffort / spawn.fork_context are ADVISORY hints only.
+    // A Claude Code skill dispatches via the Task tool and cannot set per-subagent
+    // SDK fields; the harness owns model/isolation. The actionable fields are
+    // `dispatch` (inline vs background) and `workerPrompt` (the Task prompt).
     model: route.model,
     reasoningEffort: route.reasoningEffort,
     routeReason: route.reason,
     workerPrompt: worker.prompt,
     spawn: worker.spawn
   };
+}
+
+// Durability supervisor (pure, side-effect-free so it is unit-testable without
+// starting the server). Mutates expired `processing` items in `queue` in place:
+// requeues them, or blocks them once they exceed maxAttempts. Returns true if
+// anything changed. A null `leaseUntil` means "never leased" → never reclaimed
+// (back-compat for items created before the supervisor existed).
+export function reclaimExpired(queue, nowMs, { maxAttempts = 3 } = {}) {
+  let changed = false;
+  for (const item of Array.isArray(queue) ? queue : []) {
+    if (item.status !== "processing") continue;
+    if (!item.leaseUntil) continue;
+    if (Date.parse(item.leaseUntil) > nowMs) continue;
+    const nowIso = new Date(nowMs).toISOString();
+    if ((item.attempts || 0) >= maxAttempts) {
+      item.status = "blocked";
+      item.workerStatus = "blocked";
+      item.reclaimReason = `exceeded ${maxAttempts} processing attempts — needs operator`;
+      item.agentMessage = item.agentMessage || item.reclaimReason;
+      item.lastProcessedAt = nowIso;
+      if (!item.threadSummary) item.threadSummary = summarizeThread(item, item.agentMessage);
+    } else {
+      item.status = "queued";
+      item.workerStatus = "queued";
+      item.leaseUntil = null;
+      item.lastHeartbeatAt = null;
+      item.reclaimReason = "lease expired — requeued for retry";
+    }
+    item.updatedAt = nowIso;
+    changed = true;
+  }
+  return changed;
 }
 
 export function summarizeThread(item, agentMessage = "") {

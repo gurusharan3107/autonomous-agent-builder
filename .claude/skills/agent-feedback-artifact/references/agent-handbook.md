@@ -54,6 +54,26 @@ agent ─ acts on marker ─ writes file ─ mark.mjs ──── writes queue.
 
 **Fix:** Use `localhost`, not `127.0.0.1`, when the widget runs in a Windows-side Chrome talking to a WSL-side Node server. The widget's `QUEUE_ORIGIN` default is `http://localhost:4177`. Don't change it back to 127.0.0.1.
 
+### Queue origin resolution — where the widget posts (this skill's capability)
+
+**This is an agent-feedback capability, not a hermes-chrome one.** The hermes extension only provides the UI surface (popup "Queue origin" field) and the injection plumbing; the contract below is owned here. The hermes plugin ships `feedback-widget.js` / `popup.*` / `service_worker.js`, but a delivery-behavior change is an agent-feedback capability change — keep it documented in this skill.
+
+Resolution chain (extension / running-app mode):
+
+```
+popup "Queue origin" input
+  → chrome.storage.local.feedbackQueueOrigin
+    → service_worker.injectFeedbackWidget() sets window.__HERMES_FEEDBACK_QUEUE_ORIGIN (isolated world)
+      → feedback-widget.js: QUEUE_ORIGIN = that override || "http://localhost:4177"
+        → mount node data-queue-origin
+          → runtime __FB_BASE → fetch(`${__FB_BASE}/api/feedback`)
+```
+
+- **Static mode** has no mount wrapper → `__FB_BASE=""` → posts same-origin (the served page's own server). No override applies.
+- **Default `4177`** is correct for the primary running-app case (queue server is a fixed sidecar on 4177). Do NOT default to `location.origin` — in running-app mode that points at the annotated app, not the queue server.
+- Set the popup override only when the sidecar runs on a non-default port or a remote origin.
+- Most common no-show causes: server on a non-default port without a matching override, or the operator on a `file://` page (no server). Confirm via `curl -X POST :<port>/api/feedback` (202 = server fine), then read the live tab's `__FB_BASE` via the hermes bridge.
+
 ### Some installed Chrome extensions inject extra CSP into target pages
 
 **Symptom:** CSP error in DevTools attributes the violation to your content script, with a CSP that references some unfamiliar extension ID (e.g. `chrome-extension://e0b888a0-…`). devpulse itself sends no CSP.

@@ -247,6 +247,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// Inject the feedback widget into a tab. If the operator configured a cross-origin
+// queue server (chrome.storage `feedbackQueueOrigin`), set it in the tab's isolated
+// world FIRST so feedback-widget.js picks it up; otherwise the widget defaults to
+// the page's own origin (correct for artifacts served by the feedback server).
+async function injectFeedbackWidget(tabId) {
+  const { feedbackQueueOrigin } = await chrome.storage.local.get('feedbackQueueOrigin');
+  if (feedbackQueueOrigin) {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (origin) => { window.__HERMES_FEEDBACK_QUEUE_ORIGIN = origin; },
+      args: [feedbackQueueOrigin]
+    });
+  }
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content-scripts/feedback-widget.js']
+  });
+}
+
 async function toggleFeedbackWidget(tabId, enabled) {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab?.id) return { ok: false, error: 'tab_not_found' };
@@ -255,10 +274,7 @@ async function toggleFeedbackWidget(tabId, enabled) {
   const storageKey = `feedback-mode:${tabId}`;
   if (enabled) {
     await chrome.storage.local.set({ [storageKey]: true });
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content-scripts/feedback-widget.js']
-    });
+    await injectFeedbackWidget(tabId);
     return { ok: true, enabled: true };
   }
 
@@ -286,10 +302,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const { [storageKey]: on } = await chrome.storage.local.get(storageKey);
   if (!on) return;
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content-scripts/feedback-widget.js']
-    });
+    await injectFeedbackWidget(tabId);
   } catch (err) {
     // Tab may have closed mid-injection or navigated to a blocked URL; non-fatal.
   }

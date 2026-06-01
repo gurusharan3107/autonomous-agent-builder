@@ -11,6 +11,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('ext-id').textContent = chrome.runtime.id || '—';
   $('sock').textContent = '~/.hermes/run/chrome-bridge.sock';
 
+  // ---- Queue origin (cross-origin mode) ----
+  // Blank = same-origin (the page being annotated is served by the feedback server).
+  // Set to e.g. http://localhost:7878 when annotating a SEPARATE running app whose
+  // feedback queue server lives on another origin. Persisted globally and injected
+  // by the service worker before the widget loads.
+  const originInput = $('queue-origin');
+  const hintRow = $('queue-origin-hint-row');
+  const hintOut = $('queue-origin-hint');
+  if (originInput) {
+    const showHint = (msg, bad) => {
+      hintOut.textContent = msg || '';
+      hintOut.style.color = bad ? '#f87171' : '#52525b';
+      hintRow.style.display = msg ? 'flex' : 'none';
+    };
+    const { feedbackQueueOrigin } = await chrome.storage.local.get('feedbackQueueOrigin');
+    if (feedbackQueueOrigin) originInput.value = feedbackQueueOrigin;
+    const save = async () => {
+      const raw = originInput.value.trim().replace(/\/$/, '');
+      if (!raw) {
+        await chrome.storage.local.remove('feedbackQueueOrigin');
+        showHint('Same-origin — posts to the annotated page’s own server.');
+        return;
+      }
+      let ok = false;
+      try { const u = new URL(raw); ok = /^https?:$/.test(u.protocol) && u.origin === raw; } catch { ok = false; }
+      if (!ok) {
+        showHint('Must be a bare origin, e.g. http://localhost:7878', true);
+        return;
+      }
+      await chrome.storage.local.set({ feedbackQueueOrigin: raw });
+      showHint('Saved — re-toggle Feedback Mode to apply.');
+    };
+    originInput.addEventListener('change', save);
+    originInput.addEventListener('blur', save);
+  }
+
   // Extension is loaded (popup is running)
   sv($('ext-status'), 'ok', 'Loaded ✓');
   sd('ok');

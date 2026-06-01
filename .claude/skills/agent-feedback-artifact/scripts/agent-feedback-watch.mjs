@@ -26,9 +26,15 @@
  * The agent uses `id` to call agent-feedback-details.mjs / mark.mjs for full
  * context only when it actually wants to act.
  */
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { watch } from "node:fs";
 import { resolve } from "node:path";
+
+// Heartbeat: prove this watcher's loop is alive so agent-feedback-wake-status.mjs
+// can tell "watcher running" from "watcher dead". Written to a dotfile the
+// fs.watch below ignores (it only reacts to feedback-queue.json), so it never
+// self-triggers a scan.
+const HEARTBEAT_MS = Number(process.env.AGENT_FEEDBACK_HEARTBEAT_MS || 30_000);
 
 const args = process.argv.slice(2);
 let root = "";
@@ -98,7 +104,7 @@ function summarize(item) {
     // Only included when distinct from `summary` (avoids duplicating the same
     // string when operator's comment IS the visible text).
     visibleText: (() => {
-      const v = (item.visibleText || marker.text || "").trim().slice(0, 60);
+      const v = (item.visibleText || marker.selectedText || marker.elementText || "").trim().slice(0, 60);
       const s = (item.latestUserMessage || "").trim();
       return v && v !== s ? v : null;
     })(),
@@ -116,11 +122,14 @@ async function scan() {
     const items = await readQueueSafe();
     for (const item of items) {
       if (!item || !item.id) continue;
-      const isNew = !seen.has(item.id);
-      // Only actionable (queued) items fire — done/canceled/processing markers
-      // are noise after a restart. Record them as seen so we don't re-emit if
-      // their status later flaps, but never push them to stdout.
-      seen.add(item.id);
+      // Key `seen` on id+status so a marker REQUEUED by the durability sweep
+      // (processing → queued) fires a fresh wake. When an item leaves "queued"
+      // (claimed/terminal), drop its queued key so a later reclaim re-emits
+      // exactly once. Only "queued" items are ever pushed to stdout.
+      if (item.status !== "queued") seen.delete(`${item.id}:queued`);
+      const key = `${item.id}:${item.status}`;
+      const isNew = !seen.has(key);
+      seen.add(key);
       if (isNew && item.status === "queued") {
         process.stdout.write(JSON.stringify(summarize(item)) + "\n");
       }
@@ -135,8 +144,16 @@ async function scan() {
   }
 }
 
+const heartbeatPath = resolve(rootAbs, "data", ".wake-heartbeat");
+async function beat() {
+  try { await writeFile(heartbeatPath, new Date().toISOString()); } catch { /* non-fatal */ }
+}
+
 // Backfill on startup so restarts don't drop *queued* markers.
 await scan();
+await beat();
+const heartbeatTimer = setInterval(beat, HEARTBEAT_MS);
+heartbeatTimer.unref?.();
 
 // fs.watch on the parent dir — watching the file directly is unreliable across
 // atomic-rename writes (which is exactly how artifact-feedback-server.mjs writes
@@ -150,5 +167,5 @@ watcher.on("error", (err) => {
   process.exit(1);
 });
 
-process.on("SIGTERM", () => { watcher.close(); process.exit(0); });
-process.on("SIGINT",  () => { watcher.close(); process.exit(0); });
+process.on("SIGTERM", () => { clearInterval(heartbeatTimer); watcher.close(); process.exit(0); });
+process.on("SIGINT",  () => { clearInterval(heartbeatTimer); watcher.close(); process.exit(0); });

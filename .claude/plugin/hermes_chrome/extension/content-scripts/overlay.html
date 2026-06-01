@@ -1232,6 +1232,24 @@
     }
   }
 
+  // Retry delivery of markers that were saved locally but never reached the
+  // server (e.g. the queue server was down at send time — "Send failed"). Called
+  // on widget load and whenever the browser regains connectivity, so an absent
+  // operator's comments aren't stranded in localStorage forever. Idempotent:
+  // only un-batched user messages are resent, guarded against concurrent flush.
+  let flushInFlight = false;
+  async function flushUnsent() {
+    if (flushInFlight) return;
+    const pending = comments.filter((thread) =>
+      (normalizeThread(thread).messages || []).some(
+        (m) => m.role === "user" && m.text && m.text.trim() && !m.batchId
+      )
+    );
+    if (!pending.length) return;
+    flushInFlight = true;
+    try { await sendThreads(pending); } finally { flushInFlight = false; }
+  }
+
   function cssPath(el) {
     if (!el || !el.tagName || el === document.body) return "body";
     if (el.id) return `#${CSS.escape(el.id)}`;
@@ -1653,6 +1671,10 @@
       selector: cssPath(element),
       ui: uiSnapshot(element),
       selectedText: selectedText(),
+      // The clicked element's own text — captured by default so the marker
+      // carries WHAT was marked even when the operator highlighted nothing.
+      // Distinct from selectedText (mouse selection) and from the comment.
+      elementText: (element.textContent || "").replace(/\s+/g, " ").trim().slice(0, 240),
       url: location.href,
       title: document.title,
       viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -1811,6 +1833,10 @@
 
   render();
   pollStatus();
+  // Deliver any markers stranded in localStorage from a previous failed send,
+  // and again whenever connectivity returns.
+  flushUnsent();
+  window.addEventListener("online", flushUnsent);
   window.addEventListener("resize", render);
   window.addEventListener("keydown", (event) => {
     if (event.altKey && event.shiftKey && event.key.toLowerCase() === "a") {

@@ -13,8 +13,14 @@ node --check "$skill_dir/scripts/agent-feedback-details.mjs"
 node --check "$skill_dir/scripts/agent-feedback-mark.mjs"
 node --check "$skill_dir/scripts/agent-feedback-routing.mjs"
 node --check "$skill_dir/scripts/agent-feedback-dispatch.mjs"
+node --check "$skill_dir/scripts/feedback-client.mjs"
+node --check "$skill_dir/scripts/agent-feedback-wake-status.mjs"
+node --check "$skill_dir/scripts/test-agent-feedback-supervisor.mjs"
 node --check "$skill_dir/scripts/test-agent-feedback-webhook-receiver.mjs"
 node --check "$skill_dir/scripts/test-agent-feedback-auto-runtime.mjs"
+
+# Durability supervisor unit tests (pure reclaim logic)
+node "$skill_dir/scripts/test-agent-feedback-supervisor.mjs"
 
 # Skill structure validation (skip Codex-specific audit if not available)
 if [ -f "$HOME/.codex/skills/create-skill/scripts/audit.py" ]; then
