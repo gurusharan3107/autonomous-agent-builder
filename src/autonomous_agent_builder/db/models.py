@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     DateTime,
     Enum,
@@ -678,3 +679,92 @@ class BuilderRecommendation(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+# ── Claude Agent SDK SessionStore backing tables ──
+#
+# DB-backed implementation of the SDK ``SessionStore`` protocol
+# (claude_agent_sdk 0.2.85). Ported 1:1 from the SDK's reference
+# ``InMemorySessionStore``, swapping in-memory dicts for these tables.
+#
+# Composite logical key = (instance_id, project_key, session_id, subpath).
+# ``instance_id`` namespaces a single ``PostgresSessionStore`` instance so
+# multiple instances can share one physical DB without colliding on the
+# fixed project/session keys the SDK conformance harness reuses.
+#
+# Cross-dialect note: ``entry`` uses ``JSON`` (not Postgres-only JSONB) so the
+# same schema runs on aiosqlite (dev/test) and asyncpg (prod). ``mtime`` is the
+# adapter's monotonic storage-write clock in epoch ms — ``BigInteger`` because
+# epoch-ms overflows 32-bit INTEGER.
+
+
+class SdkSessionTurn(Base):
+    """One appended transcript entry for the DB-backed SDK SessionStore.
+
+    Each ``SessionStore.append`` call writes one row per entry, with ``seq``
+    preserving global append order within a logical key. Subagent transcripts
+    are stored under the same (instance, project, session) with a non-NULL
+    ``subpath`` and are independent of the main transcript.
+    """
+
+    __tablename__ = "sdk_session_turns"
+    __table_args__ = (
+        Index(
+            "ix_sdk_session_turns_key_seq",
+            "instance_id",
+            "project_key",
+            "session_id",
+            "subpath",
+            "seq",
+        ),
+        Index(
+            "ix_sdk_session_turns_project",
+            "instance_id",
+            "project_key",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    instance_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    project_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    session_id: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # NULL for the main transcript; set for subagent transcripts. SQLite/Postgres
+    # both treat NULL as "no subpath" — never store an empty string (SDK contract).
+    subpath: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    # Global append order within (instance, project, session, subpath).
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    # One opaque JSONL transcript line — passed through verbatim.
+    entry: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # Adapter storage-write clock, epoch ms, strictly monotonic across appends.
+    mtime: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SdkSessionSummary(Base):
+    """Incrementally-folded session summary sidecar for the SDK SessionStore.
+
+    Maintained inside ``append`` via the SDK's ``fold_session_summary`` and
+    persisted verbatim (the ``data`` blob is SDK-owned and opaque). Only main
+    transcripts (no ``subpath``) get a summary row. ``mtime`` shares the same
+    monotonic clock as :class:`SdkSessionTurn`.
+    """
+
+    __tablename__ = "sdk_session_summaries"
+    __table_args__ = (
+        Index(
+            "ix_sdk_session_summaries_key",
+            "instance_id",
+            "project_key",
+            "session_id",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    instance_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    project_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    session_id: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # Opaque SDK-owned fold output — persist verbatim, never interpret.
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    mtime: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

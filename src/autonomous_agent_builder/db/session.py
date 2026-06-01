@@ -64,6 +64,7 @@ async def init_db() -> None:
     """Create all tables — for development/testing only. Use Alembic in prod."""
     from autonomous_agent_builder.db.migrations import (
         add_indices_2026_05,
+        sdk_session_store_2026_06,
         sprint_pr_2026_05,
     )
     from autonomous_agent_builder.db.models import Base
@@ -76,6 +77,9 @@ async def init_db() -> None:
         await add_indices_2026_05.apply(conn)
         # Sprint-PR refactor (2026-05) — Phase A schema additions.
         await sprint_pr_2026_05.apply(conn)
+        # Claude Agent SDK SessionStore backing tables (2026-06) — backfill on
+        # databases created before the models landed.
+        await sdk_session_store_2026_06.apply(conn)
         if engine.dialect.name == "sqlite":
             result = await conn.execute(text("PRAGMA table_info(chat_sessions)"))
             columns = {row[1] for row in result.fetchall()}
