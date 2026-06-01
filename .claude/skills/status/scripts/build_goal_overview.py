@@ -6,7 +6,7 @@ Patches three kinds of region, never the hand-authored narrative prose:
   1. the <script type="application/json" id="artifact-data"> block (derivable keys only;
      non-derivable keys like `tiers`/`source` are preserved from the existing block).
   2. <!-- gen:NAME -->…<!-- /gen:NAME --> marker regions: snapshot_date, roadmap_totals,
-     epoch, milestone, priorities.
+     epoch, milestone, priorities, tasks.
   3. per-milestone meters: each `.ms` block keyed by <span class="id">MX.Y</span> gets its
      <small>D / T</small> and bar width:NN% recomputed.
 
@@ -33,9 +33,19 @@ from typing import NoReturn
 MS_HEADING = re.compile(r"^###\s+(M\d+\.\d+)\b(.*)$")
 CLOSED = re.compile(r"\[x\]", re.IGNORECASE)
 OPEN = re.compile(r"\[ \]")
+# A checkbox item line: capture indent, state ( |x), optional inline `Pn`, then the rest.
+ITEM_LINE = re.compile(r"^\s*-\s*\[( |x)\]\s*(?:`(P[0-3])`\s*)?(.*)$")
 # An open item line, capturing an optional inline `Pn` priority token + the rest.
 OPEN_ITEM = re.compile(r"^\s*-\s*\[ \]\s*(?:`(P[0-3])`\s*)?(.*)$")
 PRI_RANK = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+# Curated Open-priorities view: at most this many rows per level (full prioritized
+# backlog lives in the Tasks matrix). P3 capped to 1.
+PRI_CAP = {"P0": 3, "P1": 3, "P2": 3, "P3": 1}
+# Manual metadata tokens (backtick-wrapped) parsed off a roadmap line. Not prose.
+IF_TOKEN = re.compile(r"`IF`")
+T_TOKEN = re.compile(r"`T:(backend|browser)(?::(pending))?`")
+# Heading name: `### M1.5 — Realtime Voice (Samantha) parity …` -> the part after the id.
+MS_NAME = re.compile(r"^\s*[—-]\s*(.*)$")
 
 
 def die(msg: str) -> NoReturn:
@@ -59,34 +69,49 @@ def item_label(rest: str, cap: int = 90) -> str:
     return s
 
 
-def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict]]:
-    """Return (per-milestone [{id,done,open}], total_closed, total_open, priorities).
+def strip_meta_tokens(rest: str) -> str:
+    """Remove the manual `IF`/`T:*` metadata tokens from an item line before display."""
+    s = IF_TOKEN.sub("", rest)
+    s = T_TOKEN.sub("", s)
+    return s
+
+
+def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict], list[dict]]:
+    """Return (per-milestone [{id,done,open}], total_closed, total_open, priorities, tasks).
 
     Splits by `### M<x.y>` headings; counts [x]/[ ] checkboxes at any indent per section.
     `priorities` = open items carrying an inline `Pn` token, sorted P0→P3 then file order:
     [{"pri","milestone","label"}].
+    `tasks` = every checkbox item with its tick state, bucketed completed→in-flight→pending
+    (file order within a bucket): [{"ms","ms_name","pri","label","done","inflight",
+    "backend","browser"}] where backend/browser ∈ {"none","pending","pass"}.
     """
     lines = text.splitlines()
-    sections: list[tuple[str, list[str]]] = []
+    sections: list[tuple[str, str, list[str]]] = []  # (id, name, body lines)
     cur_id: str | None = None
+    cur_name = ""
     buf: list[str] = []
     for line in lines:
         m = MS_HEADING.match(line)
         if m:
             if cur_id is not None:
-                sections.append((cur_id, buf))
-            cur_id, buf = m.group(1), []
+                sections.append((cur_id, cur_name, buf))
+            cur_id = m.group(1)
+            nm = MS_NAME.match(m.group(2))
+            cur_name = nm.group(1).strip() if nm else m.group(2).strip()
+            buf = []
         elif cur_id is not None:
             buf.append(line)
     if cur_id is not None:
-        sections.append((cur_id, buf))
+        sections.append((cur_id, cur_name, buf))
     if not sections:
         die("no '### M<x.y>' milestone headings found in ROADMAP.md")
 
     milestones, tot_done, tot_open = [], 0, 0
     priorities: list[dict] = []
+    tasks: list[dict] = []
     order = 0
-    for mid, body in sections:
+    for mid, mname, body in sections:
         blob = "\n".join(body)
         done = len(CLOSED.findall(blob))
         opn = len(OPEN.findall(blob))
@@ -99,18 +124,66 @@ def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict]]:
                 priorities.append({
                     "pri": im.group(1),
                     "milestone": mid,
-                    "label": item_label(im.group(2)),
+                    "label": item_label(strip_meta_tokens(im.group(2))),
+                    "_order": order,
+                })
+            tm = ITEM_LINE.match(line)
+            if tm:
+                state, pri, rest = tm.group(1), tm.group(2), tm.group(3)
+                is_done = state == "x"
+                inflight = (not is_done) and bool(IF_TOKEN.search(rest))
+
+                def _test_state(kind: str, rest: str = rest) -> str:
+                    st = "none"
+                    for tk in T_TOKEN.finditer(rest):
+                        if tk.group(1) == kind:
+                            st = "pending" if tk.group(2) else "pass"
+                    return st
+
+                tasks.append({
+                    "ms": mid,
+                    "ms_name": mname,
+                    "pri": pri or "",
+                    "label": item_label(strip_meta_tokens(rest)),
+                    "done": is_done,
+                    "inflight": inflight,
+                    "backend": _test_state("backend"),
+                    "browser": _test_state("browser"),
                     "_order": order,
                 })
             order += 1
     priorities.sort(key=lambda p: (PRI_RANK[p["pri"]], p["_order"]))
     for p in priorities:
         p.pop("_order", None)
-    return milestones, tot_done, tot_open, priorities
+
+    def _bucket(t: dict) -> int:
+        if t["done"]:
+            return 0          # completed
+        if t["inflight"]:
+            return 1          # in-flight
+        return 2              # pending
+
+    tasks.sort(key=lambda t: (_bucket(t), t["_order"]))
+    for t in tasks:
+        t.pop("_order", None)
+    return milestones, tot_done, tot_open, priorities, tasks
 
 
 def _esc(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def cap_priorities(priorities: list[dict]) -> list[dict]:
+    """Trim the sorted priorities list to PRI_CAP[level] rows per level (curated view)."""
+    seen: dict[str, int] = {}
+    out: list[dict] = []
+    for p in priorities:  # already sorted P0->P3 then file order
+        n = seen.get(p["pri"], 0)
+        if n >= PRI_CAP.get(p["pri"], 0):
+            continue
+        seen[p["pri"]] = n + 1
+        out.append(p)
+    return out
 
 
 def priorities_html(priorities: list[dict]) -> str:
@@ -128,6 +201,48 @@ def priorities_html(priorities: list[dict]) -> str:
             f'<span class="pms">{p["milestone"]}</span></div>'
         )
     return "".join(rows)
+
+
+_TICK = {"pass": "✓", "pending": "⏳", "none": "—"}
+_TICK_CLS = {"pass": "tk pass", "pending": "tk pend", "none": "tk na"}
+
+
+def tasks_html(tasks: list[dict]) -> str:
+    """Render every roadmap item as a task row, bucketed completed→in-flight→pending.
+
+    Each row: milestone id+name · Pn badge (blank if none) · label · three status cells
+    (Done / Browser / Backend) rendered ✓ / ⏳ / —. Bucket headers separate the groups.
+    """
+    if not tasks:
+        return '<div class="empty">No roadmap items found.</div>'
+    buckets = [
+        ("done", "Completed", lambda t: t["done"]),
+        ("inflight", "In flight", lambda t: (not t["done"]) and t["inflight"]),
+        ("pending", "Pending", lambda t: (not t["done"]) and (not t["inflight"])),
+    ]
+    parts: list[str] = []
+    for cls, title, pred in buckets:
+        group = [t for t in tasks if pred(t)]
+        if not group:
+            continue
+        parts.append(f'<div class="tbucket {cls}"><span class="tbhead">{title}</span>'
+                     f'<span class="tbn">{len(group)}</span></div>')
+        for t in group:
+            done_tick = "pass" if t["done"] else "none"
+            pri = t["pri"]
+            badge = (f'<span class="badge {pri.lower()}">{pri}</span>' if pri
+                     else '<span class="badge blank"></span>')
+            parts.append(
+                '<div class="trow">'
+                f'<span class="tms" title="{_esc(t["ms_name"])}">{t["ms"]}</span>'
+                f'{badge}'
+                f'<span class="tlabel">{_esc(t["label"])}</span>'
+                f'<span class="{_TICK_CLS[done_tick]}" title="Done">{_TICK[done_tick]}</span>'
+                f'<span class="{_TICK_CLS[t["browser"]]}" title="Browser-tested">{_TICK[t["browser"]]}</span>'
+                f'<span class="{_TICK_CLS[t["backend"]]}" title="Backend-tested">{_TICK[t["backend"]]}</span>'
+                '</div>'
+            )
+    return "".join(parts)
 
 
 def parse_status(text: str) -> dict:
@@ -222,9 +337,10 @@ def main() -> int:
         if not p.exists():
             die(f"missing {p}")
 
-    milestones, closed, opn, priorities = parse_roadmap(
+    milestones, closed, opn, priorities, tasks = parse_roadmap(
         (goal / "ROADMAP.md").read_text(encoding="utf-8"))
     status = parse_status((goal / "STATUS.md").read_text(encoding="utf-8"))
+    priorities_view = cap_priorities(priorities)
     html = original = html_path.read_text(encoding="utf-8")
 
     summary: list[str] = []
@@ -234,7 +350,8 @@ def main() -> int:
         "milestone": re.sub(r"\*\*", "", status["milestone_raw"]),
         "roadmap_totals": {"closed": closed, "open": opn},
         "milestones": milestones,
-        "priorities": priorities,
+        "priorities": priorities_view,
+        "tasks": tasks,
     }
     html, ch = replace_artifact_data(html, payload)
     if ch:
@@ -244,7 +361,8 @@ def main() -> int:
         ("epoch", status["epoch"]),
         ("milestone", milestone_html(status["milestone_raw"])),
         ("roadmap_totals", f"{closed} items closed, {opn} open"),
-        ("priorities", priorities_html(priorities)),
+        ("priorities", priorities_html(priorities_view)),
+        ("tasks", tasks_html(tasks)),
     ):
         html, ch = replace_marker(html, name, value)
         if ch:

@@ -47,6 +47,11 @@ WORKLOG = re.compile(
 MS_HEADING = re.compile(r"^###\s+(M\d+\.\d+)\b")
 ITEM = re.compile(r"^(\s*)-\s*\[( |x)\]\s*(.*)$")
 PRI = re.compile(r"^`(P[0-3])`\s*")
+# Manual metadata tokens (in-flight + test status) — excluded from the char budget.
+IF_TOKEN = re.compile(r"`IF`")
+T_TOKEN = re.compile(r"`T:(\w+)(?::(\w+))?`")
+T_KINDS = {"backend", "browser"}
+T_STATES = {"pending"}
 # Recognized split sub-item (IMP-027a/b/c style) or labelled task — an allowed child.
 SPLIT_CHILD = re.compile(r"^\s*-\s+\*\*(IMP-\d+[a-z]|[A-Z][^*]*—)")
 # The DEFINING id of an item = the bold token right after the checkbox (+ optional Pn).
@@ -74,7 +79,16 @@ def lint_roadmap(text: str) -> list[tuple[str, int, str]]:
         if item is None:
             return
         lineno, state, raw = item
-        body = strip_md(PRI.sub("", raw))
+        # Warn on unknown `T:` token grammar before stripping (metadata, not prose).
+        for tk in T_TOKEN.finditer(raw):
+            kind, st = tk.group(1), tk.group(2)
+            if kind not in T_KINDS or (st is not None and st not in T_STATES):
+                out.append(("WARN", lineno, f"unknown test token `T:{kind}"
+                            f"{':' + st if st else ''}` — expected "
+                            "`T:backend`/`T:browser` (optionally `:pending`)"))
+        # `IF`/`T:*` are metadata, not prose — exclude from the char budget.
+        stripped = T_TOKEN.sub("", IF_TOKEN.sub("", raw))
+        body = strip_md(PRI.sub("", stripped))
         if state == " ":
             if not PRI.match(raw):
                 untagged_open.append(lineno)

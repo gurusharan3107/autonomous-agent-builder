@@ -99,6 +99,34 @@ h3{font-family:var(--sans);font-weight:650;font-size:15px;color:var(--slate);
 .prilist .plabel{flex:1;font-size:13.5px;color:var(--slate)}
 .prilist .pms{font-family:var(--mono);font-size:11px;color:var(--clay)}
 .prilist .empty{color:var(--gray-500);font-size:13px}
+.badge.blank{background:transparent;border-color:transparent}
+
+/* Tasks matrix */
+.tasks .tbucket{display:flex;align-items:baseline;gap:8px;margin:18px 0 4px;
+  padding-bottom:5px;border-bottom:1.5px solid var(--oat)}
+.tasks .tbucket:first-child{margin-top:0}
+.tasks .tbhead{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--gray-500)}
+.tasks .tbucket.done .tbhead{color:var(--olive)}
+.tasks .tbucket.inflight .tbhead{color:var(--clay)}
+.tasks .tbn{font-family:var(--mono);font-size:10.5px;color:var(--gray-300)}
+.tasks .trow{display:grid;
+  grid-template-columns:54px 40px 1fr 22px 22px 22px;gap:10px;align-items:center;
+  padding:6px 0;border-bottom:1px solid var(--gray-150);font-size:13px}
+.tasks .trow:last-child{border-bottom:none}
+.tasks .tms{font-family:var(--mono);font-size:11px;color:var(--clay)}
+.tasks .trow .badge{font-size:9.5px;padding:1px 6px}
+.tasks .tlabel{color:var(--slate);min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.tasks .tk{font-family:var(--mono);font-size:13px;text-align:center}
+.tasks .tk.pass{color:var(--olive)}
+.tasks .tk.pend{color:var(--clay)}
+.tasks .tk.na{color:var(--gray-300)}
+.tasks .empty{color:var(--gray-500);font-size:13px}
+.tasks .thead{display:grid;grid-template-columns:54px 40px 1fr 22px 22px 22px;gap:10px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--gray-500);padding-bottom:4px}
+.tasks .thead span:nth-child(n+4){text-align:center}
 
 /* Bars */
 .epoch-tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
@@ -213,6 +241,7 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
   <a class="section-lead">Reference</a>
   <a href="#files">File Map</a>
   <a href="#decisions">Recent Decisions</a>
+  <a href="#tasks">Tasks</a>
 </nav>
 
 <main>
@@ -272,10 +301,11 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
     <h3 style="margin-top:0">Open priorities
       <span class="note" style="font-weight:400">— tagged open items, P0 first ·
       source: <a href="ROADMAP.md">ROADMAP.md</a></span></h3>
-    <div class="prilist"><!-- gen:priorities --><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-014 — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale err…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-016 — chat agent mis-routes builder-improvement asks into the managed-app backlog; no…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">G3 — SessionStore adapter (Postgres) + conformance harness</span><span class="pms">M3.2</span></div><div class="prow"><span class="badge p2">P2</span><span class="plabel">G14 — full OTel spans/metrics, not just env checks (observability/runtime.py:145 wires non…</span><span class="pms">M2.3</span></div><div class="prow"><span class="badge p2">P2</span><span class="plabel">G13 effort:"xhigh" carve-out for planner/designer above a complexity threshold (execution_…</span><span class="pms">M2.5</span></div><!-- /gen:priorities --></div>
+    <div class="prilist"><!-- gen:priorities --><div class="prow"><span class="badge p0">P0</span><span class="plabel">IMP-019 — builder can't self-verify the generated app in a real browser (jsdom overstates…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p0">P0</span><span class="plabel">IMP-027 — complexity-proportional SDLC: ceremony must scale with risk, not be uniform (tri…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p0">P0</span><span class="plabel">IMP-028 — code-gen replays ~20.5k context/turn (~89% of run cost)</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-014 — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale err…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-016 — chat agent mis-routes builder-improvement asks into the managed-app backlog; no…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p1">P1</span><span class="plabel">IMP-022 — dashboard can't open phase-level agent runs (feature-verifier, gate-remediator,…</span><span class="pms">M1.1</span></div><div class="prow"><span class="badge p2">P2</span><span class="plabel">One e2e project on devpulse, every phase dashboard-visible incl</span><span class="pms">M2.1</span></div><div class="prow"><span class="badge p2">P2</span><span class="plabel">Resumability: kill the dashboard mid-sprint, restart, exact state restored (no loss, no st…</span><span class="pms">M2.1</span></div><div class="prow"><span class="badge p2">P2</span><span class="plabel">Runtime switch mid-project (claude→codex_sdk) preserves history; future work uses the new…</span><span class="pms">M2.1</span></div><div class="prow"><span class="badge p3">P3</span><span class="plabel">IMP-025 — superseded by IMP-027 (token burn is planning-time over-decomposition, not withi…</span><span class="pms">M1.1</span></div><!-- /gen:priorities --></div>
   </div>
 </section>
 
+<!-- ===================== TASKS ===================== -->
 <!-- ===================== NORTH STAR ===================== -->
 <section id="northstar">
   <h2><span class="num">02</span>North Star</h2>
@@ -603,6 +633,22 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
   </div>
 </section>
 
+<section id="tasks">
+  <h2><span class="num">11</span>Tasks</h2>
+  <p class="sub">Every roadmap checkbox, bucketed completed → in flight → pending &middot;
+  source: <a href="ROADMAP.md">ROADMAP.md</a> &middot; ticks: Done · Browser-tested ·
+  Backend-tested (<span style="color:var(--olive)">✓</span> passed,
+  <span style="color:var(--clay)">⏳</span> in progress, — n/a).</p>
+  <div class="card">
+    <div class="tasks">
+      <div class="thead"><span>MS</span><span>Pri</span><span>Task</span>
+        <span title="Done">Dn</span><span title="Browser-tested">Br</span>
+        <span title="Backend-tested">Be</span></div>
+      <!-- gen:tasks --><div class="tbucket done"><span class="tbhead">Completed</span><span class="tbn">53</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-001 — feature-request context lost after intake follow-up</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-002 — gates-first not enforced (27-turn run pre-infra)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-003 — metrics show 0 tokens for in-progress runs</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-004 — Recover 409 on gate-infra-blocked tasks</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-006 — scaffold used shell heredoc not Write tool</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-007 — simultaneous dispatch → pool exhaustion</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-008 — git worktree add fails on unborn HEAD</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-009 — dispatch before scaffold done</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-010 — session rollback during long scaffold</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-011 — SSE streams held pool conns for client lifetime</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-012 — dispatch session invalid after ~90s</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-013 — orphan branch refuses FF merge (unrelated histories)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">Re-verify all closures e2e on devpulse, both lanes (M1.2 prereq)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-015 — type=feature items shown/announced as "improvement"</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-017 — terminal cancelled state + cancel route/CLI/dashboard control across the stack</span><span class="tk pass" title="Done">✓</span><span class="tk pend" title="Browser-tested">⏳</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-018 — requirements interview fell back to free-text (AskUserQuestion dead under permis…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-020 — chat lane under default surfaced approval cards for direct edits to the generate…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-021 — 3 pre-existing doc-routing test failures (compact-JSON staleness + IMP-020 Bash-…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge blank"></span><span class="tlabel">IMP-023 — cost/token analyze headline read 0 (telemetry clobbered last-write-wins across r…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge blank"></span><span class="tlabel">Fresh devpulse boots via builder init; readiness gate green.</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge blank"></span><span class="tlabel">Claude lane: devpulse 5/5 tasks, $2.08 (2026-05-21); all gates pass, 127 tests green.</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge blank"></span><span class="tlabel">Source-repo gate bugs unblocked Claude lane: pytest-asyncio autoload, .py test-suffix cove…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge blank"></span><span class="tlabel">docs/goal/ framework + goal-audit skill stabilized (5 runs, 3 skill bugs fixed).</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge blank"></span><span class="tlabel">goal-audit --since-run deltas mode.</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge blank"></span><span class="tlabel">goal-audit memory write: prefer recency- over token-weighted intent.</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">Every complexity-baseline.json violation split &lt;500 or registered as a documented historic…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">voice_operator.py/summary.py/orchestrator.py/routes/agent.py each &lt;1500 (1471/540/1345/132…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">builder lint --complexity-report --json → 0 violations.</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">Constraint: sequential single-agent extraction, never parallel (.memory/feedback_extractio…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">Project-local save/resume-session skills at .claude/skills/ (replaced compaction-triggerin…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">Re-close the 0-violation gate (2026-05-23 regression)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">cli/commands/logs.py 1679→1346 (split logs_runtime_aggregates.py + logs_db_utils.py).</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">services/sprint_execution.py 828→825 (inlined helpers).</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">db/models.py 679→676 (docstring trim).</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">embedded/server/agent_sprint_planning.py 502→499.</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">tests/test_builder_cli_surfaces.py 2734→2574 (extracted runtime cases).</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">.claude/skills/autoresearch/scripts/introspect.py 806 — baseline entry (tooling).</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="God-file decomposition ratchet complete">M1.3</span><span class="badge blank"></span><span class="tlabel">scripts/autoresearch/run.py 636 — baseline entry (tooling).</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Two-workspace validation rotation">M1.4</span><span class="badge blank"></span><span class="tlabel">Per-phase subagent allowed_tools allowlists; SubagentDefinition.max_turns → SDK maxTurns.</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Two-workspace validation rotation">M1.4</span><span class="badge blank"></span><span class="tlabel">Deterministic CLI preflight probes before query() (git rev-parse HEAD hard-fail for git ph…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Realtime Voice (Samantha) parity with Agent page">M1.5</span><span class="badge blank"></span><span class="tlabel">Chat runtime → ClaudeSDKClient context manager — chat path migrated; __aexit__ cancels mon…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Deletion-debt paydown (Musk-hat audit)">M1.6</span><span class="badge blank"></span><span class="tlabel">Tier 1a — deleted codex_cli adapter (635 LOC; superseded by codex_sdk)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Deletion-debt paydown (Musk-hat audit)">M1.6</span><span class="badge blank"></span><span class="tlabel">Tier 1b — deleted dead opencode wrapper (21 LOC)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Deletion-debt paydown (Musk-hat audit)">M1.6</span><span class="badge blank"></span><span class="tlabel">Tier 1c — retired openai_agents/opencode_go lane (282 LOC); get_implemented==get_available…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Deletion-debt paydown (Musk-hat audit)">M1.6</span><span class="badge blank"></span><span class="tlabel">Tier 1d — deleted knowledge/architecture_evidence.py (944, dup of proof_contract.py) + qua…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge blank"></span><span class="tlabel">logs analyze --session honestly session-scoped (tasks.chat_session_id FK)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge blank"></span><span class="tlabel">First-class RateLimitEvent surface driven by StopFailure hook (runner.py; provider_limit d…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge blank"></span><span class="tlabel">G2 exclude_dynamic_sections=True on preset (runner/claude_runtime/onboarding); unblocks ca…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge blank"></span><span class="tlabel">G12 updatedToolOutput truncation hook (agents/hooks.py, 8k ceiling)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge blank"></span><span class="tlabel">G1 include_partial_messages=True + per-turn token Session rail (stream_usage SSE → AgentPa…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge blank"></span><span class="tlabel">G7 strict_mcp_config=True on client</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge blank"></span><span class="tlabel">can_use_tool enforces phase boundaries — _auto_approve denies ungranted mutating built-ins…</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge blank"></span><span class="tlabel">AgentDefinition.maxTurns per subagent (definitions.py=20; runner_options.py:61)</span><span class="tk pass" title="Done">✓</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="tbucket inflight"><span class="tbhead">In flight</span><span class="tbn">1</span></div><div class="trow"><span class="tms" title="Long-horizon session continuity">M3.2</span><span class="badge p1">P1</span><span class="tlabel">G3 — SessionStore adapter (Postgres) + conformance harness</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk pass" title="Backend-tested">✓</span></div><div class="tbucket pending"><span class="tbhead">Pending</span><span class="tbn">77</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p1">P1</span><span class="tlabel">IMP-014 — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale err…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p1">P1</span><span class="tlabel">IMP-016 — chat agent mis-routes builder-improvement asks into the managed-app backlog; no…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p0">P0</span><span class="tlabel">IMP-019 — builder can't self-verify the generated app in a real browser (jsdom overstates…</span><span class="tk na" title="Done">—</span><span class="tk pass" title="Browser-tested">✓</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p1">P1</span><span class="tlabel">IMP-022 — dashboard can't open phase-level agent runs (feature-verifier, gate-remediator,…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p1">P1</span><span class="tlabel">IMP-024 — cache_ratio &gt;&gt; 1 (15797): divides by non-cached input</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p3">P3</span><span class="tlabel">IMP-025 — superseded by IMP-027 (token burn is planning-time over-decomposition, not withi…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p1">P1</span><span class="tlabel">IMP-026 — builder MCP tool-call schema/param mismatches cause retry burn ('path'/'test_p'…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p0">P0</span><span class="tlabel">IMP-027 — complexity-proportional SDLC: ceremony must scale with risk, not be uniform (tri…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Close the open operator-facing defects">M1.1</span><span class="badge p0">P0</span><span class="tlabel">IMP-028 — code-gen replays ~20.5k context/turn (~89% of run cost)</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge p1">P1</span><span class="tlabel">Codex SDK lane: same wording/outcome + Codex telemetry / app-server / native-input evidenc…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge p1">P1</span><span class="tlabel">Both lanes meet 4 Tier-1 thresholds (cache_ratio&gt;5x, chunk_pressure_risk:false, avoidable_…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Both lanes ship one feature on devpulse end-to-end">M1.2</span><span class="badge p1">P1</span><span class="tlabel">Session evidence archived under STATUS.md § Evidence Pointers</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Two-workspace validation rotation">M1.4</span><span class="badge p1">P1</span><span class="tlabel">Forward: fresh app in a new workspace (devpulse or equivalent)</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Two-workspace validation rotation">M1.4</span><span class="badge p1">P1</span><span class="tlabel">Reverse: operate on an existing app workspace (todo-app / checked-out external repo)</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Two-workspace validation rotation">M1.4</span><span class="badge p1">P1</span><span class="tlabel">Identical operator-visible behavior across lanes; lane attribution preserved after a runti…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Two-workspace validation rotation">M1.4</span><span class="badge p1">P1</span><span class="tlabel">docs/PROMPT.md scripts run in both lanes; rubric pass for sdk-backed + voice agent-page ru…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Realtime Voice (Samantha) parity with Agent page">M1.5</span><span class="badge p1">P1</span><span class="tlabel">Voice + Agent share session, approvals, pending-question cards.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Realtime Voice (Samantha) parity with Agent page">M1.5</span><span class="badge p1">P1</span><span class="tlabel">Voice-initiated feature shipped e2e with browser proof, both lanes.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Realtime Voice (Samantha) parity with Agent page">M1.5</span><span class="badge p1">P1</span><span class="tlabel">Realtime auth boundary holds (Realtime=OPENAI_API_KEY; runtime auth not leaked; Codex-sub…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Realtime Voice (Samantha) parity with Agent page">M1.5</span><span class="badge p1">P1</span><span class="tlabel">Voice delegations rebind to the delegated Agent session; no orphan transcripts.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Deletion-debt paydown (Musk-hat audit)">M1.6</span><span class="badge p1">P1</span><span class="tlabel">Tier 2 — collapse the dual FastAPI app onto the embedded server (embedded/server/app.py ca…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Deletion-debt paydown (Musk-hat audit)">M1.6</span><span class="badge p1">P1</span><span class="tlabel">Tier 3 — rename api/ shared core → core/ (one app + one shared core + two thin runtimes)</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Deletion-debt paydown (Musk-hat audit)">M1.6</span><span class="badge p1">P1</span><span class="tlabel">Overlaps M1.3: 16 files ≥1000 LOC (onboarding 1931, evidence_graph 1817, dashboard_api 173…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Lifecycle completeness proof">M2.1</span><span class="badge p2">P2</span><span class="tlabel">One e2e project on devpulse, every phase dashboard-visible incl</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Lifecycle completeness proof">M2.1</span><span class="badge p2">P2</span><span class="tlabel">Resumability: kill the dashboard mid-sprint, restart, exact state restored (no loss, no st…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Lifecycle completeness proof">M2.1</span><span class="badge p2">P2</span><span class="tlabel">Runtime switch mid-project (claude→codex_sdk) preserves history; future work uses the new…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Lifecycle completeness proof">M2.1</span><span class="badge p2">P2</span><span class="tlabel">Multi-operator handover: a 2nd operator sees the same Board/Backlog/Inbox/Agent.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Lifecycle completeness proof">M2.1</span><span class="badge p2">P2</span><span class="tlabel">Codify flag+drain for receive_response() loops (hardening; single site runner.py:692, no e…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Lifecycle completeness proof">M2.1</span><span class="badge p2">P2</span><span class="tlabel">Auto-complete a feature when all its tasks done (forward-only; no revert; manual changes i…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Lifecycle completeness proof">M2.1</span><span class="badge p2">P2</span><span class="tlabel">Auto-complete a backlog item when all its tasks finish.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Memory and knowledge as decisive differentiators">M2.2</span><span class="badge p2">P2</span><span class="tlabel">Memory-retrieval workflow is the documented step 0 of every non-trivial fix.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Memory and knowledge as decisive differentiators">M2.2</span><span class="badge p2">P2</span><span class="tlabel">KB freshness gate (builder knowledge validate --json) wired into the doc-refresh gate befo…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Memory and knowledge as decisive differentiators">M2.2</span><span class="badge p2">P2</span><span class="tlabel">Memory write-back: every closed IMP with a non-obvious boundary / single-owner pattern / r…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Memory and knowledge as decisive differentiators">M2.2</span><span class="badge p2">P2</span><span class="tlabel">Demonstrate compounding: a fresh session reaches a correct decision faster via memory+KB.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge p2">P2</span><span class="tlabel">builder metrics show + Metrics page agree with raw builder logs --compact cost every run.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge p2">P2</span><span class="tlabel">Per-turn noncached+output / raw / cached tokens accurate in the Agent Session rail, both l…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge p2">P2</span><span class="tlabel">Observability recs separate optimization candidates from workflow-state warnings (approval…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge p2">P2</span><span class="tlabel">Optimization-agent runs only on post-ship candidate evidence, never on generated-app resid…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge p2">P2</span><span class="tlabel">G14 — full OTel spans/metrics, not just env checks (observability/runtime.py:145 wires non…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Cost-aware execution surface complete">M2.3</span><span class="badge p3">P3</span><span class="tlabel">G15 — Codex per-server MCP [env] + OAuth</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Operator UX polish to "no internals leakage"">M2.4</span><span class="badge p2">P2</span><span class="tlabel">Banned-term audit across all operator surfaces: zero leakage of lifecycle/scaffold/dispatc…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Operator UX polish to "no internals leakage"">M2.4</span><span class="badge p2">P2</span><span class="tlabel">All pending questions/approvals render readable labels (no [object Object], no payload obj…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Operator UX polish to "no internals leakage"">M2.4</span><span class="badge p2">P2</span><span class="tlabel">Inline question/approval controls in the composer/footer (one owner); timeline entries evi…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Operator UX polish to "no internals leakage"">M2.4</span><span class="badge p2">P2</span><span class="tlabel">Recover button shows only when blocked-reason is recoverable; else an actionable next-step…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Operator UX polish to "no internals leakage"">M2.4</span><span class="badge p2">P2</span><span class="tlabel">G6 include_hook_events=True → HookEventMessage on the Agent page (render the real block re…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge p2">P2</span><span class="tlabel">Autopilot toggle in Settings, persisted per project.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge p2">P2</span><span class="tlabel">Autopilot on: auto-approve ready tasks, auto-recover capability_limit/cycle-detected, auto…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge p2">P2</span><span class="tlabel">Operator can disable autopilot mid-sprint; in-flight work not interrupted.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge p2">P2</span><span class="tlabel">All autopilot actions dashboard-visible (who approved/recovered: operator vs autopilot).</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge p2">P2</span><span class="tlabel">Autopilot won't approve design/plan without operator scope confirm; implementation-onward…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge p2">P2</span><span class="tlabel">Retry/cycle state machine from typed SDK errors (ResultMessage.is_error/errors/api_error_s…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Autopilot mode">M2.6</span><span class="badge p2">P2</span><span class="tlabel">G5 permissionDecision="defer" + DeferredToolUse for mid-run approval gates (high-risk call…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge p2">P2</span><span class="tlabel">Frontend React rubric passes on all surfaces; no god components.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge p2">P2</span><span class="tlabel">Backend service rubric passes; clear ownership, no second control owners.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge p2">P2</span><span class="tlabel">Design language applied; primitives only, no ad-hoc styles.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge p2">P2</span><span class="tlabel">Codify the short-lived-session pattern in the backend rubric (dispatch session idle during…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge p2">P2</span><span class="tlabel">Empty-response envelope convention in the backend rubric (state + note on every aggregatio…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge p2">P2</span><span class="tlabel">G4 file checkpointing for scope-limited subagents (checkpoint/revert vs the "never delete"…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Architecture and design language coherence">M2.5</span><span class="badge p2">P2</span><span class="tlabel">G13 effort:"xhigh" carve-out for planner/designer above a complexity threshold (execution_…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Complex multi-feature app delivery">M3.1</span><span class="badge p3">P3</span><span class="tlabel">Project plan, sprints, backlog, approvals, shipped evidence persist across the full delive…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Complex multi-feature app delivery">M3.1</span><span class="badge p3">P3</span><span class="tlabel">Both lanes reach the same shipped state given the same operator prompts.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Complex multi-feature app delivery">M3.1</span><span class="badge p3">P3</span><span class="tlabel">Total tokens / turns / wall-clock / operator interventions tracked per lane in STATUS evid…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Long-horizon session continuity">M3.2</span><span class="badge p3">P3</span><span class="tlabel">Operator returns after 30+ days; same Board/Backlog/Inbox/Agent, no stale "running", memor…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Long-horizon session continuity">M3.2</span><span class="badge p3">P3</span><span class="tlabel">Same project resumed from a second machine with consistent state.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Multi-operator collaboration">M3.3</span><span class="badge p3">P3</span><span class="tlabel">Two concurrent Agent sessions on one project → consistent state</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Multi-operator collaboration">M3.3</span><span class="badge p3">P3</span><span class="tlabel">Approvals attributable to the operator who granted them.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Multi-operator collaboration">M3.3</span><span class="badge p3">P3</span><span class="tlabel">Memory + KB capture the team's learning, not one operator's.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Head-to-head benchmark wins">M3.4</span><span class="badge p3">P3</span><span class="tlabel">Define the canonical task set (5–10 tasks, varying complexity) + the measurement protocol.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Head-to-head benchmark wins">M3.4</span><span class="badge p3">P3</span><span class="tlabel">Build the harness: scripted runs against all three tools; metrics captured uniformly.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Head-to-head benchmark wins">M3.4</span><span class="badge p3">P3</span><span class="tlabel">Builder wins on tokens-per-feature on a majority of tasks, both lanes.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Head-to-head benchmark wins">M3.4</span><span class="badge p3">P3</span><span class="tlabel">Builder wins on success-without-intervention on a majority of tasks, both lanes.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Head-to-head benchmark wins">M3.4</span><span class="badge p3">P3</span><span class="tlabel">Builder wins on wall-clock for shipped outcome (incl</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Head-to-head benchmark wins">M3.4</span><span class="badge p3">P3</span><span class="tlabel">Lifecycle-coverage tasks (multi-sprint, durable state, resumability) — Builder is the only…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Optimization loop activation (autoresearch Track B)">M3.5</span><span class="badge p3">P3</span><span class="tlabel">All Track B prerequisites met (IMP-001..004 closed, baseline variance measured, gate-pass…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Optimization loop activation (autoresearch Track B)">M3.5</span><span class="badge p3">P3</span><span class="tlabel">Autoresearch loop produces ≥1 optimization that survives variance gating and ships.</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Optimization loop activation (autoresearch Track B)">M3.5</span><span class="badge p3">P3</span><span class="tlabel">Optimizations reflected back into runtime policy (execution_policy.py) + prompt shape, not…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><div class="trow"><span class="tms" title="Optimization loop activation (autoresearch Track B)">M3.5</span><span class="badge p3">P3</span><span class="tlabel">After-fix sibling search — a bounded repo-researcher scans for same-pattern siblings befor…</span><span class="tk na" title="Done">—</span><span class="tk na" title="Browser-tested">—</span><span class="tk na" title="Backend-tested">—</span></div><!-- /gen:tasks -->
+    </div>
+  </div>
+</section>
+
 <footer>
   <p>Generated view of <code>docs/goal/</code> — the Markdown files remain canonical and
   agent-readable. Regenerate when STATUS / ROADMAP change materially. Snapshot reflects
@@ -716,6 +762,21 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
   ],
   "priorities": [
     {
+      "pri": "P0",
+      "milestone": "M1.1",
+      "label": "IMP-019 \u2014 builder can't self-verify the generated app in a real browser (jsdom overstates\u2026"
+    },
+    {
+      "pri": "P0",
+      "milestone": "M1.1",
+      "label": "IMP-027 \u2014 complexity-proportional SDLC: ceremony must scale with risk, not be uniform (tri\u2026"
+    },
+    {
+      "pri": "P0",
+      "milestone": "M1.1",
+      "label": "IMP-028 \u2014 code-gen replays ~20.5k context/turn (~89% of run cost)"
+    },
+    {
       "pri": "P1",
       "milestone": "M1.1",
       "label": "IMP-014 \u2014 Observability \"Runtime Error Trend\" fires the dispatch-blocking rec on stale err\u2026"
@@ -727,18 +788,1340 @@ footer{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--gray-300);
     },
     {
       "pri": "P1",
-      "milestone": "M3.2",
-      "label": "G3 \u2014 SessionStore adapter (Postgres) + conformance harness"
+      "milestone": "M1.1",
+      "label": "IMP-022 \u2014 dashboard can't open phase-level agent runs (feature-verifier, gate-remediator,\u2026"
     },
     {
       "pri": "P2",
-      "milestone": "M2.3",
-      "label": "G14 \u2014 full OTel spans/metrics, not just env checks (observability/runtime.py:145 wires non\u2026"
+      "milestone": "M2.1",
+      "label": "One e2e project on devpulse, every phase dashboard-visible incl"
     },
     {
       "pri": "P2",
-      "milestone": "M2.5",
-      "label": "G13 effort:\"xhigh\" carve-out for planner/designer above a complexity threshold (execution_\u2026"
+      "milestone": "M2.1",
+      "label": "Resumability: kill the dashboard mid-sprint, restart, exact state restored (no loss, no st\u2026"
+    },
+    {
+      "pri": "P2",
+      "milestone": "M2.1",
+      "label": "Runtime switch mid-project (claude\u2192codex_sdk) preserves history; future work uses the new\u2026"
+    },
+    {
+      "pri": "P3",
+      "milestone": "M1.1",
+      "label": "IMP-025 \u2014 superseded by IMP-027 (token burn is planning-time over-decomposition, not withi\u2026"
+    }
+  ],
+  "tasks": [
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-001 \u2014 feature-request context lost after intake follow-up",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-002 \u2014 gates-first not enforced (27-turn run pre-infra)",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-003 \u2014 metrics show 0 tokens for in-progress runs",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-004 \u2014 Recover 409 on gate-infra-blocked tasks",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-006 \u2014 scaffold used shell heredoc not Write tool",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-007 \u2014 simultaneous dispatch \u2192 pool exhaustion",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-008 \u2014 git worktree add fails on unborn HEAD",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-009 \u2014 dispatch before scaffold done",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-010 \u2014 session rollback during long scaffold",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-011 \u2014 SSE streams held pool conns for client lifetime",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-012 \u2014 dispatch session invalid after ~90s",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-013 \u2014 orphan branch refuses FF merge (unrelated histories)",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "Re-verify all closures e2e on devpulse, both lanes (M1.2 prereq)",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-015 \u2014 type=feature items shown/announced as \"improvement\"",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-017 \u2014 terminal cancelled state + cancel route/CLI/dashboard control across the stack",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "pending"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-018 \u2014 requirements interview fell back to free-text (AskUserQuestion dead under permis\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-020 \u2014 chat lane under default surfaced approval cards for direct edits to the generate\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-021 \u2014 3 pre-existing doc-routing test failures (compact-JSON staleness + IMP-020 Bash-\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "",
+      "label": "IMP-023 \u2014 cost/token analyze headline read 0 (telemetry clobbered last-write-wins across r\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "",
+      "label": "Fresh devpulse boots via builder init; readiness gate green.",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "",
+      "label": "Claude lane: devpulse 5/5 tasks, $2.08 (2026-05-21); all gates pass, 127 tests green.",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "",
+      "label": "Source-repo gate bugs unblocked Claude lane: pytest-asyncio autoload, .py test-suffix cove\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "",
+      "label": "docs/goal/ framework + goal-audit skill stabilized (5 runs, 3 skill bugs fixed).",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "",
+      "label": "goal-audit --since-run deltas mode.",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "",
+      "label": "goal-audit memory write: prefer recency- over token-weighted intent.",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "Every complexity-baseline.json violation split <500 or registered as a documented historic\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "voice_operator.py/summary.py/orchestrator.py/routes/agent.py each <1500 (1471/540/1345/132\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "builder lint --complexity-report --json \u2192 0 violations.",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "Constraint: sequential single-agent extraction, never parallel (.memory/feedback_extractio\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "Project-local save/resume-session skills at .claude/skills/ (replaced compaction-triggerin\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "Re-close the 0-violation gate (2026-05-23 regression)",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "cli/commands/logs.py 1679\u21921346 (split logs_runtime_aggregates.py + logs_db_utils.py).",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "services/sprint_execution.py 828\u2192825 (inlined helpers).",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "db/models.py 679\u2192676 (docstring trim).",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "embedded/server/agent_sprint_planning.py 502\u2192499.",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "tests/test_builder_cli_surfaces.py 2734\u21922574 (extracted runtime cases).",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": ".claude/skills/autoresearch/scripts/introspect.py 806 \u2014 baseline entry (tooling).",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.3",
+      "ms_name": "God-file decomposition ratchet complete",
+      "pri": "",
+      "label": "scripts/autoresearch/run.py 636 \u2014 baseline entry (tooling).",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.4",
+      "ms_name": "Two-workspace validation rotation",
+      "pri": "",
+      "label": "Per-phase subagent allowed_tools allowlists; SubagentDefinition.max_turns \u2192 SDK maxTurns.",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.4",
+      "ms_name": "Two-workspace validation rotation",
+      "pri": "",
+      "label": "Deterministic CLI preflight probes before query() (git rev-parse HEAD hard-fail for git ph\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.5",
+      "ms_name": "Realtime Voice (Samantha) parity with Agent page",
+      "pri": "",
+      "label": "Chat runtime \u2192 ClaudeSDKClient context manager \u2014 chat path migrated; __aexit__ cancels mon\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.6",
+      "ms_name": "Deletion-debt paydown (Musk-hat audit)",
+      "pri": "",
+      "label": "Tier 1a \u2014 deleted codex_cli adapter (635 LOC; superseded by codex_sdk)",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.6",
+      "ms_name": "Deletion-debt paydown (Musk-hat audit)",
+      "pri": "",
+      "label": "Tier 1b \u2014 deleted dead opencode wrapper (21 LOC)",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.6",
+      "ms_name": "Deletion-debt paydown (Musk-hat audit)",
+      "pri": "",
+      "label": "Tier 1c \u2014 retired openai_agents/opencode_go lane (282 LOC); get_implemented==get_available\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.6",
+      "ms_name": "Deletion-debt paydown (Musk-hat audit)",
+      "pri": "",
+      "label": "Tier 1d \u2014 deleted knowledge/architecture_evidence.py (944, dup of proof_contract.py) + qua\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "",
+      "label": "logs analyze --session honestly session-scoped (tasks.chat_session_id FK)",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "",
+      "label": "First-class RateLimitEvent surface driven by StopFailure hook (runner.py; provider_limit d\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "",
+      "label": "G2 exclude_dynamic_sections=True on preset (runner/claude_runtime/onboarding); unblocks ca\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "",
+      "label": "G12 updatedToolOutput truncation hook (agents/hooks.py, 8k ceiling)",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "",
+      "label": "G1 include_partial_messages=True + per-turn token Session rail (stream_usage SSE \u2192 AgentPa\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "",
+      "label": "G7 strict_mcp_config=True on client",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "",
+      "label": "can_use_tool enforces phase boundaries \u2014 _auto_approve denies ungranted mutating built-ins\u2026",
+      "done": true,
+      "inflight": false,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "",
+      "label": "AgentDefinition.maxTurns per subagent (definitions.py=20; runner_options.py:61)",
+      "done": true,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.2",
+      "ms_name": "Long-horizon session continuity",
+      "pri": "P1",
+      "label": "G3 \u2014 SessionStore adapter (Postgres) + conformance harness",
+      "done": false,
+      "inflight": true,
+      "backend": "pass",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P1",
+      "label": "IMP-014 \u2014 Observability \"Runtime Error Trend\" fires the dispatch-blocking rec on stale err\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P1",
+      "label": "IMP-016 \u2014 chat agent mis-routes builder-improvement asks into the managed-app backlog; no\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P0",
+      "label": "IMP-019 \u2014 builder can't self-verify the generated app in a real browser (jsdom overstates\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "pass"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P1",
+      "label": "IMP-022 \u2014 dashboard can't open phase-level agent runs (feature-verifier, gate-remediator,\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P1",
+      "label": "IMP-024 \u2014 cache_ratio >> 1 (15797): divides by non-cached input",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P3",
+      "label": "IMP-025 \u2014 superseded by IMP-027 (token burn is planning-time over-decomposition, not withi\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P1",
+      "label": "IMP-026 \u2014 builder MCP tool-call schema/param mismatches cause retry burn ('path'/'test_p'\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P0",
+      "label": "IMP-027 \u2014 complexity-proportional SDLC: ceremony must scale with risk, not be uniform (tri\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.1",
+      "ms_name": "Close the open operator-facing defects",
+      "pri": "P0",
+      "label": "IMP-028 \u2014 code-gen replays ~20.5k context/turn (~89% of run cost)",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "P1",
+      "label": "Codex SDK lane: same wording/outcome + Codex telemetry / app-server / native-input evidenc\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "P1",
+      "label": "Both lanes meet 4 Tier-1 thresholds (cache_ratio>5x, chunk_pressure_risk:false, avoidable_\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.2",
+      "ms_name": "Both lanes ship one feature on devpulse end-to-end",
+      "pri": "P1",
+      "label": "Session evidence archived under STATUS.md \u00a7 Evidence Pointers",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.4",
+      "ms_name": "Two-workspace validation rotation",
+      "pri": "P1",
+      "label": "Forward: fresh app in a new workspace (devpulse or equivalent)",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.4",
+      "ms_name": "Two-workspace validation rotation",
+      "pri": "P1",
+      "label": "Reverse: operate on an existing app workspace (todo-app / checked-out external repo)",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.4",
+      "ms_name": "Two-workspace validation rotation",
+      "pri": "P1",
+      "label": "Identical operator-visible behavior across lanes; lane attribution preserved after a runti\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.4",
+      "ms_name": "Two-workspace validation rotation",
+      "pri": "P1",
+      "label": "docs/PROMPT.md scripts run in both lanes; rubric pass for sdk-backed + voice agent-page ru\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.5",
+      "ms_name": "Realtime Voice (Samantha) parity with Agent page",
+      "pri": "P1",
+      "label": "Voice + Agent share session, approvals, pending-question cards.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.5",
+      "ms_name": "Realtime Voice (Samantha) parity with Agent page",
+      "pri": "P1",
+      "label": "Voice-initiated feature shipped e2e with browser proof, both lanes.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.5",
+      "ms_name": "Realtime Voice (Samantha) parity with Agent page",
+      "pri": "P1",
+      "label": "Realtime auth boundary holds (Realtime=OPENAI_API_KEY; runtime auth not leaked; Codex-sub\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.5",
+      "ms_name": "Realtime Voice (Samantha) parity with Agent page",
+      "pri": "P1",
+      "label": "Voice delegations rebind to the delegated Agent session; no orphan transcripts.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.6",
+      "ms_name": "Deletion-debt paydown (Musk-hat audit)",
+      "pri": "P1",
+      "label": "Tier 2 \u2014 collapse the dual FastAPI app onto the embedded server (embedded/server/app.py ca\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.6",
+      "ms_name": "Deletion-debt paydown (Musk-hat audit)",
+      "pri": "P1",
+      "label": "Tier 3 \u2014 rename api/ shared core \u2192 core/ (one app + one shared core + two thin runtimes)",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M1.6",
+      "ms_name": "Deletion-debt paydown (Musk-hat audit)",
+      "pri": "P1",
+      "label": "Overlaps M1.3: 16 files \u22651000 LOC (onboarding 1931, evidence_graph 1817, dashboard_api 173\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.1",
+      "ms_name": "Lifecycle completeness proof",
+      "pri": "P2",
+      "label": "One e2e project on devpulse, every phase dashboard-visible incl",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.1",
+      "ms_name": "Lifecycle completeness proof",
+      "pri": "P2",
+      "label": "Resumability: kill the dashboard mid-sprint, restart, exact state restored (no loss, no st\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.1",
+      "ms_name": "Lifecycle completeness proof",
+      "pri": "P2",
+      "label": "Runtime switch mid-project (claude\u2192codex_sdk) preserves history; future work uses the new\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.1",
+      "ms_name": "Lifecycle completeness proof",
+      "pri": "P2",
+      "label": "Multi-operator handover: a 2nd operator sees the same Board/Backlog/Inbox/Agent.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.1",
+      "ms_name": "Lifecycle completeness proof",
+      "pri": "P2",
+      "label": "Codify flag+drain for receive_response() loops (hardening; single site runner.py:692, no e\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.1",
+      "ms_name": "Lifecycle completeness proof",
+      "pri": "P2",
+      "label": "Auto-complete a feature when all its tasks done (forward-only; no revert; manual changes i\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.1",
+      "ms_name": "Lifecycle completeness proof",
+      "pri": "P2",
+      "label": "Auto-complete a backlog item when all its tasks finish.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.2",
+      "ms_name": "Memory and knowledge as decisive differentiators",
+      "pri": "P2",
+      "label": "Memory-retrieval workflow is the documented step 0 of every non-trivial fix.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.2",
+      "ms_name": "Memory and knowledge as decisive differentiators",
+      "pri": "P2",
+      "label": "KB freshness gate (builder knowledge validate --json) wired into the doc-refresh gate befo\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.2",
+      "ms_name": "Memory and knowledge as decisive differentiators",
+      "pri": "P2",
+      "label": "Memory write-back: every closed IMP with a non-obvious boundary / single-owner pattern / r\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.2",
+      "ms_name": "Memory and knowledge as decisive differentiators",
+      "pri": "P2",
+      "label": "Demonstrate compounding: a fresh session reaches a correct decision faster via memory+KB.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "P2",
+      "label": "builder metrics show + Metrics page agree with raw builder logs --compact cost every run.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "P2",
+      "label": "Per-turn noncached+output / raw / cached tokens accurate in the Agent Session rail, both l\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "P2",
+      "label": "Observability recs separate optimization candidates from workflow-state warnings (approval\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "P2",
+      "label": "Optimization-agent runs only on post-ship candidate evidence, never on generated-app resid\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "P2",
+      "label": "G14 \u2014 full OTel spans/metrics, not just env checks (observability/runtime.py:145 wires non\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.3",
+      "ms_name": "Cost-aware execution surface complete",
+      "pri": "P3",
+      "label": "G15 \u2014 Codex per-server MCP [env] + OAuth",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.4",
+      "ms_name": "Operator UX polish to \"no internals leakage\"",
+      "pri": "P2",
+      "label": "Banned-term audit across all operator surfaces: zero leakage of lifecycle/scaffold/dispatc\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.4",
+      "ms_name": "Operator UX polish to \"no internals leakage\"",
+      "pri": "P2",
+      "label": "All pending questions/approvals render readable labels (no [object Object], no payload obj\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.4",
+      "ms_name": "Operator UX polish to \"no internals leakage\"",
+      "pri": "P2",
+      "label": "Inline question/approval controls in the composer/footer (one owner); timeline entries evi\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.4",
+      "ms_name": "Operator UX polish to \"no internals leakage\"",
+      "pri": "P2",
+      "label": "Recover button shows only when blocked-reason is recoverable; else an actionable next-step\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.4",
+      "ms_name": "Operator UX polish to \"no internals leakage\"",
+      "pri": "P2",
+      "label": "G6 include_hook_events=True \u2192 HookEventMessage on the Agent page (render the real block re\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "P2",
+      "label": "Autopilot toggle in Settings, persisted per project.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "P2",
+      "label": "Autopilot on: auto-approve ready tasks, auto-recover capability_limit/cycle-detected, auto\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "P2",
+      "label": "Operator can disable autopilot mid-sprint; in-flight work not interrupted.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "P2",
+      "label": "All autopilot actions dashboard-visible (who approved/recovered: operator vs autopilot).",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "P2",
+      "label": "Autopilot won't approve design/plan without operator scope confirm; implementation-onward\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "P2",
+      "label": "Retry/cycle state machine from typed SDK errors (ResultMessage.is_error/errors/api_error_s\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.6",
+      "ms_name": "Autopilot mode",
+      "pri": "P2",
+      "label": "G5 permissionDecision=\"defer\" + DeferredToolUse for mid-run approval gates (high-risk call\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "P2",
+      "label": "Frontend React rubric passes on all surfaces; no god components.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "P2",
+      "label": "Backend service rubric passes; clear ownership, no second control owners.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "P2",
+      "label": "Design language applied; primitives only, no ad-hoc styles.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "P2",
+      "label": "Codify the short-lived-session pattern in the backend rubric (dispatch session idle during\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "P2",
+      "label": "Empty-response envelope convention in the backend rubric (state + note on every aggregatio\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "P2",
+      "label": "G4 file checkpointing for scope-limited subagents (checkpoint/revert vs the \"never delete\"\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M2.5",
+      "ms_name": "Architecture and design language coherence",
+      "pri": "P2",
+      "label": "G13 effort:\"xhigh\" carve-out for planner/designer above a complexity threshold (execution_\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.1",
+      "ms_name": "Complex multi-feature app delivery",
+      "pri": "P3",
+      "label": "Project plan, sprints, backlog, approvals, shipped evidence persist across the full delive\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.1",
+      "ms_name": "Complex multi-feature app delivery",
+      "pri": "P3",
+      "label": "Both lanes reach the same shipped state given the same operator prompts.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.1",
+      "ms_name": "Complex multi-feature app delivery",
+      "pri": "P3",
+      "label": "Total tokens / turns / wall-clock / operator interventions tracked per lane in STATUS evid\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.2",
+      "ms_name": "Long-horizon session continuity",
+      "pri": "P3",
+      "label": "Operator returns after 30+ days; same Board/Backlog/Inbox/Agent, no stale \"running\", memor\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.2",
+      "ms_name": "Long-horizon session continuity",
+      "pri": "P3",
+      "label": "Same project resumed from a second machine with consistent state.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.3",
+      "ms_name": "Multi-operator collaboration",
+      "pri": "P3",
+      "label": "Two concurrent Agent sessions on one project \u2192 consistent state",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.3",
+      "ms_name": "Multi-operator collaboration",
+      "pri": "P3",
+      "label": "Approvals attributable to the operator who granted them.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.3",
+      "ms_name": "Multi-operator collaboration",
+      "pri": "P3",
+      "label": "Memory + KB capture the team's learning, not one operator's.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.4",
+      "ms_name": "Head-to-head benchmark wins",
+      "pri": "P3",
+      "label": "Define the canonical task set (5\u201310 tasks, varying complexity) + the measurement protocol.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.4",
+      "ms_name": "Head-to-head benchmark wins",
+      "pri": "P3",
+      "label": "Build the harness: scripted runs against all three tools; metrics captured uniformly.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.4",
+      "ms_name": "Head-to-head benchmark wins",
+      "pri": "P3",
+      "label": "Builder wins on tokens-per-feature on a majority of tasks, both lanes.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.4",
+      "ms_name": "Head-to-head benchmark wins",
+      "pri": "P3",
+      "label": "Builder wins on success-without-intervention on a majority of tasks, both lanes.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.4",
+      "ms_name": "Head-to-head benchmark wins",
+      "pri": "P3",
+      "label": "Builder wins on wall-clock for shipped outcome (incl",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.4",
+      "ms_name": "Head-to-head benchmark wins",
+      "pri": "P3",
+      "label": "Lifecycle-coverage tasks (multi-sprint, durable state, resumability) \u2014 Builder is the only\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.5",
+      "ms_name": "Optimization loop activation (autoresearch Track B)",
+      "pri": "P3",
+      "label": "All Track B prerequisites met (IMP-001..004 closed, baseline variance measured, gate-pass\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.5",
+      "ms_name": "Optimization loop activation (autoresearch Track B)",
+      "pri": "P3",
+      "label": "Autoresearch loop produces \u22651 optimization that survives variance gating and ships.",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.5",
+      "ms_name": "Optimization loop activation (autoresearch Track B)",
+      "pri": "P3",
+      "label": "Optimizations reflected back into runtime policy (execution_policy.py) + prompt shape, not\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
+    },
+    {
+      "ms": "M3.5",
+      "ms_name": "Optimization loop activation (autoresearch Track B)",
+      "pri": "P3",
+      "label": "After-fix sibling search \u2014 a bounded repo-researcher scans for same-pattern siblings befor\u2026",
+      "done": false,
+      "inflight": false,
+      "backend": "none",
+      "browser": "none"
     }
   ]
 }
