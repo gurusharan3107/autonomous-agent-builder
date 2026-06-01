@@ -50,7 +50,7 @@ Default to the shortest form that survives a re-read by a cold agent. When in do
 | `ROADMAP.md` | The forward spine. One checkbox line per item, grouped under `### M<x.y>`. Open = intent + acceptance + `Pn`. Closed = outcome + one evidence pointer. | Multi-step work-logs, dated delivery chains, root-cause prose. |
 | `STATUS.md` | The "now": current epoch/milestone, **Current Item In Flight** (the running log), Next Action, Blockers, Evidence Pointers. | The full roadmap; closure history. |
 | `CHANGELOG.md` / git / `.memory/` | Durable closure detail: root cause, fix, file:line, test names, commits. | — |
-| `goal-overview.html` | Generated synthesis: status snapshot, per-milestone meters, **Open priorities**. Regenerated, never hand-edited. | Anything not in a `<!-- gen:* -->` region or the `#artifact-data` block. |
+| `goal-overview.html` | Generated synthesis: status snapshot, per-milestone meters, **Open priorities** (capped view), **Tasks** matrix (last; every checkbox + testing ticks). Regenerated, never hand-edited. | Anything not in a `<!-- gen:* -->` region or the `#artifact-data` block. |
 
 ### Item shape
 
@@ -61,6 +61,11 @@ Default to the shortest form that survives a re-read by a cold agent. When in do
   pointer is a commit hash, `test_…` name, file, `.memory` slug, or date. The full
   story moves to git/CHANGELOG/`.memory`; do not re-narrate it inline.
 - **Splits** (e.g. `IMP-027a/b/c`) are allowed as child bullets; running logs are not.
+- **Metadata tokens** (feed the Tasks matrix; excluded from char budgets):
+  `` `IF` `` on an open item = in-flight bucket (else pending). `` `T:backend` ``
+  / `` `T:browser` `` = that test passed; append `:pending` (`` `T:browser:pending` ``)
+  for in-progress. Backend = builder-CLI/pytest; browser = `/hermes-chrome` real-browser.
+  Add only on real evidence (a `test_…`/count for backend; live-browser proof for browser).
 
 ### Compactness budgets (linted)
 
@@ -77,12 +82,17 @@ Default to the shortest form that survives a re-read by a cold agent. When in do
 `/status update` regenerates, from the markdown only:
 - `#artifact-data` JSON (derivable keys; `tiers`/`source` preserved).
 - `<!-- gen:* -->` markers: `snapshot_date`, `epoch`, `milestone`, `roadmap_totals`,
-  `priorities`.
+  `priorities`, `tasks`.
 - Per-milestone meters (`.ms` blocks): `<small>done / total</small>` + bar width.
 
-**Open priorities** = every open `[ ]` item carrying a `Pn` token, sorted P0→P3 then
-file order, rendered with a colored badge + its milestone. Tag an item by adding the
-token; re-prioritize by editing it; the change appears on the next `/status update`.
+**Open priorities** = open `[ ]` items carrying a `Pn` token, sorted P0→P3 then file
+order, then **capped per level** by `PRI_CAP` (P0:3 P1:3 P2:3 P3:1) into a curated
+view. Tag an item by adding the token; re-prioritize by editing it. The full prioritized
+backlog (uncapped) is in the Tasks matrix.
+
+**Tasks** = every roadmap checkbox, bucketed completed → in-flight → pending, each row
+milestone + `Pn` + label + Done/Browser/Backend ticks (driven by the `IF`/`T:` tokens).
+Rendered last on the page.
 
 ## Workflow
 
@@ -145,16 +155,22 @@ Report the path. **On WSL2 `xdg-open` silently fails** — route through the Win
    change"); re-run `--check` to prove idempotency if you patched.
 4. **Open lane**: confirm the launch command was issued + report the path.
 5. **Staleness scan** (when editing this skill): verify
-   `scripts/build_goal_overview.py` + `scripts/lint_goal_docs.py` exist and the five
-   `<!-- gen:* -->` markers (`snapshot_date`, `epoch`, `milestone`, `roadmap_totals`,
-   `priorities`) + the `#artifact-data` block still exist in `goal-overview.html`.
-   Missing markers make the generator fail loudly — restore them.
+   `scripts/build_goal_overview.py` + `scripts/lint_goal_docs.py` + `scripts/mine_sessions.py`
+   exist and the six `<!-- gen:* -->` markers (`snapshot_date`, `epoch`, `milestone`,
+   `roadmap_totals`, `priorities`, `tasks`) + the `#artifact-data` block still exist in
+   `goal-overview.html`. Missing markers make the generator fail loudly — restore them.
 
 ## Reference
 
 - Linter: [`scripts/lint_goal_docs.py`](scripts/lint_goal_docs.py) — contract checks +
   severities + `--strict`.
 - Generator: [`scripts/build_goal_overview.py`](scripts/build_goal_overview.py) —
-  parsing rules, patch targets, priority parsing, `--check` idempotency.
+  parsing rules, patch targets, priority parsing + `PRI_CAP`, `--check` idempotency.
+- Session miner: [`scripts/mine_sessions.py`](scripts/mine_sessions.py) — self-contained
+  transcript content-miner for **deriving `T:` testing evidence**. E.g.
+  `python3 scripts/mine_sessions.py --preset browser_testing --project-filter <repo> --since 60d`
+  for browser-test signal; backend evidence is usually the closed item's own `test_…`
+  pointer (more reliable than transcript grep). Verify a hit is real before tagging —
+  exclude quoted error strings (`'test_p'`) and jsdom e2e (≠ real-browser).
 - Source of truth: `docs/goal/ROADMAP.md`, `docs/goal/STATUS.md`.
 - Artifact: `docs/goal/goal-overview.html` (hand-authored prose + generated regions).
