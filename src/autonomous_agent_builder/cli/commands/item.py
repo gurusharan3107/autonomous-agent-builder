@@ -278,6 +278,42 @@ def update_item(
         client.close()
 
 
+@app.command("cancel")
+def cancel_item(
+    item_id: str = typer.Argument(help="Backlog item ID."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
+    json: bool = typer.Option(False, "--json", help="Output as JSON."),
+) -> None:
+    """Cancel (retire) a backlog item, moving it to the terminal cancelled state."""
+    if not yes:
+        render(
+            {"item_id": item_id, "action": "cancel", "confirmed": False},
+            lambda _: f"Would cancel backlog item {item_id}. Use --yes to confirm.",
+            use_json=json,
+        )
+        sys.exit(EXIT_SUCCESS)
+
+    client = get_client(use_json=json)
+    try:
+        data = client.post(f"/backlog/items/{item_id}/cancel")
+    except AabApiError as exc:
+        handle_api_error(exc, use_json=json)
+    else:
+
+        def fmt(item: dict) -> str:
+            return (
+                f"cancelled backlog item {str(item.get('id', ''))[:12]}\n"
+                f"type: {_payload_type(item)}\n"
+                f"title: {item.get('title', '')}\n"
+                f"status: {format_status(item.get('status', ''))}"
+            )
+
+        render(data, fmt, use_json=json)
+        sys.exit(EXIT_SUCCESS)
+    finally:
+        client.close()
+
+
 @app.command("list")
 def list_items(
     project: str | None = typer.Option(None, "--project", help="Project ID. Omit to use the first project in the current workspace."),

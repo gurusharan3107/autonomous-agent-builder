@@ -94,6 +94,48 @@ def test_backlog_item_create_improvement_posts_stable_payload(monkeypatch):
     assert payload["item_type"] == "improvement"
 
 
+def test_backlog_item_cancel_requires_confirmation():
+    result = runner.invoke(
+        app,
+        ["backlog", "item", "cancel", "item-1", "--json"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["action"] == "cancel"
+    assert payload["confirmed"] is False
+
+
+def test_backlog_item_cancel_posts_to_cancel_route(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def _cancel(path: str, data=None):
+        captured["path"] = path
+        return {
+            "id": "item-1",
+            "title": "Retire me",
+            "item_type": "improvement",
+            "type": "improvement",
+            "status": "cancelled",
+        }
+
+    monkeypatch.setattr(
+        item_module,
+        "get_client",
+        lambda **_: _PathClient({"POST:/backlog/items/item-1/cancel": _cancel}),
+    )
+
+    result = runner.invoke(
+        app,
+        ["backlog", "item", "cancel", "item-1", "--yes", "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert captured["path"] == "/backlog/items/item-1/cancel"
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "cancelled"
+
+
 def test_backlog_item_list_filters_by_type_and_tag(monkeypatch):
     def _list(path: str, **params):
         assert path == "/projects/proj-1/backlog/items"

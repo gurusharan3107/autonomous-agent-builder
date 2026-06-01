@@ -20,6 +20,7 @@ from autonomous_agent_builder.backlog_items import (
     require_primary_tag,
 )
 from autonomous_agent_builder.db.models import (
+    TERMINAL_FEATURE_STATUSES,
     BacklogItemSeverity,
     BacklogItemSource,
     BacklogItemType,
@@ -342,6 +343,40 @@ async def update_backlog_item(
     item.severity = severity
     item.source = source
 
+    await db.flush()
+    await db.refresh(item)
+    mirror_item_to_artifact(_project_root(request), _feature_payload(item))
+    await db.commit()
+    return _feature_payload(item)
+
+
+@router.post("/backlog/items/{item_id}/cancel")
+async def cancel_backlog_item(
+    item_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a backlog item to the terminal cancelled state.
+
+    Cancelling is the operator-facing way to retire a backlog item. It is only
+    valid from a non-terminal state; an item that is already done or cancelled
+    cannot be cancelled again.
+    """
+    item = await db.get(Feature, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Backlog item not found")
+    if item.status in TERMINAL_FEATURE_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "backlog_item_terminal",
+                "message": (
+                    f"cannot cancel backlog item in terminal state "
+                    f"'{item.status.value if hasattr(item.status, 'value') else item.status}'"
+                ),
+            },
+        )
+    item.status = FeatureStatus.CANCELLED
     await db.flush()
     await db.refresh(item)
     mirror_item_to_artifact(_project_root(request), _feature_payload(item))

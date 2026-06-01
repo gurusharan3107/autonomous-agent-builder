@@ -147,6 +147,7 @@ export default function BacklogPage() {
   const [stateFilter, setStateFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -171,6 +172,29 @@ export default function BacklogPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const cancelItem = async (itemId: string) => {
+    setCancelling(true);
+    try {
+      const response = await fetch(`/api/backlog/items/${itemId}/cancel`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null);
+        const message =
+          detail && typeof detail.detail === "object" && detail.detail?.message
+            ? detail.detail.message
+            : "Failed to cancel item";
+        throw new Error(message);
+      }
+      await load();
+      setError(null);
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Failed to cancel item");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const itemType = (feature: FeatureItem) => feature.item_type || feature.type || "feature";
   const itemTags = (feature: FeatureItem) => feature.tags || [];
@@ -213,6 +237,16 @@ export default function BacklogPage() {
           <BacklogCode>{itemTypeLabel(itemType(selectedFeature))}</BacklogCode>
           {selectedFeature.severity ? (
             <BacklogCode tone="danger">{selectedFeature.severity}</BacklogCode>
+          ) : null}
+          {!["shipped", "cancelled"].includes(boardState(selectedFeature.status)) ? (
+            <Button
+              variant="destructive"
+              disabled={cancelling}
+              onClick={() => void cancelItem(selectedFeature.id)}
+              className="ml-auto h-7 rounded-full px-3 text-xs"
+            >
+              {cancelling ? "Cancelling…" : "Cancel item"}
+            </Button>
           ) : null}
         </div>
         <div>

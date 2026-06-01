@@ -146,6 +146,11 @@ class FeatureStatus(enum.StrEnum):
     REVIEW = "review"
     DONE = "done"
     BLOCKED = "blocked"
+    CANCELLED = "cancelled"
+
+
+# Terminal backlog states no further transition (cancel) may apply to.
+TERMINAL_FEATURE_STATUSES = frozenset({FeatureStatus.DONE, FeatureStatus.CANCELLED})
 
 
 class SprintPhase(enum.StrEnum):

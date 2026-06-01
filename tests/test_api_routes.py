@@ -298,6 +298,60 @@ class TestFeatureRoutes:
         assert update_resp.status_code == 422
         assert update_resp.json()["detail"]["code"] == "invalid_backlog_item"
 
+    async def test_cancel_typed_backlog_item(self, client, test_db, tmp_path):
+        client._transport.app.state.project_root = tmp_path
+        pid = await self._create_project(client)
+        create_resp = await client.post(
+            f"/api/projects/{pid}/backlog/items",
+            json={"type": "improvement", "title": "Retire me"},
+        )
+        item_id = create_resp.json()["id"]
+
+        cancel_resp = await client.post(f"/api/backlog/items/{item_id}/cancel")
+
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["status"] == "cancelled"
+
+        show_resp = await client.get(f"/api/backlog/items/{item_id}")
+        assert show_resp.json()["status"] == "cancelled"
+
+    async def test_cancel_backlog_item_not_found(self, client, test_db):
+        resp = await client.post("/api/backlog/items/nonexistent/cancel")
+        assert resp.status_code == 404
+
+    async def test_cancel_done_backlog_item_rejected(self, client, test_db, tmp_path):
+        client._transport.app.state.project_root = tmp_path
+        pid = await self._create_project(client)
+        create_resp = await client.post(
+            f"/api/projects/{pid}/backlog/items",
+            json={"type": "improvement", "title": "Already shipped"},
+        )
+        item_id = create_resp.json()["id"]
+        await client.put(f"/api/backlog/items/{item_id}", json={"status": "done"})
+
+        resp = await client.post(f"/api/backlog/items/{item_id}/cancel")
+
+        assert resp.status_code == 409
+        assert resp.json()["detail"]["code"] == "backlog_item_terminal"
+
+    async def test_cancel_already_cancelled_backlog_item_rejected(
+        self, client, test_db, tmp_path
+    ):
+        client._transport.app.state.project_root = tmp_path
+        pid = await self._create_project(client)
+        create_resp = await client.post(
+            f"/api/projects/{pid}/backlog/items",
+            json={"type": "improvement", "title": "Cancel twice"},
+        )
+        item_id = create_resp.json()["id"]
+        first = await client.post(f"/api/backlog/items/{item_id}/cancel")
+        assert first.status_code == 200
+
+        resp = await client.post(f"/api/backlog/items/{item_id}/cancel")
+
+        assert resp.status_code == 409
+        assert resp.json()["detail"]["code"] == "backlog_item_terminal"
+
     async def test_dashboard_backlog_merges_typed_artifacts_and_db_items(
         self, client, test_db, tmp_path
     ):
