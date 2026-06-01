@@ -33,18 +33,19 @@ The one thing that decides whether markers arrive: **where the widget POSTs `/ap
 ## Operating sequence
 
 ```
-preflight → add widget → serve → arm/heal wake → process markers → disarm Monitor → closeout
+preflight → add widget → serve → arm/heal wake → process markers → disarm Monitor → closeout (+ optimize self-introspect)
 ```
 
 Full step-by-step + script invocations → [`references/operate.md`](references/operate.md).
 
-**Wake is not durable on its own — the queue is.** The push path (watcher → Monitor → you) can die silently mid-session (the harness auto-stops a Monitor that emitted too many events; the watcher can orphan). The marker stays safely `queued` but never wakes you, and an absent operator won't tell you. So **at session entry and on every `/agent-feedback-artifact` (re)invocation, run the self-healing check** and re-arm if needed:
-```
-node scripts/agent-feedback-wake-status.mjs --root <serve-root>   # verdict: ok | backlog_fresh | rearm_required
-```
-`rearm_required` (exit 1) → `pkill -f agent-feedback-watch.mjs`, then arm a fresh persistent Monitor on `agent-feedback-watch.mjs --root <serve-root>` (it backfills the queued backlog). Details: [`references/operate.md`](references/operate.md) step 4.
+**`close` lane** (`/agent-feedback-artifact close`) — tear down the live session. **Distinct from `closeout`** (which stays report-only + optimize self-introspection; `close` does not run it). `close` stops *both* running pieces:
+1. **Server** — `node scripts/agent-feedback-close.mjs [--port 4177]` SIGTERMs the listener (the server traps it and closes gracefully; SIGKILLs a straggler). `serverWasRunning:false` = already stopped, fine.
+2. **Monitor** — the script can't end a harness Task. **You** call `TaskStop` on the `agent-feedback-watch.mjs` Monitor handle you armed in step 4 of the operating sequence. Skip if you never armed one.
 
-**Read-only/file scripts take `--root <serve-root>`; the mutating CLIs (`dispatch`, `mark`) take `--port` (default 4177).** Use the same serve-root you passed to `artifact-feedback-server.mjs`.
+Key invariants (detail in [`operate.md`](references/operate.md)):
+- **Wake isn't durable; the queue is.** The Monitor can die silently mid-session → markers sit `queued`, unwoken. At session entry / each `/agent-feedback-artifact` (re)invocation run `agent-feedback-wake-status.mjs --root <root>`; on `rearm_required` (exit 1), `pkill -f agent-feedback-watch.mjs` + re-arm the Monitor (backfills the backlog).
+- **Closeout `optimize`** = model-judged self-introspection, not a ritual. Clean session → change nothing; only when warranted, load [`optimize.md`](references/optimize.md) → "Optimize step".
+- **Args:** read-only/file scripts take `--root`; mutating CLIs (`dispatch`, `mark`) take `--port` (default 4177).
 
 ## Per-marker action (every wake notification)
 
@@ -99,7 +100,7 @@ Rationale + reply conventions → [`references/best-practices.md`](references/be
 | When | Load |
 |---|---|
 | Step-by-step operating procedure | [`references/operate.md`](references/operate.md) |
-| Diagnosing a runtime issue | [`references/optimize.md`](references/optimize.md) |
+| Optimize step (closeout self-introspection) or diagnosing a runtime issue | [`references/optimize.md`](references/optimize.md) |
 | Skill-specific defaults + conventions | [`references/best-practices.md`](references/best-practices.md) |
 | Modifying or extending the skill itself | [`references/agent-handbook.md`](references/agent-handbook.md) |
 | Wake adapter (Monitor / file-watch / Hermes) | [`references/wake-bridge.md`](references/wake-bridge.md) |

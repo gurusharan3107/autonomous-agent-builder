@@ -46,6 +46,52 @@ if (clearLocalQueue) {
   cleared = true;
 }
 
+// ── Optimize step ──────────────────────────────────────────────────────────
+// Surface evidence + a disconfirming triage so the agent reviews the session
+// before tearing down. The script computes deterministic signals; the agent
+// answers the judgment (code fix vs skill how-to-operate vs both).
+const nowMs = Date.now();
+const processingItems = matching.filter((i) => i.status === "processing");
+const staleProcessing = processingItems.filter((i) => i.leaseUntil && Date.parse(i.leaseUntil) < nowMs).length;
+const unleasedProcessing = processingItems.filter((i) => !i.leaseUntil).length;
+const blockedItems = matching.filter((i) => i.status === "blocked");
+const reclaimedItems = matching.filter((i) => i.reclaimReason);
+
+// Reuse the wake-status verdict (it exits 1 on rearm_required but still prints JSON).
+let wake = null;
+try {
+  const { stdout } = await execFileAsync("node", [resolve(import.meta.dirname, "agent-feedback-wake-status.mjs"), "--root", root]);
+  wake = JSON.parse(stdout);
+} catch (error) {
+  if (error.stdout) { try { wake = JSON.parse(error.stdout); } catch { /* leave null */ } }
+}
+
+// Auto-derived signals worth a LOOK — candidates to judge, not mandates to act on.
+const signalNotes = [];
+if (wake?.rearm) signalNotes.push(`WAKE ${wake.verdict}: ${wake.reason} — the push path failed to deliver (observed).`);
+if (staleProcessing) signalNotes.push(`${staleProcessing} marker(s) past their lease still 'processing' — orphan risk if the sweep isn't running.`);
+if (unleasedProcessing) signalNotes.push(`${unleasedProcessing} 'processing' marker(s) have no lease (pre-supervisor) — won't auto-reclaim. May be intentional (parked work) — judge.`);
+if (blockedItems.length) signalNotes.push(`${blockedItems.length} 'blocked' marker(s) await an operator decision — confirm each surfaced a reason visibly.`);
+if (reclaimedItems.length) signalNotes.push(`${reclaimedItems.length} marker(s) were reclaimed (a worker died mid-flight) — worth asking why.`);
+
+// State alone never PROVES optimization is needed — it only flags what to look
+// at. The model must self-introspect on the SESSION (operator corrections,
+// surprises, repeated mistakes — none of which this script can see) and decide.
+// Default for an obviously-clean session: change nothing. Do not manufacture work.
+const stateClean = signalNotes.length === 0;
+const optimize = {
+  verdict: stateClean ? "state_clean_no_action_indicated" : "signals_to_review",
+  selfIntrospect: "Reflect on THIS session, not just the state below: did the operator correct you, did anything surprise you, did a mistake recur? That judgment — not this script — decides whether to optimize and what step to take.",
+  signals: { statusCounts: counts, staleProcessing, unleasedProcessing, blocked: blockedItems.length, reclaimed: reclaimedItems.length, oldestQueuedAgeSec: wake?.oldestQueuedAgeSec ?? null },
+  wake,
+  signalNotes,
+  // Progressive disclosure: the triage steps + questions live in optimize.md;
+  // load them only when there's actually something to review.
+  next: stateClean
+    ? "No state signals. If your session introspection also finds nothing real, close out and change nothing. Otherwise load references/optimize.md -> 'Optimize step' and triage."
+    : "Load references/optimize.md -> 'Optimize step' and judge each signal/finding there (Q2 routes code-vs-skill). Some signals may be intentional — skip non-issues."
+};
+
 const report = {
   ok: true,
   target,
@@ -77,7 +123,8 @@ const report = {
     stopServer: serverListening
       ? `Server still listening on port ${port}. Identify the PID with 'lsof -nP -iTCP:${port} -sTCP:LISTEN' and stop it (or kill the background task that started it). Closeout does not auto-kill processes it didn't start.`
       : null
-  }
+  },
+  optimize
 };
 
 console.log(JSON.stringify(report, null, 2));

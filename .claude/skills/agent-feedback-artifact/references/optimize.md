@@ -1,9 +1,27 @@
 # agent-feedback-artifact — Optimize
 
-Runtime diagnosis + per-failure-class recipes when the loop misbehaves.
-Loaded on demand from SKILL.md when a failure is detected.
+Two jobs: **(1) the optimize step** run at closeout (model-judged self-introspection on the session), and **(2) break-fix diagnosis** when the loop misbehaves. Loaded on demand — at closeout when the optimize verdict warrants review, or when a failure is detected. `operate.md` covers the happy path.
 
-`operate.md` covers the happy path. This file is when something doesn't work.
+---
+
+## Optimize step (closeout self-introspection)
+
+`closeout.mjs` emits `optimize` {verdict, signals, signalNotes} — evidence, not orders. You judge.
+
+**Act only if warranted:**
+- Introspect the session (operator corrections, surprises, recurring mistakes) — not just state.
+- `state_clean_no_action_indicated` + introspection finds nothing → change nothing. Don't manufacture work.
+- `signalNotes` = candidates to judge; some intentional (e.g. parked markers). Act only on real, recurring, evidence-backed issues.
+
+**Triage what you act on:**
+1. Observed vs latent? → scope.
+2. Could a correctly-operating agent still hit it? **YES → code fix; NO → skill how-to-operate; often both.**
+3. Recurs via another trigger? → fix the structure, not the symptom.
+4. Who owns it? → fix on owner, cross-link.
+5. New regression? Evidence-tested?
+6. Enforceable (test/gate) over drifting prose?
+
+**Land it:** code → codebase · how-to → `operate.md` · conventions → `best-practices.md` · change/troubleshoot → `agent-handbook.md` · durable → `builder backlog`/memory.
 
 ---
 

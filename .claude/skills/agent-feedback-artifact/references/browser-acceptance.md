@@ -33,10 +33,11 @@
 ## Annotation Flow (Hermes Chrome Bridge)
 
 ```
-navigate → click launcher (button[data-af-launcher]) → click Annotate (button[data-af-toggle])
-→ click_selector("h1") (creates marker, opens popover)
-→ fill_selector(".af-popover input", "comment")
-→ click_selector(".af-popover-send") (saves + submits)
+click_selector(".af-launcher") → click_selector("[data-af-toggle]")   # reveal toolbar, arm Annotate
+→ click_selector("h1")                                                 # create marker
+→ wait_for_selector("[data-af-popover-input]")                         # popover renders async — REQUIRED
+→ fill_selector("[data-af-popover-input]", "comment")
+→ click_selector(".af-popover-send")
 ```
 
-Verify: marker appears on page, popover opens, comment appears in queue via `/api/feedback/status`.
+Verify by the **queue**, not the bridge `success`: assert `/api/feedback/status` count grew (a tight batch can return `success:true` with no marker). Full bridge rules → [`operate.md`](operate.md) §5b.

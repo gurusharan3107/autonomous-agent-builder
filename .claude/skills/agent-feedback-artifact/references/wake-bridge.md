@@ -1,159 +1,76 @@
 # Wake Bridge — push the agent on new markers
 
-Two layers, decoupled. The wire format is harness-agnostic; the wake adapter is per-harness.
+Two decoupled layers: a harness-agnostic wire format + a per-harness wake adapter.
 
 ```
-operator comments
-    → widget POST /api/feedback
-        → server writes queue.json (DURABLE)
-            ├─ (a) fs.watch fires → agent-feedback-watch.mjs prints one JSON line
-            │       └─ harness adapter consumes the line (Monitor / tail / exec)
-            └─ (b) server POSTs AGENT_FEEDBACK_WEBHOOK_URL  (if configured)
-                    └─ webhook receiver dispatches per harness
+operator comments → widget POST /api/feedback → server writes queue.json (DURABLE)
+  ├─ (a) fs.watch → agent-feedback-watch.mjs prints one JSON line → harness adapter (Monitor/tail/exec)
+  └─ (b) server POSTs AGENT_FEEDBACK_WEBHOOK_URL (if set) → webhook receiver
 ```
 
-Pick (a) for Claude Code and most other harnesses. Pick (b) for Hermes. They can coexist — both observe the same queue.
+(a) = Claude Code + most harnesses; (b) = Hermes. They coexist — both observe the same queue.
 
----
+## (a) File-watch + Monitor (Claude Code default)
 
-## (a) File-watch + Monitor — Claude Code default
-
-Push end-to-end. Kernel-level inotify (Linux) / FSEvents (macOS). Zero polling.
-
-**Arm during skill operating sequence step 4:**
-
+Push end-to-end via inotify/FSEvents, zero polling. Arm in operating-sequence step 4:
 ```
-Monitor({
-  description: "agent-feedback markers from <slug>",
-  persistent: true,
-  command: "node ~/.claude/skills/agent-feedback-artifact/scripts/agent-feedback-watch.mjs --root <serve-root>"
-})
+Monitor({ description:"agent-feedback markers from <slug>", persistent:true,
+  command:"node ~/.claude/skills/agent-feedback-artifact/scripts/agent-feedback-watch.mjs --root <serve-root>" })
 ```
+Each new marker → one ~140-char line: `{"id":"afw-...","markerId":"af-...","route":"...","status":"queued","artifactPath":"/","summary":"..."}`. Surfaces as a notification. Act on the summary, or pull `agent-feedback-details.mjs <id>` (style routes rarely need it).
 
-Each new marker prints one line:
-```json
-{"id":"afw-...","markerId":"af-...","route":"deep_marker_worker","status":"queued","artifactPath":"/","summary":"make brand text larger"}
-```
-That line surfaces as an in-conversation notification. The agent decides whether to fetch full marker context via `agent-feedback-details.mjs <id>` or act on the summary alone (style-class routes typically don't need full context).
-
-**Disarm at closeout:** `TaskStop` the Monitor handle, then `agent-feedback-closeout.mjs`.
+- **Backfill:** on (re)start, every `status:"queued"` item is re-emitted once — restarts don't drop work.
+- **Wake can die silently** (Monitor auto-stop / orphaned watcher) → run `agent-feedback-wake-status.mjs` at entry (SKILL.md / operate.md step 4); the watcher writes `data/.wake-heartbeat`.
+- **Disarm at closeout:** `TaskStop` the handle, then `agent-feedback-closeout.mjs`.
 
 ### Auto-refresh tiers (mark.mjs → widget)
-
-When marking a marker `done`, pick the right refresh signal so the operator sees the change without a manual reload:
-
-| Flag | What the widget does | Use when |
+| Flag | Effect | Use when |
 |---|---|---|
-| `--reload` | **CSS hot-swap.** Replaces every `<link rel="stylesheet">` with a cache-busted clone. ~400–700 ms to visible change. No page reload, no runtime state loss. | CSS / styling edits (color, font, spacing, layout) — the dominant case |
-| `--reload-full` | **Full page reload.** `location.replace` with a cache-bust query param. ~700 ms + Chrome HTML parse/render. Runtime JS state is reset. | HTML / template / JSX / Jinja2 edits — anything that changes the DOM structure |
-| *(no flag)* | Reply only. No auto-refresh. | Question-only replies, or when the operator should decide whether to reload |
+| `--reload` | CSS hot-swap (cache-bust `<link>`s, ~400–700 ms, no state loss) | CSS/style edits — dominant case |
+| `--reload-full` | Full reload (`location.replace` + cache-bust); resets JS state | HTML/template/JSX/Jinja edits |
+| *(none)* | Reply only | question replies / operator decides |
 
-The widget reads `reloadMode` from `/api/feedback/status` (`"css"` or `"full"`). When multiple pending markers exist in one batch, `full` wins (escalates).
+Widget reads `reloadMode` from `/api/feedback/status` (`css`|`full`); across a batch `full` wins.
 
-**Backfill:** on script start, every `status: "queued"` item already in `queue.json` is emitted once. Agent restarts don't drop work.
-
-**Token/context cost:** one ~140-char line per marker. Pull details only on demand. Nothing recurring.
-
----
-
-## (a') File-watch + any harness adapter
-
-Same watch script, different consumer:
-
+## (a') File-watch + any harness
 ```bash
 node ~/.claude/skills/agent-feedback-artifact/scripts/agent-feedback-watch.mjs --root <serve-root> | <your wake bridge>
 ```
+e.g. `while read line; do my-cli notify "$line"; done`, a sentinel-file writer, or a Slack/email forwarder.
 
-Examples of `<your wake bridge>`:
-- `while read line; do my-harness-cli notify "$line"; done`
-- A small Node receiver that writes each line as a one-line sentinel file under `~/agent-feedback-inbox/`
-- A Slack/email forwarder for human-on-call
+## (b) Hermes webhook
 
----
-
-## (b) Hermes webhook — Hermes harness
-
-When `AGENT_FEEDBACK_WEBHOOK_URL` is set on the server, every new marker triggers an immediate POST to that URL with the full work-item summary. The server signs with HMAC-SHA256 if `AGENT_FEEDBACK_WEBHOOK_SECRET` is set.
-
-### Setup
-
+`AGENT_FEEDBACK_WEBHOOK_URL` set → server POSTs each new marker (HMAC-SHA256 signed when `AGENT_FEEDBACK_WEBHOOK_SECRET` set).
 ```bash
-hermes gateway setup  # or add platforms.webhook to config.yaml
-
+hermes gateway setup   # or add platforms.webhook to config.yaml
 hermes webhook subscribe artifact-feedback-<slug> \
-  --prompt "New artifact feedback comment on {artifactPath}. Work ID: {items[0].id}, Route: {items[0].route}, Marker: {items[0].visibleText}, Message: {items[0].latestUserMessage}. Use the agent-feedback-artifact skill to process this marker. Run dispatch to claim, then process per route." \
-  --skills "agent-feedback-artifact" \
-  --deliver origin \
-  --events "artifact_feedback_new"
-```
-
-Then start the server with the returned URL:
-
-```bash
-AGENT_FEEDBACK_WEBHOOK_URL="http://localhost:8644/hooks/artifact-feedback-<slug>" \
-AGENT_FEEDBACK_WEBHOOK_SECRET="$(hermes webhook list --json | jq -r '.[] | select(.name=="artifact-feedback-<slug>") | .secret')" \
+  --prompt "New feedback on {artifactPath}. Work {items[0].id}, Route {items[0].route}, Marker {items[0].visibleText}, Msg {items[0].latestUserMessage}. Use agent-feedback-artifact; dispatch to claim, then process per route." \
+  --skills "agent-feedback-artifact" --deliver origin --events "artifact_feedback_new"
+# start server with the returned URL + secret:
+AGENT_FEEDBACK_WEBHOOK_URL=".../hooks/artifact-feedback-<slug>" \
+AGENT_FEEDBACK_WEBHOOK_SECRET="$(hermes webhook list --json | jq -r '.[]|select(.name=="artifact-feedback-<slug>").secret')" \
   node scripts/artifact-feedback-server.mjs <serve-root> <port>
+# teardown: hermes webhook remove artifact-feedback-<slug> ; then closeout
 ```
+Payload: `{event:"artifact_feedback_new", count, items:[{id, markerId, status, artifactPath, selector, visibleText, latestUserMessage, route, contextTier, workerLifecycle}], artifact, timestamp}`.
 
-### Teardown
-
-```bash
-hermes webhook remove artifact-feedback-<slug>
-node scripts/agent-feedback-closeout.mjs <artifact.html> --port <port>
-```
-
-### Webhook payload
-
-```json
-{
-  "event": "artifact_feedback_new",
-  "count": 1,
-  "items": [
-    {
-      "id": "afw-...",
-      "markerId": "af-...",
-      "status": "queued",
-      "artifactPath": "/page.html",
-      "selector": "td:nth-child(2)",
-      "visibleText": "Salary (Section 17)",
-      "latestUserMessage": "Is this figure correct?",
-      "route": "deep_marker_worker",
-      "contextTier": "T2",
-      "workerLifecycle": "fresh_once"
-    }
-  ],
-  "artifact": "/page.html",
-  "timestamp": "2026-05-27T12:00:00.000Z"
-}
-```
-
----
-
-## Why two paths
-
+## (a) vs (b)
 | | File-watch (a) | Hermes webhook (b) |
 |---|---|---|
 | Harness-agnostic | ✅ | ❌ Hermes-bound |
-| Reliability | fs durable; agent restart re-scans | depends on Hermes daemon + webhook receiver |
-| Latency | ms (inotify / FSEvents) | ~1 s |
-| External deps | none (Node `fs.watch`) | Hermes CLI + gateway |
-| Coexist with the other | ✅ orthogonal, both observe the same queue | same |
+| Reliability | fs durable; restart re-scans | needs Hermes daemon + receiver |
+| Latency | ms | ~1 s |
+| Deps | none | Hermes CLI + gateway |
 
-If you have Hermes, you can run both — the watch script doesn't interfere with the webhook POST. If you don't, the file-watch path is the recommended default for every other harness.
+Run both if you have Hermes (orthogonal); else (a) is the default.
 
----
+## Fallback: no wake
+Neither armed → markers still queue durably; process on demand with `agent-feedback-next.mjs --root <serve-root>`. Dev-only, not production.
 
-## Fallback: No Wake
-
-If neither path is armed, markers still queue durably in `feedback-queue.json`. Process them on demand with `node scripts/agent-feedback-next.mjs --root <serve-root>`. Acceptable for development; not for production operator use.
-
----
-
-## Environment Variables (server-side, webhook path only)
-
-| Variable | Required | Description |
+## Env vars (server-side, webhook path)
+| Var | Default | Purpose |
 |---|---|---|
-| `AGENT_FEEDBACK_WEBHOOK_URL` | No | URL to POST new feedback events to |
-| `AGENT_FEEDBACK_WEBHOOK_SECRET` | No | HMAC-SHA256 signing key |
-| `AGENT_FEEDBACK_WEBHOOK_TIMEOUT_MS` | No | Request timeout (default: 2500ms) |
-| `PORT` | No | Server port (default: 4177) |
+| `AGENT_FEEDBACK_WEBHOOK_URL` | — | POST target for new events |
+| `AGENT_FEEDBACK_WEBHOOK_SECRET` | — | HMAC-SHA256 signing key |
+| `AGENT_FEEDBACK_WEBHOOK_TIMEOUT_MS` | 2500 | request timeout |
+| `PORT` | 4177 | server port |
