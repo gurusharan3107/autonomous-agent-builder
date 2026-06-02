@@ -38,7 +38,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [x] `P1` **IMP-016** — `message_targets_builder_self()` classifier; builder-self asks no longer dispatch to app backlog. `agent_message_intent.py`. `T:backend` `T:browser:na`
 - [x] **IMP-017** — terminal `cancelled` state + cancel route/CLI/dashboard control across the stack. `efe81e5`; dashboard "Cancel item" live-verified (item→`cancelled`). `T:backend` `T:browser`
 - [x] **IMP-018** — interview fell back to free-text (AskUserQuestion dead). Fix: per-agent `permission_mode`, chat→`"default"`; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser`
-- [ ] `P0` **IMP-019** — builder can't self-verify the generated app in a real browser (jsdom overstates "shipped"). Shipped in-process `browser` SDK MCP (`mcp__browser__*`); remaining: real-browser gate for user-facing features + queryable evidence-tier. `T:browser` `T:backend:pending`
+- [x] `P0` **IMP-019** — `is_ui_task()` gate + `browser_evidence_tier` queryable field; `GateResultModel` persists tier. `build_verification.py`. `T:backend` `T:browser:na`
 - [x] **IMP-020** — chat `default` showed approval cards for app edits. Fix: chat never edits app — deny ungranted Edit/Write/Bash; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser`
 - [x] **IMP-021** — 3 pre-existing doc-routing test failures (compact-JSON staleness + IMP-020 Bash-deny fallout); test-only fix, 11 green. `cdb8be8`. `T:backend` `T:browser:na`
 - [ ] `P1` **IMP-022** — dashboard can't open phase-level agent runs (feature-verifier, gate-remediator). Frontend gap `TaskDetailSidebar.tsx:35` drops phase runs (backend serves `GET /tasks/{id}/runs`). Render each phase run as a clickable trace row. `T:backend:na` `T:browser:pending`

@@ -257,18 +257,22 @@ def test_browser_evidence_tier_classifies_proof() -> None:
         bridge_available=True,
     )
     assert real["tier"] == "real_browser" and real["advisory"] is None
+    # IMP-019: queryable field must be present and equal to tier.
+    assert real["browser_evidence_tier"] == "real_browser"
 
-    # No browser evidence + bridge down → acceptable weaker tier (does not block CI).
+    # No browser evidence + bridge down (non-UI) → acceptable weaker tier (does not block CI).
     fallback = browser_evidence_tier(
         json.dumps({"status": "pass", "browser_evidence": []}), bridge_available=False
     )
     assert fallback["tier"] == "jsdom_fallback" and fallback["advisory"]
+    assert fallback["browser_evidence_tier"] == "jsdom_fallback"
 
     # No browser evidence but bridge available → the IMP-019 gap, advisory raised.
     gap = browser_evidence_tier(
         json.dumps({"status": "pass", "browser_evidence": []}), bridge_available=True
     )
     assert gap["tier"] == "no_browser_proof" and gap["advisory"]
+    assert gap["browser_evidence_tier"] == "no_browser_proof"
 
 
 def test_browser_tools_registered_in_tool_registry() -> None:

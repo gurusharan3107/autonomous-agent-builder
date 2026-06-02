@@ -13,10 +13,10 @@ Live state. If it lies, system is blind.
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
 | Current Milestone | **M3.5 — Optimization loop activation** (autoresearch Track B) |
-| Current Item In Flight | **IMP-016 closed** — `message_targets_builder_self()` classifier; builder-self asks no longer route to app backlog. Next: IMP-019. |
+| Current Item In Flight | **IMP-019 closed** — `is_ui_task()` gate + `browser_evidence_tier` queryable field persisted via `GateResultModel`. Next: IMP-022. |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-06-02 — IMP-014 + IMP-016 closed. Error-trend retention window + builder-self intent classifier. 1575 tests pass. |
+| Last Update | 2026-06-02 — IMP-014 + IMP-016 + IMP-019 closed. 1582 tests pass. |
 
 ---
 

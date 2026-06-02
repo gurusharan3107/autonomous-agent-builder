@@ -10,6 +10,18 @@ from autonomous_agent_builder.services.sprint_execution import SPRINT_EXECUTION_
 
 _SPRINT_FEATURE_VERIFY_TASK_KEYS = {"browser-verification", "tests-browser-proof"}
 
+# Keywords that indicate a task touches user-facing UI/dashboard/frontend surfaces.
+# Used by is_ui_task to decide whether real-browser proof is required.
+_UI_KEYWORDS = frozenset(
+    [
+        "ui", "frontend", "dashboard", "browser", "web", "html", "css",
+        "react", "vue", "angular", "svelte", "page", "component", "button",
+        "form", "modal", "dialog", "panel", "screen", "view", "layout",
+        "style", "theme", "design", "visual", "display", "render", "canvas",
+        "chart", "graph", "widget", "tab", "menu", "nav", "sidebar",
+    ]
+)
+
 
 def task_sprint_execution_payload(task: Any) -> dict:
     depends_on = task.depends_on if isinstance(task.depends_on, dict) else {}
@@ -31,6 +43,29 @@ def use_deterministic_build_verifier(task: Any) -> bool:
         return False
     workspace = getattr(task, "workspace", None)
     return bool(workspace and getattr(workspace, "path", ""))
+
+
+def is_ui_task(task: Any, feature: Any = None) -> bool:
+    """Return True when the task/feature involves user-facing UI/dashboard/frontend changes.
+
+    Checks the feature title, description, and acceptance criteria for known UI
+    keywords. Used by the real-browser gate (IMP-019) to decide whether
+    ``mcp__browser__*`` verification is required and, when the bridge is
+    unavailable, whether to emit a ``browser_evidence_tier: unavailable``
+    warning instead of silently accepting jsdom-only proof.
+    """
+    text_parts: list[str] = []
+    if feature is not None:
+        text_parts.append(str(getattr(feature, "title", "") or ""))
+        text_parts.append(str(getattr(feature, "description", "") or ""))
+        criteria = getattr(feature, "acceptance_criteria", None) or []
+        if isinstance(criteria, list):
+            text_parts.extend(str(c) for c in criteria)
+    # Also check task title/description when available.
+    text_parts.append(str(getattr(task, "title", "") or ""))
+    text_parts.append(str(getattr(task, "description", "") or ""))
+    combined = " ".join(text_parts).lower()
+    return any(kw in combined for kw in _UI_KEYWORDS)
 
 
 def is_sprint_feature_verification_task(task: Any) -> bool:
@@ -69,18 +104,29 @@ def feature_verifier_failure(output_text: str) -> str | None:
     return f"feature_acceptance_failed: verifier_status={status}: {detail}"
 
 
-def browser_evidence_tier(output_text: str, *, bridge_available: bool) -> dict[str, Any]:
+def browser_evidence_tier(
+    output_text: str, *, bridge_available: bool, is_ui: bool = False
+) -> dict[str, Any]:
     """Classify the real-browser-proof tier of a feature-verifier result (IMP-019).
 
     Non-blocking advisory — real-browser proof (`mcp__browser__*` screenshots /
     URLs in the verifier's ``browser_evidence``) is the strongest acceptance
     tier; jsdom/command proof is accepted when the browser bridge is
-    unavailable. Returns ``{"tier": ..., "advisory": str | None}``:
+    unavailable. Returns ``{"tier": ..., "advisory": str | None,
+    "browser_evidence_tier": str}``:
     - ``real_browser`` — verifier produced live browser evidence.
     - ``jsdom_fallback`` — no browser evidence and the bridge was unavailable
-      (acceptable weaker tier).
+      for a non-UI task (acceptable weaker tier).
+    - ``unavailable`` — task IS user-facing (UI/dashboard/frontend) but the
+      browser bridge was unavailable; a warning is emitted so the gap is
+      visible without blocking CI.
     - ``no_browser_proof`` — the bridge WAS available but the verifier produced
       no browser evidence (the gap IMP-019 targets; advisory set).
+    - ``na`` — task is not user-facing; real-browser proof is not required.
+
+    The ``browser_evidence_tier`` key is a copy of ``tier`` included for
+    queryable structured evidence (readable by ``builder logs analyze`` without
+    re-parsing raw transcripts).
 
     This is intentionally not a hard gate: blocking ships on browser proof must
     not break headless/CI environments where the bridge cannot launch.
@@ -91,23 +137,38 @@ def browser_evidence_tier(output_text: str, *, bridge_available: bool) -> dict[s
         str(item).strip() for item in evidence
     )
     if has_browser_evidence:
-        return {"tier": "real_browser", "advisory": None}
-    if not bridge_available:
-        return {
+        result: dict[str, Any] = {"tier": "real_browser", "advisory": None}
+    elif not bridge_available and is_ui:
+        result = {
+            "tier": "unavailable",
+            "advisory": (
+                "Task is user-facing (UI/dashboard/frontend) but the browser bridge was "
+                "unavailable; real-browser proof could not be collected. Acceptance is "
+                "jsdom/command-tier only — re-run with the Hermes Chrome bridge active "
+                "to obtain real-browser evidence."
+            ),
+        }
+    elif not bridge_available:
+        result = {
             "tier": "jsdom_fallback",
             "advisory": (
                 "Feature accepted without real-browser proof — the browser bridge was "
                 "unavailable; this is jsdom/command-tier evidence."
             ),
         }
-    return {
-        "tier": "no_browser_proof",
-        "advisory": (
-            "Browser bridge was available but the verifier produced no real-browser "
-            "evidence; acceptance is jsdom/command-tier only. Prefer mcp__browser__* "
-            "proof for user-facing web features."
-        ),
-    }
+    else:
+        result = {
+            "tier": "no_browser_proof",
+            "advisory": (
+                "Browser bridge was available but the verifier produced no real-browser "
+                "evidence; acceptance is jsdom/command-tier only. Prefer mcp__browser__* "
+                "proof for user-facing web features."
+            ),
+        }
+    # Duplicate tier into the queryable field so callers can read it without
+    # re-parsing raw output text (IMP-019 evidence-tier requirement).
+    result["browser_evidence_tier"] = result["tier"]
+    return result
 
 
 def is_advisory_verifier_failure(line: str) -> bool:

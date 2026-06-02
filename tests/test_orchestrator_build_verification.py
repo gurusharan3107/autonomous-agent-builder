@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 from autonomous_agent_builder.orchestrator.build_verification import (
+    browser_evidence_tier,
     build_verifier_failure,
     feature_verifier_failure,
     is_sprint_feature_verification_task,
+    is_ui_task,
     sprint_branch_name,
     task_sprint_execution_payload,
     use_deterministic_build_verifier,
@@ -109,3 +112,67 @@ def test_feature_acceptance_output_includes_command_criteria_and_files() -> None
             "Matched test files: tests/persistence.spec.ts",
         ]
     )
+
+
+# ── IMP-019: is_ui_task and browser_evidence_tier queryable field ──────────
+
+
+def test_is_ui_task_detects_ui_keywords_in_feature_title() -> None:
+    task = SimpleNamespace(title="", description="")
+    feature = SimpleNamespace(
+        title="Add dashboard button",
+        description="",
+        acceptance_criteria=[],
+    )
+    assert is_ui_task(task, feature) is True
+
+
+def test_is_ui_task_detects_ui_keywords_in_acceptance_criteria() -> None:
+    task = SimpleNamespace(title="", description="")
+    feature = SimpleNamespace(
+        title="User registration",
+        description="",
+        acceptance_criteria=["The form should display validation errors"],
+    )
+    assert is_ui_task(task, feature) is True
+
+
+def test_is_ui_task_returns_false_for_non_ui_task() -> None:
+    task = SimpleNamespace(title="", description="")
+    feature = SimpleNamespace(
+        title="Batch export API endpoint",
+        description="Expose a REST endpoint that returns JSON",
+        acceptance_criteria=["Returns 200 with expected JSON payload"],
+    )
+    assert is_ui_task(task, feature) is False
+
+
+def test_is_ui_task_checks_task_fields_without_feature() -> None:
+    task = SimpleNamespace(title="Fix CSS layout bug", description="")
+    assert is_ui_task(task) is True
+
+
+def test_browser_evidence_tier_result_includes_queryable_field() -> None:
+    # IMP-019: the returned dict must carry a ``browser_evidence_tier`` key
+    # equal to ``tier`` so callers can read it without re-parsing output_text.
+    output = json.dumps({"status": "pass", "browser_evidence": ["screenshot:/tmp/x.jpeg"]})
+    result = browser_evidence_tier(output, bridge_available=True, is_ui=True)
+    assert result["browser_evidence_tier"] == result["tier"] == "real_browser"
+
+
+def test_browser_evidence_tier_ui_task_bridge_unavailable_emits_unavailable() -> None:
+    # IMP-019 real-browser gate: UI task + bridge down → "unavailable" tier with
+    # a warning advisory, not silent jsdom_fallback.
+    output = json.dumps({"status": "pass", "browser_evidence": []})
+    result = browser_evidence_tier(output, bridge_available=False, is_ui=True)
+    assert result["tier"] == "unavailable"
+    assert result["browser_evidence_tier"] == "unavailable"
+    assert result["advisory"]  # must include warning message
+
+
+def test_browser_evidence_tier_non_ui_task_bridge_unavailable_is_jsdom_fallback() -> None:
+    # Non-UI tasks with no browser evidence + bridge down → jsdom_fallback (no warning needed).
+    output = json.dumps({"status": "pass", "browser_evidence": []})
+    result = browser_evidence_tier(output, bridge_available=False, is_ui=False)
+    assert result["tier"] == "jsdom_fallback"
+    assert result["browser_evidence_tier"] == "jsdom_fallback"

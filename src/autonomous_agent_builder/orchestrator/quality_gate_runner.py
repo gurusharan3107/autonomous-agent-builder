@@ -14,6 +14,7 @@ from autonomous_agent_builder.orchestrator.build_verification import (
     browser_evidence_tier,
     feature_verifier_failure,
     is_sprint_feature_verification_task,
+    is_ui_task,
 )
 
 log = structlog.get_logger(__name__)
@@ -203,10 +204,10 @@ async def run_feature_acceptance_gate(
         return False, verifier_failure
 
     # IMP-019: non-blocking real-browser-proof advisory. ALWAYS log the tier
-    # (real_browser / jsdom_fallback / no_browser_proof) so every feature
-    # acceptance is observable — a silent real_browser pass is otherwise
-    # indistinguishable from the tier never being computed, and the signal is
-    # the prerequisite for promoting real-browser proof to a hard gate.
+    # (real_browser / jsdom_fallback / no_browser_proof / unavailable / na) so
+    # every feature acceptance is observable — a silent real_browser pass is
+    # otherwise indistinguishable from the tier never being computed, and the
+    # signal is the prerequisite for promoting real-browser proof to a hard gate.
     # ``advisory`` is None for the real_browser tier; it surfaces the gap when a
     # feature was accepted without live browser evidence despite the bridge
     # being available, without blocking headless/CI ships.
@@ -215,14 +216,42 @@ async def run_feature_acceptance_gate(
         browser_close,
     )
 
+    ui_task = is_ui_task(task, feature)
     evidence_tier = browser_evidence_tier(
-        result.output_text, bridge_available=bridge_available()
+        result.output_text, bridge_available=bridge_available(), is_ui=ui_task
     )
     log.info(
         "feature_acceptance_browser_evidence_tier",
         tier=evidence_tier["tier"],
         advisory=evidence_tier["advisory"],
         task_id=getattr(task, "id", None),
+        is_ui=ui_task,
+    )
+    # IMP-019: persist the evidence tier as a queryable GateResultModel so
+    # ``builder logs analyze`` can read it without re-parsing raw transcripts.
+    tier_status = (
+        GateStatus.WARN
+        if evidence_tier["tier"] in {"no_browser_proof", "unavailable", "jsdom_fallback"}
+        else GateStatus.PASS
+    )
+    orchestrator.db.add(
+        GateResultModel(
+            task_id=getattr(task, "id", None),
+            gate_name="feature_acceptance_browser_evidence_tier",
+            status=tier_status.value,
+            evidence={
+                "browser_evidence_tier": evidence_tier["browser_evidence_tier"],
+                "tier": evidence_tier["tier"],
+                "advisory": evidence_tier["advisory"],
+                "is_ui_task": ui_task,
+            },
+            findings_count=0,
+            elapsed_ms=0,
+            error_code=None,
+            timeout=False,
+            remediation_attempted=False,
+            remediation_succeeded=False,
+        )
     )
     # IMP-019: tear down the dedicated verification tab the in-process browser
     # tools opened, so a run leaves no orphan tabs in the operator's browser
