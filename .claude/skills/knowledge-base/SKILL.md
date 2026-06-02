@@ -249,6 +249,8 @@ Same as REFRESH but skips the delta-gate. Every feature on the surface-urls map 
 
 User asks "what do we know about X?" or "is there a KB article on Y?":
 
+> **Discovery vs. retrieval — route correctly.** For *discovery* (finding which article is relevant) use `workflow knowledge search` — it ranks by BM25 relevance and is tag-aware. Do **not** `grep`/`ls` over `~/.claude/knowledge/raw/`: substring-only, unranked, misses synonyms, and reading many raw files blows context. For *retrieval* of a known article, `read <slug>` / `summary <slug>` beat a direct file `Read` (token caps + compact output). Direct file reads are acceptable only when you already hold the exact slug and need the full body. The article slug **is** the `raw/<slug>.md` basename, so the index tempts a direct read — resist it for discovery.
+
 ### S1 — Smart query
 
 ```bash

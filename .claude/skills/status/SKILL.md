@@ -4,14 +4,19 @@ description: >
   Owns docs/goal/ governance + the operator overview page. CONSULT THIS SKILL
   BEFORE editing ROADMAP.md or STATUS.md — it defines the maintenance contract
   (where pending vs completed items live, compactness budgets, what is necessary,
-  how it synthesizes into goal-overview.html). Four lanes: contract (read the
+  how it synthesizes into goal-overview.html). Six lanes: contract (read the
   rules before editing), lint (check ROADMAP/STATUS obey them + HTML is in sync),
   update (deterministically regenerate the overview's live numbers + priorities),
-  open (launch the page). Triggers: "/status open|update|lint", "update the goal
-  overview", "refresh goal-overview", "before I edit the ROADMAP/STATUS", "lint
-  the goal docs", "how should I update the roadmap". NOT for project quality
-  audits (/audit).
-allowed-tools: Bash
+  open (launch the page), build (autonomous build loop — work through ROADMAP
+  items in order, build each, mark [x], commit, /status update, repeat until done
+  or dashboard-gated), test (for each closed [x] item with a pending T: token, run
+  the appropriate test, upgrade the token to passed/na, commit, then /status update).
+  Triggers: "/status open|update|lint|build|test", "update the goal overview",
+  "refresh goal-overview", "before I edit the ROADMAP/STATUS", "lint the goal
+  docs", "how should I update the roadmap", "start building", "work through the
+  roadmap", "build the next item", "run tests", "test the built items", "mark
+  backend tests", "check what needs testing". NOT for project quality audits (/audit).
+allowed-tools: Bash, Read, Edit, Write, Agent
 ---
 
 # status — govern docs/goal/ + the operator overview
@@ -137,6 +142,214 @@ fi
 Report the path. **On WSL2 `xdg-open` silently fails** — route through the Windows host
 (`explorer.exe` + `wslpath -w`; rc=1 is success). If no opener works, give the path.
 
+### Lane: build
+
+Autonomous build loop. Runs without user intervention; pauses only when the next
+item is dashboard-gated (needs live builder dashboard / browser session / external
+service login) or on error.
+
+**Capability levers used:**
+- **Subagents** — each item's build work is delegated to a context-isolated subagent
+  so the coordinator loop stays lean across many items.
+- **TaskCreate/TaskUpdate** — in-session tracking per item; survives compaction.
+- **PushNotification** — alerts when the loop completes or stalls.
+- **No hooks** — this runs in a managed harness where hooks are unavailable.
+
+**Algorithm** (loop until exit condition holds):
+
+```bash
+# 1. Find next item
+item=$(python3 .claude/skills/status/scripts/next_build_item.py [M<x.y>])
+# exit 1 = no more items → loop complete
+```
+
+For each item returned:
+
+1. **Gate: Linux-ok?**
+   - `dashboard_gated=true` → print blocker reason, send PushNotification, **stop**.
+   - `dashboard_gated=false` → proceed.
+
+2. **TaskCreate** — `{title: item.id, status: "in_progress"}`. Prevents re-doing
+   on compaction.
+
+3. **Route to domain skill** — before dispatching, identify the right skill for this item:
+
+   | Item keyword | Skill to preload in subagent |
+   |---|---|
+   | Browser / UI / dashboard / widget / overlay | `hermes-chrome` or `hermes-chrome-bridge` |
+   | Builder / orchestrator / backlog / board / sprint | `builder-test` |
+   | Self-optimization / prompt tuning / token budget | `self-optimize` |
+   | Autoresearch / baseline / iterate / fix lane | `autoresearch` |
+   | Architecture / quality gate / boundary | reference `CLAUDE.md` quality gates |
+   | Agent SDK / Claude runtime / session / hooks | `claude-api` skill or Claude SDK rubric |
+
+   The subagent's **first action** is to invoke that skill via the Skill tool. The skill carries
+   proven patterns, API shapes, and architecture invariants — the subagent must not re-derive them
+   from scratch.
+
+4. **Dispatch subagent** (context-isolated):
+   - Prompt: item id + acceptance clause + the domain skill name to invoke first (from routing table above).
+   - The subagent: (1) invokes the domain skill, (2) reads relevant existing source files, (3) writes/extends Python files, scripts, or docs using the skill's guidance.
+   - Returns: `{success: bool, files_changed: [...], evidence: str, note: str}`.
+
+5. **On subagent success — update ROADMAP, regenerate overview, then commit (in this order):**
+   ```bash
+   # a. Mark item [x] in ROADMAP.md
+   python3 .claude/skills/status/scripts/close_build_item.py \
+     --raw-line "<item.raw_line>" \
+     --evidence "<evidence>" \
+     --note "<note>"
+
+   # b. Update STATUS.md Current Item In Flight (inline edit)
+
+   # c. /status update — regenerate goal-overview.html BEFORE committing
+   python3 .claude/skills/status/scripts/build_goal_overview.py
+   # Surface any non-zero exit and stop — do not commit a stale overview.
+
+   # d. Lint (non-blocking on WARN; ERROR blocks commit)
+   python3 .claude/skills/status/scripts/lint_goal_docs.py
+
+   # e. Commit: ROADMAP.md + STATUS.md + goal-overview.html + all source files together
+   git add ROADMAP.md STATUS.md docs/goal/goal-overview.html <changed files>
+   git commit -m "build(M<x.y>): <item.id> — <note>
+
+   <evidence>
+
+   Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+   ```
+   **Order is mandatory:** ROADMAP updated → overview regenerated → commit.
+   The commit always contains both the ROADMAP change and the up-to-date HTML.
+
+6. **TaskUpdate** — mark `completed`.
+
+7. **Loop** — go back to step 1.
+
+**Exit conditions:**
+- `next_build_item.py` exits 1 → all items done → send PushNotification
+  "Build loop complete: all items in M<x.y> closed. Overview current."
+- `dashboard_gated=true` → send PushNotification "Build loop paused — next item needs
+  live dashboard: <reason>. Resume after setup."
+- Subagent returns `success=false` → log the failure, send PushNotification, stop.
+  Do not commit partial work.
+
+**Resumability:** Because each item is committed before moving to the next, a
+re-run of `/status build` after an interruption automatically skips already-closed
+items (they are `[x]` in ROADMAP and `next_build_item.py` returns only `[ ]` lines).
+
+**Subagent prompt template:**
+
+```
+You are building one autonomous-agent-builder roadmap item.
+
+STEP 1 — invoke the domain skill first (Skill tool):
+  <skill-name from routing table>
+The skill carries proven patterns, API shapes, and architecture invariants for this
+domain. Do not re-derive them — use what the skill loads.
+
+STEP 2 — read existing src/ files before writing anything new.
+  Reuse over reinvent. The existing module interfaces are authoritative.
+
+STEP 3 — build the item:
+ITEM: <item.body>
+MILESTONE: <item.milestone>  PRIORITY: <item.priority>
+ACCEPTANCE: <item.body's "done looks like" clause>
+PLATFORM: Linux/WSL2.
+
+STEP 4 — if architecture compliance is uncertain, check CLAUDE.md quality gates
+  before finishing. They catch drift against this repo's invariants.
+
+Return ONLY this JSON when done:
+{"success": true/false, "files_changed": [...],
+ "evidence": "<file or short description>", "note": "<one-line outcome>"}
+```
+
+### Lane: test
+
+Run tests for all closed `[x]` items that still have `T:backend:pending` or
+`T:browser:pending` tokens. Upgrades tokens to bare (passed) or leaves `:pending`
+with a failure note. Always runs `/status update` at the end.
+
+**Capability levers:**
+- **Sequential per-item loop** — test → update token → `/status update` → commit → next. One commit per item so progress is always visible in the overview and history is granular.
+- **Subagent per test** (context isolation) — the test execution for each item runs in a context-isolated subagent; parent coordinator stays lean across many items.
+- **Monitor tool** — streams test command output live instead of blocking.
+- **TaskCreate per item** — tracks each item independently; survives compaction.
+- **PushNotification** — final summary on loop completion.
+- **No hooks** — managed harness; not available.
+
+**Project-specific reality (autonomous-agent-builder):**
+- `T:browser` = `:na` for backend-only items — pure orchestrator/DB/CLI items have no web UI.
+- `T:backend` = pytest or `builder` CLI on Linux/WSL2. Most items are directly testable.
+- `T:browser:pending` = use `/hermes-chrome` real-browser verification for UI/dashboard items.
+- The test lane classifies, runs what it can directly, and lists dashboard-gated items with clear reasons.
+
+**Algorithm — sequential per-item loop:**
+
+```bash
+# 1. Load all pending-test items once (exit 1 = none → done)
+items=$(python3 .claude/skills/status/scripts/pending_test_items.py [M<x.y>])
+```
+
+For **each item one at a time**:
+
+2. **TaskCreate** — `{title: item.id, status: "in_progress"}`.
+
+3. **Classify** (from item's `linux_backend` field):
+   - `testable` — run `item.backend_cmd` directly (pytest / builder CLI).
+   - `browser_testable` — dispatch hermes-chrome subagent.
+   - `dashboard_gated` — skip execution; result is `pending` with `reason` as note.
+   - `na` — result is `na`; no execution needed.
+
+4. **Run the test** (for `testable`):
+   - Execute `item.backend_cmd` via Bash. Use Monitor tool to stream output live.
+   - Capture exit code: 0 → `passed`; non-zero → `pending` with failure note.
+   - For `browser_testable`: dispatch hermes-chrome subagent; collect pass/fail.
+   - For `dashboard_gated` / `na`: skip to step 5 with pre-determined result.
+
+5. **Update the T: token in ROADMAP.md immediately:**
+   ```bash
+   python3 .claude/skills/status/scripts/update_t_token.py \
+     --raw-line "<item.raw_line>" \
+     --lane backend \
+     --result passed|pending|na \
+     [--note "<failure or dashboard_reason>"]
+   # Also update T:browser if item.browser == "pending":
+   python3 .claude/skills/status/scripts/update_t_token.py \
+     --raw-line "<item.raw_line>" --lane browser --result passed|pending|na
+   ```
+
+6. **`/status update` — regenerate goal-overview.html BEFORE committing:**
+   ```bash
+   python3 .claude/skills/status/scripts/build_goal_overview.py
+   # Non-zero exit → surface error, stop loop.
+   ```
+
+7. **Commit — ROADMAP.md + goal-overview.html together:**
+   ```bash
+   git add docs/goal/ROADMAP.md docs/goal/goal-overview.html
+   git commit -m "test(<milestone>): <item.id> — <result>
+
+   T:backend=<result> | <note or dashboard_reason>
+
+   Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+   ```
+   **Order is mandatory:** token updated → overview regenerated → commit.
+   Both files always travel together in the same commit.
+
+8. **TaskUpdate** — mark `completed`.
+
+9. **Loop** — next item from the list.
+
+**Exit (loop done):** send PushNotification with summary:
+`"Test loop complete: <n> passed, <n> browser-verified, <n> dashboard-gated, <n> na. Overview current."`
+
+**Resumability + idempotency:** `update_t_token.py` no-ops if the token already matches. Re-running `/status test` skips items whose tokens are already upgraded (they won't appear in `pending_test_items.py` output).
+
+**Dashboard-gated items report** (printed per item + in final PushNotification):
+```
+DASHBOARD-GATED — <item.id>: <reason>. Verify via live builder dashboard.
+```
+
 ## Hard rules
 
 1. **Consult the Maintenance Contract before editing ROADMAP/STATUS; `/status lint`
@@ -163,7 +376,13 @@ Report the path. **On WSL2 `xdg-open` silently fails** — route through the Win
 3. **Update lane**: confirm the generator exited 0 + report the change summary (or "no
    change"); re-run `--check` to prove idempotency if you patched.
 4. **Open lane**: confirm the launch command was issued + report the path.
-5. **Staleness scan** (when editing this skill): verify
+5. **Build lane**: after each item — confirm commit hash + item closed in ROADMAP +
+   `/status update` ran. On loop exit — report total built, dashboard-gated skipped (with
+   reasons), PushNotification sent.
+6. **Test lane**: for each item — confirm token updated + `/status update` ran + commit
+   hash (ROADMAP + goal-overview in same commit). Final: counts passed / browser-verified /
+   dashboard-gated / na, PushNotification sent.
+7. **Staleness scan** (when editing this skill): verify
    `scripts/build_goal_overview.py` + `scripts/lint_goal_docs.py` + `scripts/mine_sessions.py`
    exist and the six `<!-- gen:* -->` markers (`snapshot_date`, `epoch`, `milestone`,
    `roadmap_totals`, `priorities`, `tasks`) + the `#artifact-data` block still exist in
@@ -183,3 +402,9 @@ Report the path. **On WSL2 `xdg-open` silently fails** — route through the Win
   exclude quoted error strings (`'test_p'`) and jsdom e2e (≠ real-browser).
 - Source of truth: `docs/goal/ROADMAP.md`, `docs/goal/STATUS.md`.
 - Artifact: `docs/goal/goal-overview.html` (hand-authored prose + generated regions).
+- Build loop helpers (create before using `/status build`):
+  - [`scripts/next_build_item.py`](scripts/next_build_item.py) — find + classify next `[ ]` item; exit 1 = none left.
+  - [`scripts/close_build_item.py`](scripts/close_build_item.py) — mark item `[x]` with evidence pointer.
+- Test loop helpers (create before using `/status test`):
+  - [`scripts/pending_test_items.py`](scripts/pending_test_items.py) — find `[x]` items with `:pending` T: tokens; classifies testability + emits `backend_cmd`.
+  - [`scripts/update_t_token.py`](scripts/update_t_token.py) — idempotent T:lane token upgrade (pending→passed/na); safe to re-run.

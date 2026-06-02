@@ -135,9 +135,11 @@
   }
 
   function messageLabel(message) {
+    // Agent reply carries the marker status (done/blocked/…). A user message is
+    // just "You" — it never processes anything, so don't stamp a processing
+    // status onto the operator's own line.
     if (message.role === "agent") return message.status ? `Agent · ${message.status}` : "Agent";
-    if (message.status === "done") return "You · processed";
-    return message.status ? `You · ${message.status}` : "You";
+    return "You";
   }
 
   function canDeleteMessage(message) {
@@ -633,6 +635,7 @@
     if (!comment) return;
     normalizeThread(comment);
     popoverInput.value = "";
+    syncSendDisabled();
     renderThread(comment);
     renderUiPanel(comment);
     placePopover(comment);
@@ -733,10 +736,16 @@
   threadDelete.addEventListener("click", () => {
     if (activeId) deleteThread(activeId);
   });
+  // Disable Send when there's nothing to send — clearer than a clickable button
+  // that no-ops with a "write a message first" toast.
+  function syncSendDisabled() {
+    popoverSave.disabled = !popoverInput.value.trim();
+  }
+  popoverInput.addEventListener("input", syncSendDisabled);
   popoverInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      popoverSave.click();
+      if (!popoverSave.disabled) popoverSave.click();
     }
   });
 
@@ -816,6 +825,7 @@
     persist();
     render();
     popoverInput.value = "";
+    syncSendDisabled();
     renderThread(comment);
     const sent = await sendThreads([comment]);
     if (sent) {

@@ -20,6 +20,17 @@ Loaded when the operator picks Refine or types "refine / improve / fix / shrink 
 | "Hard Rules are vague" | Sharpen rules → make domain-specific, add "why" |
 | "No evals / evals outdated" | Add/update evals/evals.json |
 
+### Triage each finding before fixing
+
+Disconfirming — "how could this still be wrong / recur / be the wrong surface":
+1. **Observed or latent?** → priority; don't over-fix a reasoned-only risk.
+2. **Could a correct-operating agent still hit it?** **YES → fix code/script; NO → fix how-to doc.** Often both.
+3. **This instance, or the class?** → fix the structure, not the symptom.
+4. **Owner file?** code→`scripts/` · how-to→`operate.md` · conventions→`best-practices.md` · change/troubleshoot→`agent-handbook.md` · optimize→`optimize.md`. Fix on owner; cross-link, don't duplicate.
+5. **Enforceable (eval/assertion/gate) over drifting prose?**
+
+Don't manufacture changes — intentional or not-real → leave it.
+
 4. Write `scope.md` in `outputs/<skill-name>-refine/` with the specific
    changes needed (one CP per change):
 

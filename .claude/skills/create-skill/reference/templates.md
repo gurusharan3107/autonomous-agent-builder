@@ -30,7 +30,7 @@ Copy and fill placeholders — do not start from a blank file.
 | File | Concern it owns | Include it **only when** |
 |---|---|---|
 | `operate.md` | how to **run** the procedure (helpers, action levels, compound patterns) | there's a non-trivial run procedure |
-| `optimize.md` | how to **debug / recover** from runtime failure | **the skill operates a runtime that can break** (a server, socket, bridge, external process) |
+| `optimize.md` | how to **debug / recover** from runtime failure **+ the optimize step** (model-judged self-introspection at closeout: what to do, what to ask) | the skill operates a runtime that can break, **or** has a closeout where a per-session optimize/triage adds value |
 | `agent-handbook.md` | how to **modify the skill / its source** | the skill is non-trivial to edit (plugin source, multi-file) |
 | `best-practices.md` | the **rubric / scoring / conventions** | the skill grades, scores, or has house defaults worth stating |
 
@@ -42,6 +42,8 @@ Copy and fill placeholders — do not start from a blank file.
 - **Trivial prose skill** → just `SKILL.md`; no reference files.
 
 **Rule: the tell for `optimize.md` is "is there a runtime that fails?" Never scaffold an empty quartet file** — a stub `optimize.md` on a judgment skill is exactly the dead mass an audit should flag. Adopt a name when its concern is real; omit it otherwise.
+
+**Optimize step (skills with a closeout).** `optimize.md` can also own a **model-judged self-introspection**: closeout emits evidence (`verdict` + signals); the model judges. **Clean → change nothing; never forced.** When warranted, triage via the [refine.md](refine.md) questions (single-owned there — point, don't embed). Exemplar: `agent-feedback-artifact`.
 
 ---
 

@@ -74,8 +74,12 @@ create-skill itself does not follow that pattern; it is a simple router.
    ask before writing a single line of skill content.
 3. **scope.md is the oracle.** Write it before any skill file. Every section of
    the output skill maps to a CP in scope.md. Never skip it.
-4. **Body is a router, not a content dump.** Bulk procedure → `reference/`.
-   SKILL.md ≤500 lines, ≤5000 tokens.
+4. **Progressive disclosure + terse refs.** SKILL.md routes (lean step list +
+   per-step "load X when needed" pointers, ≤500 lines/≤5000 tokens); `reference/`
+   owns the detail. **One owner per concern** — cross-link, never duplicate.
+   Write **terse, high-signal**: bullets / tables / decision-rules, fragments over
+   sentences, one idea per line; cut filler and "why" footers. Same meaning, fewer
+   words — long prose in a reference doc is a defect.
 5. **Description activates on operator vocabulary.** Write trigger phrases the
    user would actually type, not internal jargon.
 6. **Closeout is mandatory — and must include staleness mechanics.** Every output
