@@ -13,10 +13,10 @@ Live state. If it lies, system is blind.
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
 | Current Milestone | **M3.5 — Optimization loop activation** (autoresearch Track B) |
-| Current Item In Flight | Fixture A baseline stable (3/5 ships at gate_pass_rate=1.0, μ=216,497, σ=31,831, 2σ-floor=152,835). B–E re-baseline pending on post-pytest-asyncio seed. Per-patch detail: [`docs/autoresearch/PROGRESS.md`](../autoresearch/PROGRESS.md). |
+| Current Item In Flight | **IMP-014 closed** — 7-day retention window; stale tool_errors age out; rec gating scoped to within-window count. `summary_runtime_aggregates.py`. Next: IMP-016. |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-06-01 — Operator-driven closes (feedback-widget lane) on branch `imp-027-…`: **M1.5** chat→`ClaudeSDKClient` + **M2.6** `can_use_tool` phase deny (`d03aff4`), **IMP-017** backlog cancel state/route/CLI/dashboard (`efe81e5`, bundle rebuild pending), **G3 task 1** `PostgresSessionStore` + SDK conformance (`4ad77d4`; tasks 2–4 open, G3 stays `[ ]`). Prior (2026-05-30): IMP-027a/c `851ba75`, IMP-028 `1ebb84b`, IMP-021 `1d1545f`. *(Autoresearch M3.5 remains the tracked in-flight focus.)* |
+| Last Update | 2026-06-02 — IMP-014 closed: 7-day error-trend retention + rec gating (`summary_runtime_aggregates.py`; 2 new tests, 1571 total pass). |
 
 ---
 

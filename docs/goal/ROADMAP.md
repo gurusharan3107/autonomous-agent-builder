@@ -33,7 +33,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [x] **IMP-012** — dispatch session invalid after ~90s. `persist_realtime_run_update` → short-lived `get_session_factory()`. Task 128e02f6 done 11:25. `T:backend` `T:browser:na`
 - [x] **IMP-013** — orphan branch refuses FF merge (unrelated histories). Rebase-before-integrate `workspace_integration.py`. `T:backend` `T:browser:na`
 - [x] Re-verify all closures e2e on devpulse, both lanes (M1.2 prereq). 79/79 regression tests (2026-05-21). `T:backend` `T:browser`
-- [ ] `P1` **IMP-014** — Observability "Runtime Error Trend" fires the dispatch-blocking rec on stale errors that never age out (9 tool_errors from 2026-05-20 still "unresolved" 8d later). Fix error-trend retention/resolution + rec gating. `T:backend:pending` `T:browser:pending`
+- [x] `P1` **IMP-014** — 7-day retention window; stale errors age out; rec gated to within-window count. `summary_runtime_aggregates.py`. `T:backend` `T:browser:na`
 - [x] **IMP-015** — `type=feature` items shown as "improvement". `BacklogPage.tsx itemTypeLabel` + type-aware `save_note`; `test_agent_feature_spec_capture_routes.py`. `T:backend` `T:browser`
 - [ ] `P1` **IMP-016** — chat agent mis-routes builder-improvement asks into the managed-app backlog; no self-improvement lane. Add intent classification "improve app" vs "improve builder". `T:backend:pending` `T:browser:pending`
 - [x] **IMP-017** — terminal `cancelled` state + cancel route/CLI/dashboard control across the stack. `efe81e5`; dashboard "Cancel item" live-verified (item→`cancelled`). `T:backend` `T:browser`

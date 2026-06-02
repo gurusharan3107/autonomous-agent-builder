@@ -452,12 +452,21 @@ def test_observability_recommendations_surface_errors_with_provenance(
 def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
     monkeypatch, tmp_path
 ):
+    from datetime import UTC, datetime, timedelta
+
     monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
     conn = sqlite3.connect(db_path)
     conn.execute("alter table chat_events add column created_at text")
     prompt = "what can you tell me from observability data, what should i fix next?"
+    # Use recent dates (within the 7-day retention window) so resolution tracking applies
+    now = datetime.now(UTC)
+    t_error = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+    t_error_status = (now - timedelta(hours=2, seconds=-30)).strftime("%Y-%m-%d %H:%M:%S")
+    t_user_before = (now - timedelta(hours=2, minutes=1)).strftime("%Y-%m-%d %H:%M:%S")
+    t_user_after = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    t_status_after = (now - timedelta(minutes=59)).strftime("%Y-%m-%d %H:%M:%S")
     conn.execute(
         """
         insert into chat_events
@@ -471,7 +480,7 @@ def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
             "completed",
             "",
             json.dumps({"content": prompt}),
-            "2026-05-13 17:37:39",
+            t_user_before,
         ),
     )
     conn.execute(
@@ -487,7 +496,7 @@ def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
             "completed",
             "",
             json.dumps({"content": "Error: Separator is found, but chunk is longer than limit"}),
-            "2026-05-13 17:38:10",
+            t_error,
         ),
     )
     conn.execute(
@@ -510,7 +519,7 @@ def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
                     "stop_reason": "runtime_error",
                 }
             ),
-            "2026-05-13 17:38:11",
+            t_error_status,
         ),
     )
     conn.execute(
@@ -526,7 +535,7 @@ def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
             "completed",
             "",
             json.dumps({"content": prompt}),
-            "2026-05-14 15:05:00",
+            t_user_after,
         ),
     )
     conn.execute(
@@ -542,7 +551,7 @@ def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
             "completed",
             "",
             json.dumps({"running": False, "runtime_sdk": "codex_sdk", "stop_reason": "end_turn"}),
-            "2026-05-14 15:05:20",
+            t_status_after,
         ),
     )
     conn.commit()
@@ -566,12 +575,23 @@ def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
 def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
     monkeypatch, tmp_path
 ):
+    from datetime import UTC, datetime, timedelta
+
     monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
     conn = sqlite3.connect(db_path)
     conn.execute("alter table chat_events add column created_at text")
     prompt = "what can you tell me from observability data, what should i fix next?"
+    # Use recent dates (within the 7-day retention window) so the error is processed
+    now = datetime.now(UTC)
+    t_user_before = (now - timedelta(hours=2, minutes=1)).strftime("%Y-%m-%d %H:%M:%S")
+    t_error = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+    t_error_status = (now - timedelta(hours=1, minutes=59, seconds=49)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    t_user_after = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    t_status_after = (now - timedelta(minutes=59)).strftime("%Y-%m-%d %H:%M:%S")
     rows = [
         (
             "user-before",
@@ -580,7 +600,7 @@ def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
             "completed",
             "",
             json.dumps({"content": prompt}),
-            "2026-05-13 17:37:39",
+            t_user_before,
         ),
         (
             "error-before",
@@ -589,7 +609,7 @@ def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
             "completed",
             "",
             json.dumps({"content": "Error: Separator is found, but chunk is longer than limit"}),
-            "2026-05-13 17:38:10",
+            t_error,
         ),
         (
             "failed-status",
@@ -605,7 +625,7 @@ def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
                     "stop_reason": "runtime_error",
                 }
             ),
-            "2026-05-13 17:38:11",
+            t_error_status,
         ),
         (
             "user-after",
@@ -614,7 +634,7 @@ def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
             "completed",
             "",
             json.dumps({"content": prompt}),
-            "2026-05-14 15:05:00",
+            t_user_after,
         ),
         (
             "status-after",
@@ -623,7 +643,7 @@ def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
             "completed",
             "",
             json.dumps({"running": False, "runtime_sdk": "claude", "stop_reason": "end_turn"}),
-            "2026-05-14 15:05:20",
+            t_status_after,
         ),
     ]
     conn.executemany(
@@ -642,6 +662,92 @@ def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
 
     assert payload["runtime_aggregates"]["error_summary"]["resolved_count"] == 0
     assert payload["runtime_aggregates"]["error_summary"]["active_count"] == 1
+    assert "runtime_error_trend" in codes
+
+
+def test_stale_errors_older_than_retention_window_do_not_trigger_dispatch_blocking_rec(
+    monkeypatch, tmp_path
+):
+    """Errors older than 7 days must NOT cause runtime_error_trend (IMP-014)."""
+    monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
+    db_path = tmp_path / "agent_builder.db"
+    _init_db(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("alter table chat_events add column created_at text")
+    # Insert 9 tool_errors all dated more than 7 days ago (simulating 2026-05-20 errors
+    # still visible on 2026-06-02 — 13 days stale).
+    stale_date = "2026-05-20 10:00:00"
+    for i in range(9):
+        conn.execute(
+            """
+            insert into chat_events
+                (id, session_id, event_type, status, content, payload_json, created_at)
+            values (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                f"stale-err-{i}",
+                f"stale-session-{i}",
+                "tool_error",
+                "error",
+                "",
+                json.dumps({"error_message": f"Tool failure {i}"}),
+                stale_date,
+            ),
+        )
+    conn.commit()
+    conn.close()
+
+    payload = dashboard_observability_summary(db_path)
+    codes = {item["code"] for item in payload["deterministic_recommendations"]}
+
+    # total_count still reflects all historical errors
+    assert payload["runtime_aggregates"]["error_summary"]["total_count"] == 9
+    # active_count must be 0 because all errors are outside the retention window
+    assert payload["runtime_aggregates"]["error_summary"]["active_count"] == 0
+    # The dispatch-blocking recommendation must NOT fire
+    assert "runtime_error_trend" not in codes
+
+
+def test_recent_errors_within_retention_window_do_trigger_dispatch_blocking_rec(
+    monkeypatch, tmp_path
+):
+    """Errors within the 7-day window MUST still trigger runtime_error_trend (IMP-014)."""
+    from datetime import timedelta
+
+    monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
+    db_path = tmp_path / "agent_builder.db"
+    _init_db(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("alter table chat_events add column created_at text")
+    # Insert a tool_error dated 1 day ago (well within the 7-day window)
+    from datetime import UTC, datetime
+
+    recent_date = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute(
+        """
+        insert into chat_events
+            (id, session_id, event_type, status, content, payload_json, created_at)
+        values (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "recent-err-1",
+            "recent-session-1",
+            "tool_error",
+            "error",
+            "",
+            json.dumps({"error_message": "Recent tool failure"}),
+            recent_date,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    payload = dashboard_observability_summary(db_path)
+    codes = {item["code"] for item in payload["deterministic_recommendations"]}
+
+    assert payload["runtime_aggregates"]["error_summary"]["total_count"] == 1
+    assert payload["runtime_aggregates"]["error_summary"]["active_count"] == 1
+    # The dispatch-blocking recommendation MUST fire for recent errors
     assert "runtime_error_trend" in codes
 
 

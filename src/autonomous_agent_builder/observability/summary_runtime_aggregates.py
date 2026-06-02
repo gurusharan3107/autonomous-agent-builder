@@ -382,6 +382,9 @@ def _provider_limit_summary(conn: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
+_ERROR_RETENTION_DAYS = 7
+
+
 def _error_summary(conn: sqlite3.Connection) -> dict[str, Any]:
     if not _table_exists(conn, "chat_events"):
         return {
@@ -406,20 +409,36 @@ def _error_summary(conn: sqlite3.Connection) -> dict[str, Any]:
         _column_or_default(columns, "payload_json", "''", "payload_json"),
         _column_or_default(columns, "created_at", "''", "created_at"),
     ]
-    where = """
+    error_types_where = """
             event_type in ('tool_error', 'run_error')
                or (event_type = 'voice_tool_output' and status = 'failed')
             """
     total_count = int(
-        conn.execute(f"select count(*) from chat_events where {where}").fetchone()[0] or 0
+        conn.execute(
+            f"select count(*) from chat_events where {error_types_where}"
+        ).fetchone()[0]
+        or 0
     )
+    # Retention window: only rows within the last N days contribute to active_count
+    # and are surfaced in recommendations. Rows outside this window are aged out.
+    has_created_at = "created_at" in columns
+    if has_created_at:
+        retention_cutoff = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+        # SQLite datetime arithmetic: subtract retention days
+        window_where = (
+            f"({error_types_where})"
+            f" and (created_at is null or created_at = ''"
+            f" or created_at >= datetime('{retention_cutoff}', '-{_ERROR_RETENTION_DAYS} days'))"
+        )
+    else:
+        window_where = error_types_where
     rows = [
         _row_dict(row)
         for row in conn.execute(
             f"""
             select {", ".join(select)}
             from chat_events
-            where {where}
+            where {window_where}
             order by created_at desc
             limit 250
             """
@@ -428,6 +447,7 @@ def _error_summary(conn: sqlite3.Connection) -> dict[str, Any]:
     recent: list[dict[str, Any]] = []
     active_recent: list[dict[str, Any]] = []
     resolved_count = 0
+    within_window_count = len(rows)
     for row in rows:
         payload = _maybe_json_dict(row.get("payload_json"))
         message = (
@@ -446,11 +466,12 @@ def _error_summary(conn: sqlite3.Connection) -> dict[str, Any]:
         }
         if _error_row_has_later_success(conn, row):
             resolved_count += 1
-            item["resolved"] = True
+            item["resolved"] = "true"
         else:
             active_recent.append(item)
         recent.append(item)
-    active_count = max(total_count - resolved_count, 0)
+    # active_count is bounded to within-window errors only so stale errors age out
+    active_count = max(within_window_count - resolved_count, 0)
     return {
         "available": True,
         "count": total_count,
