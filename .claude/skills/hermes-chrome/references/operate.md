@@ -94,15 +94,16 @@ grouped under a named blue tab group in Chrome's tab strip — separate groups p
 so concurrent runs don't mix tabs.
 
 ```python
-# Use a stable identifier — task ID, feature name, or session label
-r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":False,"actions":[
-    {"type":"goto","url":"http://localhost:9876"},
+# Preflight showed active tab is already on localhost:9876 — reuse it, no new tab
+r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":True,"actions":[
+    {"type":"goto","url":"http://localhost:9876/board"},
     {"type":"wait_for_selector","selector":"h1","timeout":5000},
     {"type":"page_context"},
 ]})
 ```
 
-- All subsequent bridge calls in the same session should carry the same `sessionName`.
+- **`useSelectedTab: True` is the default for every call.** Only use `False` on the first call of a session when the active tab is blocked — see Blocked URL Recovery below.
+- All bridge calls in the same session carry the same `sessionName`.
 - Omitting `sessionName` defaults to `"Hermes Chrome"` — all tabs land in one group.
 - The group persists after tab close; Chrome collapses it automatically when empty.
 
@@ -189,7 +190,7 @@ r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":False,"actions
 | Retrying on failed selector without fresh `snapshot` | Selector may be stale after DOM change | Get a fresh `snapshot`, re-identify element |
 | Calling `bridge()` in a retry loop | Masks the root cause; accumulates noise | One retry after inline recovery; then Optimize |
 | Acting on blocked tab (`chrome://`, `file://`, `about:*`) | Extension cannot inject — action silently fails | Navigate to an `https://` page first |
-| Opening new `goto` tab instead of reusing `useSelectedTab` | Creates orphaned tabs, changes what operator sees | Always `useSelectedTab: True`; use `goto` to navigate the existing tab |
+| `useSelectedTab: False` on every call | Each call opens a new tab + new group — operator drowns in duplicate tabs | `useSelectedTab: False` only on the FIRST call when active tab is blocked; every subsequent call must use `True` |
 | Reading cookies, passwords, or local storage via `evaluate` | Security boundary — page content is untrusted | Never. If auth state is needed, derive from visible page elements |
 
 ---
@@ -273,18 +274,26 @@ r = bridge({"type":"run","useSelectedTab":True,"actions":[
 ## Blocked URL recovery
 
 Extension cannot inject into `chrome://`, `about:*`, `file://`, or extension pages.
-Preflight warns when the active tab is blocked. Use `useSelectedTab: False` to open a
-fresh tab — `useSelectedTab: True` will fail before `goto` runs because `currentTab()`
-rejects the blocked URL before any action executes.
+Preflight warns when the active tab is blocked. Use `useSelectedTab: False` **on the
+first call only** to open a fresh tab — then switch to `useSelectedTab: True` for every
+subsequent call in the session.
 
 ```python
 # Wrong: useSelectedTab:True rejects chrome:// before goto runs
 # r = bridge({"type":"run","useSelectedTab":True,"actions":[{"type":"goto",...}]})  ❌
 
-# Correct: open a new tab, navigate, proceed
+# Wrong: useSelectedTab:False on every call — opens a new tab + group each time
+# r = bridge({"type":"run","useSelectedTab":False,"actions":[...]})  ❌ (repeated)
+
+# Correct: False on first call only to escape the blocked tab, True for all subsequent
 r = bridge({"type":"run","sessionName":"my-task","useSelectedTab":False,"actions":[
     {"type":"goto","url":"http://localhost:9876"},
     {"type":"wait_for_selector","selector":"h1","timeout":5000},
+    {"type":"page_context"}
+]})
+# All further calls in this session:
+r = bridge({"type":"run","sessionName":"my-task","useSelectedTab":True,"actions":[
+    {"type":"goto","url":"http://localhost:9876/board"},
     {"type":"page_context"}
 ]})
 ```
