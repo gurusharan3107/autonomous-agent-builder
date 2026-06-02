@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, X } from "lucide-react";
 import { Button, SectionLabel } from "@/design-system";
-import type { TaskBoardItem } from "@/lib/types";
+import type { TaskAgentRunSummary, TaskBoardItem } from "@/lib/types";
 import {
   compactClientText,
+  formatDuration,
   isPhaseLevelRun,
   latestRun,
   stringValue,
@@ -33,6 +34,7 @@ function TaskDetailContent({
   const dependencies = task.dependencies ?? [];
   const agentRuns = task.agent_runs ?? [];
   const taskRuns = agentRuns.filter((run) => !isPhaseLevelRun(run));
+  const phaseRuns = agentRuns.filter((run) => isPhaseLevelRun(run));
   const traceRun = [...taskRuns].reverse().find((run) => run.status === "running") ?? latestRun(taskRuns);
   const traceSessionId = traceRun ? stringValue(traceRun.session_id) : "";
   const traceHref = traceRun
@@ -95,6 +97,17 @@ function TaskDetailContent({
             </p>
           )}
 
+          {phaseRuns.length > 0 ? (
+            <section>
+              <SectionLabel>Phase runs</SectionLabel>
+              <ul className="mt-3 space-y-2">
+                {phaseRuns.map((run) => (
+                  <PhaseRunRow key={run.id} task={task} run={run} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           <section>
             <SectionLabel>Sprint handoff</SectionLabel>
             <div className="mt-3 rounded-xl border border-border/65 px-3">
@@ -153,5 +166,37 @@ function TaskDetailContent({
         </div>
       </aside>
     </div>
+  );
+}
+
+function PhaseRunRow({ task, run }: { task: TaskBoardItem; run: TaskAgentRunSummary }) {
+  const sessionId = stringValue(run.session_id);
+  const href = `/?mode=trace&task=${encodeURIComponent(task.id)}&run=${encodeURIComponent(run.id)}${
+    sessionId ? `&session=${encodeURIComponent(sessionId)}` : ""
+  }`;
+  const duration = run.status === "running" ? "running" : formatDuration(run.duration_ms);
+  const startedAt = run.started_at ? new Date(run.started_at).toLocaleTimeString() : "";
+  return (
+    <li>
+      <Link
+        to={href}
+        className="flex items-center justify-between gap-3 rounded-xl border border-border/65 px-3 py-2.5 text-[12px] transition-colors hover:bg-muted/40"
+      >
+        <div className="min-w-0 space-y-0.5">
+          <span className="block truncate font-mono font-medium text-foreground">
+            {run.agent_name}
+          </span>
+          <span className="block font-mono text-[11px] text-muted-foreground">
+            {startedAt ? `${startedAt} · ` : ""}{duration}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
+            {run.status}
+          </span>
+          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+      </Link>
+    </li>
   );
 }

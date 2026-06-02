@@ -41,7 +41,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [x] `P0` **IMP-019** — `is_ui_task()` gate + `browser_evidence_tier` queryable field; `GateResultModel` persists tier. `build_verification.py`. `T:backend` `T:browser:na`
 - [x] **IMP-020** — chat `default` showed approval cards for app edits. Fix: chat never edits app — deny ungranted Edit/Write/Bash; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser`
 - [x] **IMP-021** — 3 pre-existing doc-routing test failures (compact-JSON staleness + IMP-020 Bash-deny fallout); test-only fix, 11 green. `cdb8be8`. `T:backend` `T:browser:na`
-- [ ] `P1` **IMP-022** — dashboard can't open phase-level agent runs (feature-verifier, gate-remediator). Frontend gap `TaskDetailSidebar.tsx:35` drops phase runs (backend serves `GET /tasks/{id}/runs`). Render each phase run as a clickable trace row. `T:backend:na` `T:browser:pending`
+- [x] `P1` **IMP-022** — phase runs rendered as clickable trace rows in sidebar. `TaskDetailSidebar.tsx`. `T:backend:na` `T:browser:pending`
 - [x] **IMP-023** — cost/token analyze headline read 0 (last-write-wins clobber). `_merge_run_status_telemetry` sums additive fields; `test_timeline_analysis.py`. `T:backend` `T:browser`
 - [ ] `P1` **IMP-024** — `cache_ratio` >> 1 (15797): divides by non-cached input. Fix `cache_ratio = cached/(cached+input)` clamp 0–1; 4 call sites (`logs.py`, `services/codex_optimization.py`) + fixtures. `T:backend:pending` `T:browser:na`
 - [ ] `P3` **IMP-025** — *superseded by IMP-027* (token burn is planning-time over-decomposition, not within-phase reruns). Residual to watch: code-gen ran 14 turns on a "Verify" task. `T:backend:na` `T:browser:na`
