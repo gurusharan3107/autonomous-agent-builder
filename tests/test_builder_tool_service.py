@@ -452,7 +452,7 @@ async def test_builder_tool_service_metrics_is_compact_by_default(monkeypatch):
             "total_tokens": 3000,
             "optimization_summary": {
                 "raw_token_total": 3000,
-                "cache_ratio": 2.5,
+                "cache_ratio": 0.5,
                 "avoidable_token_estimate": 400,
                 "avoidable_cost_flags": [{"flag": "redundant_scan", "count": 1}],
                 "top_cost_drivers": [

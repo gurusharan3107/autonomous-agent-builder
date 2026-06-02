@@ -404,9 +404,10 @@ def _effective_observability(prompts: list[dict[str, Any]]) -> dict[str, Any]:
         if isinstance(snapshot, dict) and snapshot:
             latest = snapshot
     if not latest:
+        _resolve_claude_obs = None
         try:
             from autonomous_agent_builder.config import get_settings
-            from autonomous_agent_builder.observability.runtime import resolve_claude_observability
+            from autonomous_agent_builder.observability.runtime import resolve_claude_observability as _resolve_claude_obs
             from autonomous_agent_builder.runtime.factory import resolve_runtime_config
 
             runtime_config = resolve_runtime_config(get_settings())
@@ -420,8 +421,8 @@ def _effective_observability(prompts: list[dict[str, Any]]) -> dict[str, Any]:
                 "runtime_sdk": sdk,
                 "provider": str(runtime_config.get("provider") or ""),
             }
-        elif sdk == "claude":
-            latest = resolve_claude_observability().summary
+        elif sdk == "claude" and _resolve_claude_obs is not None:
+            latest = _resolve_claude_obs().summary
             latest["runtime_sdk"] = sdk
             latest["provider"] = str(runtime_config.get("provider") or "")
     return latest
@@ -690,8 +691,9 @@ def _prompt_token_accounting(prompt: dict[str, Any]) -> dict[str, Any]:
         observability_accounting.get("cache_ratio"),
         telemetry.get("cache_ratio"),
     )
-    if cache_ratio == 0.0 and input_tokens:
-        cache_ratio = round(cached_tokens / input_tokens, 4)
+    if cache_ratio == 0.0 and (cached_tokens + input_tokens) > 0:
+        _cr_denom = cached_tokens + input_tokens
+        cache_ratio = round(min(1.0, max(0.0, cached_tokens / _cr_denom)), 4)
     return {
         "raw_tokens": raw_tokens,
         "input_tokens": input_tokens,
@@ -709,7 +711,8 @@ def _aggregate_prompt_token_accounting(prompts: list[dict[str, Any]]) -> dict[st
     output_tokens = sum(row["output_tokens"] for row in rows)
     cached_tokens = sum(row["cached_tokens"] for row in rows)
     noncached_plus_output_tokens = sum(row["noncached_plus_output_tokens"] for row in rows)
-    cache_ratio = round(cached_tokens / input_tokens, 4) if input_tokens else 0.0
+    _cr_denom = cached_tokens + input_tokens
+    cache_ratio = round(min(1.0, max(0.0, cached_tokens / _cr_denom)), 4) if _cr_denom > 0 else 0.0
     return {
         "raw_tokens": raw_tokens,
         "input_tokens": input_tokens,
@@ -881,7 +884,8 @@ def _analyze_timeline(
     *,
     full: bool = False,
 ) -> dict[str, Any]:
-    agent_run = session.get("agent_run") if isinstance(session.get("agent_run"), dict) else {}
+    _agent_run_raw = session.get("agent_run")
+    agent_run: dict = _agent_run_raw if isinstance(_agent_run_raw, dict) else {}
     prompts = build_timeline_prompts(items)
 
     prompt_tokens = sum(

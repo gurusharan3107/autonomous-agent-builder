@@ -213,7 +213,7 @@ async def test_codex_app_server_runtime_streams_and_parses_usage(monkeypatch, tm
     assert optimization["primary_score"] == "raw_tokens"
     assert optimization["token_accounting"]["raw_total_tokens"] == 14
     assert optimization["token_accounting"]["noncached_plus_output_tokens"] == 12
-    assert optimization["token_accounting"]["cache_ratio"] == 0.2
+    assert optimization["token_accounting"]["cache_ratio"] == 0.1667
     assert optimization["event_accounting"]["raw_event_count"] >= 6
     assert started_cmd[:6] == (
         "codex",

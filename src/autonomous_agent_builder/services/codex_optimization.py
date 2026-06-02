@@ -79,7 +79,8 @@ def codex_run_optimization_summary(
     output_tokens = int(metrics.get("output_tokens") or 0)
     cached_tokens = int(metrics.get("cached_input_tokens") or 0)
     noncached_plus_output = max(input_tokens - cached_tokens, 0) + output_tokens
-    cache_ratio = cached_tokens / input_tokens if input_tokens else 0.0
+    _cr_denom = cached_tokens + input_tokens
+    cache_ratio = min(1.0, max(0.0, cached_tokens / _cr_denom)) if _cr_denom > 0 else 0.0
 
     event_sizes = [_json_size(event) for event in events]
     command_output_sizes = [_command_output_size(event) for event in events]
@@ -217,7 +218,8 @@ def summarize_runs_for_optimization(runs: Iterable[Any]) -> dict[str, Any]:
     )[:5]
     target_min = 80_000
     target_max = 185_000
-    cache_ratio = cached_total / input_total if input_total else 0.0
+    _cr_denom_total = cached_total + input_total
+    cache_ratio = min(1.0, max(0.0, cached_total / _cr_denom_total)) if _cr_denom_total > 0 else 0.0
     active_raw_total = sum(row["raw_tokens"] for row in recent_rows)
     active_cached_total = sum(row["cached_tokens"] for row in recent_rows)
     active_noncached_plus_output = sum(row["noncached_plus_output"] for row in recent_rows)
@@ -350,8 +352,10 @@ def _tool_counts(events: list[dict[str, Any]]) -> dict[str, int]:
     }
     for event in events:
         method = str(event.get("method") or "")
-        params = event.get("params") if isinstance(event.get("params"), dict) else {}
-        item = params.get("item") if isinstance(params.get("item"), dict) else {}
+        _params_raw = event.get("params")
+        params: dict = _params_raw if isinstance(_params_raw, dict) else {}
+        _item_raw = params.get("item")
+        item: dict = _item_raw if isinstance(_item_raw, dict) else {}
         item_type = str(item.get("type") or params.get("type") or "").lower()
         tool_name = str(
             item.get("name")

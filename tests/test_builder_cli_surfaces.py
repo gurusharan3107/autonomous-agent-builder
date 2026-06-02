@@ -57,7 +57,7 @@ def test_publish_dashboard_assets_builds_frontend_and_copies_dist(monkeypatch, t
     calls: list[tuple[list[str], Path]] = []
 
     def fake_run(cmd, cwd=None, check=None):
-        calls.append((cmd, Path(cwd)))
+        calls.append((cmd, Path(cwd) if cwd is not None else Path(".")))
         return None
 
     monkeypatch.setattr(start_impl_module.shutil, "which", lambda name: name if name == "npm" else None)
@@ -629,7 +629,7 @@ def test_logs_analyze_returns_prompt_level_observability(monkeypatch, tmp_path):
     assert payload["output_tokens"] == 2
     assert payload["cached_tokens"] == 30
     assert payload["noncached_plus_output_tokens"] == 12
-    assert payload["cache_ratio"] == 0.75
+    assert payload["cache_ratio"] == 0.4286
     assert payload["analysis_mode"] == "summary"
     assert "prompts" not in payload
     assert payload["token_estimate"] < 2000
@@ -655,7 +655,7 @@ def test_logs_analyze_returns_prompt_level_observability(monkeypatch, tmp_path):
         "output_tokens": 2,
         "cached_tokens": 30,
         "noncached_plus_output_tokens": 12,
-        "cache_ratio": 0.75,
+        "cache_ratio": 0.4286,
     }
     assert prompt["context_efficiency"]["grade"] == "review"
     assert "broad_file_discovery" in prompt["context_efficiency"]["signals"]

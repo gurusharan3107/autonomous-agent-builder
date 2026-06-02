@@ -29,7 +29,7 @@ def test_codex_optimization_summary_calculates_tokens_and_flags() -> None:
 
     assert summary["token_accounting"]["raw_total_tokens"] == 120
     assert summary["token_accounting"]["noncached_plus_output_tokens"] == 60
-    assert summary["token_accounting"]["cache_ratio"] == 0.6
+    assert summary["token_accounting"]["cache_ratio"] == 0.375
     assert summary["event_accounting"]["largest_command_output_bytes"] > 40_000
     assert "pr_lane_without_explicit_pr_target" in summary["avoidable_cost_flags"]
     assert "large_command_output" in summary["avoidable_cost_flags"]
