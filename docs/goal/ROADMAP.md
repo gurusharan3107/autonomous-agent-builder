@@ -44,7 +44,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [x] `P1` **IMP-022** — phase runs rendered as clickable trace rows in sidebar. `TaskDetailSidebar.tsx`. `T:backend:na` `T:browser`
 - [x] **IMP-023** — cost/token analyze headline read 0 (last-write-wins clobber). `_merge_run_status_telemetry` sums additive fields; `test_timeline_analysis.py`. `T:backend` `T:browser`
 - [x] `P1` **IMP-024** — cache_ratio = cached/(cached+input) clamped 0–1; 4 call sites fixed; type errors resolved. `test_codex_optimization.py + test_builder_cli_surfaces.py`. `T:backend` `T:browser:na`
-- [ ] `P3` **IMP-025** — *superseded by IMP-027* (token burn is planning-time over-decomposition, not within-phase reruns). Residual to watch: code-gen ran 14 turns on a "Verify" task. `T:backend:na` `T:browser:na`
+- [x] `P3` **IMP-025** — superseded by IMP-027; token burn = planning-time over-decomposition. `2026-06-02`. `T:backend:na` `T:browser:na`
 - [ ] `P1` **IMP-026** — builder MCP tool-call schema/param mismatches cause retry burn (`'path'/'test_p' not allowed`, `feature_id required`, File-not-read). Tighten schemas/descriptions + self-correcting errors; surface in `builder logs --error`. `T:backend:pending` `T:browser:na`
 - [ ] `P0` **IMP-027** — complexity-proportional SDLC: ceremony scales with risk, not uniform (trivial footer → 5-task sprint). Invariant: model proposes, policy floors mandated gates (security/user-facing/schema). Phase plan = visible board artifact. `T:backend:pending` `T:browser:pending`
   - **Done (027a/c) —** intake emits `proposed_tasks` sized to the change; planner scales task count (`agent_feature_payloads.py`, `services/sprint_execution.py`); live-confirmed 1 task for a trivial ask (was 5).
