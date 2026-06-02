@@ -13,10 +13,10 @@ Live state. If it lies, system is blind.
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
 | Current Milestone | **M3.5 — Optimization loop activation** (autoresearch Track B) |
-| Current Item In Flight | **IMP-022 browser-verified** — sidebar renders; phase runs section conditionally correct. Next: IMP-026. |
+| Current Item In Flight | **IMP-026 closed** — `validate_mcp_args()` + alias table; self-correcting MCP errors. Next: IMP-027b. |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-06-02 — IMP-014/016/019/022/024 closed. 1582 tests pass. IMP-022 T:browser:pending (live). |
+| Last Update | 2026-06-02 — IMP-014/016/019/022/024/025/026 closed. IMP-022 T:browser live-verified. |
 
 ---
 

@@ -22,6 +22,114 @@ def _to_mcp(result: dict[str, Any]) -> dict[str, Any]:
         return result
     return {"content": [{"type": "text", "text": json.dumps(result, default=str)}]}
 
+
+# ── Common param aliases that cause "not allowed" retry burn ──────────────────
+# Map of tool_name -> {wrong_param: correct_param} for the most common
+# model-side confusions seen in builder logs.  validate_mcp_args() uses this
+# table to produce self-correcting error messages before the call reaches the
+# handler, cutting retry cycles when the model uses a wrong param name.
+_PARAM_ALIASES: dict[str, dict[str, str]] = {
+    "run_tests": {"test_p": "test_pattern", "pattern": "test_pattern", "path": "test_pattern"},
+    "read_file": {"path": "file_path", "file": "file_path", "filepath": "file_path"},
+    "list_directory": {"path": "relative_path", "dir": "relative_path", "directory": "relative_path"},
+    "task_list": {
+        "item_id": "feature_id",
+        "task_id": "feature_id",
+        "project_id": "feature_id",
+    },
+    "task_show": {"id": "task_id", "task": "task_id"},
+    "task_status": {"id": "task_id", "task": "task_id"},
+    "task_dispatch": {"id": "task_id", "task": "task_id"},
+    "task_recover": {"id": "task_id", "task": "task_id"},
+    "backlog_item_show": {"id": "item_id", "item": "item_id", "backlog_id": "item_id"},
+    "backlog_item_update": {"id": "item_id", "item": "item_id"},
+    "kb_show": {"id": "doc_id", "kb_id": "doc_id", "document_id": "doc_id"},
+    "kb_update": {"id": "doc_id", "kb_id": "doc_id", "document_id": "doc_id"},
+    "memory_show": {"id": "slug", "mem_id": "slug", "key": "slug"},
+}
+
+
+def validate_mcp_args(
+    tool_name: str,
+    schema: dict[str, Any],
+    args: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Validate MCP tool args against the schema and return a self-correcting
+    error envelope when mismatches are found, or ``None`` when args are valid.
+
+    Returns an MCP content envelope (``{"content": [...], "is_error": True}``)
+    when:
+    - A required param is missing.
+    - An unrecognised param is present (``additionalProperties: false``).
+
+    The error message names the correct param so the model can self-correct on
+    the next turn without an operator retry.  Schema validation errors that
+    reach this function are also surfaced in ``builder logs --error`` output
+    because the returned envelope sets ``is_error: True``, which
+    ``normalize_tool_response`` classifies as ``tool_error``.
+    """
+    allowed_props: set[str] = set(schema.get("properties", {}).keys())
+    required_props: set[str] = set(schema.get("required", []))
+    rejects_extra: bool = schema.get("additionalProperties") is False
+    aliases: dict[str, str] = _PARAM_ALIASES.get(tool_name, {})
+
+    errors: list[str] = []
+
+    # Check for disallowed (unknown) params and try to suggest the right one.
+    if rejects_extra:
+        for key in args:
+            if key not in allowed_props:
+                if key in aliases:
+                    errors.append(
+                        f"Unknown param '{key}' — use '{aliases[key]}' instead."
+                    )
+                else:
+                    # Try to find a close match from allowed props.
+                    suggestion = _closest_param(key, allowed_props)
+                    if suggestion:
+                        errors.append(
+                            f"Unknown param '{key}' is not allowed — did you mean '{suggestion}'?"
+                        )
+                    else:
+                        allowed_list = ", ".join(f"'{p}'" for p in sorted(allowed_props))
+                        errors.append(
+                            f"Unknown param '{key}' is not allowed. "
+                            f"Allowed params: {allowed_list or 'none'}."
+                        )
+
+    # Check for missing required params.
+    for req in required_props:
+        if req not in args:
+            errors.append(f"Required param '{req}' is missing.")
+
+    if not errors:
+        return None
+
+    message = f"Schema error for tool '{tool_name}': " + " ".join(errors)
+    return {
+        "content": [{"type": "text", "text": message}],
+        "is_error": True,
+    }
+
+
+def _closest_param(key: str, candidates: set[str]) -> str | None:
+    """Return the closest candidate by simple character-overlap heuristic."""
+    if not candidates:
+        return None
+    key_lower = key.lower().replace("_", "")
+    best_score = 0
+    best = None
+    for c in candidates:
+        c_lower = c.lower().replace("_", "")
+        # Count shared leading characters and common substrings (cheap heuristic).
+        overlap = sum(1 for a, b in zip(key_lower, c_lower) if a == b)
+        if overlap > best_score:
+            best_score = overlap
+            best = c
+    # Only suggest if there's meaningful overlap (≥2 chars).
+    return best if best_score >= 2 else None
+
+
 _EMPTY_SCHEMA = {"type": "object", "properties": {}, "additionalProperties": False}
 _BROWSER_NAVIGATE_SCHEMA = {
     "type": "object",
@@ -61,9 +169,15 @@ _BACKLOG_ITEM_ID_SCHEMA = {
 _TASK_LIST_SCHEMA = {
     "type": "object",
     "properties": {
-        "feature_id": {"type": "string"},
-        "status": {"type": "string"},
-        "limit": {"type": "integer"},
+        "feature_id": {
+            "type": "string",
+            "description": (
+                "Required. The backlog item (feature) ID whose tasks to list. "
+                "Use 'feature_id', not 'item_id', 'task_id', or 'project_id'."
+            ),
+        },
+        "status": {"type": "string", "description": "Optional status filter."},
+        "limit": {"type": "integer", "description": "Maximum number of tasks to return."},
     },
     "required": ["feature_id"],
     "additionalProperties": False,
@@ -244,7 +358,16 @@ _RECOMMENDATION_CREATE_SCHEMA = {
 }
 _RUN_TESTS_SCHEMA = {
     "type": "object",
-    "properties": {"test_pattern": {"type": "string"}, "timeout_sec": {"type": "integer"}},
+    "properties": {
+        "test_pattern": {
+            "type": "string",
+            "description": (
+                "Optional pytest selector (e.g. 'tests/test_foo.py::test_bar'). "
+                "Use 'test_pattern', not 'path', 'pattern', or 'test_p'."
+            ),
+        },
+        "timeout_sec": {"type": "integer", "description": "Timeout in seconds."},
+    },
     "additionalProperties": False,
 }
 _RUN_LINTER_SCHEMA = {
@@ -264,16 +387,36 @@ _RUN_COMMAND_SCHEMA = {
 _READ_FILE_SCHEMA = {
     "type": "object",
     "properties": {
-        "file_path": {"type": "string"},
-        "start_line": {"type": "integer"},
-        "max_lines": {"type": "integer"},
+        "file_path": {
+            "type": "string",
+            "description": (
+                "Required. File path relative to the workspace root. "
+                "Use 'file_path', not 'path', 'file', or 'filepath'."
+            ),
+        },
+        "start_line": {
+            "type": "integer",
+            "description": "1-based starting line (default: 1).",
+        },
+        "max_lines": {
+            "type": "integer",
+            "description": "Maximum lines to return (default: 200).",
+        },
     },
     "required": ["file_path"],
     "additionalProperties": False,
 }
 _LIST_DIRECTORY_SCHEMA = {
     "type": "object",
-    "properties": {"relative_path": {"type": "string"}},
+    "properties": {
+        "relative_path": {
+            "type": "string",
+            "description": (
+                "Directory path relative to the workspace root (default: '.'). "
+                "Use 'relative_path', not 'path' or 'directory'."
+            ),
+        },
+    },
     "additionalProperties": False,
 }
 
@@ -320,6 +463,9 @@ def build_default_mcp_servers(
 
     @tool("task_list", "List tasks for a feature.", _TASK_LIST_SCHEMA)
     async def task_list(args: dict[str, Any]) -> dict:
+        err = validate_mcp_args("task_list", _TASK_LIST_SCHEMA, args)
+        if err is not None:
+            return err
         return await builder_tool_service.builder_task_list(
             args["feature_id"],
             args.get("status", ""),
@@ -609,6 +755,9 @@ def build_default_mcp_servers(
 
     @tool("run_tests", "Run tests inside the isolated workspace.", _RUN_TESTS_SCHEMA)
     async def run_tests(args: dict[str, Any]) -> dict:
+        err = validate_mcp_args("run_tests", _RUN_TESTS_SCHEMA, args)
+        if err is not None:
+            return err
         return await workspace_tools.run_tests(
             workspace_path,
             args.get("test_pattern", ""),
@@ -637,6 +786,9 @@ def build_default_mcp_servers(
 
     @tool("read_file", "Read a file from the isolated workspace.", _READ_FILE_SCHEMA)
     async def read_file(args: dict[str, Any]) -> dict:
+        err = validate_mcp_args("read_file", _READ_FILE_SCHEMA, args)
+        if err is not None:
+            return err
         return await workspace_tools.read_file(
             workspace_path,
             args["file_path"],
@@ -648,6 +800,9 @@ def build_default_mcp_servers(
         "list_directory", "List a directory within the isolated workspace.", _LIST_DIRECTORY_SCHEMA
     )
     async def list_directory(args: dict[str, Any]) -> dict:
+        err = validate_mcp_args("list_directory", _LIST_DIRECTORY_SCHEMA, args)
+        if err is not None:
+            return err
         return await workspace_tools.list_directory(workspace_path, args.get("relative_path", "."))
 
     @tool(
