@@ -13,10 +13,10 @@ Live state. If it lies, system is blind.
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
 | Current Milestone | **M3.5 — Optimization loop activation** (autoresearch Track B) |
-| Current Item In Flight | **IMP-014 closed** — 7-day retention window; stale tool_errors age out; rec gating scoped to within-window count. `summary_runtime_aggregates.py`. Next: IMP-016. |
+| Current Item In Flight | **IMP-016 closed** — `message_targets_builder_self()` classifier; builder-self asks no longer route to app backlog. Next: IMP-019. |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/devpulse` |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-06-02 — IMP-014 closed: 7-day error-trend retention + rec gating (`summary_runtime_aggregates.py`; 2 new tests, 1571 total pass). |
+| Last Update | 2026-06-02 — IMP-014 + IMP-016 closed. Error-trend retention window + builder-self intent classifier. 1575 tests pass. |
 
 ---
 

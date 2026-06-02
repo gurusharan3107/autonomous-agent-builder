@@ -303,6 +303,81 @@ SPRINT_PLANNING_SELECTION_PROMPT = (
 )
 
 
+# -----------------------------------------------------------------------
+# Builder self-improvement intent classification (IMP-016)
+#
+# Messages that target the builder itself — its own cost tracking, sprint
+# logic, agent orchestration, etc. — must NOT be routed into the managed
+# app's backlog.  The terms below are builder-internal concepts that only
+# make sense when the user is describing the builder product, not the app
+# the builder is building.
+# -----------------------------------------------------------------------
+_BUILDER_SELF_SUBJECT_TERMS = {
+    "builder",
+    "agent builder",
+    "autonomous agent builder",
+    "orchestrator",
+    "orchestration",
+    "backlog manager",
+}
+_BUILDER_SELF_SYSTEM_TERMS = {
+    "cost tracking",
+    "cost tracker",
+    "sprint logic",
+    "sprint decomposition",
+    "task decomposition",
+    "token tracking",
+    "token cost",
+    "agent run",
+    "agent loop",
+    "phase model",
+    "quality gate",
+    "dispatch logic",
+    "self-improvement",
+    "self improvement",
+    "roadmap item",
+    "roadmap entry",
+    "builder roadmap",
+    "builder backlog",
+    "builder memory",
+    "builder knowledge",
+    "builder metric",
+    "builder cost",
+    "builder feature",
+    "builder bug",
+    "builder improvement",
+    "builder itself",
+    "the builder",
+    "fix builder",
+    "improve builder",
+    "add to builder",
+    "add a feature to builder",
+    "builder's",
+}
+
+
+def message_targets_builder_self(user_message: str) -> bool:
+    """Return True when the message describes improving the builder itself.
+
+    This is a lightweight keyword gate — it fires only on high-signal
+    builder-internal terms so that ordinary app-feature requests are not
+    misclassified.  False negatives (missed builder asks) are acceptable;
+    false positives (app asks misrouted as builder asks) are not.
+    """
+    lower = " ".join(user_message.lower().split())
+    # A single explicit subject match is enough if the term is unambiguous.
+    if any(term in lower for term in _BUILDER_SELF_SYSTEM_TERMS):
+        return True
+    # Generic subject term ("builder") only counts when paired with an
+    # action verb so that "build my app" is not caught.
+    if any(subject in lower for subject in _BUILDER_SELF_SUBJECT_TERMS):
+        action_tokens = {"add", "fix", "improve", "update", "change", "implement", "refactor"}
+        tokens = set(lower.split())
+        if tokens & action_tokens:
+            return True
+    return False
+
+
 def normalize_planning_token(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
 
@@ -320,6 +395,9 @@ def message_requests_feature_spec(user_message: str) -> bool:
     lower_message = user_message.lower()
     normalized_message = " ".join(lower_message.split())
     if "documentation" in lower_message or "feature doc" in lower_message:
+        return False
+    # IMP-016: builder-self-improvement asks must not enter the app backlog.
+    if message_targets_builder_self(user_message):
         return False
     if any(pattern in lower_message for pattern in FEATURE_SPEC_INTENT_PATTERNS):
         return True
@@ -350,6 +428,9 @@ def message_requests_feature_delivery(user_message: str) -> bool:
     if message_requires_agent_evidence(user_message):
         return False
     if "documentation" in lower_message or "feature doc" in lower_message:
+        return False
+    # IMP-016: builder-self-improvement asks must not trigger app dispatch.
+    if message_targets_builder_self(user_message):
         return False
     if any(pattern in lower_message for pattern in FEATURE_DELIVERY_CONTINUE_PATTERNS):
         return True

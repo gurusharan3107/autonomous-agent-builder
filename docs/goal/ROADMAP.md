@@ -35,7 +35,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [x] Re-verify all closures e2e on devpulse, both lanes (M1.2 prereq). 79/79 regression tests (2026-05-21). `T:backend` `T:browser`
 - [x] `P1` **IMP-014** — 7-day retention window; stale errors age out; rec gated to within-window count. `summary_runtime_aggregates.py`. `T:backend` `T:browser:na`
 - [x] **IMP-015** — `type=feature` items shown as "improvement". `BacklogPage.tsx itemTypeLabel` + type-aware `save_note`; `test_agent_feature_spec_capture_routes.py`. `T:backend` `T:browser`
-- [ ] `P1` **IMP-016** — chat agent mis-routes builder-improvement asks into the managed-app backlog; no self-improvement lane. Add intent classification "improve app" vs "improve builder". `T:backend:pending` `T:browser:pending`
+- [x] `P1` **IMP-016** — `message_targets_builder_self()` classifier; builder-self asks no longer dispatch to app backlog. `agent_message_intent.py`. `T:backend` `T:browser:na`
 - [x] **IMP-017** — terminal `cancelled` state + cancel route/CLI/dashboard control across the stack. `efe81e5`; dashboard "Cancel item" live-verified (item→`cancelled`). `T:backend` `T:browser`
 - [x] **IMP-018** — interview fell back to free-text (AskUserQuestion dead). Fix: per-agent `permission_mode`, chat→`"default"`; `test_chat_permission_mode_questions.py`. `T:backend` `T:browser`
 - [ ] `P0` **IMP-019** — builder can't self-verify the generated app in a real browser (jsdom overstates "shipped"). Shipped in-process `browser` SDK MCP (`mcp__browser__*`); remaining: real-browser gate for user-facing features + queryable evidence-tier. `T:browser` `T:backend:pending`

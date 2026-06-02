@@ -103,7 +103,7 @@ def test_feature_spec_prompt_without_recent_context_omits_section(tmp_path):
     assert "Add a search box." in prompt
 
 
-def test_recent_chat_context_for_prompt_force_bypasses_message_filter(tmp_path):
+def test_recent_chat_context_for_prompt_force_bypasses_message_filter():
     from unittest.mock import MagicMock
 
     from autonomous_agent_builder.db.models import ChatEvent, ChatSession
@@ -172,3 +172,83 @@ def test_normalize_feature_spec_payload_carries_proposed_tasks() -> None:
     # junk and empty entries are dropped; non-lists yield empty
     assert normalize_proposed_tasks("nope") == []
     assert normalize_proposed_tasks([{"title": ""}, 42]) == []
+
+
+# ---------------------------------------------------------------------------
+# IMP-016: builder self-improvement intent classification
+# ---------------------------------------------------------------------------
+
+
+def test_builder_self_improvement_not_routed_as_feature_spec() -> None:
+    """Builder-improvement asks must NOT be classified as app feature specs."""
+    builder_asks = [
+        "add a feature to builder",
+        "fix builder's cost tracking",
+        "improve the builder's sprint decomposition",
+        "add cost tracking to the builder",
+        "fix the builder",
+        "improve builder performance",
+        "update the builder's task decomposition logic",
+        "can you add a feature to builder",
+        "the builder's cost tracking is broken, please fix it",
+        "fix builder",
+        "improve builder",
+    ]
+    for msg in builder_asks:
+        assert agent_message_intent.message_requests_feature_spec(msg) is False, (
+            f"Expected False for builder-self ask: {msg!r}"
+        )
+        assert agent_message_intent.message_requests_feature_delivery(msg) is False, (
+            f"Expected False for builder-self ask: {msg!r}"
+        )
+
+
+def test_builder_self_improvement_detected_by_system_terms() -> None:
+    """High-signal builder-system terms are caught even without an explicit subject."""
+    system_term_asks = [
+        "fix the cost tracking",
+        "improve cost tracking in this product",
+        "the sprint decomposition is wrong",
+        "update the quality gate logic",
+        "the dispatch logic needs improvement",
+        "builder's token tracking is off",
+    ]
+    for msg in system_term_asks:
+        assert agent_message_intent.message_targets_builder_self(msg) is True, (
+            f"Expected True for builder-system-term ask: {msg!r}"
+        )
+
+
+def test_app_improvement_asks_still_routed_correctly() -> None:
+    """Genuine app feature requests must still be classified as feature specs."""
+    app_asks = [
+        "add a search feature to my todo app",
+        "I want users to be able to filter todos",
+        "build a user profile page",
+        "add filtering to the app",
+        "can you add dark mode to the app",
+        "I need a way for users to export their data",
+        "add a small visible empty-state hint under the todo list",
+    ]
+    for msg in app_asks:
+        assert agent_message_intent.message_requests_feature_spec(msg) is True, (
+            f"Expected True (feature spec) for app ask: {msg!r}"
+        )
+        # None of these should be flagged as builder-self
+        assert agent_message_intent.message_targets_builder_self(msg) is False, (
+            f"Expected False (not builder-self) for app ask: {msg!r}"
+        )
+
+
+def test_build_my_app_not_misclassified_as_builder_self() -> None:
+    """'Build my app' / 'build it' must NOT be caught by the builder-self gate."""
+    generic_build_asks = [
+        "build my app",
+        "build it",
+        "build this feature",
+        "continue building",
+    ]
+    for msg in generic_build_asks:
+        assert agent_message_intent.message_targets_builder_self(msg) is False, (
+            f"Expected False for generic build ask: {msg!r}"
+        )
