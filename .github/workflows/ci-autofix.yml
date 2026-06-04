@@ -46,9 +46,11 @@ jobs:
       - name: Install ruff (same version the gate uses)
         run: pip install -e ".[dev]"
 
-      - name: Ruff auto-fix (scoped to PR-changed Python files only)
-        # Scoped to the files THIS PR changed — never repo-wide, so it can't
-        # avalanche-reformat a repo that was never format-clean. Small, reviewable diffs.
+      - name: Ruff lint-autofix (scoped to PR-changed Python files; NO format)
+        # Lint-autofixes only (import order, unused imports, etc.), scoped to the files
+        # THIS PR changed. Deliberately NOT `ruff format` — repo-wide formatting on a
+        # never-format-clean repo avalanches and fights reverts; format normalization is
+        # a separate, reviewed one-time task, not an unattended autofix.
         run: |
           git fetch origin "${{ github.base_ref }}" --quiet || true
           CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- '*.py')
@@ -56,19 +58,25 @@ jobs:
             echo "No changed Python files in this PR — nothing to autofix."
             exit 0
           fi
-          echo "Autofixing PR-changed files:"; echo "$CHANGED"
+          echo "Lint-autofixing PR-changed files:"; echo "$CHANGED"
           ruff check --fix $CHANGED || true
-          ruff format $CHANGED || true
 
-      - name: Commit + push fixes if any
+      - name: Commit + push fixes (size-guarded)
         run: |
           if [ -z "$(git status --porcelain)" ]; then
-            echo "No ruff-fixable changes — nothing to push."
+            echo "No lint-fixable changes — nothing to push."
+            exit 0
+          fi
+          N=$(git status --porcelain | wc -l)
+          if [ "$N" -gt 25 ]; then
+            echo "::warning::ruff lint-autofix touched $N files (> 25) — NOT auto-pushing."
+            echo "Large changesets need human review (likely an un-clean integration branch)."
+            git --no-pager diff --stat | tail -30
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "style: ruff auto-fix (deterministic CI autofix tier)"
+          git commit -m "style: ruff lint-autofix (deterministic CI autofix tier)"
           git push origin "HEAD:${{ github.head_ref }}"
-          echo "Pushed ruff auto-fixes to ${{ github.head_ref }} — re-run CI to confirm green."
+          echo "Pushed $N-file lint-autofix to ${{ github.head_ref }} — re-run CI to confirm."
