@@ -17,10 +17,11 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 - `.github/workflows/ci.yml` — CI wall: `ruff check` + `ruff format --check` + `pytest` on PR + push to `master`. Enforces the test-failure gate regardless of a local `--no-verify` bypass.
 - `lint_goal_docs.py` `PROGRESS_ROUTING` — WARN-only check flagging autoresearch run-log markers (`baseline_runs_summary` / `iteration #N` / `run #N`) misrouted into ROADMAP/STATUS instead of `docs/autoresearch/PROGRESS.md`. Zero-false-positive tokens (σ-floor / cache_ratio deliberately excluded; verified against current docs). See `feedback_autoresearch_progress_routing`.
+- `.github/workflows/ci-autofix.yml` — deterministic auto-remediation tier: on a PR, runs `ruff --fix` + `ruff format` in CI (clean cloud checkout — never touches local WIP) and pushes the style fix back to the PR branch. Loop-safe via `GITHUB_TOKEN`. Judgment fixes (tests/logic) deferred to on-demand `@claude`, not autonomous.
 
 ### Fixed
 
-- `.githooks/pre-commit` — was inert (`core.hooksPath` unset, so git used empty `.git/hooks`) and called `python` (absent on WSL → exit 127, would block every commit once active). Activated via `git config core.hooksPath .githooks`; hardened to a `python3`/`python` fallback + `exec`.
+- `.githooks/pre-commit` — was inert (`core.hooksPath` unset, so git used empty `.git/hooks`) and called `python` (absent on WSL → exit 127). Hardened to a `python3`/`python` fallback + `exec` (valid for normal clones). **This repo runs in a managed env where hooks are disabled**, so local-hook enforcement does not fire here — `core.hooksPath` was *not* left set; **CI (`ci.yml` + `ci-autofix.yml`) is the enforcement floor**, since it runs on GitHub's runners outside the managed env.
 - `.github/workflows/documentation-freshness.yml` — `main` → `master` across trigger, `git fetch origin master:master` (would otherwise fail — `main` is deleted), and PR text. Default branch is `master`.
 
 ### Notes
