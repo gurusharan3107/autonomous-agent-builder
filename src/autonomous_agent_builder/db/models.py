@@ -253,6 +253,8 @@ class Feature(Base):
     # Each entry: {"title": str, "purpose": str}. Empty = planner falls back to the
     # deterministic risk-based templates. Length may be 1 for trivial items.
     proposed_tasks: Mapped[list[dict[str, str]]] = mapped_column(JSON, default=list)
+    # IMP-034b: operator opted into a UI prototype preview before implementation
+    ui_preview_enabled: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow

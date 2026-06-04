@@ -20,6 +20,7 @@ class TestAgentDefinitions:
             "init-project-chat",
             "planner",
             "designer",
+            "ui-prototyper",
             "scaffold",
             "gate-remediator",
             "code-gen",

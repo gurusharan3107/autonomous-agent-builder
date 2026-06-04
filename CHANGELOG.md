@@ -9,6 +9,28 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-04 - IMP-034b (backend): operator-selectable UI prototype preview
+
+Backend for the prototype-first half of IMP-034: for UI features where the operator opted in, the builder generates a static HTML mockup after design and holds for approval BEFORE implementation. Reuses the existing ApprovalGate + DESIGN_REVIEW + DesignDocument plumbing — no schema migration, no new TaskStatus. Frontend preview/approve card is the next increment (IMP-034 stays open).
+
+### Added
+
+- `agents/definitions.py` — new `ui-prototyper` AgentDefinition (sonnet, 10 turns): emits one self-contained static HTML mockup to `.ui-preview/mockup.html` using the IMP-034a `{design_directive}`, ends with a `UI_PREVIEW_RESULT_JSON` sentinel.
+- `db/models.py` — `Feature.ui_preview_enabled: bool = False` (the per-feature opt-in).
+- `orchestrator/build_verification.py` — `should_run_ui_preview(task)` = `is_ui_task` AND `feature.ui_preview_enabled is True` (pure, testable predicate).
+- `tests/test_ui_preview_backend.py` — payload normalization, `ui_preview` approval routing, the predicate, and the agent-definition contract.
+
+### Changed
+
+- `orchestrator/orchestrator.py` — `_phase_design` success branch: when `should_run_ui_preview`, dispatch `ui-prototyper`, persist a `DesignDocument(doc_type="ui_preview")`, open `ApprovalGate(gate_type="ui_preview")`, and park in `DESIGN_REVIEW`; else proceed to `IMPLEMENTATION` (unchanged). New `_run_ui_preview` / `_read_ui_preview_mockup` helpers.
+- `orchestrator/approval_outcomes.py` — `ui_preview` gate APPROVE → `IMPLEMENTATION` (reject/changes still → BLOCKED).
+- `embedded/server/agent_feature_payloads.py` + `agent_feature_delivery.py` — normalize + persist `ui_preview_enabled` from the feature-spec payload (mirrors `proposed_tasks`).
+- `agents/execution_policy.py` — `ui-prototyper` policy (medium effort, sonnet, 60k budget). `agent_run_lifecycle.py` — KeyError-safe setdefaults for the new template vars.
+
+### Validation
+
+- 77 targeted tests + 374 in the broad backend sweep pass; my changed files ruff-clean; imports OK. (1 unrelated pre-existing failure: `test_dashboard_design_tokens` — caused by uncommitted frontend WIP not in this change; reproduces with all 034b changes stashed.)
+
 ## 2026-06-04 - IMP-035a: documentation-bridge parent runs on haiku
 
 Full-lane capability-fit audit (all 13 Claude Agent SDK phases vs `claude-agent-sdk-rubric`) confirmed the lane is already well-tuned — G1/G2/G7, `cache_read_input_tokens` tracking, `ClaudeSDKClient` multi-turn streaming, the `trim_tool_output` PostToolUse hook, planner→designer resume-chaining, and per-role model tiers are all already optimal (credited, not re-recommended). Three genuine under-uses surfaced (→ ROADMAP IMP-035). Shipping the one structural certainty:

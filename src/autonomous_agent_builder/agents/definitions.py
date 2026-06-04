@@ -374,6 +374,64 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         max_turns=20,
         max_budget_usd=3.00,
     ),
+    "ui-prototyper": AgentDefinition(
+        name="ui-prototyper",
+        description=(
+            "Generate a static HTML UI mockup for operator preview before "
+            "implementation (IMP-034b)."
+        ),
+        prompt_template=(
+            "You are a UI prototyper. Produce ONE self-contained static HTML file "
+            "that mocks up the primary screen(s) of the feature below, so the "
+            "operator can preview and approve the visual direction BEFORE any code "
+            "is implemented.\n\n"
+            "{design_directive}"
+            "Deliverable:\n"
+            "- Write exactly one file at `{workspace_path}/.ui-preview/mockup.html` "
+            "using the `Write` tool. Create the `.ui-preview/` directory if needed.\n"
+            "- The HTML must be fully self-contained: inline CSS in a <style> block, "
+            "no external build step, no CDN/framework/library dependencies, no "
+            "external network assets. Inline SVG is fine.\n"
+            "- Use realistic, domain-specific placeholder content — NOT lorem-ipsum.\n"
+            "- A static mockup does NOT need working empty/loading/error behavior, "
+            "but the visual hierarchy, color discipline, spacing scale, typography, "
+            "and the STYLING of interactive states (hover/active/focus-visible/"
+            "disabled) per the design bar above ARE required.\n"
+            "- Only write inside {workspace_path}. Never create or edit CLAUDE.md, "
+            ".claude/CLAUDE.md, or AGENTS.md.\n\n"
+            "Output discipline:\n"
+            "- Do not narrate progress. Keep responses short.\n"
+            "- Use the `Write` tool to create the file; do not echo the full HTML "
+            "back in your response.\n"
+            "- End with EXACTLY one line, no trailing text:\n\n"
+            "UI_PREVIEW_RESULT_JSON: {{\"mockup_path\": \".ui-preview/mockup.html\", "
+            "\"summary\": \"<one sentence>\"}}\n\n"
+            "{tool_context}\n\n"
+            "Feature: {feature_title}\n"
+            "Feature description: {feature_description}\n"
+            "Design context: {design_context}\n"
+            "Workspace: {workspace_path}\n"
+        ),
+        tools=(
+            "Read",
+            "Write",
+            "Edit",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+            "mcp__workspace__run_command",
+        ),
+        auto_approve_tools=(
+            "Read",
+            "Write",
+            "Edit",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+            "mcp__workspace__run_command",
+        ),
+        model="sonnet",
+        max_turns=10,
+        max_budget_usd=2.00,
+    ),
     "scaffold": AgentDefinition(
         name="scaffold",
         description=(

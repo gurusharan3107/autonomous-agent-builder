@@ -181,6 +181,11 @@ async def run_agent_lifecycle(
     # Code-gen receives the Product-UI design directive only for UI-bearing tasks
     # (IMP-034a). Default empty keeps format() KeyError-safe for every other agent.
     template_vars.setdefault("design_directive", "")
+    # ui-prototyper (IMP-034b) reads feature/design context; default empty so
+    # other agents' prompt_template.format() stays KeyError-safe.
+    template_vars.setdefault("feature_title", "")
+    template_vars.setdefault("feature_description", "")
+    template_vars.setdefault("design_context", "")
 
     prompt = agent_def.prompt_template.format(**template_vars)
     prompt_budget = prompt_budget_breakdown(

@@ -68,6 +68,19 @@ def is_ui_task(task: Any, feature: Any = None) -> bool:
     return any(kw in combined for kw in _UI_KEYWORDS)
 
 
+def should_run_ui_preview(task: Any) -> bool:
+    """Return True when the design phase should hold for a UI prototype preview.
+
+    IMP-034b: gated on BOTH the feature being UI-bearing (``is_ui_task``) AND the
+    operator having opted in via ``feature.ui_preview_enabled``. Pure predicate so
+    the orchestrator routing decision is unit-testable without a live run.
+    """
+    feature = getattr(task, "feature", None)
+    if not is_ui_task(task, feature):
+        return False
+    return getattr(feature, "ui_preview_enabled", False) is True
+
+
 def is_sprint_feature_verification_task(task: Any) -> bool:
     sprint_payload = task_sprint_execution_payload(task)
     task_key = str(sprint_payload.get("task_key") or "").strip()

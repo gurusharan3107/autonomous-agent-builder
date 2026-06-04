@@ -78,6 +78,18 @@ def test_planner_policy_uses_expensive_reasoning_only_for_planning() -> None:
     assert policy.task_budget_tokens == 120_000
 
 
+def test_ui_prototyper_policy_uses_sonnet_quality_and_medium_effort() -> None:
+    # IMP-034b: the UI prototyper emits HTML, so it buckets to implementation_model
+    # (sonnet quality) and runs at medium effort like other bounded write agents.
+    settings = get_settings()
+    policy = resolve_agent_runtime_policy(get_agent_definition("ui-prototyper"), settings)
+
+    assert policy.model == settings.agent.implementation_model
+    assert policy.effort == "medium"
+    assert policy.context_strategy == "scripted_repeatable_work"
+    assert policy.reason_code == "ui_preview_mockup"
+
+
 def test_code_gen_policy_uses_sonnet_and_scripted_context_strategy() -> None:
     settings = get_settings()
     policy = resolve_agent_runtime_policy(get_agent_definition("code-gen"), settings)

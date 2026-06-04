@@ -169,6 +169,8 @@ def normalize_feature_spec_payload(payload: dict[str, Any]) -> dict[str, Any]:
         str(item).strip() for item in payload.get("dependencies", []) if str(item).strip()
     ]
     proposed_tasks = normalize_proposed_tasks(payload.get("proposed_tasks"))
+    # IMP-034b: operator opt-in for a UI prototype preview before implementation.
+    ui_preview_enabled = bool(payload.get("ui_preview_enabled", False))
     raw_priority = payload.get("priority", 50)
     try:
         priority = int(raw_priority)
@@ -187,6 +189,7 @@ def normalize_feature_spec_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "acceptance_criteria": acceptance_criteria,
         "dependencies": dependencies,
         "proposed_tasks": proposed_tasks,
+        "ui_preview_enabled": ui_preview_enabled,
     }
 
 

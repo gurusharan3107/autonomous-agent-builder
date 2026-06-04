@@ -13,10 +13,10 @@ Live state. If it lies, system is blind.
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
 | Current Milestone | **M3.5 — Optimization loop activation** (autoresearch Track B) |
-| Current Item In Flight | **IMP-034a + IMP-035a shipped** — (034a) Product-UI design directive injected into `code-gen` gated by `is_ui_task`; (035a, from a full-lane capability-fit audit) documentation-bridge parent moved sonnet→haiku (zero-reasoning pass-through). All tests green, ruff clean. Next: IMP-034b operator-selectable UI prototype preview, then live-verify 034a. |
+| Current Item In Flight | **IMP-034a + 034b-backend + 035a shipped** — (034a) UI design directive in `code-gen`; (034b backend) operator-selectable UI prototype preview: `ui-prototyper` agent + `ui_preview` gate after design, reuses existing gate plumbing; (035a) doc-bridge→haiku. All backend tests green, ruff clean. Next: IMP-034b frontend preview/approve card + dashboard rebuild + live E2E verify (034a + 034b). |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/kanban` (IMP-033); devpulse idle |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
-| Last Update | 2026-06-04 — IMP-034a (UI design directive) + IMP-035a (doc-bridge→haiku) shipped; full-lane capability-fit audit recorded (IMP-035). 034b + 035b/c + live-verify pending. |
+| Last Update | 2026-06-04 — IMP-034a + IMP-034b-backend + IMP-035a shipped; full-lane capability-fit audit recorded (IMP-035). 034b frontend + 035b/c + live-verify pending. |
 
 ---
 
