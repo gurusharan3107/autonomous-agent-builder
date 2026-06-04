@@ -115,7 +115,8 @@ def parse_scaffold_result(output_text: str) -> ScaffoldResult:
         return ScaffoldResult(
             action="blocked",
             reason=(
-                f"scaffold_failed: agent output is missing the `{_SCAFFOLD_RESULT_PREFIX}` line"
+                "scaffold_failed: agent output is missing the "
+                f"`{_SCAFFOLD_RESULT_PREFIX}` line"
             ),
             raw_output=output_text,
         )
@@ -254,7 +255,8 @@ def write_minimal_gate_config(
         eslint_config = path / "eslint.config.js"
         # Honor any pre-existing legacy config file.
         legacy = any(
-            (path / name).exists() for name in (".eslintrc.json", ".eslintrc.js", ".eslintrc")
+            (path / name).exists()
+            for name in (".eslintrc.json", ".eslintrc.js", ".eslintrc")
         )
         if not eslint_config.exists() and not legacy:
             eslint_config.write_text(_MINIMAL_ESLINT_CONFIG)

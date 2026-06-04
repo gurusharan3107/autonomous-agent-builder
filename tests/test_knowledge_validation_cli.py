@@ -121,10 +121,7 @@ def test_validate_use_agent_keeps_deterministic_result_authoritative(tmp_path, m
     payload = json.loads(result.stdout)
     assert payload["passed"] is False
     assert isinstance(payload["claim_failures"][0], str)
-    assert (
-        payload["progressive_disclosure"][-1]["command"]
-        == "builder knowledge validate --json --full"
-    )
+    assert payload["progressive_disclosure"][-1]["command"] == "builder knowledge validate --json --full"
     assert payload["agent_advisory"]["available"] is True
     assert payload["agent_advisory"]["passed"] is True
 

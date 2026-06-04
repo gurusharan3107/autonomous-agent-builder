@@ -75,7 +75,8 @@ def test_filesystem_boundary_modules_use_containment_helper() -> None:
     missing = [
         module
         for module in required_modules
-        if "resolve_contained_path" not in (PROJECT_ROOT / module).read_text(encoding="utf-8")
+        if "resolve_contained_path"
+        not in (PROJECT_ROOT / module).read_text(encoding="utf-8")
     ]
 
     assert missing == []

@@ -21,10 +21,7 @@ class VoiceCostLedger:
         payload = self.usage_payload(call_id, event)
         if payload is None:
             return
-        from autonomous_agent_builder.services.voice_operator import (
-            AgentOperatorService,  # noqa: PLC0415
-        )
-
+        from autonomous_agent_builder.services.voice_operator import AgentOperatorService  # noqa: PLC0415
         session = await AgentOperatorService(self.app).latest_or_new_voice_session(call_id=call_id)
         session_factory = get_session_factory()
         async with session_factory() as db:

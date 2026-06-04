@@ -29,17 +29,9 @@ THEMES: list[dict] = [
         "name": "autonomous_recovery",
         "label": "Autonomous recovery — agent needs operator to trigger a fix",
         "keywords": [
-            "without me prompting",
-            "without operator",
-            "dynamically",
-            "autonomous",
-            "self",
-            "you should know",
-            "you have workflow",
-            "you have builder",
-            "without intervention",
-            "should be able to",
-            "on your own",
+            "without me prompting", "without operator", "dynamically", "autonomous",
+            "self", "you should know", "you have workflow", "you have builder",
+            "without intervention", "should be able to", "on your own",
         ],
         "git_patterns": [],
     },
@@ -47,12 +39,8 @@ THEMES: list[dict] = [
         "name": "progress_routing",
         "label": "Progress routing — writing to ROADMAP/CHANGELOG instead of PROGRESS.md",
         "keywords": [
-            "progress.md",
-            "roadmap",
-            "changelog",
-            "autoresearch related",
-            "not supposed to update roadmap",
-            "wrong file",
+            "progress.md", "roadmap", "changelog", "autoresearch related",
+            "not supposed to update roadmap", "wrong file",
         ],
         "git_patterns": ["fix.*progress", "fix.*roadmap", "fix.*routing"],
     },
@@ -60,14 +48,8 @@ THEMES: list[dict] = [
         "name": "test_failures",
         "label": "Test failures — committing behavioral changes without updating tests",
         "keywords": [
-            "test",
-            "failing",
-            "failures",
-            "fix rest",
-            "commit this and fix",
-            "broken test",
-            "pytest",
-            "test suite",
+            "test", "failing", "failures", "fix rest", "commit this and fix",
+            "broken test", "pytest", "test suite",
         ],
         "git_patterns": [r"fix\(tests\)", "align test", "test.*failure", "fix.*test"],
     },
@@ -75,16 +57,9 @@ THEMES: list[dict] = [
         "name": "commit_discipline",
         "label": "Commit discipline — intermediate commits, partial skill commits",
         "keywords": [
-            "dont commit",
-            "don't commit",
-            "only added when",
-            "changes are only",
-            "intermediate",
-            "partial commit",
-            "only skill.md",
-            "rest of the files",
-            "not committed",
-            "commit this",
+            "dont commit", "don't commit", "only added when", "changes are only",
+            "intermediate", "partial commit", "only skill.md", "rest of the files",
+            "not committed", "commit this",
         ],
         "git_patterns": [],
     },
@@ -92,16 +67,8 @@ THEMES: list[dict] = [
         "name": "verbose_docs",
         "label": "Verbose docs — operator-friendly writing when agent-audience is default",
         "keywords": [
-            "concise",
-            "verbose",
-            "explanative",
-            "too much",
-            "without losing",
-            "compact",
-            "big file",
-            "agent friendly",
-            "shorter",
-            "less text",
+            "concise", "verbose", "explanative", "too much", "without losing",
+            "compact", "big file", "agent friendly", "shorter", "less text",
         ],
         "git_patterns": [],
     },
@@ -109,13 +76,8 @@ THEMES: list[dict] = [
         "name": "managed_app_boundary",
         "label": "Managed app boundary — direct edits to managed app instead of dispatching",
         "keywords": [
-            "managed app",
-            "never touch",
-            "builder dashboard",
-            "autonomous builder is supposed",
-            "not supposed to fix",
-            "dispatch",
-            "ship through builder",
+            "managed app", "never touch", "builder dashboard", "autonomous builder is supposed",
+            "not supposed to fix", "dispatch", "ship through builder",
         ],
         "git_patterns": [],
     },
@@ -123,13 +85,8 @@ THEMES: list[dict] = [
         "name": "evidence_before_fix",
         "label": "Evidence before fix — acting on recommendation without validating first",
         "keywords": [
-            "concrete evidence",
-            "validate first",
-            "dont blindly",
-            "don't blindly",
-            "first validate",
-            "ship feature and validate",
-            "is it still valid",
+            "concrete evidence", "validate first", "dont blindly", "don't blindly",
+            "first validate", "ship feature and validate", "is it still valid",
         ],
         "git_patterns": [],
     },
@@ -137,14 +94,8 @@ THEMES: list[dict] = [
         "name": "skill_patching",
         "label": "Skill patching — adding bug notes to skill instead of fixing root cause",
         "keywords": [
-            "patching",
-            "symptom",
-            "surgical fix",
-            "root cause",
-            "not in the skill",
-            "fix the skill",
-            "dont add to skill",
-            "don't add to skill",
+            "patching", "symptom", "surgical fix", "root cause", "not in the skill",
+            "fix the skill", "dont add to skill", "don't add to skill",
         ],
         "git_patterns": [],
     },
@@ -152,12 +103,8 @@ THEMES: list[dict] = [
         "name": "routing_wrong_surface",
         "label": "Routing wrong surface — checking global skill instead of project-local",
         "keywords": [
-            "dont check global",
-            "check project local",
-            "local not global",
-            "project local",
-            "wrong version",
-            "global version",
+            "dont check global", "check project local", "local not global",
+            "project local", "wrong version", "global version",
         ],
         "git_patterns": [],
     },
@@ -165,13 +112,8 @@ THEMES: list[dict] = [
         "name": "operator_question_tool",
         "label": "Operator question tool — asking questions as plain text instead of AskUserQuestion",
         "keywords": [
-            "askuserquestion",
-            "ask user question",
-            "question using",
-            "ask in form",
-            "use the tool",
-            "structured question",
-            "plain text question",
+            "askuserquestion", "ask user question", "question using", "ask in form",
+            "use the tool", "structured question", "plain text question",
         ],
         "git_patterns": [],
     },
@@ -179,29 +121,10 @@ THEMES: list[dict] = [
 
 # Corrections are signals of operator pushback — weight heavier
 CORRECTION_SIGNALS = [
-    "no i meant",
-    "dont",
-    "don't",
-    "instead",
-    "wrong",
-    "not that",
-    "you should",
-    "never",
-    "always",
-    "again",
-    "mistake",
-    "issue",
-    "problem",
-    "incorrect",
-    "you are",
-    "you were",
-    "i said",
-    "remember",
-    "told you",
-    "why did",
-    "should have",
-    "not supposed to",
-    "supposed to",
+    "no i meant", "dont", "don't", "instead", "wrong", "not that", "you should",
+    "never", "always", "again", "mistake", "issue", "problem", "incorrect",
+    "you are", "you were", "i said", "remember", "told you", "why did",
+    "should have", "not supposed to", "supposed to",
 ]
 
 
@@ -250,9 +173,7 @@ def collect_git_fixes(since: str = "30d") -> list[str]:
         days = int(since.rstrip("d")) if since.endswith("d") else 30
         result = subprocess.run(
             ["git", "log", f"--since={days} days ago", "--format=%s"],
-            capture_output=True,
-            text=True,
-            timeout=10,
+            capture_output=True, text=True, timeout=10,
         )
         return [line.strip() for line in result.stdout.splitlines() if line.strip()]
     except Exception:
@@ -261,7 +182,6 @@ def collect_git_fixes(since: str = "30d") -> list[str]:
 
 def match_git_patterns(subjects: list[str], patterns: list[str]) -> int:
     import re
-
     count = 0
     for subj in subjects:
         for pat in patterns:
@@ -297,21 +217,18 @@ def cluster(session_json: dict, since: str = "30d") -> dict:
         hits = theme_hits[theme["name"]]
         git_count = match_git_patterns(git_subjects, theme["git_patterns"])
         if hits or git_count:
-            results.append(
-                {
-                    "name": theme["name"],
-                    "label": theme["label"],
-                    "occurrences": len(hits),
-                    "git_fix_commits": git_count,
-                    "score": len(hits) + (git_count * 2),
-                    "example_prompts": hits[:4],
-                    "keywords_matched": [
-                        k
-                        for k in theme["keywords"]
-                        if any(k in p.get("text", "").lower() for p in prompts)
-                    ][:5],
-                }
-            )
+            results.append({
+                "name": theme["name"],
+                "label": theme["label"],
+                "occurrences": len(hits),
+                "git_fix_commits": git_count,
+                "score": len(hits) + (git_count * 2),
+                "example_prompts": hits[:4],
+                "keywords_matched": [
+                    k for k in theme["keywords"]
+                    if any(k in p.get("text", "").lower() for p in prompts)
+                ][:5],
+            })
 
     results.sort(key=lambda x: -x["score"])
 
@@ -346,7 +263,11 @@ def annotate_recurrence(themes: list[dict], last_run: dict) -> list[dict]:
     recurred=True means: fix was applied last run but pattern is still appearing.
     This signals the fix was insufficient — needs a stronger mechanical gate.
     """
-    last_edits = {t["name"] for t in last_run.get("themes", []) if t.get("edit_applied")}
+    last_edits = {
+        t["name"]
+        for t in last_run.get("themes", [])
+        if t.get("edit_applied")
+    }
     for theme in themes:
         theme["recurred"] = theme["name"] in last_edits
         if theme["recurred"]:
@@ -359,9 +280,7 @@ def annotate_recurrence(themes: list[dict], last_run: dict) -> list[dict]:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print(
-            "Usage: cluster.py <session.json> [--since 30d] [--skill-dir <path>]", file=sys.stderr
-        )
+        print("Usage: cluster.py <session.json> [--since 30d] [--skill-dir <path>]", file=sys.stderr)
         sys.exit(1)
 
     path = Path(sys.argv[1])

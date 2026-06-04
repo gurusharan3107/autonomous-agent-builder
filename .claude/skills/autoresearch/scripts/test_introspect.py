@@ -6,7 +6,6 @@ regex, and a false "all gates non-discriminating" claim at n=1.
 Run:
   python3 -m pytest .claude/skills/autoresearch/scripts/test_introspect.py -q
 """
-
 from __future__ import annotations
 
 import importlib.util
@@ -27,17 +26,12 @@ _SPEC.loader.exec_module(introspect)
 # The contract: a row in the authoritative TSV is one iteration, full stop.
 
 
-def _row(
-    decision="discard", composite=30594, delta="2.46", gates="6/6", gates_json="", idea="idea3"
-):
+def _row(decision="discard", composite=30594, delta="2.46", gates="6/6",
+         gates_json="", idea="idea3"):
     return {
-        "decision": decision,
-        "composite": str(composite),
-        "composite_delta_pct": delta,
-        "gates_passed": gates,
-        "gates_json": gates_json,
-        "idea_ref": idea,
-        "notes": "sha=abc status=shipped",
+        "decision": decision, "composite": str(composite),
+        "composite_delta_pct": delta, "gates_passed": gates,
+        "gates_json": gates_json, "idea_ref": idea, "notes": "sha=abc status=shipped",
     }
 
 
@@ -106,11 +100,9 @@ def test_gate_utility_unmeasurable_without_gates_json():
 
 
 def test_gate_utility_measurable_with_gates_json():
-    gj = (
-        '{"cache_ratio_gt_5x_after_turn_2": true, "chunk_pressure_risk_false": true, '
-        '"avoidable_cost_flags_empty": true, "gate_pass_rate_full": true, '
-        '"feature_correct": true, "fully_shipped": false}'
-    )
+    gj = ('{"cache_ratio_gt_5x_after_turn_2": true, "chunk_pressure_risk_false": true, '
+          '"avoidable_cost_flags_empty": true, "gate_pass_rate_full": true, '
+          '"feature_correct": true, "fully_shipped": false}')
     iters = [introspect._iter_from_optimize_row(_row(gates_json=gj))]
     gu = introspect.analyze_gate_utility(iters)
     assert gu["_measurable"] is True

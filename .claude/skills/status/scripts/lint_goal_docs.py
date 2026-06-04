@@ -19,7 +19,6 @@ EXIT: 2 if any ERROR; 1 if any WARN and --strict; else 0.
 Usage:
   lint_goal_docs.py [--root DIR] [--strict]
 """
-
 from __future__ import annotations
 
 import argparse
@@ -34,11 +33,11 @@ OPEN_MAX = 240
 CLOSED_MAX = 160
 # A closed item should point at durable evidence somewhere in its block.
 EVIDENCE = re.compile(
-    r"\b[0-9a-f]{7,40}\b"  # commit hash
-    r"|test_\w+"  # regression test name
-    r"|\.memory|\bmemory\b"  # memory slug ref
+    r"\b[0-9a-f]{7,40}\b"          # commit hash
+    r"|test_\w+"                    # regression test name
+    r"|\.memory|\bmemory\b"         # memory slug ref
     r"|\.(py|ts|tsx|md|json|html)\b"  # a file pointer
-    r"|\d{4}-\d{2}-\d{2}"  # a dated evidence stamp
+    r"|\d{4}-\d{2}-\d{2}"           # a dated evidence stamp
 )
 # Work-log keywords that should live in STATUS/CHANGELOG, not in a ROADMAP item.
 WORKLOG = re.compile(
@@ -95,29 +94,17 @@ def lint_roadmap(text: str) -> list[tuple[str, int, str]]:
         for tk in T_TOKEN.finditer(raw):
             kind, st = tk.group(1), tk.group(2)
             if kind not in T_KINDS or (st is not None and st not in T_STATES):
-                out.append(
-                    (
-                        "WARN",
-                        lineno,
-                        f"unknown test token `T:{kind}"
-                        f"{':' + st if st else ''}` — expected "
-                        "`T:backend`/`T:browser` (optionally `:pending`/`:na`)",
-                    )
-                )
+                out.append(("WARN", lineno, f"unknown test token `T:{kind}"
+                            f"{':' + st if st else ''}` — expected "
+                            "`T:backend`/`T:browser` (optionally `:pending`/`:na`)"))
         # Both lanes must be classified — every checkbox carries a backend + browser
         # token (pass / `:pending` / `:na`). No untagged "—" resting state.
         kinds_present = {tk.group(1) for tk in T_TOKEN.finditer(raw)}
         missing = [k for k in ("backend", "browser") if k not in kinds_present]
         if missing:
             toks = "`/`".join(f"T:{k}" for k in missing)
-            out.append(
-                (
-                    "WARN",
-                    lineno,
-                    f"checkbox missing `{toks}` token — tag both lanes "
-                    "(pass / `:pending` / `:na`); no untagged — state",
-                )
-            )
+            out.append(("WARN", lineno, f"checkbox missing `{toks}` token — tag both lanes "
+                        "(pass / `:pending` / `:na`); no untagged — state"))
         # `IF`/`T:*` are metadata, not prose — exclude from the char budget.
         stripped = T_TOKEN.sub("", IF_TOKEN.sub("", raw))
         body = strip_md(PRI.sub("", stripped))
@@ -125,43 +112,19 @@ def lint_roadmap(text: str) -> list[tuple[str, int, str]]:
             if not PRI.match(raw):
                 untagged_open.append(lineno)
             if len(body) > OPEN_MAX:
-                out.append(
-                    (
-                        "WARN",
-                        lineno,
-                        f"open item {len(body)}c > {OPEN_MAX} — cut to "
-                        "one line (intent + acceptance); work-log → STATUS.md",
-                    )
-                )
+                out.append(("WARN", lineno, f"open item {len(body)}c > {OPEN_MAX} — cut to "
+                            "one line (intent + acceptance); work-log → STATUS.md"))
         else:  # closed
             if len(body) > CLOSED_MAX:
-                out.append(
-                    (
-                        "WARN",
-                        lineno,
-                        f"closed item {len(body)}c > {CLOSED_MAX} — cut "
-                        "to outcome + pointer; detail → git/CHANGELOG/.memory",
-                    )
-                )
+                out.append(("WARN", lineno, f"closed item {len(body)}c > {CLOSED_MAX} — cut "
+                            "to outcome + pointer; detail → git/CHANGELOG/.memory"))
             if not EVIDENCE.search(raw):
-                out.append(
-                    (
-                        "WARN",
-                        lineno,
-                        "closed item has no evidence pointer "
-                        "(commit / test_ name / file / .memory / date)",
-                    )
-                )
+                out.append(("WARN", lineno, "closed item has no evidence pointer "
+                            "(commit / test_ name / file / .memory / date)"))
         if worklog_hits:
-            out.append(
-                (
-                    "WARN",
-                    lineno,
-                    f"item block has {worklog_hits} work-log line(s) "
-                    "(Delivered/Remaining/PROVEN/…) — move the running log to "
-                    "STATUS.md 'Current Item In Flight'",
-                )
-            )
+            out.append(("WARN", lineno, f"item block has {worklog_hits} work-log line(s) "
+                        "(Delivered/Remaining/PROVEN/…) — move the running log to "
+                        "STATUS.md 'Current Item In Flight'"))
 
     for i, line in enumerate(lines, 1):
         if MS_HEADING.match(line):
@@ -188,26 +151,14 @@ def lint_roadmap(text: str) -> list[tuple[str, int, str]]:
 
     for mid, where in sorted(id_lines.items()):
         if len(where) > 1:
-            out.append(
-                (
-                    "WARN",
-                    where[0],
-                    f"item id {mid} defined {len(where)}× "
-                    f"(lines {', '.join(map(str, where))}) — keep one canonical "
-                    "entry; fold the re-opens into it",
-                )
-            )
+            out.append(("WARN", where[0], f"item id {mid} defined {len(where)}× "
+                        f"(lines {', '.join(map(str, where))}) — keep one canonical "
+                        "entry; fold the re-opens into it"))
     if untagged_open:
         head = ", ".join(map(str, untagged_open[:10]))
         more = f" (+{len(untagged_open) - 10} more)" if len(untagged_open) > 10 else ""
-        out.append(
-            (
-                "WARN",
-                untagged_open[0],
-                f"{len(untagged_open)} open items have no "
-                f"`Pn` priority and won't show in the overview — lines {head}{more}",
-            )
-        )
+        out.append(("WARN", untagged_open[0], f"{len(untagged_open)} open items have no "
+                    f"`Pn` priority and won't show in the overview — lines {head}{more}"))
     return out
 
 
@@ -215,14 +166,8 @@ def lint_status(text: str) -> list[tuple[str, int, str]]:
     out: list[tuple[str, int, str]] = []
     for label in ("Current Epoch", "Current Milestone", "Last Update"):
         if not re.search(rf"\|\s*{re.escape(label)}\s*\|", text):
-            out.append(
-                (
-                    "ERROR",
-                    0,
-                    f"STATUS.md Current Position: row '{label}' missing "
-                    "— the generator parses it; goal-overview will fail to build",
-                )
-            )
+            out.append(("ERROR", 0, f"STATUS.md Current Position: row '{label}' missing "
+                        "— the generator parses it; goal-overview will fail to build"))
     return out
 
 
@@ -232,15 +177,12 @@ def lint_progress_routing(text: str) -> list[tuple[str, int, str]]:
     out: list[tuple[str, int, str]] = []
     for i, line in enumerate(text.splitlines(), 1):
         if PROGRESS_ROUTING.search(line):
-            out.append(
-                (
-                    "WARN",
-                    i,
-                    "autoresearch run-log detail (baseline_runs_summary / iteration #N / "
-                    "run #N) belongs in docs/autoresearch/PROGRESS.md, not the forward spine "
-                    "— see feedback_autoresearch_progress_routing",
-                )
-            )
+            out.append((
+                "WARN", i,
+                "autoresearch run-log detail (baseline_runs_summary / iteration #N / "
+                "run #N) belongs in docs/autoresearch/PROGRESS.md, not the forward spine "
+                "— see feedback_autoresearch_progress_routing",
+            ))
     return out
 
 
@@ -266,20 +208,11 @@ def main() -> int:
     # HTML sync (reuse the generator's --check).
     gen = Path(args.root) / ".claude/skills/status/scripts/build_goal_overview.py"
     if gen.exists():
-        r = subprocess.run(
-            [sys.executable, str(gen), "--root", args.root, "--check"],
-            capture_output=True,
-            text=True,
-        )
+        r = subprocess.run([sys.executable, str(gen), "--root", args.root, "--check"],
+                           capture_output=True, text=True)
         if r.returncode != 0:
-            findings.append(
-                (
-                    "goal-overview.html",
-                    "ERROR",
-                    0,
-                    "out of sync with markdown — run `/status update`",
-                )
-            )
+            findings.append(("goal-overview.html", "ERROR", 0,
+                             "out of sync with markdown — run `/status update`"))
 
     errors = [f for f in findings if f[1] == "ERROR"]
     warns = [f for f in findings if f[1] == "WARN"]

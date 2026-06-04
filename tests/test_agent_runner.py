@@ -236,10 +236,7 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
     assert captured["options"].resume == "resume-abc"
     assert captured["options"].env["CLAUDE_CODE_OAUTH_TOKEN"] == "builder-token"
     assert captured["options"].env["CLAUDE_CODE_ENABLE_TELEMETRY"] == "1"
-    assert (
-        captured["options"].env["OTEL_EXPORTER_OTLP_ENDPOINT"]
-        == "http://collector.example.com:4318"
-    )
+    assert captured["options"].env["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://collector.example.com:4318"
     assert result.observability is not None
     assert result.observability["enabled"] is True
     assert result.observability["service_name"] == "autonomous-agent-builder"
@@ -507,13 +504,7 @@ def test_preflight_passes_for_git_required_phase_with_valid_head(tmp_path):
         cwd=tmp_path,
         check=True,
         capture_output=True,
-        env={
-            **__import__("os").environ,
-            "GIT_AUTHOR_NAME": "t",
-            "GIT_AUTHOR_EMAIL": "t@t",
-            "GIT_COMMITTER_NAME": "t",
-            "GIT_COMMITTER_EMAIL": "t@t",
-        },
+        env={**__import__("os").environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
     )
     runner = AgentRunner(get_settings())
     result = runner._preflight_workspace("code-gen", str(tmp_path))
@@ -784,7 +775,7 @@ async def test_stream_event_invokes_on_stream_usage_callback(monkeypatch):
     fake.SystemMessage = FakeSystemMessage  # type: ignore[attr-defined]
     fake.AssistantMessage = FakeAssistantMessage  # type: ignore[attr-defined]
     fake.AgentDefinition = type("AD", (), {})  # type: ignore[attr-defined]
-    fake.tool = lambda n, d, s, annotations=None: lambda f: f  # type: ignore[attr-defined]
+    fake.tool = lambda n, d, s, annotations=None: (lambda f: f)  # type: ignore[attr-defined]
     fake.create_sdk_mcp_server = lambda name, version="1.0.0", tools=None: {  # type: ignore[attr-defined]
         "name": name,
         "tools": tools or [],

@@ -24,13 +24,13 @@ from tests.agent_route_test_support import (
 
 
 @pytest.mark.asyncio
-async def test_chat_feature_spec_request_creates_backlog_feature(monkeypatch, test_db, tmp_path):
+async def test_chat_feature_spec_request_creates_backlog_feature(
+    monkeypatch, test_db, tmp_path
+):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="python"))
@@ -63,9 +63,7 @@ async def test_chat_feature_spec_request_creates_backlog_feature(monkeypatch, te
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -89,11 +87,7 @@ async def test_chat_feature_spec_request_creates_backlog_feature(monkeypatch, te
         )
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
-        created_feature = next(
-            feature
-            for feature in feature_payload["features"]
-            if feature["title"] == "Post bookmarks"
-        )
+        created_feature = next(feature for feature in feature_payload["features"] if feature["title"] == "Post bookmarks")
         tasks_response = await client.get(f"/api/features/{created_feature['id']}/tasks")
 
     assert "I captured that feature as `Post bookmarks`." in assistant_item["payload"]["content"]
@@ -105,7 +99,6 @@ async def test_chat_feature_spec_request_creates_backlog_feature(monkeypatch, te
     assert dispatched == []
     assert any(item["type"] == "assistant_message" for item in history_payload["items"])
 
-
 @pytest.mark.asyncio
 async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
     monkeypatch, test_db, tmp_path
@@ -113,9 +106,7 @@ async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="python"))
@@ -151,9 +142,7 @@ async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -182,11 +171,7 @@ async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
         )
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
-        created_feature = next(
-            feature
-            for feature in feature_payload["features"]
-            if feature["title"] == "Post bookmarks"
-        )
+        created_feature = next(feature for feature in feature_payload["features"] if feature["title"] == "Post bookmarks")
         tasks_response = await client.get(f"/api/features/{created_feature['id']}/tasks")
 
     assert captured["subagents"] is None
@@ -200,7 +185,6 @@ async def test_chat_natural_feature_request_routes_into_feature_backlog_lane(
     assert "I captured that feature as `Post bookmarks`." in assistant_item["payload"]["content"]
     assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]
 
-
 @pytest.mark.asyncio
 async def test_chat_saved_feature_delivery_followup_routes_through_sprint_backlog_and_queue_approval(
     monkeypatch, test_db, tmp_path
@@ -208,9 +192,7 @@ async def test_chat_saved_feature_delivery_followup_routes_through_sprint_backlo
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="python"))
@@ -243,9 +225,7 @@ async def test_chat_saved_feature_delivery_followup_routes_through_sprint_backlo
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -288,9 +268,7 @@ async def test_chat_saved_feature_delivery_followup_routes_through_sprint_backlo
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Builder prepared the work" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Builder prepared the work" in item["payload"].get("content", ""),
         )
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
@@ -310,18 +288,13 @@ async def test_chat_saved_feature_delivery_followup_routes_through_sprint_backlo
         "Cover persistence and tests for __html__ escaping regression",
         "Verify __html__ escaping regression for shipping",
     }
-    assert all(
-        task.depends_on["sprint_execution"]["skip_task_planning"] is True for task in task_rows
-    )
-    assert all(
-        task.depends_on["sprint_execution"]["skip_task_design"] is True for task in task_rows
-    )
+    assert all(task.depends_on["sprint_execution"]["skip_task_planning"] is True for task in task_rows)
+    assert all(task.depends_on["sprint_execution"]["skip_task_design"] is True for task in task_rows)
     assert dispatched == [task_rows[0].id]
     assert created_feature["status"] == FeatureStatus.SPRINT_PLANNED.value
     assert "sprint-plan" not in assistant_item["payload"]["content"]
     assert "task" not in assistant_item["payload"]["content"].lower()
     assert "Delivery has started." in assistant_item["payload"]["content"]
-
 
 @pytest.mark.asyncio
 async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature_save(
@@ -330,9 +303,7 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="python"))
@@ -365,10 +336,7 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
         updated_input = getattr(permission, "updated_input", None) or getattr(
             permission, "updatedInput", None
         )
-        assert (
-            updated_input["answers"]["Where should bookmarks appear on the profile?"]
-            == "Dedicated tab"
-        )
+        assert updated_input["answers"]["Where should bookmarks appear on the profile?"] == "Dedicated tab"
         return RunResult(
             session_id="sdk-session-feature-question",
             cost_usd=0.03,
@@ -378,7 +346,7 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
             output_text=(
                 "AGREEMENT: Add private post bookmarking with a dedicated profile tab.\n\n"
                 'FEATURE_SPEC_JSON: {"title":"Private Post Bookmarks","description":"Allow '
-                "signed-in users to bookmark posts privately and review them from a dedicated "
+                'signed-in users to bookmark posts privately and review them from a dedicated '
                 'Bookmarks tab on their own profile.","priority":80,'
                 '"acceptance_criteria":["Users can bookmark and unbookmark a post",'
                 '"Users can open a dedicated Bookmarks tab from their own profile"],'
@@ -396,9 +364,7 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -442,22 +408,15 @@ async def test_chat_feature_spec_can_use_ask_user_question_and_resume_to_feature
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
         created_feature = next(
-            feature
-            for feature in feature_payload["features"]
-            if feature["title"] == "Private Post Bookmarks"
+            feature for feature in feature_payload["features"] if feature["title"] == "Private Post Bookmarks"
         )
         tasks_response = await client.get(f"/api/features/{created_feature['id']}/tasks")
 
-    updated_question = next(
-        item for item in history_payload["items"] if item["id"] == question_item["id"]
-    )
+    updated_question = next(item for item in history_payload["items"] if item["id"] == question_item["id"])
     assert updated_question["payload"]["answered"] is True
     assert updated_question["payload"]["answer_value"] == "Dedicated tab"
     tasks = tasks_response.json()
     assert tasks == []
     assert dispatched == []
-    assert (
-        "I captured that feature as `Private Post Bookmarks`."
-        in assistant_item["payload"]["content"]
-    )
+    assert "I captured that feature as `Private Post Bookmarks`." in assistant_item["payload"]["content"]
     assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]

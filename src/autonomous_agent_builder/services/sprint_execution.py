@@ -166,8 +166,6 @@ def compact_board_sprint_design_details(payload: dict[str, Any] | None) -> dict[
         ]
         compact["shared_concerns"] = compact["shared_architecture_decisions"]
     return compact
-
-
 _LOW_RISK_SPRINT_TASK_TEMPLATES: tuple[dict[str, str], ...] = (
     {
         "key": "core-app-behavior",

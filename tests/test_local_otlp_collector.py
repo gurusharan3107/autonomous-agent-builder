@@ -10,14 +10,15 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import closing
+from pathlib import Path
 
 import pytest
 
-from autonomous_agent_builder.embedded.server.app import _local_otlp_endpoint
 from autonomous_agent_builder.observability.local_collector import (
     LocalOTLPCollector,
     parse_local_endpoint,
 )
+from autonomous_agent_builder.embedded.server.app import _local_otlp_endpoint
 
 
 def _free_port() -> int:
@@ -127,7 +128,9 @@ def test_local_collector_skips_when_port_already_in_use(tmp_path):
     server_sock = socket.socket()
     server_sock.bind(("127.0.0.1", port))
     server_sock.listen(1)
-    accept_thread = threading.Thread(target=lambda: server_sock.accept(), daemon=True)
+    accept_thread = threading.Thread(
+        target=lambda: server_sock.accept(), daemon=True
+    )
     accept_thread.start()
 
     try:

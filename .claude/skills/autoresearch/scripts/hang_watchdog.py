@@ -73,6 +73,7 @@ import subprocess
 import sys
 import time
 
+
 # -- Discovery -----------------------------------------------------------------
 
 
@@ -144,7 +145,9 @@ def _wal_mtime(workspace: pathlib.Path) -> float:
 
 def _safe_run(cmd: list[str], cwd: str | None = None, timeout: int = 15) -> bytes:
     try:
-        return subprocess.run(cmd, cwd=cwd, capture_output=True, timeout=timeout).stdout
+        return subprocess.run(
+            cmd, cwd=cwd, capture_output=True, timeout=timeout
+        ).stdout
     except (subprocess.SubprocessError, OSError) as exc:
         return f"# error: {type(exc).__name__}: {exc}\n".encode()
 
@@ -165,7 +168,7 @@ def dump_diagnostics(
     idle_s: float,
     wal_mtime: float,
 ) -> pathlib.Path:
-    ts = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = dump_root / f"{ts}-pid{pid}"
     out.mkdir(parents=True, exist_ok=True)
 
@@ -177,7 +180,9 @@ def dump_diagnostics(
         "workspace": str(workspace),
         "wal_last_mtime_epoch": wal_mtime,
         "wal_last_mtime_iso": (
-            datetime.datetime.fromtimestamp(wal_mtime, tz=datetime.UTC).isoformat()
+            datetime.datetime.fromtimestamp(
+                wal_mtime, tz=datetime.timezone.utc
+            ).isoformat()
             if wal_mtime
             else None
         ),
@@ -205,7 +210,9 @@ def dump_diagnostics(
         ("process_wchan.txt", f"/proc/{pid}/wchan"),
     ):
         try:
-            (out / fname).write_text(pathlib.Path(src).read_text(errors="replace"))
+            (out / fname).write_text(
+                pathlib.Path(src).read_text(errors="replace")
+            )
         except (OSError, PermissionError) as exc:
             _write_text_safe(out / f"{fname}.error", f"{type(exc).__name__}: {exc}\n")
 
@@ -219,7 +226,9 @@ def dump_diagnostics(
                 pass
         (out / "process_fds.txt").write_text("\n".join(sorted(fds)))
     except OSError as exc:
-        _write_text_safe(out / "process_fds.error", f"{type(exc).__name__}: {exc}\n")
+        _write_text_safe(
+            out / "process_fds.error", f"{type(exc).__name__}: {exc}\n"
+        )
 
     try:
         task_dir = pathlib.Path(f"/proc/{pid}/task")
@@ -292,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=[],
         help="Deprecated no-op (OTEL raw-body capture removed). Accepted for "
-        "backward compatibility with existing spawn calls; ignored.",
+             "backward compatibility with existing spawn calls; ignored.",
     )
     ap.add_argument(
         "--once",
@@ -330,7 +339,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def log(msg: str) -> None:
         if not args.quiet:
-            now = datetime.datetime.now(datetime.UTC).strftime("%H:%M:%S")
+            now = datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S")
             print(f"[watchdog {now}] {msg}", file=sys.stderr, flush=True)
 
     log(
@@ -385,7 +394,11 @@ def main(argv: list[str] | None = None) -> int:
                 state["last_wal_mtime"] = wal_mt
 
             age_since_first_seen = now - state["first_seen"]
-            idle = now - state["last_live_mtime"] if state["last_live_mtime"] else 0.0
+            idle = (
+                now - state["last_live_mtime"]
+                if state["last_live_mtime"]
+                else 0.0
+            )
 
             if (
                 age_since_first_seen >= args.grace_seconds

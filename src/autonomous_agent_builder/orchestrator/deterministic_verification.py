@@ -277,12 +277,16 @@ def feature_acceptance_output(
     status = str(data.get("status") or ("passed" if success else "failed"))
     command = data.get("command")
     command_text = (
-        " ".join(str(part) for part in command) if isinstance(command, list) else str(command or "")
+        " ".join(str(part) for part in command)
+        if isinstance(command, list)
+        else str(command or "")
     ).strip()
     coverage = data.get("coverage") if isinstance(data.get("coverage"), dict) else {}
     matched_files = coverage.get("matched_files") if isinstance(coverage, dict) else []
     criteria = (
-        data.get("acceptance_criteria") if isinstance(data.get("acceptance_criteria"), list) else []
+        data.get("acceptance_criteria")
+        if isinstance(data.get("acceptance_criteria"), list)
+        else []
     )
     lines = [
         f"Feature acceptance tests {'PASS' if success else 'FAIL'} ({status}).",

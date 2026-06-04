@@ -213,9 +213,7 @@ def build_complexity_report(
         *_file_violations(files, baseline, active_thresholds),
         *_function_violations(functions, baseline, active_thresholds),
     ]
-    violations.sort(
-        key=lambda item: (str(item["path"]), str(item.get("qualname", "")), item["metric"])
-    )
+    violations.sort(key=lambda item: (str(item["path"]), str(item.get("qualname", "")), item["metric"]))
     files_over_threshold = [
         file.to_payload() for file in files if file.lines > active_thresholds.max_file_lines
     ]
@@ -229,9 +227,7 @@ def build_complexity_report(
         key=lambda item: (int(item["lines"]), int(item["branches"]), str(item["baseline_key"])),
         reverse=True,
     )
-    files_over_threshold.sort(
-        key=lambda item: (int(item["lines"]), str(item["path"])), reverse=True
-    )
+    files_over_threshold.sort(key=lambda item: (int(item["lines"]), str(item["path"])), reverse=True)
     passed = not violations
     return {
         "passed": passed,

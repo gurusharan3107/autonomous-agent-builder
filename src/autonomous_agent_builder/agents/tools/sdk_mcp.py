@@ -31,11 +31,7 @@ def _to_mcp(result: dict[str, Any]) -> dict[str, Any]:
 _PARAM_ALIASES: dict[str, dict[str, str]] = {
     "run_tests": {"test_p": "test_pattern", "pattern": "test_pattern", "path": "test_pattern"},
     "read_file": {"path": "file_path", "file": "file_path", "filepath": "file_path"},
-    "list_directory": {
-        "path": "relative_path",
-        "dir": "relative_path",
-        "directory": "relative_path",
-    },
+    "list_directory": {"path": "relative_path", "dir": "relative_path", "directory": "relative_path"},
     "task_list": {
         "item_id": "feature_id",
         "task_id": "feature_id",
@@ -84,7 +80,9 @@ def validate_mcp_args(
         for key in args:
             if key not in allowed_props:
                 if key in aliases:
-                    errors.append(f"Unknown param '{key}' — use '{aliases[key]}' instead.")
+                    errors.append(
+                        f"Unknown param '{key}' — use '{aliases[key]}' instead."
+                    )
                 else:
                     # Try to find a close match from allowed props.
                     suggestion = _closest_param(key, allowed_props)

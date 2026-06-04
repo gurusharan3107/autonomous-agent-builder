@@ -137,9 +137,7 @@ def _degraded_observability_payload(
     )
 
 
-def _chat_run_item(
-    event: ChatEvent, payload: dict[str, Any], started_at: datetime
-) -> MetricsRunItem:
+def _chat_run_item(event: ChatEvent, payload: dict[str, Any], started_at: datetime) -> MetricsRunItem:
     duration_ms = max(int((event.created_at - started_at).total_seconds() * 1000), 0)
     usage = chat_status_token_usage(payload)
     cost = estimate_run_cost(
@@ -183,9 +181,7 @@ def _chat_run_item(
     )
 
 
-async def _load_recent_chat_runs(
-    db: AsyncSession, *, event_scan_limit: int
-) -> list[MetricsRunItem]:
+async def _load_recent_chat_runs(db: AsyncSession, *, event_scan_limit: int) -> list[MetricsRunItem]:
     event_result = await db.execute(
         select(ChatEvent)
         .where(ChatEvent.event_type == "run_status")
@@ -219,7 +215,9 @@ async def _load_voice_ledger(db: AsyncSession) -> dict[str, Any]:
 
 
 async def _load_active_run_count(db: AsyncSession) -> int:
-    result = await db.execute(select(func.count(AgentRun.id)).where(AgentRun.status == "running"))
+    result = await db.execute(
+        select(func.count(AgentRun.id)).where(AgentRun.status == "running")
+    )
     return int(result.scalar() or 0)
 
 
@@ -317,9 +315,7 @@ async def load_dashboard_metrics_response(
     chat_event_scan_limit: int = METRICS_CHAT_EVENT_SCAN_LIMIT,
     observability_summary: ObservabilitySummary = dashboard_observability_summary,
 ) -> MetricsResponse:
-    result = await db.execute(
-        select(AgentRun).order_by(AgentRun.started_at.desc()).limit(run_limit)
-    )
+    result = await db.execute(select(AgentRun).order_by(AgentRun.started_at.desc()).limit(run_limit))
     orchestrator_runs = result.scalars().all()
 
     chat_runs = await _load_recent_chat_runs(db, event_scan_limit=chat_event_scan_limit)
@@ -346,7 +342,9 @@ async def load_dashboard_metrics_response(
         }
     total_estimated_cost_usd = sum(run.estimated_cost_usd for run in all_runs)
     credit_values = [
-        run.estimated_codex_credits for run in all_runs if run.estimated_codex_credits is not None
+        run.estimated_codex_credits
+        for run in all_runs
+        if run.estimated_codex_credits is not None
     ]
     (
         runtime_decision_summary_payload,

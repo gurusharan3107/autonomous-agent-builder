@@ -22,8 +22,6 @@ from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
 from autonomous_agent_builder.services.task_recovery import recover_failed_task
 from autonomous_agent_builder.services.voice_operator_interaction import (
     select_recovery_task as _select_recovery_task,
-)
-from autonomous_agent_builder.services.voice_operator_interaction import (
     task_recovery_snapshot as _task_recovery_snapshot,
 )
 
@@ -97,10 +95,7 @@ class HighRiskVoiceActionService:
                 await db.refresh(prepared)
 
         if delegated_message:
-            from autonomous_agent_builder.services.voice_operator import (
-                AgentOperatorService,  # noqa: PLC0415
-            )
-
+            from autonomous_agent_builder.services.voice_operator import AgentOperatorService  # noqa: PLC0415
             result = await AgentOperatorService(self.app).send_message(
                 {
                     "session_id": session_id,
@@ -278,10 +273,7 @@ class HighRiskVoiceActionService:
             task_snapshot = _task_recovery_snapshot(task)
             result = await recover_failed_task(task, db)
 
-        from autonomous_agent_builder.services.voice_operator import (
-            AgentOperatorService,  # noqa: PLC0415
-        )
-
+        from autonomous_agent_builder.services.voice_operator import AgentOperatorService  # noqa: PLC0415
         event = await AgentOperatorService(self.app).append_and_publish_voice_event(
             session.id,
             "voice_control_action",
@@ -343,10 +335,7 @@ class HighRiskVoiceActionService:
             action.payload_json = payload
             await db.commit()
 
-        from autonomous_agent_builder.services.voice_operator import (
-            AgentOperatorService,  # noqa: PLC0415
-        )
-
+        from autonomous_agent_builder.services.voice_operator import AgentOperatorService  # noqa: PLC0415
         agent = AgentOperatorService(self.app)
 
         if (
@@ -409,10 +398,7 @@ class HighRiskVoiceActionService:
                     "task_id": recovery_input["task"]["id"],
                 }
 
-        from autonomous_agent_builder.services.voice_operator import (
-            AgentOperatorService,  # noqa: PLC0415
-        )
-
+        from autonomous_agent_builder.services.voice_operator import AgentOperatorService  # noqa: PLC0415
         agent = AgentOperatorService(self.app)
         await agent.append_and_publish_voice_event(
             session_id,

@@ -23,11 +23,8 @@ from pathlib import Path
 from typing import Any
 
 # Bind on all interfaces so WSL2 can reach this process running on Windows.
-SOCKET_PATH = Path(
-    os.environ.get(
-        "HERMES_CHROME_BRIDGE_SOCKET", str(Path.home() / ".hermes" / "run" / "chrome-bridge.sock")
-    )
-)
+SOCKET_PATH = Path(os.environ.get("HERMES_CHROME_BRIDGE_SOCKET",
+    str(Path.home() / ".hermes" / "run" / "chrome-bridge.sock")))
 
 pending: dict[str, queue.Queue[dict[str, Any]]] = {}
 pending_lock = threading.Lock()
@@ -35,15 +32,10 @@ out_lock = threading.Lock()
 
 
 def _screenshot_dir() -> Path:
-    return (
-        Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes")))
-        / "cache"
-        / "hermes-chrome"
-    )
+    return Path(os.environ.get("HERMES_HOME", str(Path.home() / ".hermes"))) / "cache" / "hermes-chrome"
 
 
 # ── Native messaging (Chrome ↔ this process via stdin/stdout) ────────────────
-
 
 def read_native_message() -> dict[str, Any] | None:
     raw_len = sys.stdin.buffer.read(4)
@@ -65,7 +57,6 @@ def write_native_message(message: dict[str, Any]) -> None:
 
 
 # ── Unix socket server (this process ↔ WSL2 tools.py) ───────────────────────
-
 
 def socket_server() -> None:
     SOCKET_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -105,11 +96,7 @@ def handle_client(conn: socket.socket) -> None:
             response = response_q.get(timeout=float(request.get("timeoutSeconds", 45)))
             response = _materialize_response(response)
         except queue.Empty:
-            response = {
-                "id": request_id,
-                "success": False,
-                "error": "Hermes Chrome extension timed out",
-            }
+            response = {"id": request_id, "success": False, "error": "Hermes Chrome extension timed out"}
         finally:
             with pending_lock:
                 pending.pop(request_id, None)
@@ -137,7 +124,6 @@ def _materialize_response(response: dict[str, Any]) -> dict[str, Any]:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
-
 
 def main() -> int:
     threading.Thread(target=socket_server, daemon=True).start()

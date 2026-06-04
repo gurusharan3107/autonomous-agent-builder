@@ -10,7 +10,6 @@ VOICE_ORB = Path("frontend/src/components/SamanthaVoiceOrb.tsx")
 VOICE_HOOK = Path("frontend/src/hooks/use-realtime-voice.tsx")
 VOICE_POLICY = Path("src/autonomous_agent_builder/services/realtime_voice_policy.py")
 
-
 def agent_source_text() -> str:
     return "\n".join(
         [
@@ -45,16 +44,13 @@ def test_agent_page_renders_realtime_voice_panel() -> None:
     assert "setVoiceEvents([])" in voice_source
     assert "setVoiceMessages([])" in voice_source
     assert "realtimeTextSubmittingRef.current" in source
-    assert "disabled={realtimeTextSubmitting}" in source
+    assert 'disabled={realtimeTextSubmitting}' in source
     assert '{realtimeTextSubmitting ? "Sending" : "Send"}' in source
-    assert "<AgentTimeline entries={voiceTimelineEntries} />" in source
+    assert '<AgentTimeline entries={voiceTimelineEntries} />' in source
     assert "stream-card stream-card-operator w-full max-w-[880px]" not in source
     assert 'kind: assistantMessage ? "assistant" : systemMessage ? "gate" : "user"' in source
-    assert (
-        'heading: assistantMessage ? "Samantha" : systemMessage ? "Realtime system" : "Operator"'
-        in source
-    )
-    assert source.index("<AgentTimeline entries={voiceTimelineEntries} />") < source.index(
+    assert 'heading: assistantMessage ? "Samantha" : systemMessage ? "Realtime system" : "Operator"' in source
+    assert source.index('<AgentTimeline entries={voiceTimelineEntries} />') < source.index(
         '<Code className="text-[10px] uppercase tracking-[0.16em]">Realtime input</Code>',
     )
     assert "Agent working with" in source
@@ -79,14 +75,11 @@ def test_agent_page_renders_realtime_voice_panel() -> None:
     assert "control.handled" in voice_source
     assert "text control handled" in voice_source
     assert "control.route" in voice_source
-    assert (
-        'new URL(control.route, window.location.origin).searchParams.get("session") || ""'
-        in voice_source
-    )
+    assert 'new URL(control.route, window.location.origin).searchParams.get("session") || ""' in voice_source
     assert "detail: { route: control.route, session_id: delegatedSessionId }" in voice_source
     assert "dashboard navigation" in voice_source
     assert "normalizeQuestionOptions(item.payload.options)" in source
-    assert 'String(record.label ?? "").trim()' in source
+    assert "String(record.label ?? \"\").trim()" in source
     assert "{option.label}" in source
     assert "item.payload.options.map(String)" not in source
     assert "Raw tokens" in source
@@ -131,32 +124,24 @@ def test_agent_page_renders_realtime_voice_panel() -> None:
     assert 'new CustomEvent("aab:voice-session-bound"' in voice_source
     assert 'new CustomEvent("aab:voice-control-action"' in voice_source
     assert 'new CustomEvent("aab:voice-navigation-request"' in voice_source
-    assert (
-        'const nextSessionId = typeof payload.session_id === "string" ? payload.session_id : ""'
-        in voice_source
-    )
+    assert 'const nextSessionId = typeof payload.session_id === "string" ? payload.session_id : ""' in voice_source
     assert "setBoundSessionId(nextSessionId)" in voice_source
     assert "voice_navigation_request" in voice_source
     assert "voice_control_action" in voice_source
     assert "applyVoiceNavigationPayload" in source
     assert 'const routeSessionId = route.startsWith("/")' in source
     assert 'new URL(route, window.location.origin).searchParams.get("session") || ""' in source
-    assert (
-        'typeof payload.session_id === "string" && payload.session_id ? payload.session_id : routeSessionId'
-        in source
-    )
+    assert 'typeof payload.session_id === "string" && payload.session_id ? payload.session_id : routeSessionId' in source
     assert "void loadHistory(nextSessionId)" in source
     assert "void loadSessionList(nextSessionId)" in source
     assert 'setAgentMode("trace")' in source
-    assert 'setSelectedTraceTaskId(targetUrl.searchParams.get("task"))' in source
-    assert 'setSelectedTraceRunId(targetUrl.searchParams.get("run"))' in source
+    assert "setSelectedTraceTaskId(targetUrl.searchParams.get(\"task\"))" in source
+    assert "setSelectedTraceRunId(targetUrl.searchParams.get(\"run\"))" in source
     assert 'window.addEventListener("aab:voice-navigation-request"' in source
     assert "latestVoiceNavigationEventIdRef" in source
     assert "const applyVoiceHistoryIfRelevant" in source
     history_sync_source = source[
-        source.index("const applyVoiceHistoryIfRelevant") : source.index(
-            "const syncVoiceTranscript"
-        )
+        source.index("const applyVoiceHistoryIfRelevant") : source.index("const syncVoiceTranscript")
     ]
     assert "applyVoiceNavigationPayload" not in history_sync_source
     assert "const navigationItem = [...items]" not in source
@@ -186,7 +171,7 @@ def test_agent_page_renders_realtime_voice_panel() -> None:
     assert "const historyUrl = activeSessionId" in source
     assert '"/api/agent/chat/history?fresh=1"' in source
     assert "fetch(historyUrl)" in source
-    assert 'voiceStatus !== "connected"' in source
+    assert "voiceStatus !== \"connected\"" in source
     assert "window.setInterval(() => scheduleVoiceTranscriptSync(), 3000)" in source
     assert "if (switchingSession || !data.status?.running)" in source
     assert 'event.key === "Enter" && !event.shiftKey' in source
@@ -209,26 +194,24 @@ def test_agent_page_renders_realtime_voice_panel() -> None:
 def test_agent_page_bootstraps_empty_when_no_session_is_selected() -> None:
     source = AGENT_PAGE.read_text(encoding="utf-8")
 
-    bootstrap_source = source[
-        source.index("const bootstrap = async () => {") : source.index("void bootstrap();")
-    ]
+    bootstrap_source = source[source.index("const bootstrap = async () => {") : source.index(
+        "void bootstrap();"
+    )]
 
     assert "if (!sessionStorageKey && !requestedSessionId) return;" not in source
     assert "const storedSessionId = requestedSessionId || readStoredSessionId();" in source
     assert "? await loadHistory(storedSessionId)" in source
     assert ": await loadHistory(null, { fresh: true });" in source
-    assert "setHistoryLoaded(false);" in source
-    assert "setHistoryLoaded(true);" in source
-    assert "loadHistory(null, { fresh: true })" in bootstrap_source
+    assert 'setHistoryLoaded(false);' in source
+    assert 'setHistoryLoaded(true);' in source
+    assert 'loadHistory(null, { fresh: true })' in bootstrap_source
     assert "Resume" in source
 
 
 def test_agent_page_new_thread_detaches_voice_session_history() -> None:
     source = AGENT_PAGE.read_text(encoding="utf-8")
 
-    clear_source = source[
-        source.index("const clearSession = () => {") : source.index("const openSession")
-    ]
+    clear_source = source[source.index("const clearSession = () => {") : source.index("const openSession")]
 
     assert "const sessionIdRef = useRef<string | null>(null)" in source
     assert "const detachedVoiceSessionIdsRef = useRef<Set<string>>(new Set())" in source
@@ -242,7 +225,7 @@ def test_agent_page_new_thread_detaches_voice_session_history() -> None:
     assert 'nextSearchParams.delete("tab")' in clear_source
     assert 'nextSearchParams.set("mode", agentMode)' in clear_source
     assert "setActiveSessionId(null)" in clear_source
-    assert "await loadHistory(null, { fresh: true })" in clear_source
+    assert 'await loadHistory(null, { fresh: true })' in clear_source
 
 
 def test_agent_page_composer_answers_pending_questions() -> None:
@@ -250,12 +233,8 @@ def test_agent_page_composer_answers_pending_questions() -> None:
     agent_surface_source = agent_source_text()
     decision_source = (AGENT_FEATURE_ROOT / "AgentDecisionActions.tsx").read_text(encoding="utf-8")
 
-    send_source = source[
-        source.index("const sendMessage = async () => {") : source.index("const clearSession")
-    ]
-    composer_source = source[
-        source.index("const composerPlaceholder") : source.index("const currentPhaseIndex")
-    ]
+    send_source = source[source.index("const sendMessage = async () => {") : source.index("const clearSession")]
+    composer_source = source[source.index("const composerPlaceholder") : source.index("const currentPhaseIndex")]
 
     assert 'pendingBlockingItem?.type === "ask_user_question"' in send_source
     assert "await submitQuestion(pendingBlockingItem, { customText: prompt })" in send_source
@@ -268,10 +247,7 @@ def test_agent_page_composer_answers_pending_questions() -> None:
     assert "(loading && !pendingBlockingItem)" in composer_source
     assert "disabled={composerSendDisabled}" in agent_surface_source
     assert 'aria-label="Send agent instruction"' in agent_surface_source
-    assert (
-        'aria-label={pendingBlockingItem ? "Send response" : "Send agent instruction"}'
-        not in agent_surface_source
-    )
+    assert 'aria-label={pendingBlockingItem ? "Send response" : "Send agent instruction"}' not in agent_surface_source
     assert "Builder is blocked until you answer this decision." in agent_surface_source
     assert "pendingQuestionOptions" not in agent_surface_source
     assert "Choose a suggested answer, or type another answer below" not in agent_surface_source
@@ -287,27 +263,14 @@ def test_agent_page_composer_answers_pending_questions() -> None:
 def test_agent_page_persists_new_chat_session_in_url_for_refresh() -> None:
     source = AGENT_PAGE.read_text(encoding="utf-8")
 
-    helper_source = source[
-        source.index("const navigateToSession = ") : source.index(
-            "const applyVoiceNavigationPayload"
-        )
-    ]
-    question_source = source[
-        source.index("const submitQuestion = ") : source.index("const submitApproval = ")
-    ]
-    approval_source = source[
-        source.index("const submitApproval = ") : source.index("const handleKeyDown")
-    ]
-    open_source = source[
-        source.index("const openSession = ") : source.index("const resumeLatestSession")
-    ]
+    helper_source = source[source.index("const navigateToSession = ") : source.index("const applyVoiceNavigationPayload")]
+    question_source = source[source.index("const submitQuestion = ") : source.index("const submitApproval = ")]
+    approval_source = source[source.index("const submitApproval = ") : source.index("const handleKeyDown")]
+    open_source = source[source.index("const openSession = ") : source.index("const resumeLatestSession")]
 
     assert 'nextSearchParams.set("mode", nextMode)' in helper_source
     assert 'nextSearchParams.set("session", nextSessionId)' in helper_source
-    assert (
-        'navigate(`${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true })'
-        in helper_source
-    )
+    assert 'navigate(`${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true })' in helper_source
     assert 'navigateToSession(sessionId, "chat")' in question_source
     assert 'navigateToSession(sessionId, "chat")' in approval_source
     assert "navigateToSession(nextSessionId)" in open_source
@@ -338,13 +301,10 @@ def test_agent_page_keeps_questions_and_approvals_inline_with_design_system() ->
     assert 'placeholder="Optional note"' in decision_source
     assert "Keep in thread" not in agent_surface_source
     assert 'aria-label="Approval choices"' in decision_source
-    assert "<StatusPill status={decisionTimelineStatus(item)} />" in agent_surface_source
-    assert "bg-[color:var(--status-review-soft)]" in agent_surface_source
-    assert (
-        'className="h-auto justify-start rounded-[0.85rem] px-3 py-2 text-left text-[12px]"'
-        in decision_source
-    )
-    assert "void submitQuestion(item, {" in decision_source
+    assert '<StatusPill status={decisionTimelineStatus(item)} />' in agent_surface_source
+    assert 'bg-[color:var(--status-review-soft)]' in agent_surface_source
+    assert 'className="h-auto justify-start rounded-[0.85rem] px-3 py-2 text-left text-[12px]"' in decision_source
+    assert 'void submitQuestion(item, {' in decision_source
     assert 'void submitApproval(item, "allow")' in decision_source
     assert 'void submitApproval(item, "deny")' in decision_source
     assert "readablePayloadText" in agent_surface_source
@@ -361,11 +321,8 @@ def test_agent_page_keeps_tool_activity_visible_until_agent_response() -> None:
     assert "Agent is working through tool calls before the next response." in source
     assert "activeToolActivity.count} tool use" in source
     assert "agent-tool-activity" in source
-    assert (
-        "agentRunPending = (loading || Boolean(status?.running)) && !streamingText && !pendingBlockingItem"
-        in source
-    )
-    assert 'aria-label="Agent is thinking"' not in source
+    assert "agentRunPending = (loading || Boolean(status?.running)) && !streamingText && !pendingBlockingItem" in source
+    assert "aria-label=\"Agent is thinking\"" not in source
 
 
 def test_agent_page_inline_question_choice_submits_not_only_selects_draft() -> None:
@@ -377,9 +334,7 @@ def test_agent_page_inline_question_choice_submits_not_only_selects_draft() -> N
     ]
     option_start = question_card_source.index("title={option.description}")
     option_button_source = question_card_source[
-        option_start : question_card_source.index(
-            "disabled={submittingEventId === item.id}", option_start
-        )
+        option_start : question_card_source.index("disabled={submittingEventId === item.id}", option_start)
     ]
 
     assert 'aria-label="Question choices"' in question_card_source
@@ -388,9 +343,7 @@ def test_agent_page_inline_question_choice_submits_not_only_selects_draft() -> N
     assert "setQuestionDrafts((current) => (" not in option_button_source
 
 
-def test_agent_page_run_trace_collapses_uninformative_tool_use_rows_and_uses_runtime_icons() -> (
-    None
-):
+def test_agent_page_run_trace_collapses_uninformative_tool_use_rows_and_uses_runtime_icons() -> None:
     source = agent_source_text()
     native_source = AGENT_NATIVE.read_text(encoding="utf-8")
 
@@ -401,20 +354,14 @@ def test_agent_page_run_trace_collapses_uninformative_tool_use_rows_and_uses_run
     assert "icon: runtimeTimelineIcon(event.runtime_sdk, event.provider)" in source
     assert 'icon: voiceDelegation ? "openai" : undefined' in source
     assert 'icon: assistantMessage ? "openai" : undefined' in source
-    assert (
-        'return <span className="font-mono text-[9px] font-semibold leading-none">CX</span>;'
-        not in native_source
-    )
-    assert (
-        'return <span className="font-serif text-[13px] font-semibold leading-none">C</span>;'
-        not in native_source
-    )
+    assert 'return <span className="font-mono text-[9px] font-semibold leading-none">CX</span>;' not in native_source
+    assert 'return <span className="font-serif text-[13px] font-semibold leading-none">C</span>;' not in native_source
     assert 'if (icon === "codex")' in native_source
     assert 'if (icon === "claude")' in native_source
     assert 'if (icon === "openai")' in native_source
-    assert "M9.2 7.5 13 12l-3.8 4.5M14.2 16.5h3.4" in native_source
-    assert "M12 2.4v6.2M12 15.4v6.2" in native_source
-    assert "M8.1 8.1 15.9 16M15.9 8.1 8.1 16M12 4.6v14.8" in native_source
+    assert 'M9.2 7.5 13 12l-3.8 4.5M14.2 16.5h3.4' in native_source
+    assert 'M12 2.4v6.2M12 15.4v6.2' in native_source
+    assert 'M8.1 8.1 15.9 16M15.9 8.1 8.1 16M12 4.6v14.8' in native_source
 
 
 def test_agent_page_timeline_uses_operator_labels_for_pending_decisions() -> None:
@@ -423,7 +370,7 @@ def test_agent_page_timeline_uses_operator_labels_for_pending_decisions() -> Non
     assert 'heading: item.type === "ask_user_question" ? "Question" : "Approval needed"' in source
     assert 'kind: "assistant"' in source
     assert "function decisionTimelineStatus(item: TimelineItem): string" in source
-    assert "status: decisionTimelineStatus(item)" in source
+    assert 'status: decisionTimelineStatus(item)' in source
     assert 'if (normalized === "start shipping") return "Start now";' in source
     assert 'if (!decisionItemWasAnswered(item)) return "review_pending";' in source
 
@@ -431,10 +378,7 @@ def test_agent_page_timeline_uses_operator_labels_for_pending_decisions() -> Non
 def test_agent_page_transcript_scroll_waits_for_timeline_render() -> None:
     source = AGENT_PAGE.read_text(encoding="utf-8")
 
-    assert (
-        'const transcriptTailKey = `${items.length}:${items.at(-1)?.id ?? "empty"}:${streamingText}`;'
-        in source
-    )
+    assert 'const transcriptTailKey = `${items.length}:${items.at(-1)?.id ?? "empty"}:${streamingText}`;' in source
     assert "const animationFrame = requestAnimationFrame(() => {" in source
     assert "cancelAnimationFrame(animationFrame)" in source
     assert "}, [transcriptTailKey, pendingBlockingItemId]);" in source
@@ -448,10 +392,7 @@ def test_agent_page_recovers_persisted_pending_decisions_while_loading() -> None
     assert "setLoading(historyStillLoading(data))" in source
     assert "setHistoryLoaded(true);\n      setItems(payload.items ?? [])" in source
     assert "setLoading(historyStillLoading(payload))" in source
-    assert (
-        "const pendingBlockingItem = useMemo(() => findPendingBlockingItem(items), [items])"
-        in source
-    )
+    assert "const pendingBlockingItem = useMemo(() => findPendingBlockingItem(items), [items])" in source
     assert "const interval = window.setInterval(() => {" in source
     assert "void loadHistory(sessionId, { quiet: true })" in source
     assert "}, 2000)" in source
@@ -459,19 +400,12 @@ def test_agent_page_recovers_persisted_pending_decisions_while_loading() -> None
 
 def test_agent_page_keeps_transcript_mounted_during_active_polling() -> None:
     source = AGENT_PAGE.read_text(encoding="utf-8")
-    load_history_source = source[
-        source.index("const loadHistory = async") : source.index(
-            "const applyVoiceHistoryIfRelevant"
-        )
-    ]
+    load_history_source = source[source.index("const loadHistory = async") : source.index("const applyVoiceHistoryIfRelevant")]
 
     assert "options?: { fresh?: boolean; quiet?: boolean }" in load_history_source
     assert "const quiet = Boolean(options?.quiet)" in load_history_source
     assert "if (!quiet) {\n      setHistoryLoaded(false);\n    }" in load_history_source
-    assert (
-        "if (!quiet) {\n        setItems([]);\n        setStatus(null);\n      }"
-        in load_history_source
-    )
+    assert "if (!quiet) {\n        setItems([]);\n        setStatus(null);\n      }" in load_history_source
     assert "if (!quiet) {\n        setHistoryLoaded(true);\n      }" in load_history_source
 
 
@@ -505,9 +439,9 @@ def test_agent_voice_mode_does_not_keep_extra_sse_streams_open() -> None:
     source = AGENT_PAGE.read_text(encoding="utf-8")
 
     assert 'if (agentMode === "voice") {' in source
-    assert "const interval = window.setInterval(() => void loadFallback(), 15000);" in source
+    assert 'const interval = window.setInterval(() => void loadFallback(), 15000);' in source
     assert 'if (agentMode === "voice") return;' in source
-    assert "}, [sessionId, agentMode]);" in source
+    assert '}, [sessionId, agentMode]);' in source
 
 
 def test_samantha_voice_orb_is_single_bottom_right_entrypoint() -> None:
@@ -540,14 +474,8 @@ def test_samantha_voice_orb_is_single_bottom_right_entrypoint() -> None:
     assert "radial-gradient(circle" in orb_source
     assert "onMouseEnter={() => setHovered(true)}" in orb_source
     assert "onMouseLeave={() => setHovered(false)}" in orb_source
-    assert (
-        'aria-label={active ? "End Samantha" : hasError ? "Retry Samantha" : "Activate Samantha"}'
-        in orb_source
-    )
-    assert (
-        'title={active ? "End Samantha" : hasError ? (voiceError ?? "Voice error — click to retry") : undefined}'
-        in orb_source
-    )
+    assert 'aria-label={active ? "End Samantha" : hasError ? "Retry Samantha" : "Activate Samantha"}' in orb_source
+    assert 'title={active ? "End Samantha" : hasError ? (voiceError ?? "Voice error — click to retry") : undefined}' in orb_source
     assert "stopVoiceSession()" in orb_source
     assert "void startVoiceSession()" in orb_source
     assert '{hasError ? "error" : active ? "end" : "samantha"}' in orb_source

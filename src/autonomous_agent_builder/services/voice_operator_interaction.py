@@ -174,9 +174,7 @@ def approval_reminder_prompt_text(item: dict[str, Any], pending_count: int) -> s
                 f"{prefix}. {consequence} Say yes to confirm, no to cancel, "
                 f"or ask Builder for details. Confirmation phrase: {confirmation}"
             )
-        return (
-            f"{prefix}. {consequence} Say yes to confirm, no to cancel, or ask Builder for details."
-        )
+        return f"{prefix}. {consequence} Say yes to confirm, no to cancel, or ask Builder for details."
 
     summary = str(item.get("summary") or item.get("tool_name") or "a pending tool request").strip()
     description = str(item.get("description") or "").strip()
@@ -202,9 +200,7 @@ def runtime_display_name(sdk: str) -> str:
 
 
 def backlog_item_type_value(feature: Feature) -> str:
-    return str(
-        feature.item_type.value if hasattr(feature.item_type, "value") else feature.item_type
-    )
+    return str(feature.item_type.value if hasattr(feature.item_type, "value") else feature.item_type)
 
 
 def task_latest_run_status(task: Task, latest_runs_by_task: dict[str, AgentRun]) -> str:

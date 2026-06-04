@@ -101,10 +101,7 @@ async def test_builder_tool_service_kb_add_and_show_preserve_json_contract(tmp_p
         feature_id="feature-onboarding",
         documented_against_commit="abc123",
         documented_against_ref="main",
-        owned_paths=[
-            "src/autonomous_agent_builder/agents",
-            "src/autonomous_agent_builder/services",
-        ],
+        owned_paths=["src/autonomous_agent_builder/agents", "src/autonomous_agent_builder/services"],
         project_root=str(tmp_path),
     )
     created_payload = _decode_tool_payload(created)
@@ -163,9 +160,7 @@ async def test_builder_tool_service_kb_add_and_show_preserve_json_contract(tmp_p
 
 
 @pytest.mark.asyncio
-async def test_builder_tool_service_kb_validate_returns_deterministic_payload(
-    tmp_path, monkeypatch
-):
+async def test_builder_tool_service_kb_validate_returns_deterministic_payload(tmp_path, monkeypatch):
     monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
     kb_root = tmp_path / ".agent-builder" / "knowledge" / "system-docs"
     kb_root.mkdir(parents=True, exist_ok=True)
@@ -194,14 +189,10 @@ async def test_builder_tool_service_kb_validate_returns_deterministic_payload(
 
 
 @pytest.mark.asyncio
-async def test_builder_tool_service_kb_validate_rejects_paths_outside_repo_local_kb(
-    tmp_path, monkeypatch
-):
+async def test_builder_tool_service_kb_validate_rejects_paths_outside_repo_local_kb(tmp_path, monkeypatch):
     monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
 
-    result = await builder_tool_service.builder_kb_validate(
-        "../outside", project_root=str(tmp_path)
-    )
+    result = await builder_tool_service.builder_kb_validate("../outside", project_root=str(tmp_path))
     payload = json.loads(result["content"][0]["text"])
 
     assert payload["status"] == "error"
@@ -209,7 +200,7 @@ async def test_builder_tool_service_kb_validate_rejects_paths_outside_repo_local
     assert payload["error"]["message"] == (
         "KB validation is limited to repo-local directories under .agent-builder/knowledge."
     )
-    assert 'Retry with `kb_dir: "system-docs"`' in payload["error"]["hint"]
+    assert "Retry with `kb_dir: \"system-docs\"`" in payload["error"]["hint"]
     assert payload["error"]["detail"]["safe_lane"] == ".agent-builder/knowledge/<kb_dir>"
 
 
@@ -606,10 +597,7 @@ async def test_builder_tool_service_task_show_is_compact_by_default(monkeypatch)
     assert payload["depends_on"]["materialized_checkout_verification"]["command"] == (
         "builder script run build_verify --json"
     )
-    assert (
-        "npm run build FAIL"
-        in payload["depends_on"]["materialized_checkout_verification"]["output"]
-    )
+    assert "npm run build FAIL" in payload["depends_on"]["materialized_checkout_verification"]["output"]
     assert payload["depends_on"]["feature_acceptance_run_ids"] == {
         "count": 8,
         "sample": ["run-0", "run-1", "run-2", "run-3", "run-4"],
@@ -741,9 +729,7 @@ async def test_builder_tool_service_backlog_item_show_returns_compact_payload(mo
 
     monkeypatch.setattr(builder_tool_service, "_api_request", fake_api_request)
 
-    result = await builder_tool_service.builder_backlog_item_show(
-        "item-1", project_root="/tmp/demo"
-    )
+    result = await builder_tool_service.builder_backlog_item_show("item-1", project_root="/tmp/demo")
     payload = _decode_tool_payload(result)
 
     assert payload["id"] == "item-1"
@@ -855,9 +841,7 @@ async def test_sdk_mcp_builder_tools_delegate_to_shared_service(monkeypatch):
 
     importlib.reload(sdk_mcp)
 
-    servers = sdk_mcp.build_default_mcp_servers(
-        workspace_path=".", project_root="/tmp/project-root"
-    )
+    servers = sdk_mcp.build_default_mcp_servers(workspace_path=".", project_root="/tmp/project-root")
     builder_tools = {tool._sdk_tool_name: tool for tool in servers["builder"]["tools"]}
 
     assert "recommendation_create" in builder_tools
@@ -915,7 +899,9 @@ async def test_sdk_mcp_task_recover_delegates_to_shared_service(monkeypatch):
 async def test_sdk_mcp_workspace_scaffold_delegates_to_shared_service(monkeypatch):
     captured: dict[str, object] = {}
 
-    async def fake_workspace_scaffold(task_id: str, *, project_root: str | None = None) -> dict:
+    async def fake_workspace_scaffold(
+        task_id: str, *, project_root: str | None = None
+    ) -> dict:
         captured["task_id"] = task_id
         captured["project_root"] = project_root
         return {
@@ -944,7 +930,9 @@ async def test_sdk_mcp_workspace_scaffold_delegates_to_shared_service(monkeypatc
     fake_sdk.create_sdk_mcp_server = fake_create_sdk_mcp_server
     fake_sdk.tool = fake_tool
     monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_sdk)
-    monkeypatch.setattr(builder_tool_service, "builder_workspace_scaffold", fake_workspace_scaffold)
+    monkeypatch.setattr(
+        builder_tool_service, "builder_workspace_scaffold", fake_workspace_scaffold
+    )
 
     from autonomous_agent_builder.agents.tools import sdk_mcp
 
@@ -995,16 +983,16 @@ def test_sdk_mcp_servers_filter_tools_to_agent_allowlist(monkeypatch):
     )
 
     assert [tool._sdk_tool_name for tool in servers["builder"]["tools"]] == ["task_show"]
-    assert [tool._sdk_tool_name for tool in servers["workspace"]["tools"]] == ["run_command"]
+    assert [tool._sdk_tool_name for tool in servers["workspace"]["tools"]] == [
+        "run_command"
+    ]
 
 
 @pytest.mark.asyncio
 async def test_sdk_mcp_kb_validate_delegates_to_shared_service(monkeypatch):
     captured: dict[str, object] = {}
 
-    async def fake_kb_validate(
-        kb_dir: str = "system-docs", *, project_root: str | None = None
-    ) -> dict:
+    async def fake_kb_validate(kb_dir: str = "system-docs", *, project_root: str | None = None) -> dict:
         captured["kb_dir"] = kb_dir
         captured["project_root"] = project_root
         return {

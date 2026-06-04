@@ -124,7 +124,9 @@ class TestFactory:
     def test_create_runtime_default_returns_claude(self):
         with patch(
             "autonomous_agent_builder.runtime.factory.get_settings",
-            return_value=SimpleNamespace(runtime=SimpleNamespace(sdk="claude", model="sonnet")),
+            return_value=SimpleNamespace(
+                runtime=SimpleNamespace(sdk="claude", model="sonnet")
+            ),
         ):
             runtime = create_runtime()
         assert runtime.name == "claude"
@@ -132,7 +134,9 @@ class TestFactory:
     def test_create_runtime_codex_sdk_selector_returns_codex_app_server_runtime(self):
         with patch(
             "autonomous_agent_builder.runtime.factory.get_settings",
-            return_value=SimpleNamespace(runtime=SimpleNamespace(sdk="codex_sdk", model="gpt-5.5")),
+            return_value=SimpleNamespace(
+                runtime=SimpleNamespace(sdk="codex_sdk", model="gpt-5.5")
+            ),
         ):
             runtime = create_runtime()
         assert isinstance(runtime, CodexAppServerRuntime)
@@ -141,7 +145,9 @@ class TestFactory:
     def test_create_runtime_kwargs_override_config(self):
         with patch(
             "autonomous_agent_builder.runtime.factory.get_settings",
-            return_value=SimpleNamespace(runtime=SimpleNamespace(sdk="claude", model="sonnet")),
+            return_value=SimpleNamespace(
+                runtime=SimpleNamespace(sdk="claude", model="sonnet")
+            ),
         ):
             runtime = create_runtime(sdk="codex_sdk", model="gpt-5.5")
         assert runtime.name == "codex_sdk"
@@ -175,7 +181,9 @@ class TestClaudeRuntime:
 
     def test_name_is_claude(self):
         with patch("autonomous_agent_builder.runtime.claude_runtime.get_settings") as mock_cfg:
-            mock_cfg.return_value = SimpleNamespace(runtime=SimpleNamespace(model="sonnet"))
+            mock_cfg.return_value = SimpleNamespace(
+                runtime=SimpleNamespace(model="sonnet")
+            )
             r = ClaudeRuntime()
         assert r.name == "claude"
 
@@ -189,14 +197,18 @@ class TestClaudeRuntime:
 
     def test_model_kwarg_overrides_config(self):
         with patch("autonomous_agent_builder.runtime.claude_runtime.get_settings") as mock_cfg:
-            mock_cfg.return_value = SimpleNamespace(runtime=SimpleNamespace(model="sonnet"))
+            mock_cfg.return_value = SimpleNamespace(
+                runtime=SimpleNamespace(model="sonnet")
+            )
             r = ClaudeRuntime(model="anthropic/claude-haiku-3-5")
         assert r.model == "anthropic/claude-haiku-3-5"
 
     async def test_run_passes_workspace_path_to_runner(self):
         fake_result = self._make_fake_runner_result()
         with patch("autonomous_agent_builder.runtime.claude_runtime.get_settings") as mock_cfg:
-            mock_cfg.return_value = SimpleNamespace(runtime=SimpleNamespace(model="sonnet"))
+            mock_cfg.return_value = SimpleNamespace(
+                runtime=SimpleNamespace(model="sonnet")
+            )
             runtime = ClaudeRuntime()
 
         runtime._runner = MagicMock()
@@ -218,7 +230,9 @@ class TestClaudeRuntime:
         monkeypatch.chdir(tmp_path)
         fake_result = self._make_fake_runner_result()
         with patch("autonomous_agent_builder.runtime.claude_runtime.get_settings") as mock_cfg:
-            mock_cfg.return_value = SimpleNamespace(runtime=SimpleNamespace(model="sonnet"))
+            mock_cfg.return_value = SimpleNamespace(
+                runtime=SimpleNamespace(model="sonnet")
+            )
             runtime = ClaudeRuntime()
 
         runtime._runner = MagicMock()
@@ -232,7 +246,9 @@ class TestClaudeRuntime:
     async def test_run_maps_result_fields(self):
         fake_result = self._make_fake_runner_result()
         with patch("autonomous_agent_builder.runtime.claude_runtime.get_settings") as mock_cfg:
-            mock_cfg.return_value = SimpleNamespace(runtime=SimpleNamespace(model="sonnet"))
+            mock_cfg.return_value = SimpleNamespace(
+                runtime=SimpleNamespace(model="sonnet")
+            )
             runtime = ClaudeRuntime()
 
         runtime._runner = MagicMock()
@@ -249,7 +265,9 @@ class TestClaudeRuntime:
 
     async def test_run_returns_error_result_on_exception(self):
         with patch("autonomous_agent_builder.runtime.claude_runtime.get_settings") as mock_cfg:
-            mock_cfg.return_value = SimpleNamespace(runtime=SimpleNamespace(model="sonnet"))
+            mock_cfg.return_value = SimpleNamespace(
+                runtime=SimpleNamespace(model="sonnet")
+            )
             runtime = ClaudeRuntime()
 
         runtime._runner = MagicMock()
@@ -266,7 +284,9 @@ class TestClaudeRuntime:
         fake_result.session_id = "fresh-session"
         fake_result.observability = {"runtime_policy": {"model": "haiku"}}
         with patch("autonomous_agent_builder.runtime.claude_runtime.get_settings") as mock_cfg:
-            mock_cfg.return_value = SimpleNamespace(runtime=SimpleNamespace(model="sonnet"))
+            mock_cfg.return_value = SimpleNamespace(
+                runtime=SimpleNamespace(model="sonnet")
+            )
             runtime = ClaudeRuntime()
 
         runtime._runner = MagicMock()

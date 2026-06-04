@@ -40,10 +40,9 @@ DEFAULT_ITER_WALL_CLOCK_SECONDS = 2400
 STUCK_POLL_INTERVAL_SECONDS = 15
 
 
-def _spawn_hang_watchdog(
-    dump_root: pathlib.Path,
-    workspace_pattern: str | None = None,
-) -> subprocess.Popen | None:
+def _spawn_hang_watchdog(dump_root: pathlib.Path,
+                          workspace_pattern: str | None = None,
+                          ) -> subprocess.Popen | None:
     """Start hang_watchdog.py as a daemon child for this iter.
 
     The watchdog walks /proc for `builder start` processes, restricts to
@@ -55,22 +54,15 @@ def _spawn_hang_watchdog(
     runs, just without watchdog coverage.
     """
     if not HANG_WATCHDOG.exists():
-        print(
-            f"[baseline] hang_watchdog.py not at {HANG_WATCHDOG}; iter "
-            f"runs without watchdog coverage",
-            file=sys.stderr,
-        )
+        print(f"[baseline] hang_watchdog.py not at {HANG_WATCHDOG}; iter "
+              f"runs without watchdog coverage", file=sys.stderr)
         return None
     dump_root.mkdir(parents=True, exist_ok=True)
     cmd = [
-        sys.executable,
-        str(HANG_WATCHDOG),
-        "--idle-seconds",
-        "600",  # P22: Sonnet first/second-turn latency can reach 120-180s
-        "--grace-seconds",
-        "60",
-        "--dump-root",
-        str(dump_root),
+        sys.executable, str(HANG_WATCHDOG),
+        "--idle-seconds", "600",  # P22: Sonnet first/second-turn latency can reach 120-180s
+        "--grace-seconds", "60",
+        "--dump-root", str(dump_root),
     ]
     if workspace_pattern:
         cmd.extend(["--workspace-pattern", workspace_pattern])
@@ -78,12 +70,11 @@ def _spawn_hang_watchdog(
         # Detach via start_new_session so SIGTERM to baseline.py doesn't
         # cascade (we kill the watchdog explicitly via .terminate()).
         proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
-        print(f"[baseline] hang_watchdog spawned (PID {proc.pid}) → {dump_root}", file=sys.stderr)
+        print(f"[baseline] hang_watchdog spawned (PID {proc.pid}) → {dump_root}",
+              file=sys.stderr)
         return proc
     except OSError as exc:
         print(f"[baseline] hang_watchdog spawn failed: {exc}", file=sys.stderr)
@@ -103,7 +94,8 @@ def _kill_watchdog(proc: subprocess.Popen | None) -> None:
             pass
 
 
-def _latest_stuck_dump(dump_root: pathlib.Path, since_ts: float) -> pathlib.Path | None:
+def _latest_stuck_dump(dump_root: pathlib.Path,
+                        since_ts: float) -> pathlib.Path | None:
     """Returns the newest STUCK_DETECTED.json's parent dir created after
     since_ts, or None if no new dumps. Watchdog writes one dir per stuck
     detection: <UTC>-pid<PID>/STUCK_DETECTED.json + sibling artifacts."""
@@ -137,30 +129,26 @@ def _invoke_diagnose_hang(dump_dir: pathlib.Path) -> dict:
     watchdog dump in `dump_dir`. The category-based auto-retry path is gone;
     stuck == escalate, which is the honest default.)
     """
-    return {
-        "verdict": "stuck",
-        "top_match": {"category": "unknown", "pattern_id": "none", "confidence": 0.0},
-        "dump_dir": str(dump_dir),
-    }
+    return {"verdict": "stuck",
+            "top_match": {"category": "unknown", "pattern_id": "none", "confidence": 0.0},
+            "dump_dir": str(dump_dir)}
 
 
 def _kill_iter_processes(port: int) -> None:
     """SIGTERM (then SIGKILL after 5s) any run.py + Builder process for this
     iter. Best-effort; if processes are already gone, no error."""
     for pattern in [f"run.py.*--port {port}", f"builder.*--port {port}"]:
-        subprocess.run(["pkill", "-TERM", "-f", pattern], capture_output=True, timeout=5)
+        subprocess.run(["pkill", "-TERM", "-f", pattern],
+                       capture_output=True, timeout=5)
     time.sleep(2)
     for pattern in [f"run.py.*--port {port}", f"builder.*--port {port}"]:
-        subprocess.run(["pkill", "-KILL", "-f", pattern], capture_output=True, timeout=5)
+        subprocess.run(["pkill", "-KILL", "-f", pattern],
+                       capture_output=True, timeout=5)
 
 
 def run_one_fixture(
-    fixture: str,
-    branch: str,
-    port: int,
-    evidence_dir: pathlib.Path,
-    dry_run: bool,
-    wall_clock_seconds: int = DEFAULT_ITER_WALL_CLOCK_SECONDS,
+    fixture: str, branch: str, port: int, evidence_dir: pathlib.Path,
+    dry_run: bool, wall_clock_seconds: int = DEFAULT_ITER_WALL_CLOCK_SECONDS,
     enable_watchdog: bool = True,
 ) -> dict:
     """Run one fixture iteration with watchdog + wall-clock budget.
@@ -174,16 +162,11 @@ def run_one_fixture(
         vs persistent escalation.
     """
     cmd = [
-        sys.executable,
-        str(ROOT / "scripts" / "autoresearch" / "run.py"),
-        "--fixture",
-        fixture,
-        "--branch",
-        branch,
-        "--port",
-        str(port),
-        "--evidence-dir",
-        str(evidence_dir),
+        sys.executable, str(ROOT / "scripts" / "autoresearch" / "run.py"),
+        "--fixture", fixture,
+        "--branch", branch,
+        "--port", str(port),
+        "--evidence-dir", str(evidence_dir),
         "--baseline",
     ]
     if dry_run:
@@ -192,14 +175,9 @@ def run_one_fixture(
     dump_root = evidence_dir / "stuck_dumps"
     watchdog = _spawn_hang_watchdog(dump_root) if (enable_watchdog and not dry_run) else None
     start_ts = time.time()
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(ROOT),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        start_new_session=True,
-    )
+    proc = subprocess.Popen(cmd, cwd=str(ROOT), stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True,
+                             start_new_session=True)
     try:
         while True:
             try:
@@ -233,16 +211,12 @@ def run_one_fixture(
                         # in evidence_dir so the operator has the stuck reason +
                         # elapsed time alongside the builder log for inspection.
                         synthetic = evidence_dir / "STUCK_DETECTED.json"
-                        synthetic.write_text(
-                            json.dumps(
-                                {
-                                    "reason": "wall_clock_budget_exceeded",
-                                    "elapsed_seconds": int(time.time() - start_ts),
-                                    "evidence_dir": str(evidence_dir),
-                                    "synthesized": True,
-                                }
-                            )
-                        )
+                        synthetic.write_text(json.dumps({
+                            "reason": "wall_clock_budget_exceeded",
+                            "elapsed_seconds": int(time.time() - start_ts),
+                            "evidence_dir": str(evidence_dir),
+                            "synthesized": True,
+                        }))
                         dump = evidence_dir
                     diagnosis = _invoke_diagnose_hang(dump)
                     return {
@@ -263,20 +237,20 @@ def run_one_fixture(
         _kill_watchdog(watchdog)
     if proc.returncode != 0:
         # Preserve historical CalledProcessError contract for non-stuck failures
-        raise subprocess.CalledProcessError(proc.returncode, cmd, output=stdout, stderr=stderr)
+        raise subprocess.CalledProcessError(proc.returncode, cmd,
+                                             output=stdout, stderr=stderr)
     # Final JSON line in stdout is run.py's structured result (existing contract)
     try:
         return json.loads((stdout or "").strip().splitlines()[-1])
     except (IndexError, ValueError, json.JSONDecodeError) as exc:
         raise subprocess.CalledProcessError(
-            1,
-            cmd,
-            output=stdout,
-            stderr=f"run.py exit=0 but output not JSON: {exc}; stdout tail={(stdout or '')[-300:]}",
+            1, cmd, output=stdout,
+            stderr=f"run.py exit=0 but output not JSON: {exc}; stdout tail={(stdout or '')[-300:]}"
         )
 
 
-def _stuck_proposed_questions(pattern_id: str, category: str, top_match: dict | None) -> list[dict]:
+def _stuck_proposed_questions(pattern_id: str, category: str,
+                                top_match: dict | None) -> list[dict]:
     """Build AskUserQuestion-shaped escalation payload for stuck iters that
     couldn't be auto-recovered (category=persistent / unknown / substrate, or
     transient that exhausted retries). The calling agent surfaces these to
@@ -287,95 +261,73 @@ def _stuck_proposed_questions(pattern_id: str, category: str, top_match: dict | 
         # Exhausted retries on a transient — operator probably wants to
         # extend MAX_HEAL_ATTEMPTS or treat the underlying class as persistent
         # via source fix.
-        return [
-            {
-                "header": "Transient hang exhausted retries",
-                "question": (
-                    f"Iter hit {pattern_id} ({name}) repeatedly across "
-                    "all retry attempts. The transient class should resolve on "
-                    "fresh state but didn't here. How to proceed?"
-                ),
-                "options": [
-                    {
-                        "label": "Investigate why retries didn't help",
-                        "description": f"Inspect dump_dir for evidence; {fix_pointer}",
-                    },
-                    {
-                        "label": "Treat as persistent — source fix Builder",
-                        "description": "The 'transient' hypothesis is wrong; the "
-                        "underlying bug is recurring. Open Fix-lane "
-                        "on Builder source per pattern's fix_pointer.",
-                    },
-                    {
-                        "label": "Run with --allow-imperfect-iter for now",
-                        "description": "Accept the flake into σ-floor numbers and "
-                        "proceed (degrades baseline quality but unblocks).",
-                    },
-                ],
-            }
-        ]
-    if category == "persistent":
-        return [
-            {
-                "header": "Persistent Builder/harness defect",
-                "question": (
-                    f"Iter hit persistent pattern {pattern_id} ({name}). "
-                    "Cannot be auto-retried. How to recover?"
-                ),
-                "options": [
-                    {
-                        "label": "Open Fix-lane against source",
-                        "description": f"Source fix per pattern: {fix_pointer}",
-                    },
-                    {
-                        "label": "Investigate manually",
-                        "description": "Inspect dump_dir + Builder logs; not yet "
-                        "catalogued or remediation unclear.",
-                    },
-                    {
-                        "label": "Skip this iter (degrade baseline)",
-                        "description": "Continue with --allow-imperfect-iter; the "
-                        "fixture's σ-floor will reflect the defect.",
-                    },
-                ],
-            }
-        ]
-    if category == "substrate":
-        return [
-            {
-                "header": "Substrate-state stuck",
-                "question": (
-                    f"Iter stuck on substrate-class pattern {pattern_id}. "
-                    "Substrate auto-remediation failed. How to proceed?"
-                ),
-                "options": [
-                    {
-                        "label": "Re-snapshot seed from upstream",
-                        "description": "bash scripts/autoresearch/setup_seed.sh",
-                    },
-                    {"label": "Investigate substrate manually", "description": f"{fix_pointer}"},
-                ],
-            }
-        ]
-    # unknown
-    return [
-        {
-            "header": "Unknown stuck pattern",
+        return [{
+            "header": "Transient hang exhausted retries",
             "question": (
-                "Iter is stuck but no catalog pattern matched (verdict=unknown). "
-                "Forensic dump preserved. How to proceed?"
+                f"Iter hit {pattern_id} ({name}) repeatedly across "
+                "all retry attempts. The transient class should resolve on "
+                "fresh state but didn't here. How to proceed?"
             ),
             "options": [
-                {
-                    "label": "Inspect dump_dir + fix root cause",
-                    "description": "Read the watchdog dump, find why the run hung, "
-                    "and fix it at the source (the lean answer: fix the "
-                    "hang, not the diagnosis).",
-                },
-                {"label": "Skip this iter", "description": "Continue with --allow-imperfect-iter."},
+                {"label": "Investigate why retries didn't help",
+                 "description": f"Inspect dump_dir for evidence; {fix_pointer}"},
+                {"label": "Treat as persistent — source fix Builder",
+                 "description": "The 'transient' hypothesis is wrong; the "
+                                "underlying bug is recurring. Open Fix-lane "
+                                "on Builder source per pattern's fix_pointer."},
+                {"label": "Run with --allow-imperfect-iter for now",
+                 "description": "Accept the flake into σ-floor numbers and "
+                                "proceed (degrades baseline quality but unblocks)."},
             ],
-        }
-    ]
+        }]
+    if category == "persistent":
+        return [{
+            "header": "Persistent Builder/harness defect",
+            "question": (
+                f"Iter hit persistent pattern {pattern_id} ({name}). "
+                "Cannot be auto-retried. How to recover?"
+            ),
+            "options": [
+                {"label": "Open Fix-lane against source",
+                 "description": f"Source fix per pattern: {fix_pointer}"},
+                {"label": "Investigate manually",
+                 "description": "Inspect dump_dir + Builder logs; not yet "
+                                "catalogued or remediation unclear."},
+                {"label": "Skip this iter (degrade baseline)",
+                 "description": "Continue with --allow-imperfect-iter; the "
+                                "fixture's σ-floor will reflect the defect."},
+            ],
+        }]
+    if category == "substrate":
+        return [{
+            "header": "Substrate-state stuck",
+            "question": (
+                f"Iter stuck on substrate-class pattern {pattern_id}. "
+                "Substrate auto-remediation failed. How to proceed?"
+            ),
+            "options": [
+                {"label": "Re-snapshot seed from upstream",
+                 "description": "bash scripts/autoresearch/setup_seed.sh"},
+                {"label": "Investigate substrate manually",
+                 "description": f"{fix_pointer}"},
+            ],
+        }]
+    # unknown
+    return [{
+        "header": "Unknown stuck pattern",
+        "question": (
+            f"Iter is stuck but no catalog pattern matched (verdict=unknown). "
+            "Forensic dump preserved. How to proceed?"
+        ),
+        "options": [
+            {"label": "Inspect dump_dir + fix root cause",
+             "description": "Read the watchdog dump, find why the run hung, "
+                            "and fix it at the source (the lean answer: fix the "
+                            "hang, not the diagnosis)."},
+            {"label": "Skip this iter",
+             "description": "Continue with --allow-imperfect-iter."},
+        ],
+    }]
 
 
 def invoke_self_heal(evidence_dir: pathlib.Path, seed_dir: pathlib.Path) -> dict:
@@ -386,35 +338,23 @@ def invoke_self_heal(evidence_dir: pathlib.Path, seed_dir: pathlib.Path) -> dict
     to preserve the harness/skill boundary (Hard Rule 3: harness must not
     import from skill or builder)."""
     if not SELF_HEAL.exists():
-        return {"applied": False, "pattern": None, "detail": f"self_heal.py missing at {SELF_HEAL}"}
+        return {"applied": False, "pattern": None,
+                "detail": f"self_heal.py missing at {SELF_HEAL}"}
     try:
         r = subprocess.run(
-            [
-                sys.executable,
-                str(SELF_HEAL),
-                "--evidence-dir",
-                str(evidence_dir),
-                "--seed-dir",
-                str(seed_dir),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=300,
+            [sys.executable, str(SELF_HEAL),
+             "--evidence-dir", str(evidence_dir),
+             "--seed-dir", str(seed_dir)],
+            capture_output=True, text=True, timeout=300,
         )
         try:
             return json.loads(r.stdout)
         except json.JSONDecodeError:
-            return {
-                "applied": False,
-                "pattern": None,
-                "detail": f"self_heal returned non-JSON: {r.stdout[:200]} stderr={r.stderr[:200]}",
-            }
+            return {"applied": False, "pattern": None,
+                    "detail": f"self_heal returned non-JSON: {r.stdout[:200]} stderr={r.stderr[:200]}"}
     except (subprocess.TimeoutExpired, OSError) as exc:
-        return {
-            "applied": False,
-            "pattern": None,
-            "detail": f"self_heal failed: {type(exc).__name__}: {exc}",
-        }
+        return {"applied": False, "pattern": None,
+                "detail": f"self_heal failed: {type(exc).__name__}: {exc}"}
 
 
 def compute_summary(runs_by_fixture: dict[str, list[dict]]) -> dict:
@@ -457,7 +397,7 @@ def append_variance_doc(summary: dict, out_md: pathlib.Path) -> None:
             )
         else:
             section.append(
-                f"| {f} | {s.get('status')} | {s.get('stable_runs', 0)}/{s.get('total_runs', 0)} | — | — | — |\n"
+                f"| {f} | {s.get('status')} | {s.get('stable_runs',0)}/{s.get('total_runs',0)} | — | — | — |\n"
             )
     with out_md.open("a") as f:
         f.writelines(section)
@@ -517,29 +457,19 @@ def main() -> int:
             # a fresh evidence subdir (run-{i}.heal{N}) so forensics survive.
             for attempt in range(MAX_HEAL_ATTEMPTS):
                 ev = ev_base if attempt == 0 else (ev_base.parent / f"run-{i}.heal{attempt}")
-                print(
-                    f"[baseline] fixture={fixture} iter={i + 1}/{args.n} port={port} evidence={ev}"
-                    + (f" (heal-attempt {attempt})" if attempt else ""),
-                    file=sys.stderr,
-                )
+                print(f"[baseline] fixture={fixture} iter={i+1}/{args.n} port={port} evidence={ev}"
+                      + (f" (heal-attempt {attempt})" if attempt else ""),
+                      file=sys.stderr)
                 try:
                     result = run_one_fixture(
-                        fixture,
-                        args.branch,
-                        port,
-                        ev,
-                        args.dry_run,
+                        fixture, args.branch, port, ev, args.dry_run,
                         wall_clock_seconds=args.iter_wall_clock_seconds,
                     )
                 except subprocess.CalledProcessError as exc:
                     print(f"[baseline] iter crashed: {exc}", file=sys.stderr)
-                    result = {
-                        "run_id": None,
-                        "error": str(exc),
-                        "feature_correct": False,
-                        "decision_status": "crash",
-                        "gates_passed": "0/6",
-                    }
+                    result = {"run_id": None, "error": str(exc),
+                              "feature_correct": False, "decision_status": "crash",
+                              "gates_passed": "0/6"}
 
                 # In dry-run or --allow-imperfect mode, skip the gate.
                 if args.dry_run or args.allow_imperfect_iter:
@@ -578,9 +508,12 @@ def main() -> int:
                         "top_match": top,
                         "category": category,
                         "remaining_iters_skipped": remaining,
-                        "proposed_questions": _stuck_proposed_questions(pattern_id, category, top),
+                        "proposed_questions": _stuck_proposed_questions(
+                            pattern_id, category, top
+                        ),
                     }
-                    print("SELF_HEAL_ESCALATION " + json.dumps(escalation), file=sys.stderr)
+                    print("SELF_HEAL_ESCALATION " + json.dumps(escalation),
+                          file=sys.stderr)
                     # Persist to evidence_root for deterministic post-baseline
                     # discovery. SKILL.md Hard Rule 14: the calling agent MUST
                     # check this file after baseline exits; if present, invoke
@@ -590,14 +523,13 @@ def main() -> int:
                     try:
                         escalation_file = evidence_root / "SELF_HEAL_ESCALATION.json"
                         escalation_file.write_text(json.dumps(escalation, indent=2))
-                        print(
-                            f"[baseline] escalation persisted: {escalation_file}", file=sys.stderr
-                        )
+                        print(f"[baseline] escalation persisted: {escalation_file}",
+                              file=sys.stderr)
                     except OSError:
                         pass  # best-effort; stderr marker is canonical source
                     print(
-                        f"[baseline] ABORT — fixture={fixture} iter={i + 1}/{args.n} "
-                        f"stuck after {attempt + 1} attempt(s). "
+                        f"[baseline] ABORT — fixture={fixture} iter={i+1}/{args.n} "
+                        f"stuck after {attempt+1} attempt(s). "
                         f"Saved ~{remaining} more iters. Calling agent should "
                         f"parse SELF_HEAL_ESCALATION.json in evidence-root and "
                         f"surface via AskUserQuestion, inspect the watchdog dump "
@@ -658,22 +590,24 @@ def main() -> int:
                 }
                 # Machine-readable marker on its own line so the calling agent
                 # can parse it deterministically from baseline stdout/stderr.
-                print("SELF_HEAL_ESCALATION " + json.dumps(escalation), file=sys.stderr)
+                print("SELF_HEAL_ESCALATION " + json.dumps(escalation),
+                      file=sys.stderr)
                 # Persist to evidence_root for deterministic post-baseline
                 # discovery (SKILL.md Hard Rule 14).
                 try:
                     escalation_file = evidence_root / "SELF_HEAL_ESCALATION.json"
                     escalation_file.write_text(json.dumps(escalation, indent=2))
-                    print(f"[baseline] escalation persisted: {escalation_file}", file=sys.stderr)
+                    print(f"[baseline] escalation persisted: {escalation_file}",
+                          file=sys.stderr)
                 except OSError:
                     pass  # best-effort; stderr marker is canonical source
                 print(
-                    f"[baseline] ABORT — fixture={fixture} iter={i + 1}/{args.n} "
-                    f"imperfect after {attempt + 1} self_heal attempt(s). "
+                    f"[baseline] ABORT — fixture={fixture} iter={i+1}/{args.n} "
+                    f"imperfect after {attempt+1} self_heal attempt(s). "
                     f"Saved ~{remaining} more iters. "
                     f"Inspect: {'; '.join(hints)}. "
                     f"Pattern={heal.get('pattern')!r}, "
-                    f"confidence={heal.get('confidence', 'low')!r}, "
+                    f"confidence={heal.get('confidence','low')!r}, "
                     f"{len(heal.get('proposed_questions', []))} proposed_question(s). "
                     f"Calling agent: parse SELF_HEAL_ESCALATION line above and "
                     f"surface via AskUserQuestion, OR extend self_heal pattern "
@@ -714,14 +648,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--branch", default="main")
     p.add_argument("--port-base", type=int, default=9876)
     p.add_argument(
-        "--seed-dir",
-        default=None,
+        "--seed-dir", default=None,
         help="Path to the read-only seed snapshot. Default: ~/.seed/devpulse. "
-        "Used by self_heal.py when an imperfect iter triggers auto-fix.",
+             "Used by self_heal.py when an imperfect iter triggers auto-fix.",
     )
     p.add_argument(
-        "--allow-imperfect-iter",
-        action="store_true",
+        "--allow-imperfect-iter", action="store_true",
         help=(
             "Continue past iters that don't ship 6/6 gates with feature_correct=True. "
             "Default: abort and require operator investigation. Use only when the "
@@ -732,8 +664,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--dry-run", action="store_true")
     p.add_argument(
-        "--iter-wall-clock-seconds",
-        type=int,
+        "--iter-wall-clock-seconds", type=int,
         default=DEFAULT_ITER_WALL_CLOCK_SECONDS,
         help=(
             "Per-iter wall-clock budget. If exceeded, baseline kills the run.py + "

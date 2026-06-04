@@ -38,9 +38,7 @@ async def test_go_ahead_dispatches_first_pending_sprint_task_without_manual_boar
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="demo", description="demo", language="python")
@@ -144,9 +142,7 @@ async def test_go_ahead_dispatches_first_pending_sprint_task_without_manual_boar
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -191,7 +187,6 @@ async def test_go_ahead_dispatches_first_pending_sprint_task_without_manual_boar
     assert status_events[0].payload_json["tokens_used"] == 0
     assert status_events[0].payload_json["cost_usd"] == 0.0
 
-
 @pytest.mark.asyncio
 async def test_chat_start_next_sprint_infers_first_ready_backlog_item_without_scope_prompt(
     monkeypatch, test_db, tmp_path
@@ -199,9 +194,7 @@ async def test_chat_start_next_sprint_infers_first_ready_backlog_item_without_sc
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="todo app", description="personal todo app", language="typescript")
@@ -263,9 +256,7 @@ async def test_chat_start_next_sprint_infers_first_ready_backlog_item_without_sc
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -275,9 +266,7 @@ async def test_chat_start_next_sprint_infers_first_ready_backlog_item_without_sc
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        first = await client.post(
-            "/api/agent/chat", json={"message": "I want to start next sprint"}
-        )
+        first = await client.post("/api/agent/chat", json={"message": "I want to start next sprint"})
         assert first.status_code == 200
         session_id = first.json()["session_id"]
         await _approve_pending_sprint_scope(client, session_id)
@@ -285,9 +274,7 @@ async def test_chat_start_next_sprint_infers_first_ready_backlog_item_without_sc
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Builder prepared the work" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Builder prepared the work" in item["payload"].get("content", ""),
         )
         features_response = await client.get("/api/dashboard/features")
 
@@ -295,12 +282,9 @@ async def test_chat_start_next_sprint_infers_first_ready_backlog_item_without_sc
     assert dispatched
     history_items = history_payload["items"]
     assert not any(item["type"] == "ask_user_question" for item in history_items)
-    statuses = {
-        feature["id"]: feature["status"] for feature in features_response.json()["features"]
-    }
+    statuses = {feature["id"]: feature["status"] for feature in features_response.json()["features"]}
     assert statuses["feature-03"] == FeatureStatus.SPRINT_PLANNED.value
     assert statuses["feature-04"] == FeatureStatus.BACKLOG.value
-
 
 @pytest.mark.asyncio
 async def test_chat_ambiguous_go_ahead_asks_for_sprint_scope_before_mutating(
@@ -309,9 +293,7 @@ async def test_chat_ambiguous_go_ahead_asks_for_sprint_scope_before_mutating(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="todo app", description="personal todo app", language="typescript")
@@ -341,9 +323,7 @@ async def test_chat_ambiguous_go_ahead_asks_for_sprint_scope_before_mutating(
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -367,11 +347,8 @@ async def test_chat_ambiguous_go_ahead_asks_for_sprint_scope_before_mutating(
     assert prompt_item["payload"]["options"][0]["label"].startswith(
         "Ship this improvement: feature-03"
     )
-    statuses = {
-        feature["id"]: feature["status"] for feature in features_response.json()["features"]
-    }
+    statuses = {feature["id"]: feature["status"] for feature in features_response.json()["features"]}
     assert statuses["feature-03"] == FeatureStatus.BACKLOG.value
-
 
 @pytest.mark.asyncio
 async def test_chat_sprint_planning_direct_queue_all_product_backlog_items_creates_sprint_tasks(
@@ -380,22 +357,14 @@ async def test_chat_sprint_planning_direct_queue_all_product_backlog_items_creat
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="demo", description="demo", language="python")
         db.add(project)
         await db.flush()
-        db.add(
-            Feature(
-                project_id=project.id, title="Backlog item one", description="one", priority=100
-            )
-        )
-        db.add(
-            Feature(project_id=project.id, title="Backlog item two", description="two", priority=90)
-        )
+        db.add(Feature(project_id=project.id, title="Backlog item one", description="one", priority=100))
+        db.add(Feature(project_id=project.id, title="Backlog item two", description="two", priority=90))
         await db.commit()
 
     async def fail_run_phase(self, **kwargs):
@@ -411,9 +380,7 @@ async def test_chat_sprint_planning_direct_queue_all_product_backlog_items_creat
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -435,9 +402,7 @@ async def test_chat_sprint_planning_direct_queue_all_product_backlog_items_creat
             session_id,
             "assistant_message",
             timeout=10.0,
-            predicate=lambda item: (
-                "Builder prepared the work" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Builder prepared the work" in item["payload"].get("content", ""),
         )
         board_response = await client.get("/api/dashboard/board")
 

@@ -83,8 +83,7 @@ def test_context_budget_summary_groups_lanes_stages_signals_and_components():
         "realtime_tool_exchange",
     }
     assert any(item["signal_category"] == "useful_tool_result" for item in summary["signal_counts"])
-    assert (
-        summary["top_components"][0]["estimated_tokens"]
-        >= summary["top_components"][-1]["estimated_tokens"]
-    )
+    assert summary["top_components"][0]["estimated_tokens"] >= summary["top_components"][-1][
+        "estimated_tokens"
+    ]
     assert summary["latest"]["correlation_id"] == "tool-1"

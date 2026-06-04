@@ -44,7 +44,9 @@ FEATURE_REQUEST_IMPERATIVE_PREFIXES = (
     "implement ",
     "make ",
 )
-FEATURE_REQUEST_IMPERATIVE_EXCLUSION_PREFIXES = ("make sure ",)
+FEATURE_REQUEST_IMPERATIVE_EXCLUSION_PREFIXES = (
+    "make sure ",
+)
 FEATURE_REQUEST_SCOPE_TERMS = (
     "user",
     "users",
@@ -399,11 +401,15 @@ def message_requests_feature_spec(user_message: str) -> bool:
         return False
     if any(pattern in lower_message for pattern in FEATURE_SPEC_INTENT_PATTERNS):
         return True
-    imperative_feature_request = any(
-        normalized_message.startswith(pattern) for pattern in FEATURE_REQUEST_IMPERATIVE_PREFIXES
-    ) and not any(
-        normalized_message.startswith(pattern)
-        for pattern in FEATURE_REQUEST_IMPERATIVE_EXCLUSION_PREFIXES
+    imperative_feature_request = (
+        any(
+            normalized_message.startswith(pattern)
+            for pattern in FEATURE_REQUEST_IMPERATIVE_PREFIXES
+        )
+        and not any(
+            normalized_message.startswith(pattern)
+            for pattern in FEATURE_REQUEST_IMPERATIVE_EXCLUSION_PREFIXES
+        )
     )
     if not imperative_feature_request and not any(
         pattern in lower_message for pattern in FEATURE_REQUEST_ACTION_PATTERNS

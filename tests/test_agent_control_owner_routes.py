@@ -13,7 +13,8 @@ from autonomous_agent_builder.db.models import (
     FeatureStatus,
     Project,
 )
-from autonomous_agent_builder.embedded.server import agent_chat_sessions, agent_sprint_planning
+from autonomous_agent_builder.embedded.server import agent_chat_sessions
+from autonomous_agent_builder.embedded.server import agent_sprint_planning
 from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server.routes import agent as agent_routes
 
@@ -58,9 +59,7 @@ async def test_chat_history_supersedes_voice_summary_echo_for_pending_delivery_q
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         session = ChatSession()
@@ -153,9 +152,7 @@ async def test_assistant_delivery_permission_answer_uses_captured_feature(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="todo-app", description="Todo app", language="javascript")
@@ -225,9 +222,7 @@ async def test_assistant_delivery_permission_answer_uses_captured_feature(
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -286,9 +281,7 @@ async def test_chat_history_supersedes_redundant_delivery_scope_approval(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="todo-app", description="Todo app", language="javascript")

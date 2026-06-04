@@ -144,7 +144,9 @@ async def init_db() -> None:
             result = await conn.execute(text("PRAGMA table_info(tasks)"))
             task_columns = {row[1] for row in result.fetchall()}
             if "chat_session_id" not in task_columns:
-                await conn.execute(text("ALTER TABLE tasks ADD COLUMN chat_session_id VARCHAR(36)"))
+                await conn.execute(
+                    text("ALTER TABLE tasks ADD COLUMN chat_session_id VARCHAR(36)")
+                )
                 await conn.execute(
                     text(
                         "CREATE INDEX IF NOT EXISTS ix_tasks_chat_session_id "

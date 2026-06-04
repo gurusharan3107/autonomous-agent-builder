@@ -32,9 +32,7 @@ async def test_chat_respond_recovers_persisted_pending_question_without_live_wai
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         session = ChatSession(
@@ -49,9 +47,7 @@ async def test_chat_respond_recovers_persisted_pending_question_without_live_wai
             payload_json={
                 "header": "First Scope",
                 "question": "Which first feature?",
-                "options": [
-                    {"label": "Personal todos (Recommended)", "description": "Build todos."}
-                ],
+                "options": [{"label": "Personal todos (Recommended)", "description": "Build todos."}],
                 "answered": False,
                 "answer_value": "",
             },
@@ -102,23 +98,17 @@ async def test_chat_respond_recovers_persisted_pending_question_without_live_wai
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "I captured that improvement" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "I captured that improvement" in item["payload"].get("content", ""),
         )
 
     assert assistant_item["status"] == "completed"
     assert captured_prompts
-    assert (
-        'Operator answered pending question "Which first feature?": Personal todos (Recommended)'
-        in captured_prompts[0]
-    )
+    assert 'Operator answered pending question "Which first feature?": Personal todos (Recommended)' in captured_prompts[0]
     async with factory() as db:
         updated_question = await db.get(ChatEvent, question_id)
     assert updated_question is not None
     assert updated_question.status == "answered"
     assert updated_question.payload_json["answer_value"] == "Personal todos (Recommended)"
-
 
 @pytest.mark.asyncio
 async def test_chat_respond_recovers_persisted_delivery_scope_approval_without_live_waiter(
@@ -129,9 +119,7 @@ async def test_chat_respond_recovers_persisted_delivery_scope_approval_without_l
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="todo-app", description="Todo app", language="javascript")
@@ -177,9 +165,7 @@ async def test_chat_respond_recovers_persisted_delivery_scope_approval_without_l
     async def fake_schedule_task_dispatch(task_id: str) -> None:
         dispatched.append(task_id)
 
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -203,9 +189,7 @@ async def test_chat_respond_recovers_persisted_delivery_scope_approval_without_l
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Builder prepared the work" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Builder prepared the work" in item["payload"].get("content", ""),
         )
 
     assert "sprint-plan" not in assistant_item["payload"]["content"]
@@ -219,7 +203,6 @@ async def test_chat_respond_recovers_persisted_delivery_scope_approval_without_l
     assert updated_feature.status == FeatureStatus.SPRINT_PLANNED
     assert tasks
     assert dispatched == [tasks[0].id]
-
 
 @pytest.mark.asyncio
 async def test_chat_response_updates_pending_event_without_opening_second_db_session(
@@ -241,9 +224,7 @@ async def test_chat_response_updates_pending_event_without_opening_second_db_ses
         question_id = question.id
 
     def fail_if_nested_session_factory_is_used():
-        raise AssertionError(
-            "pending question responses must update through the request DB session"
-        )
+        raise AssertionError("pending question responses must update through the request DB session")
 
     monkeypatch.setattr(agent_routes, "get_session_factory", fail_if_nested_session_factory_is_used)
 
@@ -262,14 +243,11 @@ async def test_chat_response_updates_pending_event_without_opening_second_db_ses
     assert updated.status == "answered"
     assert updated.payload_json["answer_value"] == "Start now"
 
-
 @pytest.mark.asyncio
 async def test_chat_question_card_can_be_answered_and_run_resumes(monkeypatch, test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async def fake_run_phase(self, **kwargs):
         permission = await kwargs["can_use_tool"](
@@ -336,9 +314,7 @@ async def test_chat_question_card_can_be_answered_and_run_resumes(monkeypatch, t
             client, session_id, "assistant_message"
         )
 
-    updated_question = next(
-        item for item in history_payload["items"] if item["id"] == question_item["id"]
-    )
+    updated_question = next(item for item in history_payload["items"] if item["id"] == question_item["id"])
     assert updated_question["payload"]["answered"] is True
     assert updated_question["payload"]["answer_value"] == "FastAPI"
     assert assistant_item["payload"]["content"] == "Great, I will use FastAPI."

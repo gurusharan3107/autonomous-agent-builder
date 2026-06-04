@@ -151,7 +151,9 @@ async def integrate_task_workspace(orchestrator: Any, task: Task) -> str | None:
         untracked_overwrite_paths = parse_untracked_overwrite_paths(merge_output)
         if not untracked_overwrite_paths:
             return merge_code, merge_output
-        clean_code, clean_output = await run_git("clean", "-f", "--", *untracked_overwrite_paths)
+        clean_code, clean_output = await run_git(
+            "clean", "-f", "--", *untracked_overwrite_paths
+        )
         if clean_code != 0:
             return clean_code, (
                 "Integration failed: could not prepare untracked target files "
@@ -266,14 +268,17 @@ async def commit_task_workspace_changes(orchestrator: Any, task: Task) -> str | 
     status_code, status_output = await run_workspace_git("status", "--short")
     if status_code != 0:
         return (
-            f"Integration failed: could not inspect task workspace changes: {status_output.strip()}"
+            "Integration failed: could not inspect task workspace changes: "
+            f"{status_output.strip()}"
         )
     if not status_output.strip():
         return None
 
     add_code, add_output = await run_workspace_git("add", "--all")
     if add_code != 0:
-        return f"Integration failed: could not stage task workspace changes: {add_output.strip()}"
+        return (
+            f"Integration failed: could not stage task workspace changes: {add_output.strip()}"
+        )
 
     title = str(getattr(task, "title", "") or "task changes").strip()
     commit_code, commit_output = await run_workspace_git(
@@ -287,7 +292,8 @@ async def commit_task_workspace_changes(orchestrator: Any, task: Task) -> str | 
     )
     if commit_code != 0:
         return (
-            f"Integration failed: could not commit task workspace changes: {commit_output.strip()}"
+            "Integration failed: could not commit task workspace changes: "
+            f"{commit_output.strip()}"
         )
     return None
 
@@ -317,7 +323,8 @@ async def remove_generated_artifacts_from_git_checkout(
     )
     if rm_code != 0:
         return (
-            f"Integration failed: could not untrack generated build artifacts: {rm_output.strip()}"
+            "Integration failed: could not untrack generated build artifacts: "
+            f"{rm_output.strip()}"
         )
 
     status_code, status_output = await run_git(
@@ -515,8 +522,9 @@ def conflict_markers_remaining(workspace: Path, conflict_files: list[str]) -> st
         if any(marker_pattern.match(line) for line in text.splitlines()):
             remaining.append(relative_file)
     if remaining:
-        return "Integration failed: conflict resolver left git conflict markers in " + ", ".join(
-            remaining
+        return (
+            "Integration failed: conflict resolver left git conflict markers in "
+            + ", ".join(remaining)
         )
     return None
 
@@ -534,7 +542,9 @@ async def sanitize_task_workspace_for_agent(
         return f"Task workspace sanitization failed: workspace does not exist at {workspace}"
 
     existing_paths = [
-        relative for relative in _TASK_WORKSPACE_SANITIZE_PATHS if (workspace / relative).exists()
+        relative
+        for relative in _TASK_WORKSPACE_SANITIZE_PATHS
+        if (workspace / relative).exists()
     ]
     if not existing_paths:
         return None
@@ -553,9 +563,7 @@ async def sanitize_task_workspace_for_agent(
         )
         if result.returncode != 0:
             output = result.output.strip()
-            return (
-                f"Task workspace sanitization failed: could not untrack runtime artifacts: {output}"
-            )
+            return f"Task workspace sanitization failed: could not untrack runtime artifacts: {output}"
 
     for relative in existing_paths:
         path = workspace / relative
@@ -577,12 +585,12 @@ async def sanitize_task_workspace_for_agent(
         )
         if result.returncode != 0:
             output = result.output.strip()
-            return (
-                f"Task workspace sanitization failed: could not clean runtime artifacts: {output}"
-            )
+            return f"Task workspace sanitization failed: could not clean runtime artifacts: {output}"
 
     remaining = [
-        relative for relative in _TASK_WORKSPACE_SANITIZE_PATHS if (workspace / relative).exists()
+        relative
+        for relative in _TASK_WORKSPACE_SANITIZE_PATHS
+        if (workspace / relative).exists()
     ]
     if remaining:
         return (
@@ -615,9 +623,9 @@ async def ensure_workspace(orchestrator: Any, task: Task) -> Workspace:
                 path=existing_path,
                 is_worktree=bool(getattr(existing, "is_worktree", False)),
             )
-        elif not getattr(existing, "is_worktree", False) and workspace_contains_builder_internals(
-            existing_path
-        ):
+        elif not getattr(
+            existing, "is_worktree", False
+        ) and workspace_contains_builder_internals(existing_path):
             log.warning(
                 "task_workspace_polluted_reprovisioning",
                 task_id=task.id,

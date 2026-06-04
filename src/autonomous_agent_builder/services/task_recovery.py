@@ -127,9 +127,7 @@ async def _blocked_sprint_merge_error(task: Task, db: AsyncSession) -> str:
     verification_status = str(sprint.verification_status or "").strip()
     if sprint_phase != "blocked" and verification_status != "blocked":
         return ""
-    evidence = (
-        sprint.verification_evidence if isinstance(sprint.verification_evidence, dict) else {}
-    )
+    evidence = sprint.verification_evidence if isinstance(sprint.verification_evidence, dict) else {}
     merge_error = str(evidence.get("sprint_merge_error") or "").strip()
     if not merge_error:
         return ""
@@ -187,7 +185,9 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
     ):
         return task_status, TaskStatus.IMPLEMENTATION
 
-    if task_status == TaskStatus.BLOCKED.value and blocked_reason.startswith("scaffold_failed:"):
+    if task_status == TaskStatus.BLOCKED.value and blocked_reason.startswith(
+        "scaffold_failed:"
+    ):
         # Scaffold runs at the entry of IMPLEMENTATION; re-running implementation
         # invokes scaffold again deterministically (it skips if a language is
         # already detectable).
@@ -202,7 +202,8 @@ async def _recovery_target_status(task: Task, db: AsyncSession) -> tuple[str, Ta
         return task_status, TaskStatus.PENDING
 
     if task_status == TaskStatus.BLOCKED.value and (
-        "FileNotFoundError" in blocked_reason or "Gate infrastructure error" in blocked_reason
+        "FileNotFoundError" in blocked_reason
+        or "Gate infrastructure error" in blocked_reason
     ):
         # Legacy gate-infrastructure blocked state from dispatches that pre-date
         # the workspace_scaffold step. Recovering routes back through

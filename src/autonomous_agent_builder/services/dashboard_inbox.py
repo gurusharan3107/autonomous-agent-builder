@@ -19,7 +19,9 @@ async def load_dashboard_inbox_items(
     stmt = (
         select(ApprovalGate)
         .options(
-            selectinload(ApprovalGate.task).selectinload(Task.feature).selectinload(Feature.project)
+            selectinload(ApprovalGate.task)
+            .selectinload(Task.feature)
+            .selectinload(Feature.project)
         )
         .order_by(ApprovalGate.created_at.desc())
     )

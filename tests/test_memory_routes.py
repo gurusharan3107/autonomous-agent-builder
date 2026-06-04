@@ -126,9 +126,7 @@ async def test_search_memories(client, test_db, memory_dir):
 
 
 @pytest.mark.asyncio
-async def test_get_memory_rejects_absolute_routing_file_escape(
-    client, test_db, tmp_path, monkeypatch
-):
+async def test_get_memory_rejects_absolute_routing_file_escape(client, test_db, tmp_path, monkeypatch):
     mem_dir = tmp_path / ".memory"
     mem_dir.mkdir()
     outside = tmp_path / "outside-secret.md"
@@ -161,9 +159,7 @@ async def test_get_memory_rejects_absolute_routing_file_escape(
 
 
 @pytest.mark.asyncio
-async def test_get_memory_rejects_parent_traversal_routing_file(
-    client, test_db, tmp_path, monkeypatch
-):
+async def test_get_memory_rejects_parent_traversal_routing_file(client, test_db, tmp_path, monkeypatch):
     mem_dir = tmp_path / ".memory"
     mem_dir.mkdir()
     outside = tmp_path / "outside-secret.md"

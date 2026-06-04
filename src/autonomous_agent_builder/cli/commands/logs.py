@@ -15,20 +15,12 @@ import typer
 from autonomous_agent_builder.cli.client import EXIT_FAILURE, EXIT_INVALID_USAGE, EXIT_SUCCESS
 from autonomous_agent_builder.cli.commands.logs_db_utils import (
     maybe_json_dict as _maybe_json_dict,
-)
-from autonomous_agent_builder.cli.commands.logs_db_utils import (
     row_dict as _row_dict,
-)
-from autonomous_agent_builder.cli.commands.logs_db_utils import (
     table_columns as _table_columns,
-)
-from autonomous_agent_builder.cli.commands.logs_db_utils import (
     table_exists as _table_exists,
 )
 from autonomous_agent_builder.cli.commands.logs_runtime_aggregates import (
     runtime_aggregates as _compute_runtime_aggregates,
-)
-from autonomous_agent_builder.cli.commands.logs_runtime_aggregates import (
     selected_runtime_sdk as _selected_runtime_sdk,
 )
 from autonomous_agent_builder.cli.output import emit_error, render, table, truncate
@@ -415,9 +407,7 @@ def _effective_observability(prompts: list[dict[str, Any]]) -> dict[str, Any]:
         _resolve_claude_obs = None
         try:
             from autonomous_agent_builder.config import get_settings
-            from autonomous_agent_builder.observability.runtime import (
-                resolve_claude_observability as _resolve_claude_obs,
-            )
+            from autonomous_agent_builder.observability.runtime import resolve_claude_observability as _resolve_claude_obs
             from autonomous_agent_builder.runtime.factory import resolve_runtime_config
 
             runtime_config = resolve_runtime_config(get_settings())
@@ -664,9 +654,7 @@ def _prompt_token_accounting(prompt: dict[str, Any]) -> dict[str, Any]:
     observability = prompt.get("observability", {})
     if not isinstance(observability, dict):
         observability = {}
-    observability_accounting = observability.get("optimization_summary", {}).get(
-        "token_accounting", {}
-    )
+    observability_accounting = observability.get("optimization_summary", {}).get("token_accounting", {})
     if not isinstance(observability_accounting, dict):
         observability_accounting = {}
 

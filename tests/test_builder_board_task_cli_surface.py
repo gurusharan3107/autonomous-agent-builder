@@ -242,9 +242,7 @@ def test_board_show_falls_back_to_local_data_on_connectivity_error(monkeypatch):
     monkeypatch.setattr(
         board_module,
         "request_json",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            BuilderConnectivityError("http://127.0.0.1:9876")
-        ),
+        lambda *args, **kwargs: (_ for _ in ()).throw(BuilderConnectivityError("http://127.0.0.1:9876")),
     )
     monkeypatch.setattr(
         board_module,
@@ -282,9 +280,7 @@ def test_task_status_falls_back_to_local_data_on_connectivity_error(monkeypatch)
     monkeypatch.setattr(
         task_module,
         "request_json",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            BuilderConnectivityError("http://127.0.0.1:9876")
-        ),
+        lambda *args, **kwargs: (_ for _ in ()).throw(BuilderConnectivityError("http://127.0.0.1:9876")),
     )
     monkeypatch.setattr(
         task_module,

@@ -27,9 +27,7 @@ async def test_chat_sprint_planning_recommends_one_feature_and_creates_task_brea
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="demo", description="demo", language="python")
@@ -54,20 +52,12 @@ async def test_chat_sprint_planning_recommends_one_feature_and_creates_task_brea
                 status=FeatureStatus.SPRINT_BACKLOG,
             )
         )
-        db.add(
-            Feature(
-                project_id=project.id, title="Backlog item one", description="one", priority=100
-            )
-        )
-        db.add(
-            Feature(project_id=project.id, title="Backlog item two", description="two", priority=90)
-        )
+        db.add(Feature(project_id=project.id, title="Backlog item one", description="one", priority=100))
+        db.add(Feature(project_id=project.id, title="Backlog item two", description="two", priority=90))
         await db.commit()
 
     async def fail_run_phase(self, **kwargs):
-        raise AssertionError(
-            "Sprint planning should run through the deterministic agent chat lane."
-        )
+        raise AssertionError("Sprint planning should run through the deterministic agent chat lane.")
 
     monkeypatch.setattr(
         "autonomous_agent_builder.embedded.server.routes.agent.AgentRunner.run_phase",
@@ -78,9 +68,7 @@ async def test_chat_sprint_planning_recommends_one_feature_and_creates_task_brea
     async def fake_schedule_task_dispatch(task_id: str) -> None:
         dispatched.append(task_id)
 
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -90,9 +78,7 @@ async def test_chat_sprint_planning_recommends_one_feature_and_creates_task_brea
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        first = await client.post(
-            "/api/agent/chat", json={"message": "I want to do sprint planning."}
-        )
+        first = await client.post("/api/agent/chat", json={"message": "I want to do sprint planning."})
         assert first.status_code == 200
         session_id = first.json()["session_id"]
         _history_payload, prompt_item = await _wait_for_history_item(
@@ -104,10 +90,7 @@ async def test_chat_sprint_planning_recommends_one_feature_and_creates_task_brea
         recommended_label = prompt_item["payload"]["options"][0]["label"]
         assert recommended_label.startswith("Ship this improvement:")
         assert "Dependent future item" not in recommended_label
-        assert (
-            "Keeps delivery focused on one shippable outcome"
-            in prompt_item["payload"]["options"][0]["description"]
-        )
+        assert "Keeps delivery focused on one shippable outcome" in prompt_item["payload"]["options"][0]["description"]
         assert prompt_item["payload"]["options"][1]["label"] == "Ship all ready improvements"
 
         selection = await client.post(
@@ -126,17 +109,13 @@ async def test_chat_sprint_planning_recommends_one_feature_and_creates_task_brea
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Builder prepared the work" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Builder prepared the work" in item["payload"].get("content", ""),
         )
         features_response = await client.get("/api/dashboard/features")
         board_response = await client.get("/api/dashboard/board")
 
     feature_payload = features_response.json()
-    queued_features = {
-        feature["title"]: feature["status"] for feature in feature_payload["features"]
-    }
+    queued_features = {feature["title"]: feature["status"] for feature in feature_payload["features"]}
     assert queued_features["Backlog item one"] == FeatureStatus.SPRINT_PLANNED.value
     assert queued_features["Backlog item two"] == FeatureStatus.BACKLOG.value
     assert queued_features["Dependent future item"] == FeatureStatus.BACKLOG.value
@@ -149,7 +128,6 @@ async def test_chat_sprint_planning_recommends_one_feature_and_creates_task_brea
     assert board_payload["current_sprint"]["phase_statuses"]["implementation"] == "active"
     assert "work step" not in assistant_item["payload"]["content"]
 
-
 @pytest.mark.asyncio
 async def test_chat_sprint_planning_named_feature_requires_scope_approval_before_tasks(
     monkeypatch, test_db, tmp_path
@@ -157,22 +135,14 @@ async def test_chat_sprint_planning_named_feature_requires_scope_approval_before
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         project = Project(name="demo", description="demo", language="javascript")
         db.add(project)
         await db.flush()
-        db.add(
-            Feature(
-                project_id=project.id, title="Backlog item one", description="one", priority=100
-            )
-        )
-        db.add(
-            Feature(project_id=project.id, title="Backlog item two", description="two", priority=90)
-        )
+        db.add(Feature(project_id=project.id, title="Backlog item one", description="one", priority=100))
+        db.add(Feature(project_id=project.id, title="Backlog item two", description="two", priority=90))
         await db.commit()
 
     async def fail_run_phase(self, **kwargs):
@@ -187,9 +157,7 @@ async def test_chat_sprint_planning_named_feature_requires_scope_approval_before
     async def fake_schedule_task_dispatch(task_id: str) -> None:
         dispatched.append(task_id)
 
-    monkeypatch.setattr(
-        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
-    )
+    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -228,9 +196,7 @@ async def test_chat_sprint_planning_named_feature_requires_scope_approval_before
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Delivery scope was not approved" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Delivery scope was not approved" in item["payload"].get("content", ""),
         )
         board_after_denial = await client.get("/api/dashboard/board")
 

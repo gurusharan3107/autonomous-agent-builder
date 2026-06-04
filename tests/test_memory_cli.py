@@ -175,9 +175,7 @@ def test_memory_contract_and_lint_commands(tmp_path, monkeypatch):
     ]
     assert "sample_markdown" not in contract
     assert contract["actionable_next"].startswith("builder memory add")
-    assert (
-        contract["progressive_disclosure"][-1]["command"] == "builder memory contract --json --full"
-    )
+    assert contract["progressive_disclosure"][-1]["command"] == "builder memory contract --json --full"
 
     result = runner.invoke(app, ["memory", "contract", "--json", "--full"])
     assert result.exit_code == 0
@@ -286,7 +284,8 @@ def test_memory_add_reindexes_lints_and_checks_retrieval(tmp_path, monkeypatch):
         "phase: validation\n"
         "entity: memory-cli\n"
         "status: active\n"
-        "---\n\n" + _template_body("Decision"),
+        "---\n\n"
+        + _template_body("Decision"),
         encoding="utf-8",
     )
     (memory_root / "routing.json").write_text('{"items":[]}\n', encoding="utf-8")

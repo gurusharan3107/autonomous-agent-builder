@@ -66,9 +66,7 @@ def test_realtime_voice_policy_instructions_route_operator_requests_to_tools():
     assert "do not compress multi-part analysis requests" in VOICE_OPERATOR_INSTRUCTIONS
     assert "Treat each new operator utterance as its own request" in VOICE_OPERATOR_INSTRUCTIONS
     assert "the URL already points at a trace" in VOICE_OPERATOR_INSTRUCTIONS
-    assert (
-        "call open_run_trace again with\n  the new analysis_request" in VOICE_OPERATOR_INSTRUCTIONS
-    )
+    assert "call open_run_trace again with\n  the new analysis_request" in VOICE_OPERATOR_INSTRUCTIONS
     assert (
         '"analysis_request": "Analyze the current agent run. Was it efficient? Also tell me what to do next."'
         in VOICE_OPERATOR_INSTRUCTIONS
@@ -129,10 +127,7 @@ def test_realtime_voice_policy_instructions_route_operator_requests_to_tools():
     assert "Omit wait_for_completion" in delegation_tool["description"]
     assert "Do not rewrite" in VOICE_OPERATOR_INSTRUCTIONS
     assert "completion is event-driven" in " ".join(VOICE_OPERATOR_INSTRUCTIONS.split())
-    assert (
-        "I want to improve the todo app so I can search tasks by text."
-        in VOICE_OPERATOR_INSTRUCTIONS
-    )
+    assert "I want to improve the todo app so I can search tasks by text." in VOICE_OPERATOR_INSTRUCTIONS
     assert runtime_tool["parameters"]["properties"]["sdk"]["enum"] == ["codex_sdk", "claude"]
     assert "future runs only" in runtime_tool["description"]
     assert "simple operator request" in navigation_tool["description"]

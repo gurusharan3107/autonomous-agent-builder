@@ -14,7 +14,10 @@ from autonomous_agent_builder.knowledge.quality_gate import KnowledgeQualityGate
 
 def _seed_fastapi_repo(root: Path) -> None:
     (root / "pyproject.toml").write_text(
-        "[project]\nname='sample'\nversion='0.1.0'\ndependencies=['fastapi>=0.115.0']\n",
+        "[project]\n"
+        "name='sample'\n"
+        "version='0.1.0'\n"
+        "dependencies=['fastapi>=0.115.0']\n",
         encoding="utf-8",
     )
     (root / "src" / "sample").mkdir(parents=True)
@@ -121,9 +124,7 @@ def test_shared_evidence_graph_ignores_claude_worktrees(tmp_path):
     assert ".claude/worktrees/test-access" not in doc["content"]
 
 
-def test_library_repo_without_entrypoint_has_no_blocking_architecture_unresolved(
-    tmp_path, monkeypatch
-):
+def test_library_repo_without_entrypoint_has_no_blocking_architecture_unresolved(tmp_path, monkeypatch):
     (tmp_path / "README.md").write_text(
         "# Importable Library\n\nA small Python package that exposes importable modules and tests.\n",
         encoding="utf-8",

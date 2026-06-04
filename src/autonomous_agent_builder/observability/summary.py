@@ -536,3 +536,5 @@ def _project_claude_otel_env(project_root: Path | None) -> dict[str, str] | None
         "OTEL_LOGS_EXPORT_INTERVAL": env.get("AAB_CLAUDE_OTEL_LOGS_INTERVAL_MS", "1000"),
         "OTEL_TRACES_EXPORT_INTERVAL": env.get("AAB_CLAUDE_OTEL_TRACES_INTERVAL_MS", "1000"),
     }
+
+

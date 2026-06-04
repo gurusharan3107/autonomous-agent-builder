@@ -16,7 +16,6 @@ print(f"Exists: {feature_list_path.exists()}")
 
 if feature_list_path.exists():
     import json
-
     with open(feature_list_path) as f:
         data = json.load(f)
     print(f"Features: {len(data.get('features', []))}")

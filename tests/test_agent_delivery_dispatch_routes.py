@@ -149,7 +149,6 @@ async def test_continue_building_auto_approves_builder_task_dispatch(
     assert not any(item["type"] == "tool_approval_request" for item in history_payload["items"])
     assert dispatch_statuses
 
-
 @pytest.mark.asyncio
 async def test_ready_delivery_followup_stays_model_backed_and_allows_model_dispatch(
     monkeypatch, test_db, tmp_path

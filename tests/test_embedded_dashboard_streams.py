@@ -118,7 +118,8 @@ def test_embedded_task_run_summary_bounds_diff_and_observability_payloads():
                 for index in range(75)
             ],
             "hunks": [
-                {"file": f"src/file_{index}.tsx", "preview": "x" * 1000} for index in range(75)
+                {"file": f"src/file_{index}.tsx", "preview": "x" * 1000}
+                for index in range(75)
             ],
         },
         observability={"stdout": "x" * 20_000, "events": list(range(75))},

@@ -18,9 +18,7 @@ async def test_documentation_routed_kb_validate_is_auto_allowed_without_manual_a
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     captured: dict[str, object] = {}
 
@@ -67,16 +65,13 @@ async def test_documentation_routed_kb_validate_is_auto_allowed_without_manual_a
     assert assistant_item["payload"]["content"] == "KB validation allowed."
     assert all(item["type"] != "tool_approval_request" for item in history_payload["items"])
 
-
 @pytest.mark.asyncio
 async def test_documentation_routed_kb_validate_surfaces_exact_deny_reason_for_unsafe_path(
     monkeypatch, test_db, tmp_path
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     captured: dict[str, object] = {}
 
@@ -124,25 +119,15 @@ async def test_documentation_routed_kb_validate_surfaces_exact_deny_reason_for_u
 
     assert captured["subagents"] == ("documentation-agent",)
     assert tool_item["payload"]["diagnostic"]["summary"] == "mcp__builder__kb_validate denied"
-    assert (
-        "must stay under `.agent-builder/knowledge/`"
-        in tool_item["payload"]["diagnostic"]["error_message"]
-    )
-    assert (
-        'Retry with `{"kb_dir":"system-docs"}`' in tool_item["payload"]["diagnostic"]["next_action"]
-    )
+    assert "must stay under `.agent-builder/knowledge/`" in tool_item["payload"]["diagnostic"]["error_message"]
+    assert 'Retry with `{"kb_dir":"system-docs"}`' in tool_item["payload"]["diagnostic"]["next_action"]
     assert all(item["type"] != "tool_approval_request" for item in history_payload["items"])
 
-
 @pytest.mark.asyncio
-async def test_documentation_routed_kb_tools_skip_interactive_approval(
-    monkeypatch, test_db, tmp_path
-):
+async def test_documentation_routed_kb_tools_skip_interactive_approval(monkeypatch, test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     captured: dict[str, object] = {}
 
@@ -192,16 +177,13 @@ async def test_documentation_routed_kb_tools_skip_interactive_approval(
     assert all(item["type"] != "tool_approval_request" for item in history_payload["items"])
     assert assistant_item["payload"]["content"] == "Docs checked without approval."
 
-
 @pytest.mark.asyncio
 async def test_documentation_follow_up_continuation_keeps_kb_tools_auto_approved(
     monkeypatch, test_db, tmp_path
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     captured_prompts: list[str] = []
 
@@ -277,16 +259,13 @@ async def test_documentation_follow_up_continuation_keeps_kb_tools_auto_approved
     assert "specialist_continuation:documentation-agent" in captured_prompts[1]
     assert assistant_item["payload"]["content"] == "updated and verified"
 
-
 @pytest.mark.asyncio
 async def test_documentation_routed_kb_contract_and_lint_skip_interactive_approval(
     monkeypatch, test_db, tmp_path
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     captured: dict[str, object] = {}
 
@@ -344,16 +323,11 @@ async def test_documentation_routed_kb_contract_and_lint_skip_interactive_approv
     assert all(item["type"] != "tool_approval_request" for item in history_payload["items"])
     assert assistant_item["payload"]["content"] == "Contract and lint ran without approval."
 
-
 @pytest.mark.asyncio
-async def test_documentation_routed_turn_still_prompts_for_unrelated_tools(
-    monkeypatch, test_db, tmp_path
-):
+async def test_documentation_routed_turn_still_prompts_for_unrelated_tools(monkeypatch, test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     captured: dict[str, object] = {}
 

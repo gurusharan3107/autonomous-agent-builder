@@ -20,6 +20,7 @@ from autonomous_agent_builder.agents.definitions import (
     SubagentDefinition,
 )
 
+
 SUBAGENT_DEFINITIONS: dict[str, SubagentDefinition] = {
     "repo-researcher": SubagentDefinition(
         name="repo-researcher",

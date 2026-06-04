@@ -44,9 +44,7 @@ async def run_chat_runtime_loop(
             session=run_session,
             effort=runtime_policy.effort,
             approval_policy=(
-                "on-request"
-                if feature_spec_requested and runtime.name.startswith("codex")
-                else None
+                "on-request" if feature_spec_requested and runtime.name.startswith("codex") else None
             ),
             subagents=(active_specialist.name,) if active_specialist is not None else None,
             on_chunk=on_stream,

@@ -11,8 +11,6 @@ from autonomous_agent_builder.db.session import get_session_factory
 from autonomous_agent_builder.embedded.server import agent_chat_transcript
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_chat_event as _append_chat_event,
-)
-from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
 )
 from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
@@ -23,8 +21,6 @@ from autonomous_agent_builder.embedded.server.agent_runtime_status import (
 )
 from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
     create_delivery_plan_for_approved_features as _create_delivery_plan_for_approved_features,
-)
-from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
     handle_sprint_planning_turn as _handle_sprint_planning_turn,
 )
 from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
@@ -53,9 +49,7 @@ async def _continue_after_delivery_permission_question(
         },
         status="running",
     )
-    await hub.publish(
-        session_id, agent_chat_transcript.serialize_event(running_event).model_dump(mode="json")
-    )
+    await hub.publish(session_id, agent_chat_transcript.serialize_event(running_event).model_dump(mode="json"))
 
     answer_lower = answer_value.strip().lower()
     if answer_lower.startswith("hold"):
@@ -89,9 +83,7 @@ async def _continue_after_delivery_permission_question(
         status="completed",
         mirror_message=("assistant", visible_response, 0, 0.0),
     )
-    await hub.publish(
-        session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json")
-    )
+    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
     await _append_voice_final_summary_if_needed(
         session_id,
         assistant_event_id=assistant_event.id,
@@ -112,9 +104,7 @@ async def _continue_after_delivery_permission_question(
         },
         status="completed",
     )
-    await hub.publish(
-        session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json")
-    )
+    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
 
 
 async def _complete_persisted_delivery_scope_approval(
@@ -140,9 +130,7 @@ async def _complete_persisted_delivery_scope_approval(
         },
         status="running",
     )
-    await hub.publish(
-        session_id, agent_chat_transcript.serialize_event(running_event).model_dump(mode="json")
-    )
+    await hub.publish(session_id, agent_chat_transcript.serialize_event(running_event).model_dump(mode="json"))
 
     if decision == "allow":
         event_payload = event.payload_json if isinstance(event.payload_json, dict) else {}
@@ -160,9 +148,7 @@ async def _complete_persisted_delivery_scope_approval(
         )
         stop_reason = "delivery_scope_approved_and_dispatched"
     else:
-        visible_response = (
-            "Delivery scope was not approved. I kept the captured improvement unchanged."
-        )
+        visible_response = "Delivery scope was not approved. I kept the captured improvement unchanged."
         stop_reason = "delivery_scope_denied"
 
     assistant_event = await _append_chat_event(
@@ -172,9 +158,7 @@ async def _complete_persisted_delivery_scope_approval(
         status="completed",
         mirror_message=("assistant", visible_response, 0, 0.0),
     )
-    await hub.publish(
-        session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json")
-    )
+    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
     await _append_voice_final_summary_if_needed(
         session_id,
         assistant_event_id=assistant_event.id,
@@ -195,6 +179,4 @@ async def _complete_persisted_delivery_scope_approval(
         },
         status="completed",
     )
-    await hub.publish(
-        session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json")
-    )
+    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))

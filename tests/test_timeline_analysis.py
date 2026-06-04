@@ -18,11 +18,7 @@ def test_run_status_telemetry_survives_trailing_zero_markers() -> None:
     """
     items = [
         _evt("user_message", {"content": "add a feature"}, "1"),
-        _evt(
-            "run_status",
-            {"running": True, "current_turn": 0, "tokens_used": 0, "cost_usd": 0.0},
-            "2",
-        ),
+        _evt("run_status", {"running": True, "current_turn": 0, "tokens_used": 0, "cost_usd": 0.0}, "2"),
         _evt("assistant_message", {"content": "ok"}, "3"),
         _evt(
             "run_status",
@@ -39,21 +35,11 @@ def test_run_status_telemetry_survives_trailing_zero_markers() -> None:
         ),
         _evt(
             "run_status",
-            {
-                "running": False,
-                "current_turn": 0,
-                "tokens_used": 0,
-                "cost_usd": 0.0,
-                "stop_reason": "task_dispatched",
-            },
+            {"running": False, "current_turn": 0, "tokens_used": 0, "cost_usd": 0.0, "stop_reason": "task_dispatched"},
             "5",
         ),
         _evt("assistant_message", {"content": "done"}, "6"),
-        _evt(
-            "run_status",
-            {"running": False, "current_turn": 0, "tokens_used": 0, "cost_usd": 0.0},
-            "7",
-        ),
+        _evt("run_status", {"running": False, "current_turn": 0, "tokens_used": 0, "cost_usd": 0.0}, "7"),
     ]
 
     prompts = build_timeline_prompts(items)
@@ -89,11 +75,7 @@ def test_run_status_observability_snapshot_promoted() -> None:
     """
     items = [
         _evt("user_message", {"content": "hi"}, "1"),
-        _evt(
-            "run_status",
-            {"running": False, "cost_usd": 0.0, "observability": {"otel": {"enabled": True}}},
-            "2",
-        ),
+        _evt("run_status", {"running": False, "cost_usd": 0.0, "observability": {"otel": {"enabled": True}}}, "2"),
     ]
 
     prompts = build_timeline_prompts(items)

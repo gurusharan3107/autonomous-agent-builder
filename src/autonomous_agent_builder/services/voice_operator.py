@@ -37,12 +37,6 @@ from autonomous_agent_builder.services.task_dispatch_policy import (
     task_status_value as _task_status_value,
 )
 from autonomous_agent_builder.services.voice_completion_digest import AgentVoiceDigestService
-from autonomous_agent_builder.services.voice_cost_ledger import VoiceCostLedger
-from autonomous_agent_builder.services.voice_high_risk_actions import HighRiskVoiceActionService
-from autonomous_agent_builder.services.voice_operator_board_status import (
-    load_voice_board_status as _load_voice_board_status,
-)
-from autonomous_agent_builder.services.voice_operator_digest_builder import build_voice_digest
 from autonomous_agent_builder.services.voice_operator_interaction import (
     NAVIGATION_TARGETS as _NAVIGATION_TARGETS,
 )
@@ -86,6 +80,12 @@ from autonomous_agent_builder.services.voice_operator_support import (
     VoiceCapabilityDecisionService,
     VoiceCompletionNotifier,
 )
+from autonomous_agent_builder.services.voice_cost_ledger import VoiceCostLedger
+from autonomous_agent_builder.services.voice_high_risk_actions import HighRiskVoiceActionService
+from autonomous_agent_builder.services.voice_operator_board_status import (
+    load_voice_board_status as _load_voice_board_status,
+)
+from autonomous_agent_builder.services.voice_operator_digest_builder import build_voice_digest
 from autonomous_agent_builder.services.voice_thread_routing import (
     VoiceThreadRoute,
     VoiceThreadRouter,
@@ -133,6 +133,7 @@ def _voice_tool_output_evidence(output: dict[str, Any]) -> dict[str, Any]:
             evidence["result_message"] = _compact_realtime_event_text(message)
             break
     return evidence
+
 
 
 class AgentOperatorService:
@@ -221,9 +222,7 @@ class AgentOperatorService:
             pending_count=len(pending),
             board_status=board_status,
             prefer_latest_summary=prefer_latest_summary,
-            latest_voice_summary=str(latest_voice_summary["summary"])
-            if latest_voice_summary
-            else "",
+            latest_voice_summary=str(latest_voice_summary["summary"]) if latest_voice_summary else "",
             status_prompt=status_prompt,
         )
         async with session_factory() as db:
@@ -1240,9 +1239,7 @@ class AgentOperatorService:
             status=status,
         )
         hub: ChatSessionHub = self.app.state.chat_hub
-        await hub.publish(
-            session_id, agent_chat_transcript.serialize_event(event).model_dump(mode="json")
-        )
+        await hub.publish(session_id, agent_chat_transcript.serialize_event(event).model_dump(mode="json"))
         return event
 
     async def resolve_voice_session(
@@ -1470,3 +1467,5 @@ class VoiceOperatorService:
 
     async def record_realtime_usage(self, call_id: str, event: dict[str, Any]) -> None:
         await self.cost_ledger.record_usage(call_id, event)
+
+

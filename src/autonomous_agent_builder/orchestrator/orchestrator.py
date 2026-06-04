@@ -561,9 +561,7 @@ class Orchestrator:
         # even when a language is already detectable, because the real problem
         # is missing gate binaries (FINDING-20).
         recovery_ctx = self._recovery_context(task)
-        force = (
-            bool(recovery_ctx.get("force_scaffold")) if isinstance(recovery_ctx, dict) else False
-        )
+        force = bool(recovery_ctx.get("force_scaffold")) if isinstance(recovery_ctx, dict) else False
         if not needs and not force:
             # Workspace already has a detectable language. Sync Project.language
             # so the quality gate runner picks up the right binaries.
@@ -975,9 +973,7 @@ class Orchestrator:
         repo_root: Path,
         base_evidence: dict[str, Any],
     ) -> str | None:
-        return await _sprint_verify_materialized_checkout(
-            self, sprint, task, repo_root, base_evidence
-        )
+        return await _sprint_verify_materialized_checkout(self, sprint, task, repo_root, base_evidence)
 
     @staticmethod
     async def _project_has_remote(repo_root: Path) -> bool:
@@ -1026,9 +1022,7 @@ class Orchestrator:
         repo_root: Path,
         base_evidence: dict[str, Any],
     ) -> str | None:
-        return await _sprint_open_pr(
-            self, sprint, sprint_tasks, latest_task, repo_root, base_evidence
-        )
+        return await _sprint_open_pr(self, sprint, sprint_tasks, latest_task, repo_root, base_evidence)
 
     @staticmethod
     def _extract_pr_url(output_text: str) -> str | None:

@@ -134,7 +134,8 @@ async def dispatch_task(
     # IMP-009: block dispatch while scaffold agent is still running so the
     # agent cannot race task execution against workspace setup.
     scaffold_running = any(
-        r.agent_name == "scaffold" and r.status == "running" for r in task.agent_runs
+        r.agent_name == "scaffold" and r.status == "running"
+        for r in task.agent_runs
     )
     if scaffold_running:
         return dispatch_scaffold_pending_payload(task)
@@ -168,7 +169,9 @@ async def recover_task(task_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/tasks/{task_id}/scaffold")
-async def scaffold_workspace_for_task(task_id: str, db: AsyncSession = Depends(get_db)):
+async def scaffold_workspace_for_task(
+    task_id: str, db: AsyncSession = Depends(get_db)
+):
     """Run the scaffold step for a task's workspace on demand.
 
     Used by `mcp__builder__workspace_scaffold` so the chat agent can route a

@@ -31,9 +31,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 
-REPO = (
-    pathlib.Path(__file__).resolve().parents[4]
-)  # .claude/skills/autoresearch/scripts/preflight.py → repo root
+REPO = pathlib.Path(__file__).resolve().parents[4]  # .claude/skills/autoresearch/scripts/preflight.py → repo root
 SEED_DST = pathlib.Path("/home/gurusharangupta/.seed/devpulse")
 SEED_SRC = pathlib.Path(os.path.expanduser("~/Builder-Workspace/devpulse"))
 PORT_RANGE = range(9876, 9881)
@@ -89,7 +87,7 @@ def check_command(name: str, cmd: str) -> Check:
 def check_python_module(name: str, module: str, hard: bool) -> Check:
     try:
         __import__(module)
-        return Check(name, "pass", "importable")
+        return Check(name, "pass", f"importable")
     except ImportError:
         status = "fail" if hard else "warn"
         fix = f"pip install {module}"
@@ -98,30 +96,20 @@ def check_python_module(name: str, module: str, hard: bool) -> Check:
         return Check(name, status, "not importable", fix=fix)
 
 
-def check_path_exists(
-    name: str, path: pathlib.Path, hard: bool, *, kind: str = "directory"
-) -> Check:
+def check_path_exists(name: str, path: pathlib.Path, hard: bool, *, kind: str = "directory") -> Check:
     if path.exists():
         return Check(name, "pass", f"{kind} at {path}")
     status = "fail" if hard else "warn"
-    return Check(
-        name,
-        status,
-        f"{kind} missing at {path}",
-        fix=f"create {path} (see SKILL.md Recipe 1 / setup_seed.sh)",
-    )
+    return Check(name, status, f"{kind} missing at {path}",
+                 fix=f"create {path} (see SKILL.md Recipe 1 / setup_seed.sh)")
 
 
 def check_repo_files(name: str, relative: list[str]) -> Check:
     missing = [r for r in relative if not (REPO / r).exists()]
     if not missing:
         return Check(name, "pass", f"all {len(relative)} files present")
-    return Check(
-        name,
-        "fail",
-        f"{len(missing)} missing: {', '.join(missing[:3])}{'…' if len(missing) > 3 else ''}",
-        fix="restore from git or re-run skill installation",
-    )
+    return Check(name, "fail", f"{len(missing)} missing: {', '.join(missing[:3])}{'…' if len(missing) > 3 else ''}",
+                 fix="restore from git or re-run skill installation")
 
 
 def check_port_free(port: int) -> bool:
@@ -138,54 +126,36 @@ def check_ports() -> Check:
     if not busy:
         return Check("ports 9876–9880 free", "pass", "all free for parallel baseline runs")
     status = "warn" if len(busy) < len(PORT_RANGE) else "fail"
-    return Check(
-        "ports 9876–9880 free",
-        status,
-        f"{len(busy)}/{len(PORT_RANGE)} in use: {busy}",
-        fix="free the ports or pass --port-base in baseline.py",
-    )
+    return Check("ports 9876–9880 free", status,
+                 f"{len(busy)}/{len(PORT_RANGE)} in use: {busy}",
+                 fix=f"free the ports or pass --port-base in baseline.py")
 
 
 def check_tmp_disk_space() -> Check:
     try:
         usage = shutil.disk_usage("/tmp")
-        free_gb = usage.free / (1024**3)
+        free_gb = usage.free / (1024 ** 3)
         if free_gb >= TMP_MIN_FREE_GB:
-            return Check(
-                "/tmp disk space", "pass", f"{free_gb:.1f} GB free (need ≥{TMP_MIN_FREE_GB})"
-            )
-        return Check(
-            "/tmp disk space",
-            "warn",
-            f"{free_gb:.1f} GB free (need ≥{TMP_MIN_FREE_GB})",
-            fix="free disk space; long N=5 baseline runs may fill /tmp/autoresearch/<run-id>/raw_bodies/",
-        )
+            return Check("/tmp disk space", "pass", f"{free_gb:.1f} GB free (need ≥{TMP_MIN_FREE_GB})")
+        return Check("/tmp disk space", "warn", f"{free_gb:.1f} GB free (need ≥{TMP_MIN_FREE_GB})",
+                     fix="free disk space; long N=5 baseline runs may fill /tmp/autoresearch/<run-id>/raw_bodies/")
     except OSError as exc:
         return Check("/tmp disk space", "warn", f"could not stat /tmp ({exc})")
 
 
 def check_git_state() -> Check:
     try:
-        branch = (
-            subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                cwd=str(REPO),
-                stderr=subprocess.DEVNULL,
-            )
-            .decode()
-            .strip()
-        )
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=str(REPO), stderr=subprocess.DEVNULL
+        ).decode().strip()
         status = subprocess.check_output(
             ["git", "status", "--porcelain"], cwd=str(REPO), stderr=subprocess.DEVNULL
         ).decode()
         dirty = bool(status.strip())
         if branch in ("main", "master") and dirty:
-            return Check(
-                "git state",
-                "warn",
-                f"on {branch} with uncommitted changes — loop.py expects clean main",
-                fix="commit or stash before starting a baseline / iteration",
-            )
+            return Check("git state", "warn",
+                         f"on {branch} with uncommitted changes — loop.py expects clean main",
+                         fix="commit or stash before starting a baseline / iteration")
         return Check("git state", "pass", f"branch={branch} dirty={dirty}")
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Check("git state", "warn", "git unavailable or repo not initialized")
@@ -195,12 +165,9 @@ def check_baseline_summary(recipe: int, allow_unstable: bool = False) -> Check:
     path = REPO / "docs/autoresearch/baseline_runs_summary.json"
     if not path.exists():
         if recipe in (2, 3):
-            return Check(
-                "baseline_runs_summary.json",
-                "fail",
-                "missing — compare.py needs σ floor",
-                fix="run Recipe 1: python3 scripts/autoresearch/baseline.py --fixtures A,B,C,D,E --n 5",
-            )
+            return Check("baseline_runs_summary.json", "fail",
+                         "missing — compare.py needs σ floor",
+                         fix="run Recipe 1: python3 scripts/autoresearch/baseline.py --fixtures A,B,C,D,E --n 5")
         return Check("baseline_runs_summary.json", "pass", "not yet produced (OK for Recipe 1)")
     try:
         data = json.loads(path.read_text())
@@ -227,7 +194,8 @@ def check_baseline_summary(recipe: int, allow_unstable: bool = False) -> Check:
             if allow_unstable:
                 fix += "  (currently degraded — --allow-unstable-promotion override active)"
             return Check("baseline_runs_summary.json", severity, detail, fix=fix)
-        return Check("baseline_runs_summary.json", "pass", f"present, {len(data)} fixtures stable")
+        return Check("baseline_runs_summary.json", "pass",
+                     f"present, {len(data)} fixtures stable")
     except (OSError, json.JSONDecodeError) as exc:
         return Check("baseline_runs_summary.json", "warn", f"present but unreadable: {exc}")
 
@@ -303,17 +271,12 @@ def check_no_inflight_lane() -> Check:
     """
     try:
         out = subprocess.check_output(
-            ["ps", "-eo", "pid,etime,args"],
-            text=True,
-            timeout=10,
+            ["ps", "-eo", "pid,etime,args"], text=True, timeout=10,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-        return Check(
-            "autoresearch lane processes",
-            "warn",
-            "could not run `ps` to check for in-flight lanes",
-            fix="manually verify no baseline.py/loop.py is running before proceeding",
-        )
+        return Check("autoresearch lane processes", "warn",
+                     "could not run `ps` to check for in-flight lanes",
+                     fix="manually verify no baseline.py/loop.py is running before proceeding")
     lanes = []
     for line in out.splitlines()[1:]:
         parts = line.strip().split(None, 2)
@@ -326,11 +289,11 @@ def check_no_inflight_lane() -> Check:
         if "python" in args and ("baseline.py" in args or "loop.py" in args):
             lanes.append((pid, etime, args))
     if not lanes:
-        return Check("autoresearch lane processes", "pass", "no in-flight baseline.py / loop.py")
+        return Check("autoresearch lane processes", "pass",
+                     "no in-flight baseline.py / loop.py")
     summary = "; ".join(f"PID {p} ({et}): {a[:80]}" for p, et, a in lanes[:3])
     return Check(
-        "autoresearch lane processes",
-        "fail",
+        "autoresearch lane processes", "fail",
         f"{len(lanes)} lane process(es) already running — {summary}",
         fix=(
             "another lane is in flight; run "
@@ -349,35 +312,23 @@ def gather_recipe_checks(recipe: int, allow_unstable: bool = False) -> list[Chec
     yet declare. `check_harness_contracts` validates the Builder CLI/API
     output shapes the harness consumes (P1–P15 class)."""
     if recipe in (2, 3):
-        seed = check_path_exists(
-            "seed snapshot (required for recipe)", SEED_DST, hard=True, kind="immutable snapshot"
-        )
+        seed = check_path_exists("seed snapshot (required for recipe)", SEED_DST, hard=True,
+                                  kind="immutable snapshot")
         baseline = check_baseline_summary(recipe, allow_unstable=allow_unstable)
-        return [
-            check_no_inflight_lane(),
-            seed,
-            baseline,
-            check_tsv_schema_alignment(),
-            check_workspace_stack(),
-            check_seed_manifest_conformance(),
-            check_harness_contracts(),
-            check_agent_registry_contract(),
-            # Legacy probes — defense-in-depth alongside manifest verifier
-            check_seed_pytest_collect(),
-            check_seed_git_clean(),
-        ]
+        return [check_no_inflight_lane(), seed, baseline,
+                check_tsv_schema_alignment(), check_workspace_stack(),
+                check_seed_manifest_conformance(),
+                check_harness_contracts(),
+                check_agent_registry_contract(),
+                # Legacy probes — defense-in-depth alongside manifest verifier
+                check_seed_pytest_collect(), check_seed_git_clean()]
     if recipe == 1:
-        return [
-            check_no_inflight_lane(),
-            check_baseline_summary(1),
-            check_tsv_schema_alignment(),
-            check_workspace_stack(),
-            check_seed_manifest_conformance(),
-            check_harness_contracts(),
-            check_agent_registry_contract(),
-            check_seed_pytest_collect(),
-            check_seed_git_clean(),
-        ]
+        return [check_no_inflight_lane(), check_baseline_summary(1),
+                check_tsv_schema_alignment(), check_workspace_stack(),
+                check_seed_manifest_conformance(),
+                check_harness_contracts(),
+                check_agent_registry_contract(),
+                check_seed_pytest_collect(), check_seed_git_clean()]
     return []
 
 
@@ -388,26 +339,20 @@ def check_tsv_schema_alignment() -> Check:
     skipped 6 columns and shifted every value left, making downstream gates
     parse 'gate_pass_rate' from the 'noncached_plus_output_tokens' column."""
     run_py = REPO / "scripts" / "autoresearch" / "run.py"
-    tsvs = [
-        REPO / "docs" / "autoresearch" / "optimize_results.tsv",
-        REPO / "docs" / "autoresearch" / "baseline_runs.tsv",
-    ]
+    tsvs = [REPO / "docs" / "autoresearch" / "optimize_results.tsv",
+            REPO / "docs" / "autoresearch" / "baseline_runs.tsv"]
     if not run_py.exists():
         return Check("TSV header alignment", "warn", "run.py not found — cannot verify alignment")
     # Pull SESSION_HEADERS by importing the module
     try:
-        spec = __import__(
-            "importlib.util", fromlist=["spec_from_file_location"]
-        ).spec_from_file_location("_run_py", str(run_py))
+        spec = __import__("importlib.util", fromlist=["spec_from_file_location"]).spec_from_file_location(
+            "_run_py", str(run_py))
         mod = __import__("importlib.util", fromlist=["module_from_spec"]).module_from_spec(spec)
         spec.loader.exec_module(mod)  # type: ignore[union-attr]
         writer_headers = list(mod.SESSION_HEADERS)
     except Exception as exc:
-        return Check(
-            "TSV header alignment",
-            "warn",
-            f"could not load SESSION_HEADERS from run.py ({type(exc).__name__})",
-        )
+        return Check("TSV header alignment", "warn",
+                     f"could not load SESSION_HEADERS from run.py ({type(exc).__name__})")
     mismatches: list[str] = []
     for tsv in tsvs:
         if not tsv.exists():
@@ -426,18 +371,12 @@ def check_tsv_schema_alignment() -> Check:
                 detail.append(f"writer has extras: {sorted(extra_in_writer)}")
             mismatches.append(f"{tsv.name}: {'; '.join(detail) or 'order differs'}")
     if mismatches:
-        return Check(
-            "TSV header alignment",
-            "fail",
-            "; ".join(mismatches),
-            fix="align run.py:SESSION_HEADERS to match the TSV header exactly "
-            "(or regenerate the TSV from the writer schema)",
-        )
-    return Check(
-        "TSV header alignment",
-        "pass",
-        f"writer ({len(writer_headers)} cols) matches all checked TSVs",
-    )
+        return Check("TSV header alignment", "fail",
+                     "; ".join(mismatches),
+                     fix="align run.py:SESSION_HEADERS to match the TSV header exactly "
+                         "(or regenerate the TSV from the writer schema)")
+    return Check("TSV header alignment", "pass",
+                 f"writer ({len(writer_headers)} cols) matches all checked TSVs")
 
 
 def check_workspace_stack() -> Check:
@@ -446,12 +385,9 @@ def check_workspace_stack() -> Check:
     to be a Python app but run.py assumed Node — npm couldn't find package.json
     and feature_correct was always False."""
     if not SEED_DST.exists():
-        return Check(
-            "workspace stack detection",
-            "warn",
-            "seed missing — stack detection deferred to first run",
-            fix="bash scripts/autoresearch/setup_seed.sh",
-        )
+        return Check("workspace stack detection", "warn",
+                     "seed missing — stack detection deferred to first run",
+                     fix="bash scripts/autoresearch/setup_seed.sh")
     app = SEED_DST / "app"
     candidates: list[tuple[str, pathlib.Path]] = [
         ("Node (package.json)", app / "package.json"),
@@ -461,15 +397,13 @@ def check_workspace_stack() -> Check:
     ]
     found = [name for name, p in candidates if p.exists()]
     if not found:
-        return Check(
-            "workspace stack detection",
-            "fail",
-            "no recognizable stack (no package.json or pyproject.toml found)",
-            fix="confirm seed source has a package.json or pyproject.toml; "
-            "extend run_feature_check() in scripts/autoresearch/run.py "
-            "if the stack is something else (Go/Rust/etc.)",
-        )
-    return Check("workspace stack detection", "pass", f"stack(s) found: {', '.join(found)}")
+        return Check("workspace stack detection", "fail",
+                     "no recognizable stack (no package.json or pyproject.toml found)",
+                     fix="confirm seed source has a package.json or pyproject.toml; "
+                         "extend run_feature_check() in scripts/autoresearch/run.py "
+                         "if the stack is something else (Go/Rust/etc.)")
+    return Check("workspace stack detection", "pass",
+                 f"stack(s) found: {', '.join(found)}")
 
 
 def check_seed_pytest_collect() -> Check:
@@ -486,70 +420,41 @@ def check_seed_pytest_collect() -> Check:
     a single iter spends any tokens.
     """
     if not SEED_DST.exists():
-        return Check(
-            "seed pytest collects",
-            "warn",
-            "seed missing — collect check deferred",
-            fix="bash scripts/autoresearch/setup_seed.sh",
-        )
+        return Check("seed pytest collects", "warn",
+                     "seed missing — collect check deferred",
+                     fix="bash scripts/autoresearch/setup_seed.sh")
     venv_py = SEED_DST / ".venv" / "bin" / "python"
     tests_dir = SEED_DST / "tests"
     if not venv_py.exists() or not tests_dir.exists():
-        return Check(
-            "seed pytest collects",
-            "warn",
-            "seed has no .venv or tests/ — non-Python stack or first-run",
-            fix="",
-        )
+        return Check("seed pytest collects", "warn",
+                     "seed has no .venv or tests/ — non-Python stack or first-run",
+                     fix="")
     try:
         r = subprocess.run(
-            [
-                str(venv_py),
-                "-m",
-                "pytest",
-                str(tests_dir),
-                "--collect-only",
-                "-q",
-                "--ignore-glob=*playwright*",
-                "--ignore-glob=*test_github*",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            cwd=str(SEED_DST),
+            [str(venv_py), "-m", "pytest", str(tests_dir), "--collect-only", "-q",
+             "--ignore-glob=*playwright*", "--ignore-glob=*test_github*"],
+            capture_output=True, text=True, timeout=60, cwd=str(SEED_DST),
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        return Check(
-            "seed pytest collects",
-            "fail",
-            f"pytest --collect-only failed to start: {type(exc).__name__}",
-            fix="verify seed .venv is intact; run scripts/autoresearch/setup_seed.sh "
-            "to regenerate if corrupt",
-        )
+        return Check("seed pytest collects", "fail",
+                     f"pytest --collect-only failed to start: {type(exc).__name__}",
+                     fix="verify seed .venv is intact; run scripts/autoresearch/setup_seed.sh "
+                         "to regenerate if corrupt")
     if r.returncode != 0:
         # Extract the first ModuleNotFoundError / ImportError / ERROR line for clarity
         tail = (r.stderr or r.stdout).strip().splitlines()
-        signature = next(
-            (
-                ln
-                for ln in tail
-                if "ModuleNotFoundError" in ln or "ImportError" in ln or ln.startswith("ERROR")
-            ),
-            tail[-1] if tail else "unknown",
-        )
-        return Check(
-            "seed pytest collects",
-            "fail",
-            f"pytest collection errored: {signature[:200]}",
-            fix="install missing deps into the seed .venv: "
-            f"chmod -R u+w {SEED_DST} && "
-            f"{venv_py} -m pip install -r {SEED_DST}/requirements.txt && "
-            f"chmod -R a-w {SEED_DST}. "
-            "Then re-run this preflight.",
-        )
-    return Check(
-        "seed pytest collects", "pass", f"pytest --collect-only OK against {tests_dir.name}/"
-    )
+        signature = next((ln for ln in tail
+                          if "ModuleNotFoundError" in ln or "ImportError" in ln
+                          or ln.startswith("ERROR")), tail[-1] if tail else "unknown")
+        return Check("seed pytest collects", "fail",
+                     f"pytest collection errored: {signature[:200]}",
+                     fix="install missing deps into the seed .venv: "
+                         f"chmod -R u+w {SEED_DST} && "
+                         f"{venv_py} -m pip install -r {SEED_DST}/requirements.txt && "
+                         f"chmod -R a-w {SEED_DST}. "
+                         "Then re-run this preflight.")
+    return Check("seed pytest collects", "pass",
+                 f"pytest --collect-only OK against {tests_dir.name}/")
 
 
 def check_seed_manifest_conformance() -> Check:
@@ -561,57 +466,43 @@ def check_seed_manifest_conformance() -> Check:
     """
     seed_verify = pathlib.Path(__file__).resolve().parent / "seed_verify.py"
     if not seed_verify.exists():
-        return Check(
-            "seed manifest conformance",
-            "warn",
-            f"seed_verify.py missing at {seed_verify}",
-            fix="restore the skill from version control",
-        )
+        return Check("seed manifest conformance", "warn",
+                     f"seed_verify.py missing at {seed_verify}",
+                     fix="restore the skill from version control")
     try:
         r = subprocess.run(
             [sys.executable, str(seed_verify), "--json"],
-            capture_output=True,
-            text=True,
-            timeout=180,
+            capture_output=True, text=True, timeout=180,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        return Check(
-            "seed manifest conformance",
-            "warn",
-            f"seed_verify.py failed to run: {type(exc).__name__}",
-            fix="run manually: python3 .claude/skills/autoresearch/scripts/seed_verify.py",
-        )
+        return Check("seed manifest conformance", "warn",
+                     f"seed_verify.py failed to run: {type(exc).__name__}",
+                     fix="run manually: python3 .claude/skills/autoresearch/scripts/seed_verify.py")
     try:
         report = json.loads(r.stdout)
     except (ValueError, json.JSONDecodeError):
         # Subprocess crashed or wrote to stderr only; surface that so it's debuggable.
         err_tail = (r.stderr or "")[-300:]
-        return Check(
-            "seed manifest conformance",
-            "warn",
-            f"seed_verify.py produced non-JSON output (exit={r.returncode}); "
-            f"stderr tail: {err_tail}",
-            fix="run manually: python3 .claude/skills/autoresearch/scripts/seed_verify.py",
-        )
+        return Check("seed manifest conformance", "warn",
+                     f"seed_verify.py produced non-JSON output (exit={r.returncode}); "
+                     f"stderr tail: {err_tail}",
+                     fix="run manually: python3 .claude/skills/autoresearch/scripts/seed_verify.py")
     overall = report.get("overall", "warn")
     if overall == "pass":
         n = len([f for f in report.get("findings", []) if f.get("status") == "pass"])
-        return Check("seed manifest conformance", "pass", f"all {n} substrate invariants satisfied")
+        return Check("seed manifest conformance", "pass",
+                     f"all {n} substrate invariants satisfied")
     failures = [f for f in report.get("findings", []) if f.get("status") == "fail"]
     detail = "; ".join(f"{f['clause']}: {f.get('detail', '')[:80]}" for f in failures[:3])
-    hint = "; ".join(
-        set(f.get("remediation_hint", "") for f in failures if f.get("remediation_hint"))
-    )[:300]
-    return Check(
-        "seed manifest conformance",
-        "fail" if overall == "fail" else "warn",
-        f"{len(failures)} substrate violation(s): {detail}",
-        fix=f"run self_heal.py to auto-remediate where catalogued; "
-        f"escalate via AskUserQuestion for substrate-identity issues. "
-        f"Hints: {hint}"
-        if hint
-        else "run python3 .claude/skills/autoresearch/scripts/seed_verify.py for details",
-    )
+    hint = "; ".join(set(f.get("remediation_hint", "") for f in failures
+                          if f.get("remediation_hint")))[:300]
+    return Check("seed manifest conformance",
+                 "fail" if overall == "fail" else "warn",
+                 f"{len(failures)} substrate violation(s): {detail}",
+                 fix=f"run self_heal.py to auto-remediate where catalogued; "
+                     f"escalate via AskUserQuestion for substrate-identity issues. "
+                     f"Hints: {hint}" if hint else
+                     "run python3 .claude/skills/autoresearch/scripts/seed_verify.py for details")
 
 
 def check_agent_registry_contract() -> Check:
@@ -625,51 +516,34 @@ def check_agent_registry_contract() -> Check:
     """
     test_file = REPO / "tests" / "test_agent_registry_contract.py"
     if not test_file.exists():
-        return Check(
-            "agent registry contract",
-            "warn",
-            f"test file missing at {test_file}",
-            fix="restore from version control",
-        )
+        return Check("agent registry contract", "warn",
+                     f"test file missing at {test_file}",
+                     fix="restore from version control")
     try:
         r = subprocess.run(
             ["python3", "-m", "pytest", str(test_file), "-q", "--no-header"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            cwd=str(REPO),
+            capture_output=True, text=True, timeout=60, cwd=str(REPO),
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        return Check(
-            "agent registry contract",
-            "warn",
-            f"pytest invocation failed: {type(exc).__name__}",
-            fix="run manually: python3 -m pytest tests/test_agent_registry_contract.py",
-        )
+        return Check("agent registry contract", "warn",
+                     f"pytest invocation failed: {type(exc).__name__}",
+                     fix="run manually: python3 -m pytest tests/test_agent_registry_contract.py")
     if r.returncode == 0:
         # Pull "N passed" from pytest output for a useful detail
         import re as _re
-
         m = _re.search(r"(\d+) passed", r.stdout)
         n = m.group(1) if m else "?"
-        return Check(
-            "agent registry contract",
-            "pass",
-            f"{n} parametric assertions passed — zero contract drift",
-        )
+        return Check("agent registry contract", "pass",
+                     f"{n} parametric assertions passed — zero contract drift")
     # Test failure — surface the assertion messages for actionability
     failure_tail = "\n".join(
-        ln
-        for ln in (r.stdout or "").splitlines()
+        ln for ln in (r.stdout or "").splitlines()
         if "AssertionError" in ln or "FAILED" in ln or "missing from" in ln
     )[:500]
-    return Check(
-        "agent registry contract",
-        "fail",
-        "agent.tools references missing schemas (P19-class)",
-        fix=f"Run `python3 -m pytest tests/test_agent_registry_contract.py -v` "
-        f"for details. Excerpt: {failure_tail[:300]}",
-    )
+    return Check("agent registry contract", "fail",
+                 f"agent.tools references missing schemas (P19-class)",
+                 fix=f"Run `python3 -m pytest tests/test_agent_registry_contract.py -v` "
+                     f"for details. Excerpt: {failure_tail[:300]}")
 
 
 def check_harness_contracts() -> Check:
@@ -677,59 +551,40 @@ def check_harness_contracts() -> Check:
     output-shape drift before any iter burns tokens (covers P1–P15 class)."""
     script = pathlib.Path(__file__).resolve().parent / "test_harness_contracts.py"
     if not script.exists():
-        return Check(
-            "harness ↔ builder contracts",
-            "warn",
-            f"test_harness_contracts.py missing at {script}",
-            fix="restore the skill from version control",
-        )
+        return Check("harness ↔ builder contracts", "warn",
+                     f"test_harness_contracts.py missing at {script}",
+                     fix="restore the skill from version control")
     try:
         r = subprocess.run(
             [sys.executable, str(script), "--json"],
-            capture_output=True,
-            text=True,
-            timeout=180,
+            capture_output=True, text=True, timeout=180,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        return Check(
-            "harness ↔ builder contracts",
-            "warn",
-            f"contract script failed to run: {type(exc).__name__} "
-            f"(may be slow when Builder is active on the workspace)",
-            fix="run manually: python3 .claude/skills/autoresearch/scripts/test_harness_contracts.py",
-        )
+        return Check("harness ↔ builder contracts", "warn",
+                     f"contract script failed to run: {type(exc).__name__} "
+                     f"(may be slow when Builder is active on the workspace)",
+                     fix="run manually: python3 .claude/skills/autoresearch/scripts/test_harness_contracts.py")
     try:
         report = json.loads(r.stdout)
     except (ValueError, json.JSONDecodeError):
-        return Check(
-            "harness ↔ builder contracts", "warn", f"non-JSON output: {r.stdout[:200]}", fix=""
-        )
+        return Check("harness ↔ builder contracts", "warn",
+                     f"non-JSON output: {r.stdout[:200]}", fix="")
     overall = report.get("overall", "warn")
     if overall == "pass":
         n = len([x for x in report.get("results", []) if x.get("status") == "pass"])
-        return Check(
-            "harness ↔ builder contracts",
-            "pass",
-            f"all {n} contract(s) match manifest declarations",
-        )
+        return Check("harness ↔ builder contracts", "pass",
+                     f"all {n} contract(s) match manifest declarations")
     fails = [x for x in report.get("results", []) if x.get("status") == "fail"]
     if not fails and overall == "warn":
-        return Check(
-            "harness ↔ builder contracts",
-            "warn",
-            "some contracts skipped (likely no sample session_id available)",
-            fix="",
-        )
+        return Check("harness ↔ builder contracts", "warn",
+                     "some contracts skipped (likely no sample session_id available)",
+                     fix="")
     detail = "; ".join(f"{x['contract']}: {x.get('detail', '')[:80]}" for x in fails[:3])
-    hints = "; ".join(
-        set(x.get("remediation_hint", "") for x in fails if x.get("remediation_hint"))
-    )[:300]
-    return Check(
-        "harness ↔ builder contracts",
-        "fail",
-        f"{len(fails)} contract violation(s): {detail}",
-        fix=hints or "update harness consumers in scripts/autoresearch/run.py",
-    )
+    hints = "; ".join(set(x.get("remediation_hint", "") for x in fails
+                           if x.get("remediation_hint")))[:300]
+    return Check("harness ↔ builder contracts", "fail",
+                 f"{len(fails)} contract violation(s): {detail}",
+                 fix=hints or "update harness consumers in scripts/autoresearch/run.py")
 
 
 def check_seed_git_clean() -> Check:
@@ -744,54 +599,47 @@ def check_seed_git_clean() -> Check:
     preflight catches the divergence before the baseline burns iters.
     """
     if not SEED_DST.exists():
-        return Check("seed git clean", "warn", "seed missing — git-clean check deferred", fix="")
+        return Check("seed git clean", "warn",
+                     "seed missing — git-clean check deferred",
+                     fix="")
     if not (SEED_DST / ".git").exists():
-        return Check(
-            "seed git clean", "warn", "seed is not a git repo — divergence check skipped", fix=""
-        )
+        return Check("seed git clean", "warn",
+                     "seed is not a git repo — divergence check skipped",
+                     fix="")
     try:
         r = subprocess.run(
             ["git", "-C", str(SEED_DST), "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            timeout=30,
+            capture_output=True, text=True, timeout=30,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        return Check(
-            "seed git clean",
-            "warn",
-            f"git status failed: {type(exc).__name__} "
-            f"(seed may be under heavy I/O — Builder running?)",
-            fix="retry when seed I/O is quiet",
-        )
+        return Check("seed git clean", "warn",
+                     f"git status failed: {type(exc).__name__} "
+                     f"(seed may be under heavy I/O — Builder running?)",
+                     fix="retry when seed I/O is quiet")
     if r.returncode != 0:
-        return Check("seed git clean", "warn", f"git status returned {r.returncode}", fix="")
+        return Check("seed git clean", "warn",
+                     f"git status returned {r.returncode}", fix="")
     # Filter noise: .venv churn, .claude workspace, and __pycache__/*.pyc
     # (bytecode regenerates per pytest run; not part of substrate identity).
     # Matches seed_verify's filter for consistency.
-    dirty = [
-        ln
-        for ln in r.stdout.splitlines()
-        if ln
-        and not ln[3:].startswith(".venv/")
-        and not ln[3:].startswith(".claude/")
-        and "__pycache__/" not in ln[3:]
-        and not ln[3:].endswith(".pyc")
-    ]
+    dirty = [ln for ln in r.stdout.splitlines()
+             if ln
+             and not ln[3:].startswith(".venv/")
+             and not ln[3:].startswith(".claude/")
+             and "__pycache__/" not in ln[3:]
+             and not ln[3:].endswith(".pyc")]
     if dirty:
-        return Check(
-            "seed git clean",
-            "fail",
-            f"{len(dirty)} tracked file(s) diverge from HEAD: "
-            + ", ".join(ln.strip() for ln in dirty[:3])
-            + ("..." if len(dirty) > 3 else ""),
-            fix=f"commit the divergence so HEAD == working tree: "
-            f"chmod -R u+w {SEED_DST} && "
-            f"git -C {SEED_DST} add <files> && "
-            f"git -C {SEED_DST} commit -m '...' && "
-            f"chmod -R a-w {SEED_DST}",
-        )
-    return Check("seed git clean", "pass", "HEAD == working tree (no tracked-file divergence)")
+        return Check("seed git clean", "fail",
+                     f"{len(dirty)} tracked file(s) diverge from HEAD: " +
+                     ", ".join(ln.strip() for ln in dirty[:3]) +
+                     ("..." if len(dirty) > 3 else ""),
+                     fix=f"commit the divergence so HEAD == working tree: "
+                         f"chmod -R u+w {SEED_DST} && "
+                         f"git -C {SEED_DST} add <files> && "
+                         f"git -C {SEED_DST} commit -m '...' && "
+                         f"chmod -R a-w {SEED_DST}")
+    return Check("seed git clean", "pass",
+                 "HEAD == working tree (no tracked-file divergence)")
 
 
 def format_human(report: Report) -> str:
@@ -808,9 +656,7 @@ def format_human(report: Report) -> str:
             if c.status != "pass" and c.fix:
                 lines.append(f"      fix: {c.fix}")
 
-    lines.append(
-        f"autoresearch preflight — overall: {glyph[report.overall]} {report.overall.upper()}"
-    )
+    lines.append(f"autoresearch preflight — overall: {glyph[report.overall]} {report.overall.upper()}")
     if report.recipe is not None:
         lines.append(f"(gated for recipe {report.recipe})")
     render("Hard requirements", report.hard)
@@ -823,23 +669,15 @@ def format_human(report: Report) -> str:
 
 def format_json(report: Report) -> str:
     def serialize(check: Check) -> dict:
-        return {
-            "name": check.name,
-            "status": check.status,
-            "detail": check.detail,
-            "fix": check.fix,
-        }
+        return {"name": check.name, "status": check.status, "detail": check.detail, "fix": check.fix}
 
-    return json.dumps(
-        {
-            "overall": report.overall,
-            "recipe": report.recipe,
-            "hard": [serialize(c) for c in report.hard],
-            "recipe_specific": [serialize(c) for c in report.recipe_specific],
-            "soft": [serialize(c) for c in report.soft],
-        },
-        indent=2,
-    )
+    return json.dumps({
+        "overall": report.overall,
+        "recipe": report.recipe,
+        "hard": [serialize(c) for c in report.hard],
+        "recipe_specific": [serialize(c) for c in report.recipe_specific],
+        "soft": [serialize(c) for c in report.soft],
+    }, indent=2)
 
 
 def main() -> int:
@@ -848,9 +686,7 @@ def main() -> int:
     report.hard = gather_hard_checks()
     report.soft = gather_soft_checks()
     if args.recipe is not None:
-        report.recipe_specific = gather_recipe_checks(
-            args.recipe, allow_unstable=args.allow_unstable_promotion
-        )
+        report.recipe_specific = gather_recipe_checks(args.recipe, allow_unstable=args.allow_unstable_promotion)
 
     out = format_json(report) if args.json else format_human(report)
     print(out)
@@ -858,16 +694,9 @@ def main() -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description="Autoresearch loop preflight validator (bundled with skill)."
-    )
-    p.add_argument(
-        "--recipe",
-        type=int,
-        choices=[1, 2, 3, 4, 5],
-        default=None,
-        help="Gate against a specific recipe's prereqs (see SKILL.md)",
-    )
+    p = argparse.ArgumentParser(description="Autoresearch loop preflight validator (bundled with skill).")
+    p.add_argument("--recipe", type=int, choices=[1, 2, 3, 4, 5], default=None,
+                   help="Gate against a specific recipe's prereqs (see SKILL.md)")
     p.add_argument("--json", action="store_true", help="Machine-readable JSON output")
     p.add_argument(
         "--allow-unstable-promotion",

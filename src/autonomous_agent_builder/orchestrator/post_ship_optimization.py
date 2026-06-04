@@ -167,7 +167,9 @@ async def _run_post_ship_optimization_agent(
         command_timeline,
     )
     evidence["optimization_agent"] = {
-        "status": ("failed" if result.error else str(output_payload.get("status") or "completed")),
+        "status": (
+            "failed" if result.error else str(output_payload.get("status") or "completed")
+        ),
         "agent_name": "optimization-agent",
         "runtime_sdk": "model_backed",
         "session_id": result.session_id,
@@ -287,7 +289,9 @@ def _post_ship_post_preflight_decision(
         recommendation_codes(deterministic_preflight.get("selected_recommendations"))
     )
     observability = deterministic_preflight.get("observability")
-    guidance = observability.get("app_runtime_guidance") if isinstance(observability, dict) else {}
+    guidance = (
+        observability.get("app_runtime_guidance") if isinstance(observability, dict) else {}
+    )
     if isinstance(guidance, dict) and guidance.get("status") in {"updated", "unchanged"}:
         implemented_codes.add("app_runtime_guidance_refresh")
     guidance_current = (
@@ -323,7 +327,9 @@ def _post_ship_post_preflight_decision(
                     ),
                 }
             )
-    target_scope = "builder_source" if is_builder_source_repo(project_root) else "generated_app"
+    target_scope = (
+        "builder_source" if is_builder_source_repo(project_root) else "generated_app"
+    )
     deterministic_status = str(deterministic_preflight.get("status") or "")
     auto_resolved_codes = {
         str(item.get("code") or "")
@@ -435,3 +441,4 @@ def _post_ship_post_preflight_decision(
             ),
         },
     }
+

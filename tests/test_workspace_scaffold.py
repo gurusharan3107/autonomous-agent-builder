@@ -103,7 +103,9 @@ def test_parse_scaffold_result_blocks_on_empty_output() -> None:
 
 
 def test_parse_scaffold_result_blocks_when_language_missing() -> None:
-    result = parse_scaffold_result('SCAFFOLD_RESULT_JSON: {"stack": "x", "files_written": []}')
+    result = parse_scaffold_result(
+        'SCAFFOLD_RESULT_JSON: {"stack": "x", "files_written": []}'
+    )
 
     assert result.action == "blocked"
     assert "language" in result.reason

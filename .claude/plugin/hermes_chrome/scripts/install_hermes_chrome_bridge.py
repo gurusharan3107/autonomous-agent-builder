@@ -29,7 +29,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # ── Platform detection ────────────────────────────────────────────────────────
 
-
 def is_wsl() -> bool:
     try:
         return "microsoft" in Path("/proc/version").read_text().lower()
@@ -51,15 +50,12 @@ def detect_platform() -> str:
 
 # ── Path helpers ──────────────────────────────────────────────────────────────
 
-
 def win_user_home() -> Path:
     """Windows user home directory, accessible from WSL2 as /mnt/c/Users/<user>."""
     try:
         result = subprocess.run(
             ["powershell.exe", "-Command", "[Environment]::GetFolderPath('UserProfile')"],
-            capture_output=True,
-            text=True,
-            timeout=5,
+            capture_output=True, text=True, timeout=5,
         )
         win_path = result.stdout.strip()  # e.g. C:\Users\gurusharan.gupta
         if win_path and len(win_path) >= 2 and win_path[1] == ":":
@@ -84,18 +80,10 @@ def macos_native_host_path() -> Path:
 
 
 def macos_manifest_dir() -> Path:
-    return (
-        Path.home()
-        / "Library"
-        / "Application Support"
-        / "Google"
-        / "Chrome"
-        / "NativeMessagingHosts"
-    )
+    return Path.home() / "Library" / "Application Support" / "Google" / "Chrome" / "NativeMessagingHosts"
 
 
 # ── Runtime installation ──────────────────────────────────────────────────────
-
 
 def install_runtime_wsl() -> dict:
     claude = win_claude_dir()
@@ -146,19 +134,17 @@ def install_runtime_macos() -> dict:
         "platform": "macos",
         "extension_dir": str(ext_dst),
         "native_host": str(native_dst),
-        "next_step": (f"Open chrome://extensions → Load unpacked → select: {ext_dst}"),
+        "next_step": (
+            f"Open chrome://extensions → Load unpacked → select: {ext_dst}"
+        ),
     }
 
 
 # ── Manifest installation ─────────────────────────────────────────────────────
 
-
 def install_manifest_wsl(extension_id: str, native_host_override: str | None = None) -> dict:
     claude = win_claude_dir()
-    native_host_win = (
-        native_host_override
-        or f"C:\\Users\\{win_user_home().name}\\.claude\\hermes_chrome_bridge.bat"
-    )
+    native_host_win = native_host_override or f"C:\\Users\\{win_user_home().name}\\.claude\\hermes_chrome_bridge.bat"
 
     manifest = {
         "name": HOST_NAME,
@@ -174,13 +160,10 @@ def install_manifest_wsl(extension_id: str, native_host_override: str | None = N
     reg_key = r"HKCU\SOFTWARE\Google\Chrome\NativeMessagingHosts\com.hermes.chrome_bridge"
     manifest_win = f"C:\\Users\\{win_user_home().name}\\.claude\\com.hermes.chrome_bridge.json"
     subprocess.run(
-        [
-            "powershell.exe",
-            "-Command",
-            f"New-Item -Path 'HKCU:\\SOFTWARE\\Google\\Chrome\\NativeMessagingHosts\\{HOST_NAME}' -Force | Out-Null; "
-            f"Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Google\\Chrome\\NativeMessagingHosts\\{HOST_NAME}' "
-            f"-Name '(Default)' -Value '{manifest_win}'",
-        ],
+        ["powershell.exe", "-Command",
+         f"New-Item -Path 'HKCU:\\SOFTWARE\\Google\\Chrome\\NativeMessagingHosts\\{HOST_NAME}' -Force | Out-Null; "
+         f"Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Google\\Chrome\\NativeMessagingHosts\\{HOST_NAME}' "
+         f"-Name '(Default)' -Value '{manifest_win}'"],
         check=True,
     )
 
@@ -219,29 +202,16 @@ def install_manifest_macos(extension_id: str, native_host_override: str | None =
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
-
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "--install-runtime",
-        action="store_true",
-        help="Copy extension + native host to the platform install location.",
-    )
-    parser.add_argument(
-        "--extension-id",
-        help="Chrome extension ID (shown in chrome://extensions after loading unpacked).",
-    )
-    parser.add_argument(
-        "--native-host", default=None, help="Override native host path written into the manifest."
-    )
-    parser.add_argument(
-        "--platform",
-        choices=["wsl", "macos"],
-        default=None,
-        help="Force platform (default: auto-detect).",
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--install-runtime", action="store_true",
+                        help="Copy extension + native host to the platform install location.")
+    parser.add_argument("--extension-id",
+                        help="Chrome extension ID (shown in chrome://extensions after loading unpacked).")
+    parser.add_argument("--native-host", default=None,
+                        help="Override native host path written into the manifest.")
+    parser.add_argument("--platform", choices=["wsl", "macos"], default=None,
+                        help="Force platform (default: auto-detect).")
     args = parser.parse_args()
 
     plat = args.platform or detect_platform()

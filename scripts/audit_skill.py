@@ -1,9 +1,8 @@
 """Audit a SKILL.md file for quality gate metrics."""
-
-import json
-import os
 import re
+import os
 import sys
+import json
 
 skill_path = sys.argv[1] if len(sys.argv) > 1 else "."
 skill_md = os.path.join(skill_path, "SKILL.md")
@@ -27,7 +26,9 @@ imperatives = len(
 )
 
 # Why explanations
-why_count = len(re.findall(r"\b(because|reason|why|rationale|principle)\b", content, re.IGNORECASE))
+why_count = len(
+    re.findall(r"\b(because|reason|why|rationale|principle)\b", content, re.IGNORECASE)
+)
 
 # Inline bash blocks
 bash_blocks = len(re.findall(r"```bash", content))

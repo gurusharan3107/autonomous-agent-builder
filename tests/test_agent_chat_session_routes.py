@@ -26,9 +26,7 @@ async def test_agent_chat_concurrent_request_does_not_persist_rejected_user_mess
     _engine, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async with factory() as db:
         session = ChatSession(
@@ -88,14 +86,11 @@ async def test_agent_chat_concurrent_request_does_not_persist_rejected_user_mess
         await asyncio.sleep(0)
         await app.state.chat_hub.shutdown()
 
-
 @pytest.mark.asyncio
 async def test_chat_history_reports_model_without_session(test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -119,15 +114,12 @@ async def test_chat_history_reports_model_without_session(test_db, tmp_path):
     assert payload["repo_identity"] == str(tmp_path.resolve())
     assert payload["workspace_cwd"] == str(tmp_path.resolve())
 
-
 @pytest.mark.asyncio
 async def test_chat_history_defaults_to_latest_meaningful_scoped_session(test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     repo_identity = str(tmp_path.resolve())
     now = datetime.now(UTC)
@@ -138,10 +130,7 @@ async def test_chat_history_defaults_to_latest_meaningful_scoped_session(test_db
         updated_at=now - timedelta(minutes=5),
         events=[
             ("user_message", {"content": "Continue the repo-scoped thread"}),
-            (
-                "assistant_message",
-                {"content": "Resuming the latest meaningful session", "final": True},
-            ),
+            ("assistant_message", {"content": "Resuming the latest meaningful session", "final": True}),
         ],
     )
     await _create_chat_session(
@@ -170,15 +159,12 @@ async def test_chat_history_defaults_to_latest_meaningful_scoped_session(test_db
     assert payload["session_id"] == expected_session_id
     assert payload["items"][0]["payload"]["content"] == "Continue the repo-scoped thread"
 
-
 @pytest.mark.asyncio
 async def test_chat_history_fresh_mode_skips_latest_session_resume(test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     repo_identity = str(tmp_path.resolve())
     now = datetime.now(UTC)
@@ -209,17 +195,12 @@ async def test_chat_history_fresh_mode_skips_latest_session_resume(test_db, tmp_
     assert payload["items"] == []
     assert payload["messages"] == []
 
-
 @pytest.mark.asyncio
-async def test_chat_session_list_filters_wrong_repo_and_marks_latest_resume_candidate(
-    test_db, tmp_path
-):
+async def test_chat_session_list_filters_wrong_repo_and_marks_latest_resume_candidate(test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     repo_identity = str(tmp_path.resolve())
     now = datetime.now(UTC)
@@ -261,22 +242,16 @@ async def test_chat_session_list_filters_wrong_repo_and_marks_latest_resume_cand
     assert response.status_code == 200
     payload = response.json()
     assert payload["latest_resume_session_id"] == latest_resume_id
-    assert [session["id"] for session in payload["sessions"]] == [
-        latest_resume_id,
-        older_session_id,
-    ]
+    assert [session["id"] for session in payload["sessions"]] == [latest_resume_id, older_session_id]
     assert payload["sessions"][0]["is_resume_candidate"] is True
     assert payload["sessions"][1]["is_resume_candidate"] is False
-
 
 @pytest.mark.asyncio
 async def test_chat_history_rejects_wrong_project_session_id(test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     foreign_session_id = await _create_chat_session(
         factory,
@@ -294,22 +269,17 @@ async def test_chat_history_rejects_wrong_project_session_id(test_db, tmp_path):
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get(
-            "/api/agent/chat/history", params={"session_id": foreign_session_id}
-        )
+        response = await client.get("/api/agent/chat/history", params={"session_id": foreign_session_id})
 
     assert response.status_code == 409
     assert "different repo or workspace" in response.json()["detail"]
-
 
 @pytest.mark.asyncio
 async def test_chat_post_rejects_wrong_project_session_id(monkeypatch, test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text(
-        "<html><body>embedded</body></html>", encoding="utf-8"
-    )
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
 
     async def fake_run_phase(self, **kwargs):
         return RunResult(

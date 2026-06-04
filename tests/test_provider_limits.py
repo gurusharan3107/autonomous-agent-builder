@@ -61,7 +61,8 @@ def test_codex_usage_limit_text_and_try_again_date_are_detected() -> None:
 
 def test_codex_usage_limit_get_more_access_text_is_detected() -> None:
     text = (
-        "You've hit your usage limit. To get more access now, send a request to your administrator."
+        "You've hit your usage limit. To get more access now, send a request "
+        "to your administrator."
     )
 
     assert is_provider_limit_text(text)

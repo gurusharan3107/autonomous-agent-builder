@@ -170,7 +170,9 @@ def documentation_testing_scope(user_message: str) -> str:
     return ""
 
 
-def documentation_target_doc_type(user_message: str, targeted_docs: list[dict[str, Any]]) -> str:
+def documentation_target_doc_type(
+    user_message: str, targeted_docs: list[dict[str, Any]]
+) -> str:
     lower_message = user_message.lower()
     if documentation_testing_scope(user_message):
         return "testing"

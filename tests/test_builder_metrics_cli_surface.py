@@ -189,9 +189,7 @@ def test_metrics_show_falls_back_to_local_data_on_connectivity_error(monkeypatch
     monkeypatch.setattr(
         metrics_module,
         "request_json",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            BuilderConnectivityError("http://127.0.0.1:9876")
-        ),
+        lambda *args, **kwargs: (_ for _ in ()).throw(BuilderConnectivityError("http://127.0.0.1:9876")),
     )
     monkeypatch.setattr(
         metrics_module,
@@ -202,12 +200,7 @@ def test_metrics_show_falls_back_to_local_data_on_connectivity_error(monkeypatch
             "total_runs": 2,
             "gate_pass_rate": 50.0,
             "runs": [],
-            "summary": {
-                "total_cost": 0.5,
-                "total_tokens": 200,
-                "total_runs": 2,
-                "gate_pass_rate": 50.0,
-            },
+            "summary": {"total_cost": 0.5, "total_tokens": 200, "total_runs": 2, "gate_pass_rate": 50.0},
             "degraded": True,
             "source": "local_db_fallback",
             "next_step": "builder backlog run summary <query> --json",
@@ -237,7 +230,9 @@ def test_metrics_compact_run_points_agent_chat_to_session_task_id():
     )
 
     assert row["analysis_id"] == "chat-session-1"
-    assert row["analysis_command"] == ("builder logs analyze --session chat-session-1 --json")
+    assert row["analysis_command"] == (
+        "builder logs analyze --session chat-session-1 --json"
+    )
 
 
 def test_load_local_agent_history_filters_runtime_transport_noise(monkeypatch, tmp_path):
@@ -311,9 +306,7 @@ def test_load_local_agent_history_filters_runtime_transport_noise(monkeypatch, t
                     "sess-1",
                     "assistant_message",
                     "completed",
-                    json.dumps(
-                        {"content": "Do shipping/state reconciliation next.", "final": True}
-                    ),
+                    json.dumps({"content": "Do shipping/state reconciliation next.", "final": True}),
                     "2026-05-13T10:00:03Z",
                 ),
                 (
@@ -361,8 +354,9 @@ def test_local_session_factory_targets_repo_agent_builder_db(monkeypatch, tmp_pa
 
     local_fallback_module._local_session_factory()
 
-    assert local_fallback_module.os.environ["DB_NAME"] == str(
-        (tmp_path / ".agent-builder" / "agent_builder").resolve()
+    assert (
+        local_fallback_module.os.environ["DB_NAME"]
+        == str((tmp_path / ".agent-builder" / "agent_builder").resolve())
     )
 
 

@@ -43,6 +43,7 @@ from autonomous_agent_builder.db.models import GateResult as GateResultModel
 from autonomous_agent_builder.db.models import Task, TaskStatus, set_task_status
 from autonomous_agent_builder.quality_gates.base import AggregateGateResult
 
+
 log = structlog.get_logger()
 
 

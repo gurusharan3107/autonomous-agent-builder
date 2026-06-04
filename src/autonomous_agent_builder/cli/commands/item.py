@@ -316,11 +316,7 @@ def cancel_item(
 
 @app.command("list")
 def list_items(
-    project: str | None = typer.Option(
-        None,
-        "--project",
-        help="Project ID. Omit to use the first project in the current workspace.",
-    ),
+    project: str | None = typer.Option(None, "--project", help="Project ID. Omit to use the first project in the current workspace."),
     item_type: str | None = typer.Option(None, "--type", help="Filter by item type."),
     tag: str | None = typer.Option(None, "--tag", help="Filter by tag."),
     status: str | None = typer.Option(None, help="Filter by status."),

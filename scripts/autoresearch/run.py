@@ -106,17 +106,12 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
     try:
         existing = subprocess.run(
             ["git", "-C", str(workspace), "branch", "--list", "main"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            env=git_env,
+            capture_output=True, text=True, timeout=5, env=git_env,
         )
         if not existing.stdout.strip():
             subprocess.run(
                 ["git", "-C", str(workspace), "branch", "main"],
-                check=True,
-                timeout=5,
-                env=git_env,
+                check=True, timeout=5, env=git_env,
             )
     except (subprocess.SubprocessError, OSError):
         # Seed without git is a setup error elsewhere — let Builder surface it.
@@ -144,17 +139,10 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
                 # Wipe stale execution state; preserve projects + zero-row
                 # config tables (approvals, quality_gates, etc.).
                 for table in (
-                    "agent_run_events",
-                    "agent_runs",
-                    "chat_events",
-                    "chat_messages",
-                    "chat_sessions",
-                    "gate_results",
-                    "design_documents",
-                    "tasks",
-                    "sprints",
-                    "workspaces",
-                    "features",
+                    "agent_run_events", "agent_runs",
+                    "chat_events", "chat_messages", "chat_sessions",
+                    "gate_results", "design_documents",
+                    "tasks", "sprints", "workspaces", "features",
                 ):
                     con.execute(f"DELETE FROM {table}")
                 con.commit()
@@ -184,50 +172,29 @@ def restore_seed(seed: pathlib.Path, workspace: pathlib.Path) -> None:
         # 2. Untrack any .venv entries currently in the index.
         subprocess.run(
             [
-                "git",
-                "-C",
-                str(workspace),
-                "rm",
-                "-r",
-                "--cached",
-                "--ignore-unmatch",
-                "-q",
-                ".venv",
+                "git", "-C", str(workspace),
+                "rm", "-r", "--cached", "--ignore-unmatch", "-q", ".venv",
             ],
-            check=False,
-            timeout=10,
-            env=git_env,
+            check=False, timeout=10, env=git_env,
         )
         # 3. Stage .gitignore explicitly (rm doesn't pick it up).
         subprocess.run(
             ["git", "-C", str(workspace), "add", ".gitignore"],
-            check=False,
-            timeout=5,
-            env=git_env,
+            check=False, timeout=5, env=git_env,
         )
         # 4. Commit only if something staged; otherwise git complains.
         diff = subprocess.run(
             ["git", "-C", str(workspace), "diff", "--cached", "--quiet"],
-            timeout=5,
-            env=git_env,
+            timeout=5, env=git_env,
         )
         if diff.returncode != 0:
             subprocess.run(
                 [
-                    "git",
-                    "-C",
-                    str(workspace),
-                    "-c",
-                    "user.email=autoresearch@local",
-                    "-c",
-                    "user.name=autoresearch",
-                    "commit",
-                    "-m",
-                    "autoresearch: gitignore + untrack .venv",
+                    "git", "-C", str(workspace), "-c", "user.email=autoresearch@local",
+                    "-c", "user.name=autoresearch", "commit",
+                    "-m", "autoresearch: gitignore + untrack .venv",
                 ],
-                check=False,
-                timeout=10,
-                env=git_env,
+                check=False, timeout=10, env=git_env,
             )
     except (subprocess.SubprocessError, OSError):
         pass
@@ -310,11 +277,7 @@ def send_chat_respond(port: int, session_id: str, pending_item: dict, answer: st
         if answer == "recommended":
             idx = int(question_payload.get("recommended_index") or 0)
             if 0 <= idx < len(options):
-                label = (
-                    options[idx].get("label")
-                    if isinstance(options[idx], dict)
-                    else str(options[idx])
-                )
+                label = options[idx].get("label") if isinstance(options[idx], dict) else str(options[idx])
                 if label:
                     payload["selected_options"] = [label]
                 else:
@@ -382,7 +345,9 @@ def latest_chat_state(port: int, session_id: str) -> dict:
     # This is the harness's proxy for "the chat agent has yielded back to the
     # operator and is awaiting input"; if the latest content event is a
     # tool_use or in-flight assistant message, running stays True.
-    running = not (last_content_type == "assistant_message" and last_assistant_final)
+    running = not (
+        last_content_type == "assistant_message" and last_assistant_final
+    )
     return {
         "running": running,
         "last_content_event_type": last_content_type,
@@ -409,7 +374,10 @@ def wait_for_question_or_ship(port: int, session_id: str, timeout_s: int) -> str
             if board_active_phase(port) == "shipped":
                 return "shipped"
             state = latest_chat_state(port, session_id)
-            if not state["running"] and state["last_content_event_type"] == "assistant_message":
+            if (
+                not state["running"]
+                and state["last_content_event_type"] == "assistant_message"
+            ):
                 return "proceed_needed"
         except requests.RequestException:
             pass
@@ -475,11 +443,7 @@ def run_feature_check(workspace: pathlib.Path, evidence_dir: pathlib.Path | None
     try:
         if (app / "package.json").exists():
             _run("npm-build", ["npm", "--prefix", str(app), "run", "build"], timeout=600)
-            _run(
-                "npm-test",
-                ["npm", "--prefix", str(app), "run", "test", "--", "--watch=false"],
-                timeout=600,
-            )
+            _run("npm-test", ["npm", "--prefix", str(app), "run", "test", "--", "--watch=false"], timeout=600)
             return True
         if (workspace / "pyproject.toml").exists() or (app / "pyproject.toml").exists():
             # Python stack — run pytest if a tests dir exists; ruff format/check
@@ -491,22 +455,14 @@ def run_feature_check(workspace: pathlib.Path, evidence_dir: pathlib.Path | None
             # working tree. If venv_py is gone, recreate a fresh venv so pip
             # install below can proceed without hitting PEP 668 (system-pip block).
             if not venv_py.exists():
-                _run(
-                    "venv-create",
-                    [sys.executable, "-m", "venv", str(workspace / ".venv")],
-                    timeout=60,
-                )
+                _run("venv-create", [sys.executable, "-m", "venv", str(workspace / ".venv")], timeout=60)
             py = str(venv_py)
             # P12 (2026-05-23): seed .venv is minimal (no jinja2/httpx etc).
             # Install from requirements.txt before running tests so imports
             # don't fail at collection time.
             req_file = workspace / "requirements.txt"
             if req_file.exists():
-                _run(
-                    "pip-install",
-                    [py, "-m", "pip", "install", "-q", "-r", str(req_file)],
-                    timeout=120,
-                )
+                _run("pip-install", [py, "-m", "pip", "install", "-q", "-r", str(req_file)], timeout=120)
             tests_dir = next(
                 (d for d in (workspace / "tests", app / "tests") if d.exists()),
                 None,
@@ -519,12 +475,7 @@ def run_feature_check(workspace: pathlib.Path, evidence_dir: pathlib.Path | None
             _run(
                 "pytest",
                 [
-                    py,
-                    "-m",
-                    "pytest",
-                    str(tests_dir),
-                    "-q",
-                    "--no-header",
+                    py, "-m", "pytest", str(tests_dir), "-q", "--no-header",
                     # Playwright tests require a live devpulse server.
                     "--ignore-glob=*playwright*",
                     # GitHub service tests require pytest-asyncio + live
@@ -562,20 +513,16 @@ def evaluate_hard_gates(
     session_cache_ratio = float(analyze.get("cache_ratio") or 0)
     gate_cache = has_agent_runs and session_cache_ratio > 5.0
     # P12 (2026-05-23): metrics response uses "optimization_summary" key, not "optimization".
-    optimization = (
-        (metrics.get("optimization_summary") or metrics.get("optimization") or {})
-        if isinstance(metrics, dict)
-        else {}
-    )
+    optimization = (metrics.get("optimization_summary") or metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     chunk_pressure = optimization.get("chunk_pressure") or {}
-    gate_chunk = (
-        chunk_pressure.get("risk") is False or chunk_pressure.get("chunk_pressure_risk") is False
-    )
+    gate_chunk = chunk_pressure.get("risk") is False or chunk_pressure.get("chunk_pressure_risk") is False
     gate_flags = (optimization.get("active_avoidable_cost_flags") or []) == []
     # board show schema: tasks in section lists (done/pending/active/review/blocked).
     # Legacy backlog-task-list schema: flat "tasks" list with status field.
     if isinstance(board, dict) and "tasks" not in board:
-        non_done = sum(len(board.get(s) or []) for s in ("pending", "active", "review", "blocked"))
+        non_done = sum(
+            len(board.get(s) or []) for s in ("pending", "active", "review", "blocked")
+        )
         done_tasks = board.get("done") or []
         gate_rate = bool(done_tasks) and non_done == 0
     else:
@@ -598,76 +545,32 @@ SESSION_HEADERS = [
     # header exactly. Drift here silently corrupts every downstream consumer
     # (compare.py, render_iterations.py, introspect.py). The introspection
     # script auto-detects this drift and surfaces it as the top recommendation.
-    "run_id",
-    "timestamp",
-    "branch",
-    "idea_ref",
-    "files_touched",
-    "lines_added",
-    "lines_deleted",
-    "fixture_id",
-    "noncached_plus_output_tokens",
-    "cache_ratio",
-    "chunk_pressure_risk",
-    "avoidable_cost_flags",
-    "gate_pass_rate",
-    "feature_correct",
-    "wallclock_s",
-    "operator_turns",
-    "composite",
-    "composite_delta_pct",
-    "gates_passed",
-    "decision",
-    "notes",
-    "gates_json",
+    "run_id", "timestamp", "branch", "idea_ref",
+    "files_touched", "lines_added", "lines_deleted",
+    "fixture_id", "noncached_plus_output_tokens", "cache_ratio",
+    "chunk_pressure_risk", "avoidable_cost_flags", "gate_pass_rate",
+    "feature_correct", "wallclock_s", "operator_turns",
+    "composite", "composite_delta_pct", "gates_passed",
+    "decision", "notes", "gates_json",
 ]
 
 PROMPT_HEADERS = [
-    "run_id",
-    "prompt_index",
-    "turn_role",
-    "agent_name",
-    "phase",
-    "context_budget_tokens",
-    "tokens_input",
-    "tokens_cached",
-    "cache_creation_tokens",
-    "tokens_output",
-    "noncached_plus_output_tokens",
-    "cache_ratio",
-    "tool_calls_count",
-    "tool_names_json",
-    "stop_reason",
-    "duration_ms",
-    "cost_usd",
-    "runtime_sdk",
-    "model",
-    "effort",
+    "run_id", "prompt_index", "turn_role", "agent_name", "phase",
+    "context_budget_tokens", "tokens_input", "tokens_cached", "cache_creation_tokens",
+    "tokens_output", "noncached_plus_output_tokens", "cache_ratio",
+    "tool_calls_count", "tool_names_json", "stop_reason", "duration_ms",
+    "cost_usd", "runtime_sdk", "model", "effort",
 ]
 
 
 def append_session_row(
-    *,
-    tsv_path: pathlib.Path,
-    run_id: str,
-    fixture_id: str,
-    branch: str,
-    analyze: dict,
-    metrics: dict,
-    gates_passed: str,
-    composite: int,
-    wallclock_s: float,
-    feature_correct: bool,
-    decision_status: str,
-    idea_ref: str = "",
-    diff_stats: dict | None = None,
+    *, tsv_path: pathlib.Path, run_id: str, fixture_id: str, branch: str,
+    analyze: dict, metrics: dict, gates_passed: str, composite: int,
+    wallclock_s: float, feature_correct: bool, decision_status: str,
+    idea_ref: str = "", diff_stats: dict | None = None,
     gates_detail: dict | None = None,
 ) -> None:
-    opt = (
-        (metrics.get("optimization_summary") or metrics.get("optimization") or {})
-        if isinstance(metrics, dict)
-        else {}
-    )
+    opt = (metrics.get("optimization_summary") or metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     chunk = opt.get("chunk_pressure") or {}
     diff_stats = diff_stats or {}
     row = [
@@ -712,7 +615,9 @@ def _gate_pass_rate_value(gates_passed: str) -> float:
         return 0.0
 
 
-def append_prompt_rows(*, tsv_path: pathlib.Path, run_id: str, analyze: dict) -> None:
+def append_prompt_rows(
+    *, tsv_path: pathlib.Path, run_id: str, analyze: dict
+) -> None:
     """Emit one TSV row per session-scoped agent (code-gen, scaffold, …).
 
     `analyze.prompts[]` is operator-chat-turn-scoped (one entry per
@@ -724,7 +629,9 @@ def append_prompt_rows(*, tsv_path: pathlib.Path, run_id: str, analyze: dict) ->
     """
     aggs = analyze.get("runtime_aggregates") or {}
     by_agent = aggs.get("by_agent") or []
-    by_runtime_idx = {str(r.get("runtime_sdk") or ""): r for r in (aggs.get("by_runtime") or [])}
+    by_runtime_idx = {
+        str(r.get("runtime_sdk") or ""): r for r in (aggs.get("by_runtime") or [])
+    }
     runtime_default = next(iter(by_runtime_idx)) if by_runtime_idx else ""
     rows: list[list] = []
     for i, agent in enumerate(by_agent):
@@ -732,31 +639,31 @@ def append_prompt_rows(*, tsv_path: pathlib.Path, run_id: str, analyze: dict) ->
         tokens_cached = int(agent.get("cached_tokens") or 0)
         tokens_output = int(agent.get("output_tokens") or 0)
         noncached_plus_output = max(tokens_input - tokens_cached + tokens_output, 0)
-        cache_ratio = tokens_cached / max(noncached_plus_output, 1) if tokens_cached else 0.0
-        rows.append(
-            [
-                run_id,
-                i,
-                "agent",
-                agent.get("agent_name") or "",
-                "",
-                0,
-                tokens_input,
-                tokens_cached,
-                0,
-                tokens_output,
-                noncached_plus_output,
-                cache_ratio,
-                0,
-                "[]",
-                "",
-                int(agent.get("duration_ms") or 0),
-                float(agent.get("cost_usd") or 0.0),
-                runtime_default,
-                "",
-                "",
-            ]
+        cache_ratio = (
+            tokens_cached / max(noncached_plus_output, 1) if tokens_cached else 0.0
         )
+        rows.append([
+            run_id,
+            i,
+            "agent",
+            agent.get("agent_name") or "",
+            "",
+            0,
+            tokens_input,
+            tokens_cached,
+            0,
+            tokens_output,
+            noncached_plus_output,
+            cache_ratio,
+            0,
+            "[]",
+            "",
+            int(agent.get("duration_ms") or 0),
+            float(agent.get("cost_usd") or 0.0),
+            runtime_default,
+            "",
+            "",
+        ])
     for row in rows:
         write_tsv_row(tsv_path, PROMPT_HEADERS, row)
 
@@ -772,11 +679,9 @@ def write_tsv_row(tsv_path: pathlib.Path, header: list[str], row: list) -> None:
 
 def git_main_sha() -> str:
     try:
-        return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL)
-            .decode()
-            .strip()[:12]
-        )
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
+        ).decode().strip()[:12]
     except Exception:
         return ""
 
@@ -790,8 +695,7 @@ def compute_branch_diff_stats(branch: str) -> dict:
     try:
         text = subprocess.check_output(
             ["git", "diff", "--shortstat", f"{base}...{branch}"],
-            stderr=subprocess.DEVNULL,
-            timeout=10,
+            stderr=subprocess.DEVNULL, timeout=10,
         ).decode()
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return out
@@ -820,22 +724,12 @@ def main() -> int:
     tsv_root = pathlib.Path(args.tsv_root) if args.tsv_root else DEFAULT_TSV_ROOT
 
     if args.dry_run:
-        print(
-            json.dumps(
-                {
-                    "dry_run": True,
-                    "run_id": run_id,
-                    "fixture": args.fixture,
-                    "branch": args.branch,
-                    "port": args.port,
-                    "evidence_dir": str(evidence_dir),
-                    "workspace": str(workspace),
-                    "seed": str(seed),
-                    "would_run": "see HARNESS.md workflow",
-                },
-                indent=2,
-            )
-        )
+        print(json.dumps({
+            "dry_run": True, "run_id": run_id, "fixture": args.fixture,
+            "branch": args.branch, "port": args.port,
+            "evidence_dir": str(evidence_dir), "workspace": str(workspace),
+            "seed": str(seed), "would_run": "see HARNESS.md workflow",
+        }, indent=2))
         return 0
 
     fixture = FIXTURES[args.fixture]
@@ -855,10 +749,8 @@ def main() -> int:
     builder_log_fh = builder_log_path.open("wb")
     builder_proc = subprocess.Popen(
         ["builder", "start", "--port", str(args.port), "--force"],
-        cwd=str(workspace),
-        env=env,
-        stdout=builder_log_fh,
-        stderr=subprocess.STDOUT,
+        cwd=str(workspace), env=env,
+        stdout=builder_log_fh, stderr=subprocess.STDOUT,
     )
 
     decision_status = "incomplete"
@@ -982,15 +874,9 @@ def main() -> int:
     # noncached_plus_output_tokens. New fixture-A CV: 14.7% (gateable).
     # P15 (2026-05-23): key is `optimization_summary` not `optimization`
     # (mirrors evaluate_hard_gates P12 fix).
-    opt = (
-        (metrics.get("optimization_summary") or metrics.get("optimization") or {})
-        if isinstance(metrics, dict)
-        else {}
-    )
+    opt = (metrics.get("optimization_summary") or metrics.get("optimization") or {}) if isinstance(metrics, dict) else {}
     composite = int(opt.get("noncached_plus_output_tokens") or 0)
-    gates_str, gates_detail = evaluate_hard_gates(
-        analyze, metrics, board, feature_correct, decision_status == "shipped"
-    )
+    gates_str, gates_detail = evaluate_hard_gates(analyze, metrics, board, feature_correct, decision_status == "shipped")
 
     tsv_path = tsv_root / ("baseline_runs.tsv" if args.baseline else "optimize_results.tsv")
     # Idea ref is parsed out of the branch name when this run is an iteration
@@ -1002,44 +888,29 @@ def main() -> int:
         idea_ref = m.group(1)
     diff_stats = compute_branch_diff_stats(args.branch) if args.branch else {}
     append_session_row(
-        tsv_path=tsv_path,
-        run_id=run_id,
-        fixture_id=args.fixture,
-        branch=args.branch,
-        analyze=analyze,
-        metrics=metrics,
-        gates_passed=gates_str,
-        composite=composite,
-        wallclock_s=wallclock_s,
-        feature_correct=feature_correct,
-        decision_status=decision_status,
-        idea_ref=idea_ref,
-        diff_stats=diff_stats,
-        gates_detail=gates_detail,
+        tsv_path=tsv_path, run_id=run_id, fixture_id=args.fixture, branch=args.branch,
+        analyze=analyze, metrics=metrics, gates_passed=gates_str, composite=composite,
+        wallclock_s=wallclock_s, feature_correct=feature_correct, decision_status=decision_status,
+        idea_ref=idea_ref, diff_stats=diff_stats, gates_detail=gates_detail,
     )
     append_prompt_rows(
         tsv_path=tsv_root / "per_prompt_results.tsv",
-        run_id=run_id,
-        analyze=analyze,
+        run_id=run_id, analyze=analyze,
     )
 
     if workspace.exists():
         shutil.rmtree(workspace, ignore_errors=True)
 
-    print(
-        json.dumps(
-            {
-                "run_id": run_id,
-                "evidence_dir": str(evidence_dir),
-                "composite": composite,
-                "gates_passed": gates_str,
-                "feature_correct": feature_correct,
-                "decision_status": decision_status,
-                "wallclock_s": round(wallclock_s, 2),
-                "session_id": session_id,
-            }
-        )
-    )
+    print(json.dumps({
+        "run_id": run_id,
+        "evidence_dir": str(evidence_dir),
+        "composite": composite,
+        "gates_passed": gates_str,
+        "feature_correct": feature_correct,
+        "decision_status": decision_status,
+        "wallclock_s": round(wallclock_s, 2),
+        "session_id": session_id,
+    }))
     return 0
 
 
@@ -1058,11 +929,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--evidence-dir", default=None)
     p.add_argument("--seed", default=None)
     p.add_argument("--tsv-root", default=None)
-    p.add_argument(
-        "--baseline",
-        action="store_true",
-        help="Write to baseline_runs.tsv instead of optimize_results.tsv",
-    )
+    p.add_argument("--baseline", action="store_true", help="Write to baseline_runs.tsv instead of optimize_results.tsv")
     p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
 

@@ -10,7 +10,7 @@ ROUTE_ROOTS = [
 
 def test_routes_do_not_read_project_state_from_process_cwd() -> None:
     offenders: list[str] = []
-    patterns = ("Path.cwd()", 'Path(".agent-builder', "Path('.agent-builder")
+    patterns = ('Path.cwd()', 'Path(".agent-builder', "Path('.agent-builder")
     for root in ROUTE_ROOTS:
         for path in sorted(root.glob("*.py")):
             text = path.read_text(encoding="utf-8")

@@ -18,7 +18,9 @@ def command_env() -> dict[str, str]:
     env = os.environ.copy()
     src_path = str(REPO_ROOT / "src")
     env["PYTHONPATH"] = (
-        src_path if not env.get("PYTHONPATH") else f"{src_path}{os.pathsep}{env['PYTHONPATH']}"
+        src_path
+        if not env.get("PYTHONPATH")
+        else f"{src_path}{os.pathsep}{env['PYTHONPATH']}"
     )
     return env
 

@@ -132,7 +132,9 @@ async def mark_task_running_agent_runs_failed(
 ) -> int:
     """Fail running AgentRun rows for a task when dispatch can no longer own them."""
     result = await db.execute(
-        select(AgentRun).where(AgentRun.task_id == task_id).where(AgentRun.status == "running")
+        select(AgentRun)
+        .where(AgentRun.task_id == task_id)
+        .where(AgentRun.status == "running")
     )
     runs = list(result.scalars().all())
     if not runs:

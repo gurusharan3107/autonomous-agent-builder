@@ -109,19 +109,15 @@ async def test_board_status_uses_dashboard_lane_counts_for_waiting_implementatio
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Board status from Builder source of truth" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Board status from Builder source of truth"
+            in item["payload"].get("content", ""),
         )
 
     content = assistant_item["payload"]["content"]
     assert "Queued 1, in progress 0, needs review 0, shipped 0, blocked 0" in content
     assert "Backlog features 1/1 done, 0 open" in content
-    assert (
-        "`Verify Deterministic tests and build script for shipping` is `implementation`" in content
-    )
+    assert "`Verify Deterministic tests and build script for shipping` is `implementation`" in content
     assert "Next safe step: dispatch the first queued Board task" in content
-
 
 @pytest.mark.asyncio
 async def test_board_status_names_running_task_as_in_progress(monkeypatch, test_db, tmp_path):
@@ -204,15 +200,13 @@ async def test_board_status_names_running_task_as_in_progress(monkeypatch, test_
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Board status from Builder source of truth" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Board status from Builder source of truth"
+            in item["payload"].get("content", ""),
         )
 
     content = assistant_item["payload"]["content"]
     assert "Queued 0, in progress 1, needs review 0, shipped 0, blocked 0" in content
     assert "Next safe step: inspect the active task's run trace" in content
-
 
 @pytest.mark.asyncio
 async def test_board_status_defaults_to_current_sprint_scope(monkeypatch, test_db, tmp_path):
@@ -320,9 +314,8 @@ async def test_board_status_defaults_to_current_sprint_scope(monkeypatch, test_d
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Board status from Builder source of truth" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Board status from Builder source of truth"
+            in item["payload"].get("content", ""),
         )
 
     content = assistant_item["payload"]["content"]

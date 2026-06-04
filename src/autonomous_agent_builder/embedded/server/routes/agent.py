@@ -75,6 +75,9 @@ from autonomous_agent_builder.embedded.server.agent_chat_events import (
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
     update_request_event as _update_request_event,
 )
+from autonomous_agent_builder.embedded.server.agent_chat_events import (
+    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
+)
 from autonomous_agent_builder.embedded.server.agent_chat_result_publisher import (
     _publish_agent_run_error_result,
     _publish_provider_limit_result,
@@ -215,6 +218,9 @@ from autonomous_agent_builder.embedded.server.documentation_routing import (
     SpecialistRoutePolicy,  # noqa: F401
 )
 from autonomous_agent_builder.embedded.server.documentation_routing import (
+    message_has_documentation_intent as _message_has_documentation_intent,
+)
+from autonomous_agent_builder.embedded.server.documentation_routing import (
     resolve_documentation_action as _resolve_documentation_action,  # noqa: F401
 )
 from autonomous_agent_builder.logs.diagnostics import summarize_chat_event, summarize_tool_event
@@ -235,8 +241,6 @@ _USER_QUESTION_TOOL_NAMES = {
     "AskUserQuestion",
     "request_user_input",
 }
-
-
 def _project_root(request: Request) -> Path:
     return request_project_root(request)
 
@@ -369,7 +373,9 @@ async def _handle_chat_tool_event(
                 "in_progress_count": sum(
                     1 for todo in todos if todo.get("status") == "in_progress"
                 ),
-                "completed_count": sum(1 for todo in todos if todo.get("status") == "completed"),
+                "completed_count": sum(
+                    1 for todo in todos if todo.get("status") == "completed"
+                ),
             },
             status="completed",
             tool_use_id=str(tool_use_id) if tool_use_id else None,
@@ -683,9 +689,7 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
         payload=_initial_status(agent_name, project_root),
         status="running",
     )
-    await hub.publish(
-        session_id, agent_chat_transcript.serialize_event(run_status_event).model_dump(mode="json")
-    )
+    await hub.publish(session_id, agent_chat_transcript.serialize_event(run_status_event).model_dump(mode="json"))
 
     async def publish_specialist_status(
         phase: str, content: str, *, status: str = "running"
@@ -707,10 +711,7 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
             },
             status=status,
         )
-        await hub.publish(
-            session_id,
-            agent_chat_transcript.serialize_event(specialist_event).model_dump(mode="json"),
-        )
+        await hub.publish(session_id, agent_chat_transcript.serialize_event(specialist_event).model_dump(mode="json"))
 
     if specialist_active:
         specialist_phase = "discovering"
@@ -1073,9 +1074,7 @@ async def get_chat_history(
     runtime_metadata = _chat_runtime_metadata(project_root)
     active_run = await _chat_hub(request).has_active_run(session.id)
     status = agent_chat_transcript.latest_status(session, active_run=active_run)
-    thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(
-        runtime_metadata, status
-    )
+    thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(runtime_metadata, status)
     return ChatHistoryResponse(
         session_id=session.id,
         sdk_session_id=session.sdk_session_id,
@@ -1111,9 +1110,7 @@ async def chat_stream(
     runtime_metadata = _chat_runtime_metadata(project_root)
     active_run = await hub.has_active_run(session_id)
     status = agent_chat_transcript.latest_status(session, active_run=active_run)
-    thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(
-        runtime_metadata, status
-    )
+    thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(runtime_metadata, status)
     if await reconcile_session_control_owners(
         session,
         db,
@@ -1196,9 +1193,7 @@ async def agent_chat(
             status="completed",
             mirror_message=("user", request.message, 0, 0.0),
         )
-        await hub.publish(
-            session.id, agent_chat_transcript.serialize_event(user_event).model_dump(mode="json")
-        )
+        await hub.publish(session.id, agent_chat_transcript.serialize_event(user_event).model_dump(mode="json"))
     except Exception:
         await hub.release_run(session.id)
         raise
@@ -1266,8 +1261,7 @@ async def respond_to_chat_event(
             },
         )
         await hub.publish(
-            request.session_id,
-            agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json"),
+            request.session_id, agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json")
         )
         if has_live_waiter:
             resolved = await hub.resolve_pending_answer(
@@ -1327,10 +1321,7 @@ async def respond_to_chat_event(
             "reason": request.reason.strip(),
         },
     )
-    await hub.publish(
-        request.session_id,
-        agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json"),
-    )
+    await hub.publish(request.session_id, agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json"))
     response_payload = {
         "decision": decision,
         "reason": request.reason.strip(),

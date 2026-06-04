@@ -58,10 +58,8 @@ async def test_realtime_text_control_dedupes_running_agent_handoff(
     payload = response.json()
     async with factory() as db:
         output_payload = (
-            (await db.execute(select(ChatEvent).where(ChatEvent.event_type == "voice_tool_output")))
-            .scalar_one()
-            .payload_json
-        )
+            await db.execute(select(ChatEvent).where(ChatEvent.event_type == "voice_tool_output"))
+        ).scalar_one().payload_json
     assert payload["handled"] is True
     assert payload["operator_message"] == message
     assert payload["assistant_message"] == "Builder is already working in Conversation.", (
@@ -73,10 +71,8 @@ async def test_realtime_text_control_dedupes_running_agent_handoff(
 
     async with factory() as db:
         user_events = (
-            (await db.execute(select(ChatEvent).where(ChatEvent.event_type == "user_message")))
-            .scalars()
-            .all()
-        )
+            await db.execute(select(ChatEvent).where(ChatEvent.event_type == "user_message"))
+        ).scalars().all()
         output = (
             await db.execute(select(ChatEvent).where(ChatEvent.event_type == "voice_tool_output"))
         ).scalar_one()

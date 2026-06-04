@@ -365,8 +365,7 @@ def optimization_decision_summary(
     active_drivers = optimization.get("active_top_cost_drivers")
     driver_source = (
         active_drivers
-        if isinstance(active_drivers, list)
-        and any(
+        if isinstance(active_drivers, list) and any(
             int(item.get("raw_tokens") or 0) > 0
             for item in active_drivers
             if isinstance(item, dict)

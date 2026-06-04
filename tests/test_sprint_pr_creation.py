@@ -7,17 +7,22 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy import select
 
 from autonomous_agent_builder.agents.runner import RunResult
 from autonomous_agent_builder.config import get_settings
 from autonomous_agent_builder.db.models import (
     ApprovalGate,
+    Feature,
+    Project,
     Sprint,
     SprintPhase,
     Task,
+    TaskPhase,
     TaskStatus,
 )
 from autonomous_agent_builder.orchestrator.orchestrator import Orchestrator
+from autonomous_agent_builder.services.sprint_execution import SPRINT_EXECUTION_KEY
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
@@ -53,9 +58,7 @@ async def test_project_has_remote_returns_true_when_origin_configured(tmp_path):
 def test_sprint_changes_summary_lists_task_titles():
     sprint = Sprint(id="abcd", project_id="p", label="Sprint 1")
     tasks = [
-        Task(
-            id="t1", feature_id="f", title="Implement hello", description="", status=TaskStatus.DONE
-        ),
+        Task(id="t1", feature_id="f", title="Implement hello", description="", status=TaskStatus.DONE),
         Task(id="t2", feature_id="f", title="Add tests", description="", status=TaskStatus.DONE),
     ]
     summary = Orchestrator._sprint_changes_summary(sprint, tasks)
@@ -65,7 +68,11 @@ def test_sprint_changes_summary_lists_task_titles():
 
 
 def test_extract_pr_url_finds_github_pr():
-    output = "Created PR for sprint review\nPR: https://github.com/owner/repo/pull/42\nDone."
+    output = (
+        "Created PR for sprint review\n"
+        "PR: https://github.com/owner/repo/pull/42\n"
+        "Done."
+    )
     assert Orchestrator._extract_pr_url(output) == "https://github.com/owner/repo/pull/42"
 
 
@@ -155,9 +162,7 @@ async def test_remote_path_runs_pr_creator_and_creates_sprint_pr_gate(tmp_path):
     project = MagicMock()
     project.repo_url = str(repo)
     feature.project = project
-    latest_task = Task(
-        id="t1", feature_id="f", title="Hello task", description="", status=TaskStatus.DONE
-    )
+    latest_task = Task(id="t1", feature_id="f", title="Hello task", description="", status=TaskStatus.DONE)
     latest_task.feature = feature
     sprint_tasks = [latest_task]
 
@@ -167,7 +172,9 @@ async def test_remote_path_runs_pr_creator_and_creates_sprint_pr_gate(tmp_path):
     assert sprint.pr_url == "https://github.com/owner/repo/pull/7"
 
     added_gates = [
-        call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], ApprovalGate)
+        call.args[0]
+        for call in db.add.call_args_list
+        if isinstance(call.args[0], ApprovalGate)
     ]
     assert len(added_gates) == 1
     gate = added_gates[0]

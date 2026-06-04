@@ -17,9 +17,7 @@ def test_phase_context_returns_trimmed_stored_value() -> None:
 
 def test_phase_context_ignores_missing_or_malformed_context() -> None:
     assert phase_context(SimpleNamespace(depends_on=None), "design_context") == ""
-    assert (
-        phase_context(SimpleNamespace(depends_on={"phase_context": "bad"}), "design_context") == ""
-    )
+    assert phase_context(SimpleNamespace(depends_on={"phase_context": "bad"}), "design_context") == ""
 
 
 def test_store_phase_context_preserves_existing_dependency_data() -> None:

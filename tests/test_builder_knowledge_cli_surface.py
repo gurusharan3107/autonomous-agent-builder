@@ -242,10 +242,7 @@ def test_kb_list_json_is_compact_by_default_and_full_when_requested(monkeypatch,
     compact_payload = json.loads(compact.stdout)
     assert compact_payload["count"] == 1
     assert "content" not in compact_payload["results"][0]
-    assert (
-        compact_payload["next_step"]
-        == "builder knowledge show <doc-id> --section 'Change guidance' --json"
-    )
+    assert compact_payload["next_step"] == "builder knowledge show <doc-id> --section 'Change guidance' --json"
     assert "tags" not in compact_payload["results"][0]
     assert "version" not in compact_payload["results"][0]
 
@@ -253,10 +250,7 @@ def test_kb_list_json_is_compact_by_default_and_full_when_requested(monkeypatch,
     full_payload = json.loads(full.stdout)
     assert full_payload["count"] == 1
     assert "content" in full_payload["results"][0]
-    assert (
-        full_payload["next_step"]
-        == "builder knowledge show <doc-id> --section 'Change guidance' --json"
-    )
+    assert full_payload["next_step"] == "builder knowledge show <doc-id> --section 'Change guidance' --json"
 
 
 def test_kb_show_not_found_suggests_search(monkeypatch, tmp_path):
@@ -301,16 +295,7 @@ def test_kb_search_works_without_server_client(monkeypatch, tmp_path):
 
     result = runner.invoke(
         app,
-        [
-            "knowledge",
-            "search",
-            "onboarding",
-            "existing",
-            "repo",
-            "--type",
-            "system-docs",
-            "--json",
-        ],
+        ["knowledge", "search", "onboarding", "existing", "repo", "--type", "system-docs", "--json"],
     )
 
     assert result.exit_code == 0

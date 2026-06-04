@@ -103,11 +103,8 @@ async def test_ensure_sprint_branch_is_idempotent(tmp_path, orchestrator):
 
     async def run_git(*args: str) -> tuple[int, str]:
         proc = await asyncio.create_subprocess_exec(
-            "git",
-            *args,
-            cwd=str(repo),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            "git", *args, cwd=str(repo),
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         out, err = await proc.communicate()
         return proc.returncode, out.decode() + err.decode()
@@ -129,11 +126,8 @@ async def test_ensure_sprint_branch_returns_none_on_unborn_head(tmp_path, orches
 
     async def run_git(*args: str) -> tuple[int, str]:
         proc = await asyncio.create_subprocess_exec(
-            "git",
-            *args,
-            cwd=str(repo),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            "git", *args, cwd=str(repo),
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         out, err = await proc.communicate()
         return proc.returncode, out.decode() + err.decode()
@@ -222,7 +216,9 @@ async def test_workspace_manager_creates_initial_commit_for_unborn_head(tmp_path
 
 
 @pytest.mark.asyncio
-async def test_untracked_runtime_guidance_does_not_block_task_branch_merge(tmp_path, orchestrator):
+async def test_untracked_runtime_guidance_does_not_block_task_branch_merge(
+    tmp_path, orchestrator
+):
     """Builder-owned guidance may be untracked while task branches track the same path."""
     repo = tmp_path / "repo"
     _init_repo(repo)
@@ -238,11 +234,8 @@ async def test_untracked_runtime_guidance_does_not_block_task_branch_merge(tmp_p
 
     async def run_git(*args: str) -> tuple[int, str]:
         proc = await asyncio.create_subprocess_exec(
-            "git",
-            *args,
-            cwd=str(repo),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            "git", *args, cwd=str(repo),
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         out, err = await proc.communicate()
         return proc.returncode, out.decode() + err.decode()
@@ -337,7 +330,9 @@ async def test_integrate_task_workspace_cleans_guidance_before_sprint_checkout(
 
 
 @pytest.mark.asyncio
-async def test_integrate_task_workspace_commits_dirty_existing_task_branch(tmp_path, orchestrator):
+async def test_integrate_task_workspace_commits_dirty_existing_task_branch(
+    tmp_path, orchestrator
+):
     repo = tmp_path / "repo"
     _init_repo(repo)
     _git(repo, "branch", "sprint/test-1")
@@ -381,7 +376,9 @@ async def test_integrate_task_workspace_commits_dirty_existing_task_branch(tmp_p
 
 
 @pytest.mark.asyncio
-async def test_integrate_task_workspace_does_not_commit_generated_artifacts(tmp_path, orchestrator):
+async def test_integrate_task_workspace_does_not_commit_generated_artifacts(
+    tmp_path, orchestrator
+):
     repo = tmp_path / "repo"
     _init_repo(repo)
     _git(repo, "branch", "sprint/test-1")
@@ -426,7 +423,9 @@ async def test_integrate_task_workspace_does_not_commit_generated_artifacts(tmp_
 
 
 @pytest.mark.asyncio
-async def test_generated_artifact_cleanup_tolerates_missing_artifact_path(tmp_path, orchestrator):
+async def test_generated_artifact_cleanup_tolerates_missing_artifact_path(
+    tmp_path, orchestrator
+):
     repo = tmp_path / "repo"
     _init_repo(repo)
     (repo / "dist").mkdir()
@@ -506,14 +505,11 @@ async def test_sprint_completion_rebases_sprint_branch_when_main_diverged(tmp_pa
     assert error is None
     assert (repo / "feature.txt").read_text(encoding="utf-8") == "feature\n"
     assert "main change" in (repo / "README.md").read_text(encoding="utf-8")
-    assert (
-        _git(repo, "rev-parse", "main").stdout.strip()
-        == _git(
-            repo,
-            "rev-parse",
-            "sprint/test-1",
-        ).stdout.strip()
-    )
+    assert _git(repo, "rev-parse", "main").stdout.strip() == _git(
+        repo,
+        "rev-parse",
+        "sprint/test-1",
+    ).stdout.strip()
 
 
 @pytest.mark.asyncio

@@ -30,6 +30,7 @@ import subprocess
 import sys
 import time
 
+
 LANE_PRODUCERS = ("baseline.py", "loop.py")
 RUN_PY = "run.py"
 BUILDER_START = "builder start"
@@ -40,8 +41,7 @@ def _ps_lines() -> list[str]:
     try:
         out = subprocess.check_output(
             ["ps", "-eo", "pid,etime,user,args"],
-            text=True,
-            timeout=10,
+            text=True, timeout=10,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return []
@@ -168,7 +168,9 @@ def summarize_lane(lane: dict, runs: list[dict]) -> dict:
             d = pathlib.Path(evidence_root) / f
             if not d.is_dir():
                 continue
-            run_dirs = sorted([p for p in d.iterdir() if p.is_dir() and p.name.startswith("run-")])
+            run_dirs = sorted([
+                p for p in d.iterdir() if p.is_dir() and p.name.startswith("run-")
+            ])
             # A run-N dir is "completed" if it has metrics.json (run.py writes it
             # after the harness's capture_evidence step finishes). In-flight
             # run-N dirs typically only have builder_stdout_stderr.log + raw_bodies.
@@ -216,9 +218,7 @@ def format_human(report: dict) -> str:
         lines.append(f"  progress: {completed}/{expected} runs complete")
         for f in lane["fixtures"]:
             n = lane["completed_by_fixture"].get(f, 0)
-            marker = (
-                "→" if lane["active_child"] and lane["active_child"].get("fixture") == f else " "
-            )
+            marker = "→" if lane["active_child"] and lane["active_child"].get("fixture") == f else " "
             lines.append(f"    {marker} {f}: {n}/{lane['n_per_fixture']}")
         if lane["active_child"]:
             c = lane["active_child"]
@@ -229,12 +229,12 @@ def format_human(report: dict) -> str:
         if lane["estimated_remaining_seconds"] is not None:
             est_min = lane["estimated_remaining_seconds"] // 60
             avg_min = lane["avg_seconds_per_run"] // 60
-            lines.append(f"  pace: ~{avg_min} min/run avg → estimated {est_min} min remaining")
+            lines.append(
+                f"  pace: ~{avg_min} min/run avg → estimated {est_min} min remaining"
+            )
     if report["watchdogs"]:
         lines.append("")
-        lines.append(
-            f"hang_watchdog: {len(report['watchdogs'])} running (PIDs {[w['pid'] for w in report['watchdogs']]})"
-        )
+        lines.append(f"hang_watchdog: {len(report['watchdogs'])} running (PIDs {[w['pid'] for w in report['watchdogs']]})")
     return "\n".join(lines)
 
 
@@ -245,19 +245,19 @@ def build_report() -> dict:
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "lanes": lanes,
         "builders": [
-            {"pid": b["pid"], "etime": b["etime"], "argv": b["args"]} for b in procs["builders"]
+            {"pid": b["pid"], "etime": b["etime"], "argv": b["args"]}
+            for b in procs["builders"]
         ],
         "watchdogs": [
-            {"pid": w["pid"], "etime": w["etime"], "argv": w["args"]} for w in procs["watchdogs"]
+            {"pid": w["pid"], "etime": w["etime"], "argv": w["args"]}
+            for w in procs["watchdogs"]
         ],
         "any_lane_active": bool(lanes),
     }
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--json", action="store_true", help="JSON output (default)")
     p.add_argument("--human", action="store_true", help="human-readable output")
     args = p.parse_args()

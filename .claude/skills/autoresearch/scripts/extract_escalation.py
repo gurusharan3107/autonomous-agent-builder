@@ -34,7 +34,6 @@ The calling agent's loop is then:
   4. If exit=0: proceed with normal baseline-complete handling (TSV append,
      PROGRESS.md entry, etc.)
 """
-
 from __future__ import annotations
 
 import argparse
@@ -79,32 +78,26 @@ def _convert_proposed_questions(pqs: list[dict]) -> dict:
         norm_opts = []
         for o in options:
             if isinstance(o, dict) and "label" in o:
-                norm_opts.append(
-                    {
-                        "label": o["label"],
-                        "description": o.get("description", ""),
-                    }
-                )
+                norm_opts.append({
+                    "label": o["label"],
+                    "description": o.get("description", ""),
+                })
             elif isinstance(o, str):
                 norm_opts.append({"label": o, "description": ""})
         # AskUserQuestion needs ≥2 options per question; pad with an abort
         # option if the escalation declared too few.
         if len(norm_opts) < 2:
-            norm_opts.append(
-                {
-                    "label": "Abort and investigate manually",
-                    "description": "Skip auto-recovery; operator inspects "
-                    "evidence_dir + Builder logs.",
-                }
-            )
-        questions.append(
-            {
-                "question": q.get("question", "How should the skill recover?"),
-                "header": q.get("header", "Recovery")[:12],  # AskUQ header limit
-                "multiSelect": bool(q.get("multiSelect", False)),
-                "options": norm_opts,
-            }
-        )
+            norm_opts.append({
+                "label": "Abort and investigate manually",
+                "description": "Skip auto-recovery; operator inspects "
+                               "evidence_dir + Builder logs.",
+            })
+        questions.append({
+            "question": q.get("question", "How should the skill recover?"),
+            "header": q.get("header", "Recovery")[:12],  # AskUQ header limit
+            "multiSelect": bool(q.get("multiSelect", False)),
+            "options": norm_opts,
+        })
     return {"questions": questions}
 
 
@@ -118,14 +111,12 @@ def extract(evidence_root: pathlib.Path) -> tuple[int, dict | None]:
     try:
         esc = json.loads(file.read_text())
     except (OSError, json.JSONDecodeError) as exc:
-        return 2, {"error": f"escalation file malformed: {exc}", "file": str(file)}
+        return 2, {"error": f"escalation file malformed: {exc}",
+                   "file": str(file)}
     pqs = esc.get("proposed_questions", [])
     if not pqs:
-        return 2, {
-            "error": "escalation file has no proposed_questions",
-            "file": str(file),
-            "raw_escalation": esc,
-        }
+        return 2, {"error": "escalation file has no proposed_questions",
+                   "file": str(file), "raw_escalation": esc}
     return 1, {
         "askUserQuestion_args": _convert_proposed_questions(pqs),
         "context_summary": _summarize(esc),
@@ -136,12 +127,11 @@ def extract(evidence_root: pathlib.Path) -> tuple[int, dict | None]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("evidence_root", type=pathlib.Path, help="baseline.py --evidence-root path")
-    ap.add_argument(
-        "--json",
-        action="store_true",
-        help="emit JSON output (default). Reserved for future human-readable mode.",
-    )
+    ap.add_argument("evidence_root", type=pathlib.Path,
+                    help="baseline.py --evidence-root path")
+    ap.add_argument("--json", action="store_true",
+                    help="emit JSON output (default). Reserved for future "
+                         "human-readable mode.")
     args = ap.parse_args()
     code, payload = extract(args.evidence_root)
     if payload is not None:

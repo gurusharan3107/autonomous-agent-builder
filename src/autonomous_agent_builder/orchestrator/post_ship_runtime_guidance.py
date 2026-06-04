@@ -58,11 +58,15 @@ async def _run_app_runtime_guidance_optimization(
 ) -> dict[str, Any] | None:
     started_at = datetime.now(UTC)
     telemetry_commands = (
-        await _cli_probe(orchestrator, project_root) if project_root.exists() else []
+        await _cli_probe(orchestrator, project_root)
+        if project_root.exists()
+        else []
     )
     guidance = _refresh_app_runtime_guidance_payload(orchestrator, task, project_root)
     completed_at = datetime.now(UTC)
-    updated_files = [str(path) for path in guidance.get("updated_files", []) if str(path).strip()]
+    updated_files = [
+        str(path) for path in guidance.get("updated_files", []) if str(path).strip()
+    ]
     guidance_failed = guidance.get("status") == "failed"
     guidance_command = {
         "command": "builder runtime guidance refresh",
@@ -417,7 +421,9 @@ def _post_ship_observability_payload(orchestrator: Any) -> dict[str, Any]:
     return dashboard_observability_summary(db_path)
 
 
-def _compact_optimization_payload(orchestrator: Any, payload: dict[str, Any]) -> dict[str, Any]:
+def _compact_optimization_payload(
+    orchestrator: Any, payload: dict[str, Any]
+) -> dict[str, Any]:
     coverage = payload.get("observability_coverage", {})
     aggregates = payload.get("runtime_aggregates", {})
     return {

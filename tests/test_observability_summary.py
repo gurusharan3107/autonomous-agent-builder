@@ -256,7 +256,9 @@ def test_codex_observability_summary_reports_context_budget_signal(monkeypatch, 
     assert coverage["codex"]["context_budget"]["event_count"] == 1
 
 
-def test_observability_recommendations_cover_budget_top_driver_and_app_lane(monkeypatch, tmp_path):
+def test_observability_recommendations_cover_budget_top_driver_and_app_lane(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
@@ -336,14 +338,15 @@ def test_observability_recommendations_cover_budget_top_driver_and_app_lane(monk
     assert "managed_repo_codegen_context_pack" in by_code
     assert by_code["managed_repo_codegen_context_pack"]["owner_lane"] == "managed_repo_environment"
     assert by_code["managed_repo_codegen_context_pack"]["next_actor"] == "optimization_agent"
-    assert (
-        by_code["runtime_token_budget_over_target"]["priority_rank"]
-        < by_code["managed_repo_codegen_context_pack"]["priority_rank"]
-    )
+    assert by_code["runtime_token_budget_over_target"]["priority_rank"] < by_code[
+        "managed_repo_codegen_context_pack"
+    ]["priority_rank"]
     assert by_code["agent_chat_readonly_intent_budget"]["evidence_source"] == "metrics top driver"
 
 
-def test_observability_readonly_intent_recommendation_uses_active_driver(monkeypatch, tmp_path):
+def test_observability_readonly_intent_recommendation_uses_active_driver(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
@@ -401,16 +404,15 @@ def test_observability_readonly_intent_recommendation_uses_active_driver(monkeyp
     by_code = {item["code"]: item for item in payload["deterministic_recommendations"]}
 
     assert "agent_chat_readonly_intent_budget" not in by_code
-    assert (
-        payload["optimization_summary"]["top_cost_drivers"][0]["avoidable_token_estimate"] == 30_000
-    )
-    assert (
-        payload["optimization_summary"]["active_top_cost_drivers"][0]["avoidable_token_estimate"]
-        == 0
-    )
+    assert payload["optimization_summary"]["top_cost_drivers"][0]["avoidable_token_estimate"] == 30_000
+    assert payload["optimization_summary"]["active_top_cost_drivers"][0][
+        "avoidable_token_estimate"
+    ] == 0
 
 
-def test_observability_recommendations_surface_errors_with_provenance(monkeypatch, tmp_path):
+def test_observability_recommendations_surface_errors_with_provenance(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
@@ -440,15 +442,9 @@ def test_observability_recommendations_surface_errors_with_provenance(monkeypatc
     assert payload["runtime_aggregates"]["error_summary"]["count"] == 1
     assert payload["runtime_aggregates"]["error_summary"]["total_count"] == 1
     assert payload["runtime_aggregates"]["error_summary"]["recent_count"] == 1
-    assert (
-        "Separator is not found"
-        in payload["runtime_aggregates"]["error_summary"]["recent"][0]["summary"]
-    )
+    assert "Separator is not found" in payload["runtime_aggregates"]["error_summary"]["recent"][0]["summary"]
     assert by_code["runtime_error_trend"]["evidence_source"] == "builder logs"
-    assert (
-        by_code["runtime_error_trend"]["evidence_command"]
-        == "builder logs --error --json --limit 10"
-    )
+    assert by_code["runtime_error_trend"]["evidence_command"] == "builder logs --error --json --limit 10"
     assert by_code["runtime_error_trend"]["validation_status"] == "validated"
     assert by_code["runtime_error_trend"]["priority_rank"] == 1
 
@@ -576,7 +572,9 @@ def test_observability_resolves_error_recommendation_after_same_prompt_succeeds(
     assert "runtime_error_trend" in completed_codes
 
 
-def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(monkeypatch, tmp_path):
+def test_observability_keeps_codex_error_active_until_codex_prompt_succeeds(
+    monkeypatch, tmp_path
+):
     from datetime import UTC, datetime, timedelta
 
     monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
@@ -775,7 +773,9 @@ def test_claude_observability_summary_reports_otel_gaps(monkeypatch, tmp_path):
     )
 
 
-def test_claude_observability_summary_projects_reachable_collector_status(monkeypatch, tmp_path):
+def test_claude_observability_summary_projects_reachable_collector_status(
+    monkeypatch, tmp_path
+):
     class ConnectedSocket:
         def __enter__(self):
             return self
@@ -806,7 +806,9 @@ def test_claude_observability_summary_projects_reachable_collector_status(monkey
     assert "otel_collector_unreachable" not in payload["observability_coverage"]["missing_signals"]
 
 
-def test_claude_observability_does_not_flag_tool_events_before_first_run(monkeypatch, tmp_path):
+def test_claude_observability_does_not_flag_tool_events_before_first_run(
+    monkeypatch, tmp_path
+):
     class ConnectedSocket:
         def __enter__(self):
             return self
@@ -836,7 +838,8 @@ def test_claude_observability_does_not_flag_tool_events_before_first_run(monkeyp
     assert tool_state["missing_tool_events"] is False
     assert "tool_events" not in payload["observability_coverage"]["missing_signals"]
     assert not any(
-        item["code"] == "tool_events_missing" for item in payload["deterministic_recommendations"]
+        item["code"] == "tool_events_missing"
+        for item in payload["deterministic_recommendations"]
     )
 
 
@@ -897,10 +900,15 @@ def test_claude_observability_does_not_flag_tool_events_for_provider_limit_only(
     assert tool_state["missing_tool_events"] is False
     assert "tool_events" not in payload["observability_coverage"]["missing_signals"]
     assert payload["runtime_aggregates"]["provider_limits"]["count"] == 1
-    assert any(item["code"] == "provider_limits_present" for item in payload["recommendations"])
+    assert any(
+        item["code"] == "provider_limits_present"
+        for item in payload["recommendations"]
+    )
 
 
-def test_claude_observability_summary_flags_unreachable_local_collector(monkeypatch, tmp_path):
+def test_claude_observability_summary_flags_unreachable_local_collector(
+    monkeypatch, tmp_path
+):
     def refuse_connection(*_args, **_kwargs):
         raise ConnectionRefusedError("collector not listening")
 
@@ -936,7 +944,9 @@ def test_empty_observability_summary_reports_explicit_gap(monkeypatch, tmp_path)
     assert payload["deterministic_script_candidates"] == []
 
 
-def test_codex_observability_summary_reports_missing_project_otel_config(monkeypatch, tmp_path):
+def test_codex_observability_summary_reports_missing_project_otel_config(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
@@ -953,7 +963,9 @@ def test_codex_observability_summary_reports_missing_project_otel_config(monkeyp
     )
 
 
-def test_observability_filters_recommendations_handled_by_optimizer(monkeypatch, tmp_path):
+def test_observability_filters_recommendations_handled_by_optimizer(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SDK", "claude")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
@@ -1058,12 +1070,14 @@ def test_observability_filters_recommendations_handled_by_optimizer(monkeypatch,
     assert "script_candidate_command_sequence_wrapper" not in open_codes
     assert "script_candidate_build_verify_script" in resolved_codes
     assert "script_candidate_command_sequence_wrapper" in resolved_codes
-    assert [item["priority_rank"] for item in payload["deterministic_recommendations"]] == list(
-        range(1, len(payload["deterministic_recommendations"]) + 1)
-    )
+    assert [
+        item["priority_rank"] for item in payload["deterministic_recommendations"]
+    ] == list(range(1, len(payload["deterministic_recommendations"]) + 1))
 
 
-def test_observability_approval_stalled_ignores_terminal_task_gates(monkeypatch, tmp_path):
+def test_observability_approval_stalled_ignores_terminal_task_gates(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SDK", "claude")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)
@@ -1090,7 +1104,9 @@ def test_observability_approval_stalled_ignores_terminal_task_gates(monkeypatch,
     assert "approval_stalled" not in open_codes
 
 
-def test_observability_approval_stalled_is_operator_recommendation(monkeypatch, tmp_path):
+def test_observability_approval_stalled_is_operator_recommendation(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SDK", "claude")
     db_path = tmp_path / "agent_builder.db"
     _init_db(db_path)

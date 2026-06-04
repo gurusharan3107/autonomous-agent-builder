@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
@@ -94,10 +96,8 @@ async def test_agent_approval_status_question_uses_model_backed_read_only_contex
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "No approval or prepared action is pending right now."
-                in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "No approval or prepared action is pending right now."
+            in item["payload"].get("content", ""),
         )
 
     async with factory() as db:
@@ -108,7 +108,8 @@ async def test_agent_approval_status_question_uses_model_backed_read_only_contex
             )
         )
         stop_reasons = [
-            event.payload_json.get("stop_reason") for event in status_result.scalars().all()
+            event.payload_json.get("stop_reason")
+            for event in status_result.scalars().all()
         ]
 
     content = assistant_item["payload"]["content"]
@@ -119,7 +120,6 @@ async def test_agent_approval_status_question_uses_model_backed_read_only_contex
     assert "do I need to approve anything?" in runtime_prompts[0]
     assert "end_turn" in stop_reasons
     assert "deterministic_status_check" not in stop_reasons
-
 
 @pytest.mark.asyncio
 async def test_bulk_backlog_mutation_request_stays_runtime_judgment_with_safety_contract(
@@ -189,10 +189,8 @@ async def test_bulk_backlog_mutation_request_stays_runtime_judgment_with_safety_
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "visible prepared action and explicit approval"
-                in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "visible prepared action and explicit approval"
+            in item["payload"].get("content", ""),
         )
 
     async with factory() as db:
@@ -203,7 +201,8 @@ async def test_bulk_backlog_mutation_request_stays_runtime_judgment_with_safety_
             )
         )
         stop_reasons = [
-            event.payload_json.get("stop_reason") for event in status_result.scalars().all()
+            event.payload_json.get("stop_reason")
+            for event in status_result.scalars().all()
         ]
 
     assert runtime_prompts
@@ -214,7 +213,6 @@ async def test_bulk_backlog_mutation_request_stays_runtime_judgment_with_safety_
     assert "without a visible prepared action" in assistant_item["payload"]["content"]
     assert "end_turn" in stop_reasons
     assert "deterministic_risky_mutation_guard" not in stop_reasons
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -299,16 +297,14 @@ async def test_board_remaining_prompt_uses_model_backed_status_lane(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: (
-                "Board status from Builder source of truth" in item["payload"].get("content", "")
-            ),
+            predicate=lambda item: "Board status from Builder source of truth"
+            in item["payload"].get("content", ""),
         )
 
     content = assistant_item["payload"]["content"]
     assert "Board status from Builder source of truth" in content
     assert "Queued 0, in progress 0, needs review 0, shipped 0, blocked 0" in content
     assert "No Board tasks are currently tracked." in content
-
 
 @pytest.mark.asyncio
 async def test_continue_building_shows_question_to_user_without_auto_answer(

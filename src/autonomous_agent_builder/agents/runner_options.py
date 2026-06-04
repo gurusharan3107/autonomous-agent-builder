@@ -83,7 +83,9 @@ def build_options_kwargs(
             "exclude_dynamic_sections": True,  # G2
         },
         "setting_sources": ["project"],
-        "settings": '{"autoCompactEnabled": true}' if runtime_policy.autocompact_enabled else None,
+        "settings": '{"autoCompactEnabled": true}'
+        if runtime_policy.autocompact_enabled
+        else None,
         "mcp_servers": mcp_servers,
         "permission_mode": permission_mode,
         "model": runtime_policy.model,
@@ -202,10 +204,7 @@ def map_sdk_exception_to_result(
                     "reset_hint": reset_hint,
                     "source": "claude_agent_sdk",
                 },
-                observability={
-                    **observability.summary,
-                    "runtime_policy": runtime_policy.to_payload(),
-                },
+                observability={**observability.summary, "runtime_policy": runtime_policy.to_payload()},
             )
         if exit_code in (1, 2):
             raise transient_error_cls(f"Process error (exit {exit_code}): {exc}") from exc

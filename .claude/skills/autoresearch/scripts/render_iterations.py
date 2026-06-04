@@ -76,7 +76,8 @@ def parse_baseline() -> dict:
         return _empty_baseline()
 
     a = data.get("A") or {}
-    stable = sum(1 for v in data.values() if isinstance(v, dict) and v.get("status") == "stable")
+    stable = sum(1 for v in data.values()
+                 if isinstance(v, dict) and v.get("status") == "stable")
     runs_a = [r for r in parse_baseline_runs() if r.get("fixture") == "A"]
     clean = sum(1 for r in runs_a if "shipped" in (r.get("status") or ""))
     return {
@@ -94,14 +95,10 @@ def parse_baseline() -> dict:
 
 def _empty_baseline() -> dict:
     return {
-        "measured_at": None,
-        "mean": None,
-        "stdev": None,
-        "noise_floor_2sigma": None,
-        "stable_fixtures": 0,
+        "measured_at": None, "mean": None, "stdev": None,
+        "noise_floor_2sigma": None, "stable_fixtures": 0,
         "total_fixtures": len(PROMO_ORDER),
-        "fixture_a_runs_clean": 0,
-        "fixture_a_runs_total": 0,
+        "fixture_a_runs_clean": 0, "fixture_a_runs_total": 0,
         "fixture_a_runs": [],
     }
 
@@ -113,18 +110,16 @@ def parse_baseline_runs() -> list[dict]:
         notes = r.get("notes") or ""
         m = re.search(r"status=(\w+)", notes)
         status = m.group(1) if m else ""
-        out.append(
-            {
-                "run_id": r.get("run_id"),
-                "fixture": r.get("fixture_id"),
-                "timestamp": r.get("timestamp"),
-                "gates_passed": r.get("gates_passed"),
-                "status": status,
-                "wallclock_s": parse_int(r.get("wallclock_s")),
-                "noncached_plus_output_tokens": parse_int(r.get("noncached_plus_output_tokens")),
-                "cache_ratio": float(r.get("cache_ratio") or 0) or None,
-            }
-        )
+        out.append({
+            "run_id": r.get("run_id"),
+            "fixture": r.get("fixture_id"),
+            "timestamp": r.get("timestamp"),
+            "gates_passed": r.get("gates_passed"),
+            "status": status,
+            "wallclock_s": parse_int(r.get("wallclock_s")),
+            "noncached_plus_output_tokens": parse_int(r.get("noncached_plus_output_tokens")),
+            "cache_ratio": float(r.get("cache_ratio") or 0) or None,
+        })
     return out
 
 
@@ -142,19 +137,17 @@ def parse_all_runs() -> list[dict]:
             cache_ratio = float(cache_ratio_raw) if cache_ratio_raw else None
         except (TypeError, ValueError):
             cache_ratio = None
-        out.append(
-            {
-                "fixture": r.get("fixture_id"),
-                "run_id": r.get("run_id"),
-                "timestamp": r.get("timestamp"),
-                "composite": composite_raw if composite_raw is not None else 0,
-                "cache_ratio": round(cache_ratio, 1) if cache_ratio is not None else None,
-                "gates": r.get("gates_passed") or "",
-                "wallclock_s": parse_int(r.get("wallclock_s")),
-                "status": status,
-                "feature_correct": parse_bool(r.get("feature_correct")),
-            }
-        )
+        out.append({
+            "fixture": r.get("fixture_id"),
+            "run_id": r.get("run_id"),
+            "timestamp": r.get("timestamp"),
+            "composite": composite_raw if composite_raw is not None else 0,
+            "cache_ratio": round(cache_ratio, 1) if cache_ratio is not None else None,
+            "gates": r.get("gates_passed") or "",
+            "wallclock_s": parse_int(r.get("wallclock_s")),
+            "status": status,
+            "feature_correct": parse_bool(r.get("feature_correct")),
+        })
     return out
 
 
@@ -203,21 +196,19 @@ def group_iterations(rows: list[dict], baseline: dict) -> list[dict]:
             delta_pct = round((composite - mean) / mean * 100.0, 2)
             if stdev:
                 delta_sigma = round((composite - mean) / stdev, 2)
-        out.append(
-            {
-                "index": idx,
-                "ref": ref or "(unnamed)",
-                "date": (primary.get("timestamp") or "")[:10],
-                "verdict": (primary.get("decision") or "pending").strip(),
-                "composite": composite,
-                "delta_pct": delta_pct,
-                "delta_sigma": delta_sigma,
-                "gates": f"{gates_passed_count(primary)}/6",
-                # Per-gate booleans (JSON string) so introspect.py can measure gate
-                # discrimination; "" for rows that predate the gates_json column.
-                "gates_json": primary.get("gates_json") or "",
-            }
-        )
+        out.append({
+            "index": idx,
+            "ref": ref or "(unnamed)",
+            "date": (primary.get("timestamp") or "")[:10],
+            "verdict": (primary.get("decision") or "pending").strip(),
+            "composite": composite,
+            "delta_pct": delta_pct,
+            "delta_sigma": delta_sigma,
+            "gates": f"{gates_passed_count(primary)}/6",
+            # Per-gate booleans (JSON string) so introspect.py can measure gate
+            # discrimination; "" for rows that predate the gates_json column.
+            "gates_json": primary.get("gates_json") or "",
+        })
     return out
 
 
@@ -302,10 +293,8 @@ def architecture_drift_warnings() -> list[str]:
         return []
     explainer_text = EXPLAINER.read_text()
     warnings: list[str] = []
-    for d in (
-        REPO / "scripts" / "autoresearch",
-        REPO / ".claude" / "skills" / "autoresearch" / "scripts",
-    ):
+    for d in (REPO / "scripts" / "autoresearch",
+              REPO / ".claude" / "skills" / "autoresearch" / "scripts"):
         if not d.exists():
             continue
         for f in sorted(d.glob("*.py")):
@@ -333,49 +322,37 @@ def main() -> int:
     }
 
     print(f"Generated payload at {generated_at}:")
-    print(
-        "  fixtures: "
-        + ", ".join(
-            f"{f}={fixtures[f]['status']}(runs={fixtures[f]['total_runs']})" for f in PROMO_ORDER
-        )
-    )
+    print(f"  fixtures: " + ", ".join(
+        f"{f}={fixtures[f]['status']}(runs={fixtures[f]['total_runs']})"
+        for f in PROMO_ORDER
+    ))
     print(f"  runs: {len(runs)} total across all fixtures")
     print(f"  iterations: {len(iterations)} total")
     for it in iterations:
-        print(
-            f"    #{it['index']} {it['ref']:<40} → {it['verdict']:<8}"
-            f" composite={it['composite']} Δ={it['delta_pct']}% ({it['delta_sigma']}σ)"
-        )
+        print(f"    #{it['index']} {it['ref']:<40} → {it['verdict']:<8}"
+              f" composite={it['composite']} Δ={it['delta_pct']}% ({it['delta_sigma']}σ)")
 
     warnings = architecture_drift_warnings()
     if warnings:
         print("\nArchitecture drift — scripts present but not mentioned in explainer:")
         for w in warnings:
             print(w)
-        print(
-            "  → update the architecture tables by hand; this script does NOT auto-rewrite prose."
-        )
+        print("  → update the architecture tables by hand; this script does NOT auto-rewrite prose.")
 
     if args.dry_run:
         data_json_str = json.dumps(page_data, indent=2)
         print(f"\n[dry-run] would write {OUT_JSON} ({len(json.dumps(json_payload))} bytes)")
         if not args.json_only:
             if not EXPLAINER.exists():
-                print(
-                    f"[dry-run] WARN: {EXPLAINER.relative_to(REPO)} missing — cannot preview rewrite"
-                )
+                print(f"[dry-run] WARN: {EXPLAINER.relative_to(REPO)} missing — cannot preview rewrite")
             else:
                 text = EXPLAINER.read_text()
                 new_text, found = rewrite_data_block(text, data_json_str)
                 if not found:
-                    print(
-                        '[dry-run] FAIL: <script id="autoresearch-data"> tag missing in explainer'
-                    )
+                    print(f"[dry-run] FAIL: <script id=\"autoresearch-data\"> tag missing in explainer")
                 else:
-                    print(
-                        f"[dry-run] would rewrite {EXPLAINER.relative_to(REPO)}:"
-                        f" {len(text)} → {len(new_text)} bytes"
-                    )
+                    print(f"[dry-run] would rewrite {EXPLAINER.relative_to(REPO)}:"
+                          f" {len(text)} → {len(new_text)} bytes")
                     print(f"[dry-run] data block updated ({len(data_json_str)} bytes of JSON)")
         return 0
 
@@ -404,16 +381,11 @@ def main() -> int:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Inject autoresearch data snapshot into autoresearch-explainer.html"
-        " + write iterations.json."
-    )
-    p.add_argument(
-        "--json-only",
-        action="store_true",
-        help="Write iterations.json only; skip the explainer rewrite",
-    )
-    p.add_argument(
-        "--dry-run", action="store_true", help="Show what would change without writing files"
-    )
+                    " + write iterations.json.")
+    p.add_argument("--json-only", action="store_true",
+                   help="Write iterations.json only; skip the explainer rewrite")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Show what would change without writing files")
     return p.parse_args()
 
 

@@ -45,11 +45,8 @@ def parse_ideas(ideas_md: pathlib.Path) -> list[dict]:
         return []
     text = ideas_md.read_text()
     ideas: list[dict] = []
-    for m in re.finditer(
-        r"^\s*(\d+)\.\s+\*\*([\w\-]+)\*\*\s*[—-]?\s*(.*?)(?=\n\s*\d+\.|$)",
-        text,
-        flags=re.DOTALL | re.MULTILINE,
-    ):
+    for m in re.finditer(r"^\s*(\d+)\.\s+\*\*([\w\-]+)\*\*\s*[—-]?\s*(.*?)(?=\n\s*\d+\.|$)",
+                         text, flags=re.DOTALL | re.MULTILINE):
         idx, ref, body = m.group(1), m.group(2), m.group(3).strip()
         # Files: look for "files: <list>" or "Files: ..." block inside body
         files: list[str] = []
@@ -57,15 +54,13 @@ def parse_ideas(ideas_md: pathlib.Path) -> list[dict]:
         if files_match:
             files = [f.strip() for f in re.split(r"[,;]", files_match.group(1)) if f.strip()]
         attempted = bool(re.search(r"(?im)^\s*attempted:\s*(yes|true|done|kept|discarded)", body))
-        ideas.append(
-            {
-                "index": int(idx),
-                "ref": ref,
-                "description": body.split("\n", 1)[0],
-                "files": files,
-                "attempted": attempted,
-            }
-        )
+        ideas.append({
+            "index": int(idx),
+            "ref": ref,
+            "description": body.split("\n", 1)[0],
+            "files": files,
+            "attempted": attempted,
+        })
     return ideas
 
 
@@ -117,23 +112,18 @@ def mark_idea_attempted(idea: dict, decision: str, reason: str) -> None:
     text = IDEAS_PATH.read_text()
     marker = f"\n\n> attempted: {decision} ({reason}, {time.strftime('%Y-%m-%d')})"
     pattern = rf"(\*\*{re.escape(idea['ref'])}\*\*.*?)(?=\n\s*\d+\.|$)"
-    new_text, count = re.subn(
-        pattern, lambda m: m.group(1).rstrip() + marker, text, count=1, flags=re.DOTALL
-    )
+    new_text, count = re.subn(pattern, lambda m: m.group(1).rstrip() + marker,
+                              text, count=1, flags=re.DOTALL)
     if count:
         IDEAS_PATH.write_text(new_text)
 
 
 def run_fixture(fixture: str, branch: str, port: int) -> dict:
     cmd = [
-        sys.executable,
-        str(ROOT / "scripts" / "autoresearch" / "run.py"),
-        "--fixture",
-        fixture,
-        "--branch",
-        branch,
-        "--port",
-        str(port),
+        sys.executable, str(ROOT / "scripts" / "autoresearch" / "run.py"),
+        "--fixture", fixture,
+        "--branch", branch,
+        "--port", str(port),
     ]
     out = subprocess.check_output(cmd, cwd=str(ROOT))
     return json.loads(out.decode().strip().splitlines()[-1])
@@ -141,12 +131,9 @@ def run_fixture(fixture: str, branch: str, port: int) -> dict:
 
 def compare_run(fixture: str, candidate_run_id: str) -> dict:
     cmd = [
-        sys.executable,
-        str(ROOT / "scripts" / "autoresearch" / "compare.py"),
-        "--fixture",
-        fixture,
-        "--candidate-run",
-        candidate_run_id,
+        sys.executable, str(ROOT / "scripts" / "autoresearch" / "compare.py"),
+        "--fixture", fixture,
+        "--candidate-run", candidate_run_id,
     ]
     out = subprocess.check_output(cmd, cwd=str(ROOT))
     return json.loads(out.decode())
@@ -169,7 +156,7 @@ def main() -> int:
             print("[loop] No unattempted ideas remain. Stopping.")
             break
 
-        branch = f"autoresearch/iter-{iteration + 1}-{idea['ref']}"
+        branch = f"autoresearch/iter-{iteration+1}-{idea['ref']}"
         subprocess.run(["git", "checkout", "-b", branch, base], cwd=str(ROOT), check=True)
         choice = prompt_for_edit(idea, branch)
         if choice == "skip":
@@ -219,9 +206,7 @@ def main() -> int:
                 break
 
         if promoted:
-            print(
-                f"[loop] KEEP — idea {idea['ref']} promoted A→E. Leaving branch {branch} for review."
-            )
+            print(f"[loop] KEEP — idea {idea['ref']} promoted A→E. Leaving branch {branch} for review.")
             mark_idea_attempted(idea, "kept", "promoted_all_fixtures")
         else:
             discard_branch(branch, base)

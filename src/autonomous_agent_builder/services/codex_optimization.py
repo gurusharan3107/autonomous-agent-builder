@@ -386,12 +386,11 @@ def _tool_counts(events: list[dict[str, Any]]) -> dict[str, int]:
         ):
             counts["file_read_or_search_count"] += 1
         if is_tool_event and (
-            tool_name in {"edit", "write", "apply_patch"} or "apply_patch" in command_haystack
+            tool_name in {"edit", "write", "apply_patch"}
+            or "apply_patch" in command_haystack
         ):
             counts["edit_count"] += 1
-        if any(
-            name in command_haystack for name in ("pytest", "npm test", "npm run build", "lint")
-        ):
+        if any(name in command_haystack for name in ("pytest", "npm test", "npm run build", "lint")):
             counts["deterministic_check_count"] += 1
     return counts
 

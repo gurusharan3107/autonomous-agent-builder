@@ -12,14 +12,16 @@ from autonomous_agent_builder.embedded.server.routes import agent as agent_route
 
 
 def test_typed_operator_prompt_contract_stays_model_backed() -> None:
-    agent_source = Path("src/autonomous_agent_builder/embedded/server/routes/agent.py").read_text(
-        encoding="utf-8"
-    )
+    agent_source = Path(
+        "src/autonomous_agent_builder/embedded/server/routes/agent.py"
+    ).read_text(encoding="utf-8")
     claude_contract = Path("CLAUDE.md").read_text(encoding="utf-8")
-    sdk_rubric = Path("docs/rubric/sdk-backed-agent-page-agent.md").read_text(encoding="utf-8")
-    behavior_rubric = Path("docs/rubric/deterministic-vs-model-backed-agent-behavior.md").read_text(
+    sdk_rubric = Path("docs/rubric/sdk-backed-agent-page-agent.md").read_text(
         encoding="utf-8"
     )
+    behavior_rubric = Path(
+        "docs/rubric/deterministic-vs-model-backed-agent-behavior.md"
+    ).read_text(encoding="utf-8")
     runtime_contract = Path("docs/references/runtime-switch-dashboard-contract.md").read_text(
         encoding="utf-8"
     )
@@ -62,9 +64,7 @@ def test_general_chat_prompt_turns_continue_building_into_dispatch_request(tmp_p
     assert "Do not ask the user which listed feature to build" in prompt
 
 
-def test_general_chat_prompt_requires_bounded_retrieval_before_missing_context_clarification(
-    tmp_path,
-):
+def test_general_chat_prompt_requires_bounded_retrieval_before_missing_context_clarification(tmp_path):
     prompt = agent_routes._general_chat_prompt(
         tmp_path,
         "Please create the backlog for the sprint, starting with the notification feature recommendations discussed.",
@@ -77,40 +77,24 @@ def test_general_chat_prompt_requires_bounded_retrieval_before_missing_context_c
     assert "builder backlog item list/show" in prompt
     assert "For observability, metrics, or recommendation questions" in prompt
     assert "use compact Builder-owned evidence first" in prompt
-    assert (
-        "Do not say you will check memory, backlog, board, or project state unless you actually use"
-        in prompt
-    )
+    assert "Do not say you will check memory, backlog, board, or project state unless you actually use" in prompt
     assert "Ask for clarification only after bounded retrieval cannot" in prompt
 
-
 def test_sprint_planning_intent_accepts_numbered_sprint_language() -> None:
-    assert agent_message_intent.message_requests_sprint_planning(
-        "Start Sprint 2 planning for feature-02"
-    )
+    assert agent_message_intent.message_requests_sprint_planning("Start Sprint 2 planning for feature-02")
     assert agent_message_intent.message_requests_sprint_planning("I want to start next sprint")
 
 
 def test_delivery_progress_intent_does_not_require_exact_sprint_phrase() -> None:
-    assert agent_message_intent.message_requests_autonomous_continuation(
-        "What should we build next?"
-    )
+    assert agent_message_intent.message_requests_autonomous_continuation("What should we build next?")
     assert agent_message_intent.message_requests_autonomous_continuation("Move the product forward")
     assert agent_message_intent.message_requests_autonomous_continuation("Please proceed")
     assert agent_message_intent.message_requests_autonomous_continuation("Can you go ahead?")
-    assert agent_message_intent.message_requests_autonomous_continuation(
-        "Can you start with the task?"
-    )
+    assert agent_message_intent.message_requests_autonomous_continuation("Can you start with the task?")
     assert agent_message_intent.message_requests_ambiguous_continuation("Can you go ahead?")
-    assert agent_message_intent.message_requests_ambiguous_continuation(
-        "Can you start with the task?"
-    )
-    assert not agent_message_intent.message_requests_ambiguous_continuation(
-        "I want to start next sprint"
-    )
-    assert not agent_message_intent.message_requests_autonomous_continuation(
-        "Update the documentation"
-    )
+    assert agent_message_intent.message_requests_ambiguous_continuation("Can you start with the task?")
+    assert not agent_message_intent.message_requests_ambiguous_continuation("I want to start next sprint")
+    assert not agent_message_intent.message_requests_autonomous_continuation("Update the documentation")
     assert not agent_message_intent.message_requests_autonomous_continuation(
         "Can you confirm the current status of the recovery action for the blocked task "
         "Verify Deterministic tests and build script for shipping?"

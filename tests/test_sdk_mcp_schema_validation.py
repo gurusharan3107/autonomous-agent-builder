@@ -14,17 +14,17 @@ Guards that validate_mcp_args:
 from __future__ import annotations
 
 from autonomous_agent_builder.agents.tools.sdk_mcp import (
-    _LIST_DIRECTORY_SCHEMA,
     _PARAM_ALIASES,
     _READ_FILE_SCHEMA,
     _RUN_TESTS_SCHEMA,
     _TASK_LIST_SCHEMA,
+    _LIST_DIRECTORY_SCHEMA,
     validate_mcp_args,
 )
 from autonomous_agent_builder.embedded.server.agent_tool_policy import normalize_tool_response
 
-# ── validate_mcp_args: happy-path (None means valid) ─────────────────────────
 
+# ── validate_mcp_args: happy-path (None means valid) ─────────────────────────
 
 def test_validate_mcp_args_returns_none_for_valid_run_tests():
     """run_tests with only 'test_pattern' and 'timeout_sec' is valid."""
@@ -62,7 +62,6 @@ def test_validate_mcp_args_returns_none_for_valid_task_list():
 
 # ── validate_mcp_args: known alias → self-correcting error ───────────────────
 
-
 def test_validate_mcp_args_corrects_test_p_to_test_pattern():
     """Model sends 'test_p' — must get 'use test_pattern instead' message."""
     result = validate_mcp_args("run_tests", _RUN_TESTS_SCHEMA, {"test_p": "tests/"})
@@ -93,7 +92,9 @@ def test_validate_mcp_args_corrects_item_id_to_feature_id_on_task_list():
 
 def test_validate_mcp_args_corrects_path_to_relative_path_on_list_directory():
     """Model sends 'path' to list_directory — must get 'use relative_path instead'."""
-    result = validate_mcp_args("list_directory", _LIST_DIRECTORY_SCHEMA, {"path": "src/"})
+    result = validate_mcp_args(
+        "list_directory", _LIST_DIRECTORY_SCHEMA, {"path": "src/"}
+    )
     assert result is not None
     msg = result["content"][0]["text"]
     assert "path" in msg
@@ -101,7 +102,6 @@ def test_validate_mcp_args_corrects_path_to_relative_path_on_list_directory():
 
 
 # ── validate_mcp_args: unknown param with close-match suggestion ──────────────
-
 
 def test_validate_mcp_args_suggests_close_match_for_unknown_param():
     """Unknown param with enough character overlap triggers a 'did you mean' hint."""
@@ -132,7 +132,6 @@ def test_validate_mcp_args_unknown_param_no_match_lists_allowed():
 
 # ── validate_mcp_args: missing required param ─────────────────────────────────
 
-
 def test_validate_mcp_args_reports_missing_required_param():
     """task_list without feature_id must report 'feature_id' is missing."""
     result = validate_mcp_args("task_list", _TASK_LIST_SCHEMA, {"status": "pending"})
@@ -151,7 +150,6 @@ def test_validate_mcp_args_reports_missing_required_file_path():
 
 # ── is_error envelope: surfaces in builder logs --error ──────────────────────
 
-
 def test_validate_mcp_args_error_envelope_has_is_error_true():
     """Error envelope must set is_error: True so normalize_tool_response classifies
     it as a tool_error, which is what builder logs --error filters on."""
@@ -162,14 +160,15 @@ def test_validate_mcp_args_error_envelope_has_is_error_true():
 
 def test_validate_mcp_args_error_classified_as_tool_error_by_normalize():
     """normalize_tool_response must classify the is_error envelope as tool_error."""
-    error_envelope = validate_mcp_args("read_file", _READ_FILE_SCHEMA, {"path": "src/main.py"})
+    error_envelope = validate_mcp_args(
+        "read_file", _READ_FILE_SCHEMA, {"path": "src/main.py"}
+    )
     assert error_envelope is not None
     event_type, _content = normalize_tool_response(error_envelope)
     assert event_type == "tool_error"
 
 
 # ── schema descriptions: self-correcting guidance in tool descriptions ────────
-
 
 def test_run_tests_schema_description_mentions_test_pattern():
     """Description for test_pattern must mention the correct param name to prevent
@@ -196,11 +195,12 @@ def test_task_list_schema_description_mentions_feature_id():
     desc = _TASK_LIST_SCHEMA["properties"]["feature_id"]["description"]
     assert "feature_id" in desc
     # Must warn against 'item_id', 'task_id', or 'project_id'
-    assert any(wrong in desc for wrong in ("item_id", "task_id", "project_id"))
+    assert any(
+        wrong in desc for wrong in ("item_id", "task_id", "project_id")
+    )
 
 
 # ── _PARAM_ALIASES coverage ───────────────────────────────────────────────────
-
 
 def test_param_aliases_covers_key_run_tests_aliases():
     assert "test_p" in _PARAM_ALIASES.get("run_tests", {})
@@ -214,4 +214,4 @@ def test_param_aliases_covers_key_read_file_aliases():
 
 def test_param_aliases_covers_key_task_list_aliases():
     assert "item_id" in _PARAM_ALIASES.get("task_list", {})
-    assert _PARAM_ALIASES["task_list"]["item_id"] == "feature_id"
+    assert "feature_id" == _PARAM_ALIASES["task_list"]["item_id"]

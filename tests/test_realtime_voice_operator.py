@@ -171,10 +171,7 @@ async def test_realtime_text_control_handles_simple_board_status_prompt(test_db,
     assert payload["handled"] is True
     assert payload["tool_name"] == "get_builder_agent_update"
     assert "Board status from Builder source of truth" in payload["assistant_message"]
-    assert (
-        "Queued 1, in progress 0, needs review 0, shipped 0, blocked 0."
-        in payload["assistant_message"]
-    )
+    assert "Queued 1, in progress 0, needs review 0, shipped 0, blocked 0." in payload["assistant_message"]
     assert "Backlog features 1/1 done, 0 open." in payload["assistant_message"]
     assert "queued board task" in payload["assistant_message"]
     assert "No operator decision is pending." in payload["assistant_message"]
@@ -182,7 +179,9 @@ async def test_realtime_text_control_handles_simple_board_status_prompt(test_db,
     async with factory() as db:
         result = await db.execute(
             select(ChatEvent.event_type).where(
-                ChatEvent.event_type.in_(("voice_tool_call", "voice_tool_output", "voice_digest"))
+                ChatEvent.event_type.in_(
+                    ("voice_tool_call", "voice_tool_output", "voice_digest")
+                )
             )
         )
         event_types = set(result.scalars().all())
@@ -271,21 +270,12 @@ async def test_realtime_text_control_defaults_to_current_sprint_scope(test_db, t
     assert response.status_code == 200
     payload = response.json()
     assert payload["handled"] is True
-    assert (
-        "Current sprint Board status from Builder source of truth (`Sprint 2`):"
-        in payload["assistant_message"]
-    )
-    assert (
-        "Queued 0, in progress 0, needs review 0, shipped 1, blocked 0."
-        in payload["assistant_message"]
-    )
+    assert "Current sprint Board status from Builder source of truth (`Sprint 2`):" in payload["assistant_message"]
+    assert "Queued 0, in progress 0, needs review 0, shipped 1, blocked 0." in payload["assistant_message"]
     assert "Backlog features 2/2 done, 0 open." in payload["assistant_message"]
     assert "Current sprint `Sprint 2` is shipped." in payload["assistant_message"]
     assert payload["assistant_message"].endswith("No operator decision is pending.")
-    assert (
-        "Verify Deterministic tests and build script for shipping"
-        not in payload["assistant_message"]
-    )
+    assert "Verify Deterministic tests and build script for shipping" not in payload["assistant_message"]
     assert "queued board task" not in payload["assistant_message"]
 
 
@@ -629,7 +619,9 @@ async def test_get_builder_status_includes_blocked_board_tasks(test_db, tmp_path
 
 
 @pytest.mark.asyncio
-async def test_get_builder_status_uses_board_lane_counts_for_waiting_task(test_db, tmp_path: Path):
+async def test_get_builder_status_uses_board_lane_counts_for_waiting_task(
+    test_db, tmp_path: Path
+):
     _, factory = test_db
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -839,7 +831,9 @@ async def test_get_builder_status_includes_pending_approval_context(test_db, tmp
 
 
 @pytest.mark.asyncio
-async def test_get_builder_status_includes_prepared_voice_action_context(test_db, tmp_path: Path):
+async def test_get_builder_status_includes_prepared_voice_action_context(
+    test_db, tmp_path: Path
+):
     _, factory = test_db
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -1559,7 +1553,8 @@ async def test_voice_completion_notifier_persists_digest_after_nonblocking_deleg
         event for event in events if event.event_type == "voice_completion_notification"
     )
     assert (
-        digest.payload_json["spoken_summary"] == "Verification passed with deterministic evidence."
+        digest.payload_json["spoken_summary"]
+        == "Verification passed with deterministic evidence."
     )
     assert digest.payload_json["completion_trigger"] == "agent_task_done_callback"
     assert digest.payload_json["evidence_refs"][0]["kind"] == "agent_event"
@@ -1579,7 +1574,6 @@ async def test_recover_blocked_run_without_board_target_reports_not_recoverable(
         dashboard_path=tmp_path,
         project_root=tmp_path,
     )
-
     async def fake_run_chat_turn(app_arg: Any, session_id: str, message: str) -> None:
         raise AssertionError("Board recovery must not fabricate an Agent-page recovery run")
 
@@ -1699,7 +1693,8 @@ async def test_voice_tool_output_persists_terminal_recovery_evidence(test_db, tm
                 "status": "not_recoverable",
                 "completion_status": "not_recoverable",
                 "operator_message": (
-                    "No recoverable Board task is currently blocked, failed, or capability-limited."
+                    "No recoverable Board task is currently blocked, failed, "
+                    "or capability-limited."
                 ),
                 "recommended_tool": "open_run_trace",
                 "capability_decision": {"decision": "not_recoverable"},

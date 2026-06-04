@@ -100,8 +100,12 @@ class TestProjectRoutes:
         assert resp.json() == []
 
     async def test_list_projects_returns_created(self, client, test_db):
-        await client.post("/api/projects/", json={"name": "proj-a", "language": "python"})
-        await client.post("/api/projects/", json={"name": "proj-b", "language": "node"})
+        await client.post(
+            "/api/projects/", json={"name": "proj-a", "language": "python"}
+        )
+        await client.post(
+            "/api/projects/", json={"name": "proj-b", "language": "node"}
+        )
         resp = await client.get("/api/projects/")
         assert resp.status_code == 200
         names = [p["name"] for p in resp.json()]
@@ -127,7 +131,9 @@ class TestFeatureRoutes:
     """Test /api/projects/{id}/features and /api/features/{id} endpoints."""
 
     async def _create_project(self, client):
-        resp = await client.post("/api/projects/", json={"name": "feat-proj", "language": "python"})
+        resp = await client.post(
+            "/api/projects/", json={"name": "feat-proj", "language": "python"}
+        )
         return resp.json()["id"]
 
     async def test_create_feature(self, client, test_db):
@@ -219,7 +225,9 @@ class TestFeatureRoutes:
         assert [row["id"] for row in list_resp.json()] == [item["id"]]
         assert (tmp_path / ".claude" / "progress" / "incident-list.json").exists()
 
-    async def test_create_typed_backlog_item_rejects_multiple_tags(self, client, test_db, tmp_path):
+    async def test_create_typed_backlog_item_rejects_multiple_tags(
+        self, client, test_db, tmp_path
+    ):
         client._transport.app.state.project_root = tmp_path
         pid = await self._create_project(client)
 
@@ -237,7 +245,9 @@ class TestFeatureRoutes:
         assert resp.status_code == 422
         assert resp.json()["detail"]["code"] == "invalid_backlog_item"
 
-    async def test_update_typed_backlog_item(self, client, test_db, tmp_path):
+    async def test_update_typed_backlog_item(
+        self, client, test_db, tmp_path
+    ):
         client._transport.app.state.project_root = tmp_path
         pid = await self._create_project(client)
         create_resp = await client.post(
@@ -269,7 +279,9 @@ class TestFeatureRoutes:
         assert item["source"] == "validation"
         assert item["evidence"] == "Closeout required manual tag normalization."
 
-    async def test_update_typed_backlog_item_rejects_multiple_tags(self, client, test_db, tmp_path):
+    async def test_update_typed_backlog_item_rejects_multiple_tags(
+        self, client, test_db, tmp_path
+    ):
         client._transport.app.state.project_root = tmp_path
         pid = await self._create_project(client)
         create_resp = await client.post(
@@ -322,7 +334,9 @@ class TestFeatureRoutes:
         assert resp.status_code == 409
         assert resp.json()["detail"]["code"] == "backlog_item_terminal"
 
-    async def test_cancel_already_cancelled_backlog_item_rejected(self, client, test_db, tmp_path):
+    async def test_cancel_already_cancelled_backlog_item_rejected(
+        self, client, test_db, tmp_path
+    ):
         client._transport.app.state.project_root = tmp_path
         pid = await self._create_project(client)
         create_resp = await client.post(
@@ -385,7 +399,9 @@ class TestTaskRoutes:
     """Test /api/features/{id}/tasks and /api/tasks/{id} endpoints."""
 
     async def _create_feature(self, client):
-        proj = await client.post("/api/projects/", json={"name": "task-proj", "language": "python"})
+        proj = await client.post(
+            "/api/projects/", json={"name": "task-proj", "language": "python"}
+        )
         feat = await client.post(
             f"/api/projects/{proj.json()['id']}/features",
             json={"title": "Task feature"},
@@ -404,9 +420,7 @@ class TestTaskRoutes:
         assert data["complexity"] == 3
         assert data["status"] == "pending"
 
-    async def test_create_task_reconciles_superseded_required_docs(
-        self, client, monkeypatch, tmp_path
-    ):
+    async def test_create_task_reconciles_superseded_required_docs(self, client, monkeypatch, tmp_path):
         kb_root = tmp_path / ".agent-builder" / "knowledge" / "feature"
         kb_root.mkdir(parents=True)
         (kb_root / "current-onboarding.md").write_text(
@@ -536,12 +550,14 @@ class TestTaskRoutes:
 
         resp = await client.put(
             f"/api/tasks/{task_id}",
-            json={"depends_on": {"system_docs": {"required_docs": ["feature/superseded.md"]}}},
+            json={
+                "depends_on": {
+                    "system_docs": {"required_docs": ["feature/superseded.md"]}
+                }
+            },
         )
         assert resp.status_code == 200
-        assert resp.json()["depends_on"]["system_docs"]["required_docs"] == [
-            "feature/replacement.md"
-        ]
+        assert resp.json()["depends_on"]["system_docs"]["required_docs"] == ["feature/replacement.md"]
 
     async def test_create_task_feature_not_found(self, client, test_db):
         resp = await client.post(
@@ -552,15 +568,21 @@ class TestTaskRoutes:
 
     async def test_list_tasks(self, client, test_db):
         fid = await self._create_feature(client)
-        await client.post(f"/api/features/{fid}/tasks", json={"title": "Task 1"})
-        await client.post(f"/api/features/{fid}/tasks", json={"title": "Task 2"})
+        await client.post(
+            f"/api/features/{fid}/tasks", json={"title": "Task 1"}
+        )
+        await client.post(
+            f"/api/features/{fid}/tasks", json={"title": "Task 2"}
+        )
         resp = await client.get(f"/api/features/{fid}/tasks")
         assert resp.status_code == 200
         assert len(resp.json()) == 2
 
     async def test_get_task_by_id(self, client, test_db):
         fid = await self._create_feature(client)
-        create_resp = await client.post(f"/api/features/{fid}/tasks", json={"title": "Get me"})
+        create_resp = await client.post(
+            f"/api/features/{fid}/tasks", json={"title": "Get me"}
+        )
         tid = create_resp.json()["id"]
         resp = await client.get(f"/api/tasks/{tid}")
         assert resp.status_code == 200
@@ -582,7 +604,9 @@ class TestGateRoutes:
 
     async def test_list_gate_results_serializes_model_fields(self, client, test_db):
         _, factory = test_db
-        proj = await client.post("/api/projects/", json={"name": "gate-proj", "language": "python"})
+        proj = await client.post(
+            "/api/projects/", json={"name": "gate-proj", "language": "python"}
+        )
         feat = await client.post(
             f"/api/projects/{proj.json()['id']}/features",
             json={"title": "Gate feature"},
@@ -781,7 +805,9 @@ class TestDispatchRoute:
     """Test /api/dispatch endpoint."""
 
     async def test_dispatch_task_not_found(self, client, test_db):
-        resp = await client.post("/api/dispatch", json={"task_id": "nonexistent"})
+        resp = await client.post(
+            "/api/dispatch", json={"task_id": "nonexistent"}
+        )
         assert resp.status_code == 404
 
     async def test_dispatch_valid_task(self, client, test_db, monkeypatch):
@@ -805,7 +831,9 @@ class TestDispatchRoute:
         )
         task_id = task.json()["id"]
         try:
-            resp = await client.post("/api/dispatch", json={"task_id": task_id})
+            resp = await client.post(
+                "/api/dispatch", json={"task_id": task_id}
+            )
         finally:
             release_dispatch(task_id)
         assert resp.status_code == 200
@@ -911,11 +939,7 @@ class TestDispatchRoute:
         async with factory() as db:
             task_row = await db.get(Task, task_id)
             task_row.status = task_status
-            task_row.blocked_reason = (
-                "provider limit blocked"
-                if task_status == TaskStatus.CAPABILITY_LIMIT
-                else "blocked"
-            )
+            task_row.blocked_reason = "provider limit blocked" if task_status == TaskStatus.CAPABILITY_LIMIT else "blocked"
             if task_status == TaskStatus.CAPABILITY_LIMIT:
                 task_row.depends_on = {
                     "provider_limit": {
@@ -1019,7 +1043,9 @@ class TestDispatchRoute:
             task_row = await db.get(Task, task_id)
             task_row.status = TaskStatus.BLOCKED
             task_row.phase = TaskPhase.VERIFICATION
-            task_row.blocked_reason = "documentation refresh gate blocked: validation failed without actionable stale maintained docs"
+            task_row.blocked_reason = (
+                "documentation refresh gate blocked: validation failed without actionable stale maintained docs"
+            )
             await db.commit()
 
         resp = await client.post(f"/api/tasks/{task_id}/recover")
@@ -1078,7 +1104,9 @@ class TestDispatchRoute:
         assert verify.json()["status"] == "implementation"
         assert verify.json()["blocked_reason"] is None
 
-    async def test_recover_allows_capability_limit_task_from_preserved_phase(self, client, test_db):
+    async def test_recover_allows_capability_limit_task_from_preserved_phase(
+        self, client, test_db
+    ):
         proj = await client.post(
             "/api/projects/", json={"name": "dispatch-proj", "language": "python"}
         )

@@ -12,7 +12,9 @@ from autonomous_agent_builder.runtime.codex_app_server_runtime import CodexAppSe
 
 class _FakeStdout:
     def __init__(self, messages: list[dict[str, Any]]):
-        self._lines = [(json.dumps(message) + "\n").encode("utf-8") for message in messages]
+        self._lines = [
+            (json.dumps(message) + "\n").encode("utf-8") for message in messages
+        ]
 
     async def readline(self) -> bytes:
         if not self._lines:
@@ -22,7 +24,9 @@ class _FakeStdout:
 
 class _IdleStdout:
     def __init__(self, messages: list[dict[str, Any]]):
-        self._lines = [(json.dumps(message) + "\n").encode("utf-8") for message in messages]
+        self._lines = [
+            (json.dumps(message) + "\n").encode("utf-8") for message in messages
+        ]
 
     async def readline(self) -> bytes:
         if self._lines:
@@ -313,9 +317,7 @@ async def test_codex_app_server_runtime_routes_command_approvals_to_permission_c
 
     assert result.success is True
     assert process.stdin.messages[3]["params"]["approvalPolicy"] == "on-request"
-    approval_response = next(
-        message for message in process.stdin.messages if message.get("id") == 4
-    )
+    approval_response = next(message for message in process.stdin.messages if message.get("id") == 4)
     assert approval_response["result"]["decision"] == "decline"
     assert len(permission_calls) == 1
     tool_name, input_data = permission_calls[0]
@@ -700,7 +702,8 @@ async def test_codex_app_server_runtime_maps_provider_limit_output(monkeypatch, 
         lambda name: "/usr/local/bin/codex",
     )
     limit_text = (
-        "You've hit your usage limit. To get more access now, send a request to your administrator."
+        "You've hit your usage limit. To get more access now, send a request to "
+        "your administrator."
     )
     process = _FakeProcess(
         [

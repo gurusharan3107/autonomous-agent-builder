@@ -21,6 +21,7 @@ from autonomous_agent_builder.services.dispatch_lock import (
     reserve_project_dispatch,
 )
 
+
 # ---------------------------------------------------------------------------
 # Unit tests for dispatch_lock project-level guard (IMP-007)
 # ---------------------------------------------------------------------------
@@ -84,7 +85,9 @@ def _make_embedded_app(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_dispatch_returns_scaffold_pending_when_scaffold_agent_running(test_db, tmp_path):
+async def test_dispatch_returns_scaffold_pending_when_scaffold_agent_running(
+    test_db, tmp_path
+):
     """IMP-009: dispatch route must block while a scaffold AgentRun is running."""
     _, factory = test_db
     app = _make_embedded_app(tmp_path)
@@ -121,7 +124,9 @@ async def test_dispatch_returns_scaffold_pending_when_scaffold_agent_running(tes
 
 
 @pytest.mark.asyncio
-async def test_dispatch_returns_project_busy_when_project_already_dispatching(test_db, tmp_path):
+async def test_dispatch_returns_project_busy_when_project_already_dispatching(
+    test_db, tmp_path
+):
     """IMP-007: second task in same project returns project_busy while first is dispatching."""
     from autonomous_agent_builder.services import dispatch_lock
 
