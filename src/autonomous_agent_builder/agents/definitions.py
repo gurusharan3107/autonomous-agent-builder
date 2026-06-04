@@ -819,7 +819,12 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         ),
         tools=(),
         auto_approve_tools=("Agent", *DOCUMENTATION_AGENT_TOOLS),
-        model="sonnet",
+        # IMP-035 win #1: this lane does zero reasoning — it dispatches one Agent
+        # call to documentation-agent and returns the child's JSON unchanged — so
+        # the parent runs on haiku. The real work happens in the (sonnet)
+        # documentation-agent child. Kept out of the implementation_model bucket
+        # in execution_policy._model_for_agent so this value is the resolved model.
+        model="haiku",
         max_turns=8,
         max_budget_usd=2.00,
     ),

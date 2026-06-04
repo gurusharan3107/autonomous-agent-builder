@@ -253,12 +253,14 @@ def _model_for_agent(agent_def: AgentDefinition, settings: Settings) -> str:
         "chat",
         "code-gen",
         "init-project-chat",
-        "documentation-bridge",
         "integration-resolver",
         "optimization-agent",
         "feature-verifier",
     }:
         return settings.agent.implementation_model
+    # documentation-bridge is intentionally NOT in the implementation_model bucket
+    # (IMP-035 win #1): it is a zero-reasoning Agent-tool pass-through, so it falls
+    # through to its AgentDefinition.model ("haiku") instead of the sonnet default.
     if agent_def.name in {"pr-creator", "build-verifier"}:
         return settings.agent.pr_model
     return agent_def.model

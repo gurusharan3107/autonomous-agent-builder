@@ -9,6 +9,20 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-04 - IMP-035a: documentation-bridge parent runs on haiku
+
+Full-lane capability-fit audit (all 13 Claude Agent SDK phases vs `claude-agent-sdk-rubric`) confirmed the lane is already well-tuned — G1/G2/G7, `cache_read_input_tokens` tracking, `ClaudeSDKClient` multi-turn streaming, the `trim_tool_output` PostToolUse hook, planner→designer resume-chaining, and per-role model tiers are all already optimal (credited, not re-recommended). Three genuine under-uses surfaced (→ ROADMAP IMP-035). Shipping the one structural certainty:
+
+### Changed
+
+- `agents/definitions.py` + `agents/execution_policy.py` — `documentation-bridge` is a zero-reasoning Agent-tool pass-through (`tools=()`, prompt = "invoke documentation-agent, return its JSON unchanged"), but `_model_for_agent` bucketed it into `implementation_model` (sonnet), wasting parent tokens. Moved it out of that bucket → falls through to `AgentDefinition.model="haiku"`; `_thinking_for_model("haiku")` → None. The real reasoning stays in the (sonnet) documentation-agent child.
+- `tests/test_execution_policy.py` — `EXPECTED_ROLE_POLICIES["documentation-bridge"]` thinking `_ADAPTIVE`→`None` (coupled to the haiku move) + new `test_documentation_bridge_parent_runs_on_haiku`.
+
+### Notes
+
+- 035b (optimization-agent evidence-sweep subagent) and 035c (init-project-chat effort medium→low) parked on ROADMAP — calibration tweaks needing live validation.
+- Audit correction: `chat` is in the `implementation_model` bucket → resolves to **sonnet**, not haiku as first stated. Possible larger win (chat runs often) but may be intentional for interview quality — flagged on ROADMAP, not acted on.
+
 ## 2026-06-04 - IMP-034a: Product-UI design directive injected into UI code-gen
 
 Operator observation: generated apps lack UI taste. Root cause — **no design guidance existed in any agent prompt**, so `code-gen` shipped generic AI-slop UIs (default blue/purple, missing interactive states, ad-hoc spacing, flat type). Fix distills the transferable, stack-agnostic subset of the third-party `taste-skill` project + Vercel Web Interface Guidelines / Refactoring UI / NN/g heuristics into a compact directive (the upstream skill is landing-page-scoped, React/Tailwind-bound, and ~35K tokens — deliberately NOT inlined). Mechanism rejected: installing the skill via `npx skills add` — the builder's code-gen runs in ephemeral workspaces with no `.claude`, so it discovers no filesystem skills; guidance must be prompt-enrichment (see `verifier-skill-vs-prompt`).
