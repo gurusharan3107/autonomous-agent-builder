@@ -53,7 +53,9 @@ def bridge_available() -> bool:
         return False
 
 
-async def hermes_bridge(payload: dict[str, Any], *, timeout: float = _BRIDGE_TIMEOUT_S) -> dict[str, Any]:
+async def hermes_bridge(
+    payload: dict[str, Any], *, timeout: float = _BRIDGE_TIMEOUT_S
+) -> dict[str, Any]:
     """Send one JSON payload to the Hermes bridge socket and return the parsed reply.
 
     Never raises on connection/timeout — returns a structured error dict so the
@@ -63,10 +65,8 @@ async def hermes_bridge(payload: dict[str, Any], *, timeout: float = _BRIDGE_TIM
     if not bridge_available():
         return {"ok": False, "error": "bridge_unavailable", "detail": f"no socket at {path}"}
     try:
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_unix_connection(path), timeout=10.0
-        )
-    except (OSError, asyncio.TimeoutError) as exc:
+        reader, writer = await asyncio.wait_for(asyncio.open_unix_connection(path), timeout=10.0)
+    except (TimeoutError, OSError) as exc:
         return {"ok": False, "error": "bridge_connect_failed", "detail": str(exc)}
     try:
         writer.write(json.dumps(payload).encode())
@@ -76,7 +76,7 @@ async def hermes_bridge(payload: dict[str, Any], *, timeout: float = _BRIDGE_TIM
         except OSError:
             pass
         raw = await asyncio.wait_for(reader.read(), timeout=timeout)
-    except (OSError, asyncio.TimeoutError) as exc:
+    except (TimeoutError, OSError) as exc:
         return {"ok": False, "error": "bridge_io_failed", "detail": str(exc)}
     finally:
         writer.close()
@@ -215,9 +215,15 @@ async def browser_navigate(url: str, *, session_name: str = "builder-verify") ->
     if not reply.get("success", reply.get("ok", False)):
         return {"ok": False, "error": reply.get("error", "navigate_failed"), "detail": reply}
     ctx = _first_result(reply, "page_context")
-    return {"ok": True, "url": ctx.get("url", reply.get("final_url", url)), "title": ctx.get("title", ""),
-            "headings": ctx.get("headings", []), "nav": ctx.get("nav", []),
-            "buttons": ctx.get("buttons", []), "inputs": ctx.get("inputs", [])}
+    return {
+        "ok": True,
+        "url": ctx.get("url", reply.get("final_url", url)),
+        "title": ctx.get("title", ""),
+        "headings": ctx.get("headings", []),
+        "nav": ctx.get("nav", []),
+        "buttons": ctx.get("buttons", []),
+        "inputs": ctx.get("inputs", []),
+    }
 
 
 async def browser_page_context(*, session_name: str = "builder-verify") -> dict[str, Any]:
@@ -227,7 +233,10 @@ async def browser_page_context(*, session_name: str = "builder-verify") -> dict[
     if not reply.get("success", reply.get("ok", False)):
         return {"ok": False, "error": reply.get("error", "page_context_failed"), "detail": reply}
     ctx = _first_result(reply, "page_context")
-    return {"ok": True, **{k: ctx.get(k) for k in ("url", "title", "headings", "nav", "buttons", "inputs")}}
+    return {
+        "ok": True,
+        **{k: ctx.get(k) for k in ("url", "title", "headings", "nav", "buttons", "inputs")},
+    }
 
 
 async def browser_read_text(*, session_name: str = "builder-verify") -> dict[str, Any]:
@@ -237,7 +246,12 @@ async def browser_read_text(*, session_name: str = "builder-verify") -> dict[str
     if not reply.get("success", reply.get("ok", False)):
         return {"ok": False, "error": reply.get("error", "read_text_failed"), "detail": reply}
     res = _first_result(reply, "text")
-    return {"ok": True, "url": res.get("url"), "title": res.get("title"), "text": res.get("text", "")}
+    return {
+        "ok": True,
+        "url": res.get("url"),
+        "title": res.get("title"),
+        "text": res.get("text", ""),
+    }
 
 
 async def browser_click_text(text: str, *, session_name: str = "builder-verify") -> dict[str, Any]:
@@ -254,11 +268,19 @@ async def browser_click_text(text: str, *, session_name: str = "builder-verify")
     if not reply.get("success", reply.get("ok", False)):
         return {"ok": False, "error": reply.get("error", "click_failed"), "detail": reply}
     ctx = _first_result(reply, "page_context")
-    return {"ok": True, "clicked": text, "url": ctx.get("url"), "title": ctx.get("title"),
-            "buttons": ctx.get("buttons", []), "inputs": ctx.get("inputs", [])}
+    return {
+        "ok": True,
+        "clicked": text,
+        "url": ctx.get("url"),
+        "title": ctx.get("title"),
+        "buttons": ctx.get("buttons", []),
+        "inputs": ctx.get("inputs", []),
+    }
 
 
-async def browser_fill(selector: str, value: str, *, session_name: str = "builder-verify") -> dict[str, Any]:
+async def browser_fill(
+    selector: str, value: str, *, session_name: str = "builder-verify"
+) -> dict[str, Any]:
     """Fill the form field matched by CSS ``selector`` with ``value`` and return
     the resulting page context."""
     reply = await _run(
@@ -271,7 +293,12 @@ async def browser_fill(selector: str, value: str, *, session_name: str = "builde
     if not reply.get("success", reply.get("ok", False)):
         return {"ok": False, "error": reply.get("error", "fill_failed"), "detail": reply}
     ctx = _first_result(reply, "page_context")
-    return {"ok": True, "selector": selector, "url": ctx.get("url"), "inputs": ctx.get("inputs", [])}
+    return {
+        "ok": True,
+        "selector": selector,
+        "url": ctx.get("url"),
+        "inputs": ctx.get("inputs", []),
+    }
 
 
 async def browser_screenshot(*, session_name: str = "builder-verify") -> dict[str, Any]:

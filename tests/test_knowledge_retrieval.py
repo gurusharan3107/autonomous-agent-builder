@@ -130,9 +130,7 @@ def test_load_docs_cache_isolated_by_resolved_root_with_same_mtime(tmp_path, mon
     monkeypatch.setattr(
         retrieval,
         "knowledge_root",
-        lambda scope="local": selected_root["path"]
-        if scope != "global"
-        else tmp_path / "global",
+        lambda scope="local": selected_root["path"] if scope != "global" else tmp_path / "global",
     )
     retrieval.reset_docs_cache()
 
@@ -171,8 +169,6 @@ def test_search_docs_strips_content_from_results_by_default(kb_root):
 
 
 def test_search_docs_include_content_returns_full_body(kb_root):
-    results = retrieval.search_docs(
-        "phase", scope="local", limit=5, include_content=True
-    )
+    results = retrieval.search_docs("phase", scope="local", limit=5, include_content=True)
     assert results
     assert any("content" in doc for doc in results)

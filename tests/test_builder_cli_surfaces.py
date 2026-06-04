@@ -60,7 +60,9 @@ def test_publish_dashboard_assets_builds_frontend_and_copies_dist(monkeypatch, t
         calls.append((cmd, Path(cwd) if cwd is not None else Path(".")))
         return None
 
-    monkeypatch.setattr(start_impl_module.shutil, "which", lambda name: name if name == "npm" else None)
+    monkeypatch.setattr(
+        start_impl_module.shutil, "which", lambda name: name if name == "npm" else None
+    )
     monkeypatch.setattr(start_impl_module.subprocess, "run", fake_run)
 
     result = start_impl_module._publish_dashboard_assets(project_root, dashboard_dir)
@@ -96,7 +98,9 @@ def test_run_start_defaults_to_9876_and_reuses_that_port(monkeypatch, tmp_path: 
     ) -> None:
         checks.append((agent_builder_dir, port, force))
 
-    def fake_publish_dashboard_assets(project_root: Path, dashboard_path: Path) -> dict[str, object]:
+    def fake_publish_dashboard_assets(
+        project_root: Path, dashboard_path: Path
+    ) -> dict[str, object]:
         assert project_root == tmp_path
         assert dashboard_path == dashboard_dir
         return {}
@@ -116,7 +120,9 @@ def test_run_start_defaults_to_9876_and_reuses_that_port(monkeypatch, tmp_path: 
         assert agent_builder_dir == expected_agent_builder_dir
         starts.append((host, port))
 
-    monkeypatch.setattr(start_impl_module, "_publish_dashboard_assets", fake_publish_dashboard_assets)
+    monkeypatch.setattr(
+        start_impl_module, "_publish_dashboard_assets", fake_publish_dashboard_assets
+    )
     monkeypatch.setattr(start_impl_module, "_start_uvicorn", fake_start_uvicorn)
 
     import autonomous_agent_builder.cli.port_manager as port_manager_module
@@ -128,7 +134,9 @@ def test_run_start_defaults_to_9876_and_reuses_that_port(monkeypatch, tmp_path: 
         fake_ensure_builder_port_available,
     )
 
-    result = start_impl_module.run_start(agent_builder_dir=agent_builder_dir, port=None, host="127.0.0.1", debug=False)
+    result = start_impl_module.run_start(
+        agent_builder_dir=agent_builder_dir, port=None, host="127.0.0.1", debug=False
+    )
 
     assert result["status"] == "started"
     assert result["port"] == 9876
@@ -499,11 +507,7 @@ def test_change_evidence_script_reports_git_diff(monkeypatch, tmp_path):
     scripts_dir.mkdir(parents=True)
     (tmp_path / "tracked.txt").write_text("before\n", encoding="utf-8")
     git_env = {
-        **{
-            key: value
-            for key, value in os.environ.items()
-            if not key.startswith("GIT_")
-        },
+        **{key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
         "GIT_AUTHOR_NAME": "Test",
         "GIT_AUTHOR_EMAIL": "test@example.com",
         "GIT_COMMITTER_NAME": "Test",
@@ -569,8 +573,18 @@ def test_logs_analyze_returns_prompt_level_observability(monkeypatch, tmp_path):
     )
     events = [
         ("u1", "user_message", {"content": "which project is this?"}, "2026-04-22 10:00:00"),
-        ("t1", "tool_result", {"tool_name": "Glob", "tool_input": {"pattern": "README*"}}, "2026-04-22 10:00:01"),
-        ("a1", "assistant_message", {"content": "This is autonomous-agent-builder."}, "2026-04-22 10:00:02"),
+        (
+            "t1",
+            "tool_result",
+            {"tool_name": "Glob", "tool_input": {"pattern": "README*"}},
+            "2026-04-22 10:00:01",
+        ),
+        (
+            "a1",
+            "assistant_message",
+            {"content": "This is autonomous-agent-builder."},
+            "2026-04-22 10:00:02",
+        ),
         (
             "s1",
             "run_status",
@@ -892,7 +906,9 @@ def test_logs_ndjson_emits_line_delimited_compact_events(monkeypatch, tmp_path):
 
     monkeypatch.chdir(tmp_path)
 
-    result = runner.invoke(app, ["logs", "--session", "sess-ndjson", "--error", "--compact", "--ndjson", "--no-follow"])
+    result = runner.invoke(
+        app, ["logs", "--session", "sess-ndjson", "--error", "--compact", "--ndjson", "--no-follow"]
+    )
 
     assert result.exit_code == 0
     lines = [line for line in result.stdout.splitlines() if line.strip()]
@@ -979,7 +995,9 @@ def test_logs_info_ndjson_auto_compacts_filtered_lane(monkeypatch, tmp_path):
 
     monkeypatch.chdir(tmp_path)
 
-    result = runner.invoke(app, ["logs", "--session", "sess-ndjson-info", "--info", "--ndjson", "--no-follow"])
+    result = runner.invoke(
+        app, ["logs", "--session", "sess-ndjson-info", "--info", "--ndjson", "--no-follow"]
+    )
 
     assert result.exit_code == 0
     lines = [line for line in result.stdout.splitlines() if line.strip()]
@@ -1054,7 +1072,7 @@ def test_logs_raw_json_returns_exact_event_rows(monkeypatch, tmp_path):
             json.dumps(
                 {
                     "tool_name": "mcp__builder__board",
-                    "content": "{\"status\":\"ok\"}",
+                    "content": '{"status":"ok"}',
                 }
             ),
             "completed",
@@ -1082,7 +1100,7 @@ def test_logs_raw_json_returns_exact_event_rows(monkeypatch, tmp_path):
         "status": "completed",
         "payload": {
             "tool_name": "mcp__builder__board",
-            "content": "{\"status\":\"ok\"}",
+            "content": '{"status":"ok"}',
         },
         "tool_use_id": "toolu_123",
         "response_to_event_id": "evt-parent",
@@ -1245,7 +1263,9 @@ def test_logs_raw_json_respects_type_and_limit_filters(monkeypatch, tmp_path):
     assert payload["results"][0]["id"] == "evt-tool-2"
 
 
-def test_logs_raw_json_regression_surface_shows_board_and_kb_without_backlog_tools(monkeypatch, tmp_path):
+def test_logs_raw_json_regression_surface_shows_board_and_kb_without_backlog_tools(
+    monkeypatch, tmp_path
+):
     agent_builder_dir = tmp_path / ".agent-builder"
     agent_builder_dir.mkdir(parents=True)
     db_path = agent_builder_dir / "agent_builder.db"
@@ -1278,7 +1298,7 @@ def test_logs_raw_json_regression_surface_shows_board_and_kb_without_backlog_too
             "evt-board",
             "2bbc4443-cc7a-42ab-8f6b-767967966ffe",
             "tool_result",
-            json.dumps({"tool_name": "mcp__builder__board", "content": "{\"pending\":[]}"}),
+            json.dumps({"tool_name": "mcp__builder__board", "content": '{"pending":[]}'}),
             "completed",
             "toolu_board",
             None,
@@ -1288,7 +1308,12 @@ def test_logs_raw_json_regression_surface_shows_board_and_kb_without_backlog_too
             "evt-kb",
             "2bbc4443-cc7a-42ab-8f6b-767967966ffe",
             "tool_result",
-            json.dumps({"tool_name": "mcp__builder__kb_show", "content": "{\"id\":\"system-docs/project-overview.md\"}"}),
+            json.dumps(
+                {
+                    "tool_name": "mcp__builder__kb_show",
+                    "content": '{"id":"system-docs/project-overview.md"}',
+                }
+            ),
             "completed",
             "toolu_kb",
             None,
@@ -1355,7 +1380,7 @@ def test_logs_command_supports_info_compact(monkeypatch, tmp_path):
                 {
                     "tool_name": "mcp__builder__kb_add",
                     "tool_input": {"doc_type": "feature"},
-                    "content": "{\"status\":\"ok\",\"id\":\"feature/doc.md\"}",
+                    "content": '{"status":"ok","id":"feature/doc.md"}',
                 }
             ),
             "completed",
@@ -1461,7 +1486,9 @@ def test_logs_error_json_includes_failed_realtime_voice_tool_output(monkeypatch,
     assert event["tool_name"] == "delegate_to_builder_agent"
     assert event["outcome"] == "error"
     assert event["error_message"] == "This chat session is already running"
-    assert event["next_action"] == "Inspect Realtime function-call arguments and sideband concurrency."
+    assert (
+        event["next_action"] == "Inspect Realtime function-call arguments and sideband concurrency."
+    )
 
 
 def test_logs_info_json_summarizes_realtime_voice_tool_output_result(monkeypatch, tmp_path):
@@ -1589,7 +1616,16 @@ def test_logs_run_status_json_compacts_sdk_telemetry(monkeypatch, tmp_path):
 
     result = runner.invoke(
         app,
-        ["logs", "--session", "sess-run", "--type", "run_status", "--compact", "--json", "--no-follow"],
+        [
+            "logs",
+            "--session",
+            "sess-run",
+            "--type",
+            "run_status",
+            "--compact",
+            "--json",
+            "--no-follow",
+        ],
     )
 
     assert result.exit_code == 0
@@ -1667,7 +1703,16 @@ def test_logs_run_status_marks_provider_limit_blocked(monkeypatch, tmp_path):
 
     result = runner.invoke(
         app,
-        ["logs", "--session", "sess-limit", "--type", "run_status", "--compact", "--json", "--no-follow"],
+        [
+            "logs",
+            "--session",
+            "sess-limit",
+            "--type",
+            "run_status",
+            "--compact",
+            "--json",
+            "--no-follow",
+        ],
     )
 
     assert result.exit_code == 0
@@ -2062,8 +2107,30 @@ def test_logs_analyze_scopes_runtime_aggregates_to_chat_session(monkeypatch, tmp
         [
             ("run-A1", "task-A", "code-gen", 0.5, 1000, 500, 10, 1000, "end_turn", "completed"),
             ("run-A2", "task-A", "scaffold", 0.2, 400, 200, 5, 500, "end_turn", "completed"),
-            ("run-B1", "task-B", "feature-verifier", 0.9, 9000, 4500, 30, 5000, "end_turn", "completed"),
-            ("run-B2", "task-B", "build-verifier", 0.7, 6000, 3000, 20, 3000, "end_turn", "completed"),
+            (
+                "run-B1",
+                "task-B",
+                "feature-verifier",
+                0.9,
+                9000,
+                4500,
+                30,
+                5000,
+                "end_turn",
+                "completed",
+            ),
+            (
+                "run-B2",
+                "task-B",
+                "build-verifier",
+                0.7,
+                6000,
+                3000,
+                20,
+                3000,
+                "end_turn",
+                "completed",
+            ),
         ],
     )
     conn.commit()
@@ -2071,9 +2138,7 @@ def test_logs_analyze_scopes_runtime_aggregates_to_chat_session(monkeypatch, tmp
 
     monkeypatch.chdir(tmp_path)
 
-    result_a = runner.invoke(
-        app, ["logs", "analyze", "--session", "sess-A", "--full", "--json"]
-    )
+    result_a = runner.invoke(app, ["logs", "analyze", "--session", "sess-A", "--full", "--json"])
     assert result_a.exit_code == 0, result_a.stdout
     payload_a = json.loads(result_a.stdout)
     aggs_a = payload_a["runtime_aggregates"]
@@ -2085,9 +2150,7 @@ def test_logs_analyze_scopes_runtime_aggregates_to_chat_session(monkeypatch, tmp
     assert "build-verifier" not in agent_names_a
     assert payload_a["raw_token_total"] == 2100  # (1000+500) + (400+200)
 
-    result_b = runner.invoke(
-        app, ["logs", "analyze", "--session", "sess-B", "--full", "--json"]
-    )
+    result_b = runner.invoke(app, ["logs", "analyze", "--session", "sess-B", "--full", "--json"])
     assert result_b.exit_code == 0, result_b.stdout
     payload_b = json.loads(result_b.stdout)
     aggs_b = payload_b["runtime_aggregates"]
@@ -2322,9 +2385,18 @@ def test_kb_summary_json_stays_triage_sized(monkeypatch, tmp_path):
     payload = json.loads(result.stdout)
     assert payload["id"] == "system-docs/builder-cli-surface.md"
     assert payload["preview"] == "The builder CLI is the repo-local operator and agent interface."
-    assert payload["detail"] == "Start with doctor and map, then use page-aligned commands for targeted retrieval."
-    assert payload["change_guidance"] == "Keep JSON compact by default and expand only behind explicit full reads."
-    assert payload["next_step"] == "builder knowledge show system-docs/builder-cli-surface.md --section 'Change guidance' --json"
+    assert (
+        payload["detail"]
+        == "Start with doctor and map, then use page-aligned commands for targeted retrieval."
+    )
+    assert (
+        payload["change_guidance"]
+        == "Keep JSON compact by default and expand only behind explicit full reads."
+    )
+    assert (
+        payload["next_step"]
+        == "builder knowledge show system-docs/builder-cli-surface.md --section 'Change guidance' --json"
+    )
 
 
 def test_root_help_exposes_page_aligned_surfaces():
@@ -2513,7 +2585,9 @@ def test_agent_sessions_falls_back_to_local_data_on_connectivity_error(monkeypat
     monkeypatch.setattr(
         agent_module,
         "request_json",
-        lambda *args, **kwargs: (_ for _ in ()).throw(BuilderConnectivityError("http://127.0.0.1:9876")),
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            BuilderConnectivityError("http://127.0.0.1:9876")
+        ),
     )
     monkeypatch.setattr(
         agent_module,
@@ -2521,7 +2595,14 @@ def test_agent_sessions_falls_back_to_local_data_on_connectivity_error(monkeypat
         lambda limit: {
             "status": "ok",
             "count": 1,
-            "results": [{"id": "sess-local", "updated_at": "2026-01-01T00:00:00Z", "message_count": 2, "preview": "Local session"}],
+            "results": [
+                {
+                    "id": "sess-local",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "message_count": 2,
+                    "preview": "Local session",
+                }
+            ],
             "schema_version": "1",
             "degraded": True,
             "source": "local_db_fallback",
@@ -2543,7 +2624,11 @@ def test_agent_sessions_falls_back_to_local_data_on_connectivity_error(monkeypat
 
 def test_map_json_includes_next_step(monkeypatch, tmp_path):
     monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
-    monkeypatch.setattr(map_module, "_server_snapshot", lambda: {"reachable": False, "base_url": "http://127.0.0.1:9876"})
+    monkeypatch.setattr(
+        map_module,
+        "_server_snapshot",
+        lambda: {"reachable": False, "base_url": "http://127.0.0.1:9876"},
+    )
 
     result = runner.invoke(app, ["map", "--json"])
 
@@ -2608,7 +2693,11 @@ def test_core_builder_json_commands_have_agent_contract(monkeypatch, tmp_path):
             "Builder local context.\n"
         ),
     )
-    monkeypatch.setattr(map_module, "_server_snapshot", lambda: {"reachable": False, "base_url": "http://127.0.0.1:9876"})
+    monkeypatch.setattr(
+        map_module,
+        "_server_snapshot",
+        lambda: {"reachable": False, "base_url": "http://127.0.0.1:9876"},
+    )
 
     commands = [
         ["context", "verification", "--json"],
@@ -2627,10 +2716,7 @@ def test_memory_summary_resolves_body_text(tmp_path, monkeypatch):
     memory_root = tmp_path / ".memory"
     decisions = memory_root / "decisions"
     decisions.mkdir(parents=True)
-    body = (
-        "## Summary\n\n"
-        "Use builder and workflow CLIs for memory and knowledge operations.\n"
-    )
+    body = "## Summary\n\nUse builder and workflow CLIs for memory and knowledge operations.\n"
     payload = {
         "slug": "workflow-and-memory-creation-only-via-clis",
         "title": "Workflow and memory creation ONLY via CLIs",
@@ -2647,7 +2733,9 @@ def test_memory_summary_resolves_body_text(tmp_path, monkeypatch):
     )
     monkeypatch.setenv("AAB_MEMORY_ROOT", str(memory_root))
 
-    result = runner.invoke(app, ["memory", "summary", "workflow", "knowledge", "operations", "--json"])
+    result = runner.invoke(
+        app, ["memory", "summary", "workflow", "knowledge", "operations", "--json"]
+    )
 
     assert result.exit_code == 0
     response = json.loads(result.stdout)

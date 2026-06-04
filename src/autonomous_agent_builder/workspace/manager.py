@@ -59,7 +59,10 @@ class WorkspaceManager:
         # fail with "HEAD points to an invalid reference". Create an empty initial
         # commit so worktree operations have a valid base ref.
         head_check = await asyncio.create_subprocess_exec(
-            "git", "rev-parse", "--verify", "HEAD",
+            "git",
+            "rev-parse",
+            "--verify",
+            "HEAD",
             cwd=repo_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -73,12 +76,18 @@ class WorkspaceManager:
                 ["git", "config", "user.name", "Builder"],
             ]:
                 cfg = await asyncio.create_subprocess_exec(
-                    *cfg_args, cwd=repo_path,
-                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                    *cfg_args,
+                    cwd=repo_path,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
                 )
                 await cfg.communicate()
             init_commit = await asyncio.create_subprocess_exec(
-                "git", "commit", "--allow-empty", "-m", "init",
+                "git",
+                "commit",
+                "--allow-empty",
+                "-m",
+                "init",
                 cwd=repo_path,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,

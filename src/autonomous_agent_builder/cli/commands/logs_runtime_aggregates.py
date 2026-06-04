@@ -233,9 +233,7 @@ def _tool_counts(
         return [], 0
     task_filter, filter_params = _session_task_filter(conn, session_id)
     if task_filter:
-        run_filter = (
-            f"where run_id IN (SELECT id FROM agent_runs WHERE {task_filter})"
-        )
+        run_filter = f"where run_id IN (SELECT id FROM agent_runs WHERE {task_filter})"
     else:
         run_filter = ""
     event_count = int(
@@ -311,8 +309,7 @@ def _provider_limit_summary(
         extra_clause = " and chat_session_id = ?"
         params = (session_id,)
     rows = conn.execute(
-        "select id, status, depends_on from tasks where status = 'capability_limit'"
-        + extra_clause,
+        "select id, status, depends_on from tasks where status = 'capability_limit'" + extra_clause,
         params,
     ).fetchall()
     now = datetime.now(UTC)

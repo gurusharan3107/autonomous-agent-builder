@@ -426,10 +426,10 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "  `Write` tool and emit SCAFFOLD_RESULT_JSON.\n\n"
             "On success, finish with one JSON object on its own line, no other "
             "trailing text:\n\n"
-            "SCAFFOLD_RESULT_JSON: {{\"language\": \"<python|node|go|java|rust|...>\", "
-            "\"stack\": \"<short stack id, e.g. python-cli or node-vite-react>\", "
-            "\"files_written\": [\"<relative path>\", ...], "
-            "\"gate_set\": [\"<gate name>\", ...]}}\n\n"
+            'SCAFFOLD_RESULT_JSON: {{"language": "<python|node|go|java|rust|...>", '
+            '"stack": "<short stack id, e.g. python-cli or node-vite-react>", '
+            '"files_written": ["<relative path>", ...], '
+            '"gate_set": ["<gate name>", ...]}}\n\n'
             "If you cannot decide the stack even after one structured question, do "
             "NOT keep asking. Emit `OPERATOR_DECISION_JSON:` followed immediately "
             "by one raw JSON object with shape:\n"
@@ -508,8 +508,8 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "If the fix is not passing by turn 6, emit fixed=false immediately.\n\n"
             "CRITICAL — how to run commands:\n"
             "- Use ONLY mcp__workspace__run_command with argv as a string array.\n"
-            "- JavaScript/Node example: {{\"argv\": [\"npm\", \"run\", \"build\"]}}\n"
-            "- Python example: {{\"argv\": [\"python\", \"-m\", \"pytest\"]}}\n"
+            '- JavaScript/Node example: {{"argv": ["npm", "run", "build"]}}\n'
+            '- Python example: {{"argv": ["python", "-m", "pytest"]}}\n'
             "- Do NOT use the Bash tool — it is not available here.\n"
             "- Do NOT use shell metacharacters (|, >, &&, 2>&1).\n\n"
             "Scope boundary:\n"
@@ -520,13 +520,13 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "- Do not narrate progress.\n"
             "- Inspect only the last 80 lines of command output.\n"
             "- End with exactly one sentinel on its own line:\n\n"
-            "GATE_FIX_RESULT_JSON: {{\"fixed\": true, "
-            "\"files_changed\": [\"<path>\", ...], "
-            "\"commands_run\": [{{\"cmd\": \"<cmd>\", \"exit_code\": 0}}], "
-            "\"fix_summary\": \"<one sentence>\"}}\n\n"
+            'GATE_FIX_RESULT_JSON: {{"fixed": true, '
+            '"files_changed": ["<path>", ...], '
+            '"commands_run": [{{"cmd": "<cmd>", "exit_code": 0}}], '
+            '"fix_summary": "<one sentence>"}}\n\n'
             "Or:\n"
-            "GATE_FIX_RESULT_JSON: {{\"fixed\": false, "
-            "\"reason\": \"<why it cannot be auto-fixed>\"}}\n\n"
+            'GATE_FIX_RESULT_JSON: {{"fixed": false, '
+            '"reason": "<why it cannot be auto-fixed>"}}\n\n'
             "{tool_context}\n\n"
             "Task: {task_title}\n"
             "Language: {language}\n"

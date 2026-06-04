@@ -16,13 +16,7 @@ def test_default_file_complexity_target_is_500_lines() -> None:
 
 
 def _write_fixture(path: Path, extra_branch: bool = False) -> None:
-    extra = (
-        "\n"
-        "    if value == 3:\n"
-        "        return 3\n"
-        if extra_branch
-        else ""
-    )
+    extra = "\n    if value == 3:\n        return 3\n" if extra_branch else ""
     path.write_text(
         "\n".join(
             [

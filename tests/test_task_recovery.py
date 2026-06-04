@@ -56,7 +56,10 @@ def test_task_is_recoverable_blocked_unknown_reason_returns_false() -> None:
 
 
 def test_task_is_recoverable_quality_gate_cap_exceeded_returns_true() -> None:
-    task = _make_task(TaskStatus.BLOCKED, "quality_gate_cap_exceeded: task reached 6 attempts (cap=6); remediation loop did not converge.")
+    task = _make_task(
+        TaskStatus.BLOCKED,
+        "quality_gate_cap_exceeded: task reached 6 attempts (cap=6); remediation loop did not converge.",
+    )
     assert task_is_recoverable(task) is True
 
 
@@ -79,12 +82,15 @@ async def test_recover_failed_task_quality_gate_cap_resets_retry_count() -> None
     result.scalar_one_or_none.return_value = None
     db.execute.return_value = result
 
-    with patch(
-        "autonomous_agent_builder.services.task_recovery._blocked_sprint_merge_error",
-        return_value=None,
-    ), patch(
-        "autonomous_agent_builder.services.task_recovery._has_pr_change_request_gate",
-        return_value=False,
+    with (
+        patch(
+            "autonomous_agent_builder.services.task_recovery._blocked_sprint_merge_error",
+            return_value=None,
+        ),
+        patch(
+            "autonomous_agent_builder.services.task_recovery._has_pr_change_request_gate",
+            return_value=False,
+        ),
     ):
         await recover_failed_task(task, db)
 

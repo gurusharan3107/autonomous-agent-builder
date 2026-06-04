@@ -34,10 +34,14 @@ from tests.agent_route_test_support import (
 
 
 @pytest.mark.asyncio
-async def test_chat_post_starts_background_run_and_persists_timeline(monkeypatch, test_db, tmp_path):
+async def test_chat_post_starts_background_run_and_persists_timeline(
+    monkeypatch, test_db, tmp_path
+):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async def fake_run_phase(self, **kwargs):
         assert kwargs["agent_name"] == "chat"
@@ -65,7 +69,9 @@ async def test_chat_post_starts_background_run_and_persists_timeline(monkeypatch
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post("/api/agent/chat", json={"message": "hello", "session_id": None})
+        response = await client.post(
+            "/api/agent/chat", json={"message": "hello", "session_id": None}
+        )
 
         assert response.status_code == 200
         payload = response.json()
@@ -85,6 +91,7 @@ async def test_chat_post_starts_background_run_and_persists_timeline(monkeypatch
     assert history_payload["status"]["duration_ms"] == 1234
     assert history_payload["status"]["stop_reason"] == "end_turn"
     assert history_payload["messages"][-1]["content"] == "hello back"
+
 
 @pytest.mark.asyncio
 async def test_chat_history_appends_shipped_delivery_closeout_once(test_db, tmp_path):

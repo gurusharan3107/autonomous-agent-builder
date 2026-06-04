@@ -30,7 +30,9 @@ async def test_append_chat_event_can_mirror_transcript_message(test_db):
 
     assert event.event_type == "assistant_message"
     async with factory() as db:
-        message_result = await db.execute(select(ChatMessage).where(ChatMessage.session_id == session_id))
+        message_result = await db.execute(
+            select(ChatMessage).where(ChatMessage.session_id == session_id)
+        )
         message = message_result.scalar_one()
 
     assert message.role == "assistant"

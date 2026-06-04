@@ -87,7 +87,10 @@ def untracked_overwrite_paths(output: str) -> list[str]:
 def tracked_overwrite_paths(output: str) -> list[str]:
     """Extract tracked target paths that Git says would be overwritten."""
 
-    if "your local changes to the following files would be overwritten by merge" not in output.lower():
+    if (
+        "your local changes to the following files would be overwritten by merge"
+        not in output.lower()
+    ):
         return []
     return _overwrite_paths(output)
 

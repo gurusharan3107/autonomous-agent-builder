@@ -223,7 +223,11 @@ def _surface_for_path(path: str) -> set[str]:
         or path == "tests/test_codex_subagents.py"
     ):
         surfaces.add("codex-subagents")
-    if path.startswith(".memory/") or path.endswith("commands/memory.py") or path == "tests/test_memory_cli.py":
+    if (
+        path.startswith(".memory/")
+        or path.endswith("commands/memory.py")
+        or path == "tests/test_memory_cli.py"
+    ):
         surfaces.add("memory")
     if (
         path.startswith("src/autonomous_agent_builder/cli/")
@@ -236,9 +240,8 @@ def _surface_for_path(path: str) -> set[str]:
         "tests/test_definitions.py"
     ):
         surfaces.add("agent-quality")
-    if (
-        path.startswith("src/autonomous_agent_builder/orchestrator/")
-        or path.startswith("tests/test_sprint_execution.py")
+    if path.startswith("src/autonomous_agent_builder/orchestrator/") or path.startswith(
+        "tests/test_sprint_execution.py"
     ):
         surfaces.add("product-lifecycle")
     if path.startswith("docs/") or path == "AGENTS.md" or path.startswith("scripts/documentation"):
@@ -309,7 +312,13 @@ def checks_for_files(files: list[str]) -> list[Check]:
         checks.append(
             Check(
                 code="builder_cli_surface_tests",
-                command=(sys.executable, "-m", "pytest", "tests/test_builder_cli_surfaces.py", "-q"),
+                command=(
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/test_builder_cli_surfaces.py",
+                    "-q",
+                ),
                 why="prove agent-facing CLI JSON/help contracts remain stable",
             )
         )
@@ -328,7 +337,12 @@ def checks_for_files(files: list[str]) -> list[Check]:
                 ),
                 Check(
                     code="codex_subagent_gate",
-                    command=(sys.executable, "scripts/check_codex_subagents.py", "--repo-root", "."),
+                    command=(
+                        sys.executable,
+                        "scripts/check_codex_subagents.py",
+                        "--repo-root",
+                        ".",
+                    ),
                     why="prove project Codex subagents remain registered and boundary-safe",
                 ),
                 Check(
@@ -409,7 +423,13 @@ def checks_for_files(files: list[str]) -> list[Check]:
         checks.append(
             Check(
                 code="dashboard_design_system_contract",
-                command=(sys.executable, "-m", "pytest", "tests/test_dashboard_design_system_contract.py", "-q"),
+                command=(
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/test_dashboard_design_system_contract.py",
+                    "-q",
+                ),
                 why="prove top-level dashboard pages import the canonical design-system owner",
             )
         )
@@ -435,7 +455,13 @@ def checks_for_files(files: list[str]) -> list[Check]:
         checks.append(
             Check(
                 code="general_smoke_tests",
-                command=(sys.executable, "-m", "pytest", "tests/test_builder_cli_surfaces.py", "-q"),
+                command=(
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/test_builder_cli_surfaces.py",
+                    "-q",
+                ),
                 why="run a bounded smoke suite for uncategorized changes",
             )
         )
@@ -445,7 +471,9 @@ def checks_for_files(files: list[str]) -> list[Check]:
 def _run_check(check: Check, repo_root: Path) -> dict[str, object]:
     env = dict(os.environ)
     src = str(repo_root / "src")
-    env["PYTHONPATH"] = src if not env.get("PYTHONPATH") else os.pathsep.join([src, env["PYTHONPATH"]])
+    env["PYTHONPATH"] = (
+        src if not env.get("PYTHONPATH") else os.pathsep.join([src, env["PYTHONPATH"]])
+    )
     result = subprocess.run(
         list(check.command),
         cwd=repo_root,

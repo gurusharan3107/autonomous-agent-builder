@@ -106,9 +106,7 @@ def _post_ship_probe_summary(
         decision = payload.get("optimization_decision")
         summary = payload.get("optimization_summary")
         next_action = (
-            decision.get("next_action")
-            if isinstance(decision, dict)
-            else payload.get("next_step")
+            decision.get("next_action") if isinstance(decision, dict) else payload.get("next_step")
         )
         raw_tokens = (
             summary.get("raw_token_total")

@@ -24,7 +24,9 @@ from tests.agent_route_test_support import (
 async def test_runtime_settings_route_toggles_telemetry_lanes(test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -68,11 +70,14 @@ async def test_runtime_settings_route_toggles_telemetry_lanes(test_db, tmp_path)
         assert history_payload["provider"] == "codex_subscription"
         assert history_payload["model"] == "gpt-5.5"
 
+
 @pytest.mark.asyncio
 async def test_runtime_settings_route_repairs_ready_state_without_onboarding(test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     (tmp_path / "AGENTS.md").write_text(
         render_project_runtime_guidance(

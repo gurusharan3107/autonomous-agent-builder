@@ -67,7 +67,9 @@ def test_optimization_agent_policy_starts_with_focused_preflight():
     from autonomous_agent_builder.agents.execution_policy import resolve_agent_runtime_policy
     from autonomous_agent_builder.config import get_settings
 
-    policy = resolve_agent_runtime_policy(get_agent_definition("optimization-agent"), get_settings())
+    policy = resolve_agent_runtime_policy(
+        get_agent_definition("optimization-agent"), get_settings()
+    )
 
     assert policy.effort == "medium"
     assert policy.context_strategy == "post_ship_structured_observability_review"
@@ -193,9 +195,7 @@ def test_optimization_decision_defaults_to_reducers_and_points_to_raw_cli():
         "tool_observability": {"tool_counts": []},
     }
     optimization = {
-        "top_cost_drivers": [
-            {"agent_name": "build-verifier", "raw_tokens": 3300}
-        ],
+        "top_cost_drivers": [{"agent_name": "build-verifier", "raw_tokens": 3300}],
     }
 
     decision = optimization_decision_summary(
@@ -227,14 +227,12 @@ def test_available_build_verify_script_changes_decision_to_use_script():
                 "input_tokens": 1000,
                 "output_tokens": 100,
                 "cached_tokens": 200,
-            }
+            },
         ],
         "tool_observability": {"tool_counts": []},
     }
     optimization = {
-        "top_cost_drivers": [
-            {"agent_name": "build-verifier", "raw_tokens": 3300}
-        ],
+        "top_cost_drivers": [{"agent_name": "build-verifier", "raw_tokens": 3300}],
     }
 
     decision = optimization_decision_summary(
@@ -347,9 +345,7 @@ def test_optimization_decision_prioritizes_higher_savings_pr_evidence_lane():
         "tool_observability": {"tool_counts": []},
     }
     optimization = {
-        "avoidable_cost_flags": [
-            {"flag": "pr_lane_without_explicit_pr_target", "count": 3}
-        ],
+        "avoidable_cost_flags": [{"flag": "pr_lane_without_explicit_pr_target", "count": 3}],
         "top_cost_drivers": [
             {
                 "agent_name": "pr-creator",

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from autonomous_agent_builder.knowledge.evidence_graph import build_shared_evidence_graph
 from autonomous_agent_builder.knowledge.extractor import KnowledgeExtractor
 from autonomous_agent_builder.knowledge.generators.architecture import ArchitectureGenerator
-from autonomous_agent_builder.knowledge.evidence_graph import build_shared_evidence_graph
 
 
 def _repo_root() -> Path:
@@ -68,7 +68,9 @@ def test_workflows_doc_includes_dispatch_and_onboarding_phases(tmp_path):
 
 
 def test_extractor_can_limit_generation_to_one_doc(tmp_path):
-    extractor = KnowledgeExtractor(_repo_root(), tmp_path / "knowledge", doc_slugs=["system-architecture"])
+    extractor = KnowledgeExtractor(
+        _repo_root(), tmp_path / "knowledge", doc_slugs=["system-architecture"]
+    )
 
     result = extractor.extract()
 
@@ -80,7 +82,9 @@ def test_extractor_can_limit_generation_to_one_doc(tmp_path):
 def test_code_structure_grounded_blocks_handle_external_repo_layout(tmp_path):
     (tmp_path / "src" / "flask").mkdir(parents=True)
     (tmp_path / "src" / "flask" / "__init__.py").write_text("", encoding="utf-8")
-    extractor = KnowledgeExtractor(tmp_path, tmp_path / ".agent-builder" / "knowledge" / "system-docs")
+    extractor = KnowledgeExtractor(
+        tmp_path, tmp_path / ".agent-builder" / "knowledge" / "system-docs"
+    )
 
     blocks = extractor._grounded_evidence_blocks("Code Structure")
 
@@ -105,7 +109,9 @@ def test_architecture_generator_falls_back_for_non_builder_repo(tmp_path):
 
 
 def test_extraction_metadata_expected_docs_match_generated_for_external_repo(tmp_path):
-    (tmp_path / "pyproject.toml").write_text("[project]\nname='sample'\nversion='0.1.0'\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nname='sample'\nversion='0.1.0'\n", encoding="utf-8"
+    )
     (tmp_path / "src" / "sample").mkdir(parents=True)
     (tmp_path / "src" / "sample" / "__init__.py").write_text("", encoding="utf-8")
     (tmp_path / "src" / "sample" / "app.py").write_text("app = object()\n", encoding="utf-8")
@@ -210,7 +216,7 @@ def test_non_builder_generators_emit_contract_compliant_docs(tmp_path):
         "router = APIRouter(prefix='/tickets')\n\n"
         "@router.get('')\n"
         "def list_tickets(queue: str) -> list[str]:\n"
-        "    \"\"\"List tickets in the support queue.\"\"\"\n"
+        '    """List tickets in the support queue."""\n'
         "    return []\n",
         encoding="utf-8",
     )
@@ -254,9 +260,7 @@ def test_project_overview_ignores_readme_badge_markup(tmp_path, monkeypatch):
     (tmp_path / "backend").mkdir()
     (tmp_path / "frontend").mkdir()
     monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
-    monkeypatch.setenv(
-        "AAB_LOCAL_KB_ROOT", str(tmp_path / ".agent-builder" / "knowledge")
-    )
+    monkeypatch.setenv("AAB_LOCAL_KB_ROOT", str(tmp_path / ".agent-builder" / "knowledge"))
 
     output = tmp_path / ".agent-builder" / "knowledge" / "system-docs"
     extractor = KnowledgeExtractor(tmp_path, output, doc_slugs=["project-overview"])
@@ -275,7 +279,9 @@ def test_project_overview_ignores_readme_badge_markup(tmp_path, monkeypatch):
     assert "## Change guidance" in content
 
 
-def test_external_repo_blocking_and_configuration_docs_normalize_to_system_doc_shape(tmp_path, monkeypatch):
+def test_external_repo_blocking_and_configuration_docs_normalize_to_system_doc_shape(
+    tmp_path, monkeypatch
+):
     (tmp_path / "README.md").write_text(
         "# Flasky Clone\n\n"
         "A small Flask application with configuration classes, templates, tests, and package manifests that "
@@ -283,10 +289,7 @@ def test_external_repo_blocking_and_configuration_docs_normalize_to_system_doc_s
         encoding="utf-8",
     )
     (tmp_path / "requirements.txt").write_text(
-        "Flask==3.0.0\n"
-        "Flask-SQLAlchemy==3.1.1\n"
-        "Flask-Login==0.6.3\n"
-        "pytest==8.4.2\n",
+        "Flask==3.0.0\nFlask-SQLAlchemy==3.1.1\nFlask-Login==0.6.3\npytest==8.4.2\n",
         encoding="utf-8",
     )
     (tmp_path / "config.py").write_text(
@@ -302,11 +305,11 @@ def test_external_repo_blocking_and_configuration_docs_normalize_to_system_doc_s
         encoding="utf-8",
     )
     (tmp_path / "app").mkdir()
-    (tmp_path / "app" / "__init__.py").write_text("from flask import Flask\napp = Flask(__name__)\n", encoding="utf-8")
-    monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
-    monkeypatch.setenv(
-        "AAB_LOCAL_KB_ROOT", str(tmp_path / ".agent-builder" / "knowledge")
+    (tmp_path / "app" / "__init__.py").write_text(
+        "from flask import Flask\napp = Flask(__name__)\n", encoding="utf-8"
     )
+    monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.setenv("AAB_LOCAL_KB_ROOT", str(tmp_path / ".agent-builder" / "knowledge"))
 
     output = tmp_path / ".agent-builder" / "knowledge" / "system-docs"
     extractor = KnowledgeExtractor(
@@ -347,11 +350,11 @@ def test_sparse_python_package_blocking_docs_pass_contract(tmp_path, monkeypatch
     (tmp_path / "src" / "markup").mkdir(parents=True)
     (tmp_path / "src" / "markup" / "__init__.py").write_text("__all__ = []\n", encoding="utf-8")
     (tmp_path / "tests").mkdir()
-    (tmp_path / "tests" / "test_markup.py").write_text("def test_placeholder():\n    assert True\n", encoding="utf-8")
-    monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
-    monkeypatch.setenv(
-        "AAB_LOCAL_KB_ROOT", str(tmp_path / ".agent-builder" / "knowledge")
+    (tmp_path / "tests" / "test_markup.py").write_text(
+        "def test_placeholder():\n    assert True\n", encoding="utf-8"
     )
+    monkeypatch.setenv("AAB_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.setenv("AAB_LOCAL_KB_ROOT", str(tmp_path / ".agent-builder" / "knowledge"))
 
     output = tmp_path / ".agent-builder" / "knowledge" / "system-docs"
     extractor = KnowledgeExtractor(
@@ -387,8 +390,6 @@ def test_shared_graph_detects_top_level_flask_entrypoint(tmp_path):
     )
 
     entrypoints = [
-        node["properties"]["path"]
-        for node in graph["nodes"]
-        if node.get("kind") == "entrypoint"
+        node["properties"]["path"] for node in graph["nodes"] if node.get("kind") == "entrypoint"
     ]
     assert "flasky.py" in entrypoints

@@ -7,6 +7,7 @@ spuriously, and blocked the recipe-2 preflight.
 
 Fix: gate on `ok:true AND passed:true`.
 """
+
 from __future__ import annotations
 
 import json

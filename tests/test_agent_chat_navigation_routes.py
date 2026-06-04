@@ -85,6 +85,7 @@ def test_observability_context_pack_keeps_analysis_model_backed(monkeypatch, tmp
     assert "large_command_output" in context
     assert "agent-chat" in context
 
+
 @pytest.mark.asyncio
 async def test_agent_chat_simple_dashboard_navigation_is_model_backed(
     monkeypatch: pytest.MonkeyPatch,
@@ -93,7 +94,9 @@ async def test_agent_chat_simple_dashboard_navigation_is_model_backed(
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     captured_prompts: list[str] = []
 
@@ -140,8 +143,9 @@ async def test_agent_chat_simple_dashboard_navigation_is_model_backed(
         history = await _wait_for_history_status(
             client,
             session_id,
-            predicate=lambda status: status.get("running") is False
-            and status.get("stop_reason") == "end_turn",
+            predicate=lambda status: (
+                status.get("running") is False and status.get("stop_reason") == "end_turn"
+            ),
         )
 
     assert captured_prompts
@@ -150,14 +154,19 @@ async def test_agent_chat_simple_dashboard_navigation_is_model_backed(
     assert history["status"]["running"] is False
     assert history["status"]["stop_reason"] == "end_turn"
 
+
 def test_agent_chat_dashboard_navigation_does_not_capture_questions():
-    assert agent_message_intent.dashboard_navigation_route_from_message("show me the backlog") == "/backlog"
+    assert (
+        agent_message_intent.dashboard_navigation_route_from_message("show me the backlog")
+        == "/backlog"
+    )
     assert (
         agent_message_intent.dashboard_navigation_route_from_message(
             "why is observability still showing a missing signal?"
         )
         == ""
     )
+
 
 @pytest.mark.asyncio
 async def test_agent_chat_observability_question_is_model_backed(
@@ -167,7 +176,9 @@ async def test_agent_chat_observability_question_is_model_backed(
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     captured_prompts: list[str] = []
 
@@ -217,8 +228,9 @@ async def test_agent_chat_observability_question_is_model_backed(
         history = await _wait_for_history_status(
             client,
             session_id,
-            predicate=lambda status: status.get("running") is False
-            and status.get("stop_reason") == "end_turn",
+            predicate=lambda status: (
+                status.get("running") is False and status.get("stop_reason") == "end_turn"
+            ),
         )
 
     assert captured_prompts
@@ -228,11 +240,13 @@ async def test_agent_chat_observability_question_is_model_backed(
     assert history["status"]["running"] is False
     assert history["status"]["stop_reason"] == "end_turn"
 
+
 def test_agent_chat_recovery_preflight_does_not_capture_evidence_requests():
     assert agent_message_intent.message_requests_recovery_preflight("Recover the last failed run.")
     assert not agent_message_intent.message_requests_recovery_preflight(
         "Give me a bounded recovery plan for the blocked task using Builder evidence only."
     )
+
 
 @pytest.mark.asyncio
 async def test_agent_chat_recovery_request_without_board_target_is_model_backed(
@@ -242,7 +256,9 @@ async def test_agent_chat_recovery_request_without_board_target_is_model_backed(
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     captured_prompts: list[str] = []
 
@@ -287,22 +303,27 @@ async def test_agent_chat_recovery_request_without_board_target_is_model_backed(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "No recoverable Board task"
-            in item["payload"].get("content", ""),
+            predicate=lambda item: (
+                "No recoverable Board task" in item["payload"].get("content", "")
+            ),
         )
         history = await _wait_for_history_status(
             client,
             session_id,
-            predicate=lambda status: status.get("running") is False
-            and status.get("stop_reason") == "end_turn",
+            predicate=lambda status: (
+                status.get("running") is False and status.get("stop_reason") == "end_turn"
+            ),
         )
 
     content = assistant["payload"]["content"]
     assert captured_prompts
     assert "Recover the last failed run." in captured_prompts[0]
-    assert "No recoverable Board task is currently blocked, failed, or capability-limited." in content
+    assert (
+        "No recoverable Board task is currently blocked, failed, or capability-limited." in content
+    )
     assert history["status"]["running"] is False
     assert history["status"]["stop_reason"] == "end_turn"
+
 
 def test_recent_chat_context_pack_includes_prior_voice_and_builder_messages(tmp_path):
     session = ChatSession()
@@ -326,7 +347,9 @@ def test_recent_chat_context_pack_includes_prior_voice_and_builder_messages(tmp_
             event_type="assistant_message",
             status="completed",
             created_at=datetime.now(UTC),
-            payload_json={"content": "Push notifications should cover due soon and completed tasks."},
+            payload_json={
+                "content": "Push notifications should cover due soon and completed tasks."
+            },
         ),
     ]
 
@@ -345,6 +368,7 @@ def test_recent_chat_context_pack_includes_prior_voice_and_builder_messages(tmp_
     assert "Builder Agent: Push notifications should cover due soon" in context
     assert "Bounded retrieval context already available" in prompt
     assert "Push notifications should cover due soon" in prompt
+
 
 def test_recent_chat_context_pack_is_bounded_and_marks_clipped_events():
     session = ChatSession()

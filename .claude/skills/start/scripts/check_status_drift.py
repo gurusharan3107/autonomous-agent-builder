@@ -7,6 +7,7 @@ Each finding: {severity: 'hard' | 'soft', field: str, claim: str, evidence: str}
 
 Exit 0 if no hard findings (clean or soft-only); 1 if any hard finding.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -14,7 +15,7 @@ import json
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -89,12 +90,14 @@ def main() -> int:
 
     status_text = read(STATUS)
     if not status_text:
-        findings.append({
-            "severity": "hard",
-            "field": "STATUS.md",
-            "claim": "exists",
-            "evidence": f"file not found at {STATUS}",
-        })
+        findings.append(
+            {
+                "severity": "hard",
+                "field": "STATUS.md",
+                "claim": "exists",
+                "evidence": f"file not found at {STATUS}",
+            }
+        )
         emit(findings, args.json)
         return 1
 
@@ -105,27 +108,31 @@ def main() -> int:
 
     # Check 1 — Active Workspace path exists on disk
     if workspace and not Path(workspace).exists():
-        findings.append({
-            "severity": "soft",
-            "field": "Active Workspace",
-            "claim": workspace,
-            "evidence": "path does not exist on disk",
-        })
+        findings.append(
+            {
+                "severity": "soft",
+                "field": "Active Workspace",
+                "claim": workspace,
+                "evidence": "path does not exist on disk",
+            }
+        )
 
     # Check 2 — Last Update date is no more than 7 days old
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     m = re.match(r"(\d{4}-\d{2}-\d{2})", last_update)
     if m:
         try:
             d = datetime.strptime(m.group(1), "%Y-%m-%d").date()
             age = (today - d).days
             if age > 7:
-                findings.append({
-                    "severity": "soft",
-                    "field": "Last Update",
-                    "claim": last_update[:60],
-                    "evidence": f"{age} days old — STATUS may not reflect recent commits",
-                })
+                findings.append(
+                    {
+                        "severity": "soft",
+                        "field": "Last Update",
+                        "claim": last_update[:60],
+                        "evidence": f"{age} days old — STATUS may not reflect recent commits",
+                    }
+                )
         except ValueError:
             pass
 
@@ -135,12 +142,14 @@ def main() -> int:
         ms = milestone_match.group(0)
         commits = git_log_recent(7)
         if commits and not any(ms in c for c in commits):
-            findings.append({
-                "severity": "soft",
-                "field": "Current Item In Flight",
-                "claim": item[:80],
-                "evidence": f"no commit mentions {ms} in last 7d (commits exist but reference other work)",
-            })
+            findings.append(
+                {
+                    "severity": "soft",
+                    "field": "Current Item In Flight",
+                    "claim": item[:80],
+                    "evidence": f"no commit mentions {ms} in last 7d (commits exist but reference other work)",
+                }
+            )
 
     # Check 4 — Most-recent INSIGHTS verdict is not 'drifting' / 'ambiguous'
     insights_text = read(INSIGHTS)
@@ -148,19 +157,23 @@ def main() -> int:
     if verdict:
         normalized = verdict.lower()
         if normalized == "drifting":
-            findings.append({
-                "severity": "hard",
-                "field": "INSIGHTS alignment verdict",
-                "claim": verdict,
-                "evidence": "most-recent INSIGHTS entry reports STATUS-vs-intent drift",
-            })
+            findings.append(
+                {
+                    "severity": "hard",
+                    "field": "INSIGHTS alignment verdict",
+                    "claim": verdict,
+                    "evidence": "most-recent INSIGHTS entry reports STATUS-vs-intent drift",
+                }
+            )
         elif normalized == "ambiguous":
-            findings.append({
-                "severity": "soft",
-                "field": "INSIGHTS alignment verdict",
-                "claim": verdict,
-                "evidence": "most-recent INSIGHTS entry could not resolve alignment",
-            })
+            findings.append(
+                {
+                    "severity": "soft",
+                    "field": "INSIGHTS alignment verdict",
+                    "claim": verdict,
+                    "evidence": "most-recent INSIGHTS entry could not resolve alignment",
+                }
+            )
 
     emit(findings, args.json)
     return 1 if any(f["severity"] == "hard" for f in findings) else 0

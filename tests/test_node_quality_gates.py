@@ -16,7 +16,7 @@ def node_workspace(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "package.json").write_text(
-        '{\n'
+        "{\n"
         '  "scripts": {\n'
         '    "lint": "eslint src",\n'
         '    "build": "tsc && vite build",\n'
@@ -33,11 +33,11 @@ def node_workspace(tmp_path, monkeypatch):
     npm.write_text(
         "#!/usr/bin/env bash\n"
         "set -u\n"
-        "echo npm \"$@\"\n"
-        "if [[ \"$*\" == \"ci\" || \"$*\" == \"install\" ]]; then mkdir -p node_modules; exit 0; fi\n"
-        "if [[ \"$*\" == \"run lint\" && \"${AAB_FAKE_NPM_FAIL_LINT:-}\" == \"1\" ]]; then exit 2; fi\n"
-        "if [[ \"$*\" == \"run build\" && \"${AAB_FAKE_NPM_FAIL_BUILD:-}\" == \"1\" ]]; then exit 2; fi\n"
-        "if [[ \"$*\" == \"test\" && \"${AAB_FAKE_NPM_FAIL_TEST:-}\" == \"1\" ]]; then exit 2; fi\n"
+        'echo npm "$@"\n'
+        'if [[ "$*" == "ci" || "$*" == "install" ]]; then mkdir -p node_modules; exit 0; fi\n'
+        'if [[ "$*" == "run lint" && "${AAB_FAKE_NPM_FAIL_LINT:-}" == "1" ]]; then exit 2; fi\n'
+        'if [[ "$*" == "run build" && "${AAB_FAKE_NPM_FAIL_BUILD:-}" == "1" ]]; then exit 2; fi\n'
+        'if [[ "$*" == "test" && "${AAB_FAKE_NPM_FAIL_TEST:-}" == "1" ]]; then exit 2; fi\n'
         "exit 0\n",
         encoding="utf-8",
     )
@@ -107,11 +107,7 @@ async def test_testing_gate_runs_node_test_script_without_injected_run_arg(tmp_p
     workspace = tmp_path / "node-test-workspace"
     workspace.mkdir()
     (workspace / "package.json").write_text(
-        '{\n'
-        '  "scripts": {\n'
-        '    "test": "node --test"\n'
-        "  }\n"
-        "}\n",
+        '{\n  "scripts": {\n    "test": "node --test"\n  }\n}\n',
         encoding="utf-8",
     )
 
@@ -121,9 +117,9 @@ async def test_testing_gate_runs_node_test_script_without_injected_run_arg(tmp_p
     npm.write_text(
         "#!/usr/bin/env bash\n"
         "set -u\n"
-        "echo npm \"$@\"\n"
-        "if [[ \"$*\" == \"test -- --run\" ]]; then exit 2; fi\n"
-        "if [[ \"$*\" == \"test\" ]]; then exit 0; fi\n"
+        'echo npm "$@"\n'
+        'if [[ "$*" == "test -- --run" ]]; then exit 2; fi\n'
+        'if [[ "$*" == "test" ]]; then exit 0; fi\n'
         "exit 3\n",
         encoding="utf-8",
     )

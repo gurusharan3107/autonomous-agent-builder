@@ -201,9 +201,7 @@ def test_refresh_runtime_guidance_preserves_user_authored_agents_md(tmp_path) ->
 
     assert result["status"] == "unchanged"
     assert result["updated_files"] == []
-    assert result["skipped_files"] == [
-        {"path": "AGENTS.md", "reason": "not_builder_generated"}
-    ]
+    assert result["skipped_files"] == [{"path": "AGENTS.md", "reason": "not_builder_generated"}]
     assert (tmp_path / "AGENTS.md").read_text(encoding="utf-8") == original
 
 
@@ -314,7 +312,14 @@ def test_orchestrator_tracked_modified_paths_filters_untracked() -> None:
         "A  new_runtime.md\n"
         "R  old.md -> renamed.md\n"
     )
-    paths = ["CLAUDE.md", "AGENTS.md", "docs/CONTRIBUTING.md", "new_runtime.md", "renamed.md", "missing.md"]
+    paths = [
+        "CLAUDE.md",
+        "AGENTS.md",
+        "docs/CONTRIBUTING.md",
+        "new_runtime.md",
+        "renamed.md",
+        "missing.md",
+    ]
 
     tracked = _tracked_modified_paths(status, paths)
 
@@ -329,12 +334,7 @@ def test_orchestrator_tracked_modified_paths_filters_untracked() -> None:
 def test_orchestrator_untracked_paths_filters_only_untracked() -> None:
     from autonomous_agent_builder.orchestrator.orchestrator import _untracked_paths
 
-    status = (
-        "?? CLAUDE.md\n"
-        " M AGENTS.md\n"
-        "A  .claude/CLAUDE.md\n"
-        "?? notes.md\n"
-    )
+    status = "?? CLAUDE.md\n M AGENTS.md\nA  .claude/CLAUDE.md\n?? notes.md\n"
     paths = ["CLAUDE.md", "AGENTS.md", ".claude/CLAUDE.md", "notes.md"]
 
     assert _untracked_paths(status, paths) == ["CLAUDE.md", "notes.md"]

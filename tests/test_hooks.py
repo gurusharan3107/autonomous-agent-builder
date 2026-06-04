@@ -11,8 +11,8 @@ from autonomous_agent_builder.agents.hooks import (
     _sanitize_for_log,
     audit_log_tool_use,
     audit_subagent_stop,
-    enforce_workspace_boundary,
     enforce_completion_evidence,
+    enforce_workspace_boundary,
     keep_tool_stream_open,
     session_start_context_policy,
     validate_bash_argv,
@@ -215,7 +215,9 @@ class TestValidateBashArgv:
     async def test_blocks_builder_kb_mutation_command(self):
         hook_input = {
             "tool_name": "Bash",
-            "tool_input": {"command": "builder knowledge add --type context --title Test --content Body"},
+            "tool_input": {
+                "command": "builder knowledge add --type context --title Test --content Body"
+            },
         }
         result = await validate_bash_argv(hook_input, None, {})
         assert result["decision"] == "block"

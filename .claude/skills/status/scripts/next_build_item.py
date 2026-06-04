@@ -36,10 +36,33 @@ DASHBOARD_GATED_SIGNALS = [
 
 # Signals that the item is code-only (safe to implement on Linux without dashboard)
 CODE_SIGNALS = [
-    "fix", "bug", "schema", "pytest", "cache_ratio", "ratio", "token",
-    "frontend", "backend", "dashboard", "render", "api", "mcp", "tool",
-    "observability", "metrics", "logs", "board", "backlog", "sprint",
-    "docs", "adr", "decision", "test", "src/", "services/", "scripts/",
+    "fix",
+    "bug",
+    "schema",
+    "pytest",
+    "cache_ratio",
+    "ratio",
+    "token",
+    "frontend",
+    "backend",
+    "dashboard",
+    "render",
+    "api",
+    "mcp",
+    "tool",
+    "observability",
+    "metrics",
+    "logs",
+    "board",
+    "backlog",
+    "sprint",
+    "docs",
+    "adr",
+    "decision",
+    "test",
+    "src/",
+    "services/",
+    "scripts/",
 ]
 
 
@@ -96,16 +119,18 @@ def parse_roadmap() -> list[dict]:
         body_lower = body.lower()
         dashboard_gated, dashboard_reason = classify(body_lower)
 
-        items.append({
-            "milestone": current_milestone,
-            "id": item_id,
-            "raw_line": line,
-            "body": body,
-            "priority": priority,
-            "dashboard_gated": dashboard_gated,
-            "dashboard_reason": dashboard_reason,
-            "if_flag": if_flag,
-        })
+        items.append(
+            {
+                "milestone": current_milestone,
+                "id": item_id,
+                "raw_line": line,
+                "body": body,
+                "priority": priority,
+                "dashboard_gated": dashboard_gated,
+                "dashboard_reason": dashboard_reason,
+                "if_flag": if_flag,
+            }
+        )
 
     return items
 
@@ -130,13 +155,26 @@ def main():
         buildable = [i for i in items if not i["dashboard_gated"]]
         for sk in gated:
             if buildable and items.index(sk) < items.index(buildable[0]):
-                print(json.dumps({"skipped": True, "id": sk["id"],
-                                  "dashboard_reason": sk["dashboard_reason"]}),
-                      file=sys.stderr)
+                print(
+                    json.dumps(
+                        {
+                            "skipped": True,
+                            "id": sk["id"],
+                            "dashboard_reason": sk["dashboard_reason"],
+                        }
+                    ),
+                    file=sys.stderr,
+                )
         if not buildable:
-            print(json.dumps({"done": True,
-                              "message": "All remaining items are dashboard-gated.",
-                              "gated": [i["id"] for i in gated]}))
+            print(
+                json.dumps(
+                    {
+                        "done": True,
+                        "message": "All remaining items are dashboard-gated.",
+                        "gated": [i["id"] for i in gated],
+                    }
+                )
+            )
             sys.exit(1)
         next_item = buildable[0]
     else:

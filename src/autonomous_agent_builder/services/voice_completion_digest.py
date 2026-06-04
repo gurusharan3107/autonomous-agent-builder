@@ -176,7 +176,9 @@ class AgentVoiceDigestService:
                 await db.refresh(event)
 
         hub: ChatSessionHub = app.state.chat_hub
-        await hub.publish(session_id, agent_chat_transcript.serialize_event(event).model_dump(mode="json"))
+        await hub.publish(
+            session_id, agent_chat_transcript.serialize_event(event).model_dump(mode="json")
+        )
         return event
 
     def _infer_outcome(self, content: str) -> str:

@@ -89,7 +89,7 @@ def test_design_theme_contract_matches_locked_reference_presets() -> None:
         assert f"density: {density}" in themes_text
         assert f"radius: {radius}" in themes_text
 
-    assert 'root.dataset.theme = activeTheme.mode' in app_text
+    assert "root.dataset.theme = activeTheme.mode" in app_text
     assert 'root.classList.toggle("dark", activeTheme.mode === "dark")' in app_text
     for token in ("--accent-hue", "--accent-chroma", "--density", "--radius-base"):
         assert f'root.style.setProperty("{token}"' in app_text
@@ -141,7 +141,7 @@ def test_settings_page_uses_operator_first_section_hierarchy() -> None:
     ):
         assert section_marker in app_text
 
-    assert 'lg:grid-cols-[280px_minmax(0,1fr)]' in app_text
+    assert "lg:grid-cols-[280px_minmax(0,1fr)]" in app_text
     assert "Jump to voice" in app_text
 
     for preference_key in (
@@ -170,7 +170,9 @@ def test_agent_page_preserves_trace_explorer_and_conversation_rail_contract() ->
     status_text = (FRONTEND_SRC / "lib" / "status.ts").read_text()
 
     assert 'agentDefaultMode: "chat"' in hook_text
-    assert 'import { fetchBoard, fetchShellSummary, openBoardStream } from "@/lib/api";' in agent_text
+    assert (
+        'import { fetchBoard, fetchShellSummary, openBoardStream } from "@/lib/api";' in agent_text
+    )
     assert "const stream = openBoardStream((board) => {" in agent_text
     assert "stream.close()" in agent_text
     assert "boardError && !boardData" in agent_surface_text
@@ -200,7 +202,7 @@ def test_agent_page_preserves_trace_explorer_and_conversation_rail_contract() ->
 
     for surface_marker in (
         "<SectionLabel>Run explorer</SectionLabel>",
-        "text-muted-foreground\">Tasks</p>",
+        'text-muted-foreground">Tasks</p>',
         "<SectionLabel>Agent runs</SectionLabel>",
         "<SectionLabel>Selected run</SectionLabel>",
         "<SectionLabel>Recent work</SectionLabel>",
@@ -208,7 +210,7 @@ def test_agent_page_preserves_trace_explorer_and_conversation_rail_contract() ->
     ):
         assert surface_marker in agent_surface_text
 
-    assert "setAgentMode(\"trace\")" in agent_text
+    assert 'setAgentMode("trace")' in agent_text
     assert "runs.find((run) => run.session_id === sessionId) ?? runs[0] ?? null" in agent_text
     assert "border-l-2 border-primary" not in agent_text
     assert "No task selected" in agent_surface_text
@@ -219,7 +221,10 @@ def test_agent_page_refresh_defaults_to_timeline_transcript_layout() -> None:
     hook_text = (FRONTEND_SRC / "hooks" / "use-runtime-preferences.ts").read_text()
 
     assert 'transcriptLayout: "timeline"' in hook_text
-    assert 'const AGENT_TIMELINE_LAYOUT_MIGRATION_KEY = "aab:agent-timeline-layout-migrated";' in hook_text
+    assert (
+        'const AGENT_TIMELINE_LAYOUT_MIGRATION_KEY = "aab:agent-timeline-layout-migrated";'
+        in hook_text
+    )
     assert 'preferences.transcriptLayout === "cards"' in hook_text
     assert 'transcriptLayout: "timeline" as const' in hook_text
     assert app_text.index('{ label: "Timeline", value: "timeline" }') < app_text.index(
@@ -250,17 +255,28 @@ def test_realtime_voice_degrades_to_text_mode_without_microphone() -> None:
     assert "Realtime input" in agent_surface_text
     assert "buildVoiceTimelineEntries(voiceMessages)" in agent_text
     assert "<AgentTimeline entries={voiceTimelineEntries} />" in voice_panel_text
-    assert voice_panel_text.index("<AgentTimeline entries={voiceTimelineEntries} />") < voice_panel_text.index(
+    assert voice_panel_text.index(
+        "<AgentTimeline entries={voiceTimelineEntries} />"
+    ) < voice_panel_text.index(
         '<Code className="text-[10px] uppercase tracking-[0.16em]">Realtime input</Code>',
     )
     assert "stream-card stream-card-operator w-full max-w-[880px]" not in agent_surface_text
     assert ': "Operator",' in agent_surface_text
-    assert ": \"Operator to Samantha\"," not in agent_text
-    assert 'kind: assistantMessage ? "assistant" : systemMessage ? "gate" : "user"' in agent_surface_text
-    assert 'heading: assistantMessage ? "Samantha" : systemMessage ? "Realtime system" : "Operator"' in agent_surface_text
+    assert ': "Operator to Samantha",' not in agent_text
+    assert (
+        'kind: assistantMessage ? "assistant" : systemMessage ? "gate" : "user"'
+        in agent_surface_text
+    )
+    assert (
+        'heading: assistantMessage ? "Samantha" : systemMessage ? "Realtime system" : "Operator"'
+        in agent_surface_text
+    )
     assert "Samantha" in agent_surface_text
     assert 'voiceMode === "text" ? "Text mode" : "Audio + text"' in voice_panel_text
-    assert 'voiceMode === "text" ? "Type to Samantha" : "Speak or type to Samantha"' in voice_panel_text
+    assert (
+        'voiceMode === "text" ? "Type to Samantha" : "Speak or type to Samantha"'
+        in voice_panel_text
+    )
 
 
 def test_command_palette_has_grouped_keyboard_navigation_contract() -> None:
@@ -315,13 +331,19 @@ def test_board_start_work_is_disabled_after_work_is_started() -> None:
     assert "Continue work" in board_text
     assert "Start work" in board_text
     assert "dispatchButtonLabel" in board_text
-    assert "disabled={!dispatchableTask || hasUnresolvedStartedWork || dispatchingTaskId === dispatchableTask.id}" in board_text
+    assert (
+        "disabled={!dispatchableTask || hasUnresolvedStartedWork || dispatchingTaskId === dispatchableTask.id}"
+        in board_text
+    )
 
 
 def test_agent_pending_decision_blocks_composer_and_duplicate_choice_panel() -> None:
     agent_text = agent_source_text()
 
-    assert "const agentRunPending = (loading || Boolean(status?.running)) && !streamingText && !pendingBlockingItem;" in agent_text
+    assert (
+        "const agentRunPending = (loading || Boolean(status?.running)) && !streamingText && !pendingBlockingItem;"
+        in agent_text
+    )
     assert "Builder is blocked until you answer this decision." in agent_text
     assert "Pending decision response" in agent_text
     assert "pendingQuestionOptions" not in agent_text
@@ -357,7 +379,7 @@ def test_numeric_display_uses_tabular_numeral_contract() -> None:
     backlog_text = (FRONTEND_SRC / "pages" / "BacklogPage.tsx").read_text()
 
     assert 'font-feature-settings: "ss01", "cv11", "tnum"' in css_text
-    assert 'font-mono text-[11px] tabular-nums text-foreground' in workspace_text
+    assert "font-mono text-[11px] tabular-nums text-foreground" in workspace_text
     assert "font-mono tabular-nums text-foreground/80" in workspace_text
     assert "font-mono text-[22px] leading-none tabular-nums" in agent_native_text
     assert "font-mono tabular-nums" in agent_native_text
@@ -420,7 +442,7 @@ def test_agent_run_trace_surfaces_token_breakdown() -> None:
     assert "run?.tokens_output" in agent_model_text
     assert 'label="Cached tokens"' in agent_surface_text
     assert "run?.tokens_cached" in agent_model_text
-    assert 'font-mono text-[11px] tabular-nums text-foreground' in agent_presenter_text
+    assert "font-mono text-[11px] tabular-nums text-foreground" in agent_presenter_text
 
 
 def test_status_language_contract_covers_backend_lifecycle_aliases() -> None:

@@ -80,8 +80,7 @@ def test_registry_build_drops_zero_tools(agent_name: str) -> None:
     declared = list(dict.fromkeys(agent.tools))  # de-dupe defensively
     registry = ToolRegistry.build(declared, custom_tools=None)
     built = set(registry.tools.keys())
-    expected = set(declared) & (set(_SDK_BUILTINS.keys())
-                                  | EXPECTED_RUNTIME_CUSTOM_TOOLS)
+    expected = set(declared) & (set(_SDK_BUILTINS.keys()) | EXPECTED_RUNTIME_CUSTOM_TOOLS)
     missing = expected - built
     extra = built - expected
     assert not missing, (

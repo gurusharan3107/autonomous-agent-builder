@@ -63,7 +63,7 @@ def main():
             sys.exit(0)
 
         if existing:
-            new_line = line[:existing.start()] + new_token + line[existing.end():]
+            new_line = line[: existing.start()] + new_token + line[existing.end() :]
         else:
             new_line = line.rstrip("\n") + f" {new_token}\n"
 

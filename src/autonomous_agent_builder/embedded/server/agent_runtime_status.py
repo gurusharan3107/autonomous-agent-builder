@@ -15,9 +15,7 @@ from autonomous_agent_builder.runtime.factory import resolve_runtime_config
 from autonomous_agent_builder.services.runtime_settings import resolve_project_runtime_config
 
 
-def runtime_metadata_for_agent(
-    agent_name: str, project_root: Path | None = None
-) -> dict[str, Any]:
+def runtime_metadata_for_agent(agent_name: str, project_root: Path | None = None) -> dict[str, Any]:
     settings = get_settings()
     agent_def = get_agent_definition(agent_name)
     policy = resolve_agent_runtime_policy(agent_def, settings)

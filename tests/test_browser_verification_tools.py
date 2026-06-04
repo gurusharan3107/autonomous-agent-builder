@@ -127,19 +127,33 @@ async def test_session_reuses_one_tab_instead_of_spawning_new_ones(monkeypatch) 
     browser_tools._session_tabs.clear()
     capture: dict = {}
     # First navigate: bridge creates tab 4242 and returns it in the goto result.
-    _patch_bridge(monkeypatch, {"success": True, "results": [
-        {"type": "goto", "tabId": 4242, "url": "http://localhost:5173/"},
-        {"type": "page_context", "url": "http://localhost:5173/", "title": "App"},
-    ]}, capture)
+    _patch_bridge(
+        monkeypatch,
+        {
+            "success": True,
+            "results": [
+                {"type": "goto", "tabId": 4242, "url": "http://localhost:5173/"},
+                {"type": "page_context", "url": "http://localhost:5173/", "title": "App"},
+            ],
+        },
+        capture,
+    )
     await browser_tools.browser_navigate("http://localhost:5173/")
     assert browser_tools._session_tabs["builder-verify"] == 4242
     first = json.loads(capture["writer"].sent.decode())
     assert "tabId" not in first["actions"][0]  # nothing to pin yet on the opener
 
     # Second navigate: must REUSE tab 4242 (pinned onto the goto action), not create.
-    _patch_bridge(monkeypatch, {"success": True, "results": [
-        {"type": "goto", "tabId": 4242, "url": "http://localhost:5173/x"},
-    ]}, capture)
+    _patch_bridge(
+        monkeypatch,
+        {
+            "success": True,
+            "results": [
+                {"type": "goto", "tabId": 4242, "url": "http://localhost:5173/x"},
+            ],
+        },
+        capture,
+    )
     await browser_tools.browser_navigate("http://localhost:5173/x")
     second = json.loads(capture["writer"].sent.decode())
     assert second["actions"][0]["tabId"] == 4242
@@ -152,7 +166,9 @@ async def test_browser_close_tears_down_the_session_tab(monkeypatch) -> None:
     browser_tools._session_tabs.clear()
     browser_tools._session_tabs["builder-verify"] = 4242
     capture: dict = {}
-    _patch_bridge(monkeypatch, {"success": True, "results": [{"type": "close_tab", "tabId": 4242}]}, capture)
+    _patch_bridge(
+        monkeypatch, {"success": True, "results": [{"type": "close_tab", "tabId": 4242}]}, capture
+    )
     result = await browser_tools.browser_close()
     assert result["closed"] is True
     sent = json.loads(capture["writer"].sent.decode())

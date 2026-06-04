@@ -1262,13 +1262,15 @@ async def load_board_response(db: AsyncSession, project_root: Path | None = None
     project = await select_delivery_project(db, "")
     project_id = project.id if project is not None else ""
     result = await db.execute(
-        select(Task).options(
+        select(Task)
+        .options(
             selectinload(Task.feature).selectinload(Feature.project),
             selectinload(Task.gate_results),
             selectinload(Task.agent_runs).selectinload(AgentRun.events),
             selectinload(Task.approval_gates),
             selectinload(Task.workspace),
-        ).execution_options(populate_existing=True)
+        )
+        .execution_options(populate_existing=True)
     )
     all_tasks = [
         task

@@ -216,9 +216,7 @@ async def load_voice_board_status(db: Any, *, status_prompt: str = "") -> dict[s
         backlog_items
     )
     status_counts = aggregate_task_status_counts(tasks)
-    run_result = await db.execute(
-        select(AgentRun).order_by(AgentRun.started_at.desc()).limit(50)
-    )
+    run_result = await db.execute(select(AgentRun).order_by(AgentRun.started_at.desc()).limit(50))
     latest_runs_by_task: dict[str, AgentRun] = {}
     for run in run_result.scalars().all():
         if run.task_id not in latest_runs_by_task:
@@ -240,9 +238,7 @@ async def load_voice_board_status(db: Any, *, status_prompt: str = "") -> dict[s
         ).strip(),
         "status_counts": status_counts,
         "review_count": sum(1 for task in tasks if _task_is_review_board_lane(task)),
-        "done_count": sum(
-            1 for task in tasks if _task_status_value(task) == TaskStatus.DONE.value
-        ),
+        "done_count": sum(1 for task in tasks if _task_status_value(task) == TaskStatus.DONE.value),
         "blocked_count": len(blocked_tasks),
         "queued_count": len(queued_tasks),
         "active_count": len(active_tasks),

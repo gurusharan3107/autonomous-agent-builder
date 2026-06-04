@@ -286,9 +286,7 @@ class TestBoardEndpoint:
         ]
         assert data["done"] == []
 
-    async def test_board_prefers_project_with_latest_sprint_activity(
-        self, client, test_db
-    ):
+    async def test_board_prefers_project_with_latest_sprint_activity(self, client, test_db):
         _, factory = test_db
         from autonomous_agent_builder.db.models import (
             Feature,
@@ -597,9 +595,7 @@ class TestBoardEndpoint:
         assert [task["status"] for task in data["pending"]] == ["build_verify"]
         assert data["active"] == []
 
-    async def test_embedded_board_keeps_failed_latest_run_out_of_active_lane(
-        self, test_db
-    ):
+    async def test_embedded_board_keeps_failed_latest_run_out_of_active_lane(self, test_db):
         _, factory = test_db
         from autonomous_agent_builder.db.models import (
             AgentRun,
@@ -663,16 +659,42 @@ class TestBoardEndpoint:
         resp = await client.get("/api/dashboard/board")
         task_item = resp.json()["pending"][0]
         expected_fields = {
-            "id", "title", "description", "status", "phase", "feature_id",
-            "feature_title", "feature_description", "feature_priority",
-            "feature_item_type", "acceptance_criteria", "dependencies",
+            "id",
+            "title",
+            "description",
+            "status",
+            "phase",
+            "feature_id",
+            "feature_title",
+            "feature_description",
+            "feature_priority",
+            "feature_item_type",
+            "acceptance_criteria",
+            "dependencies",
             "sprint_execution",
-            "agent_name", "runtime_sdk", "provider", "model", "effort",
-            "cost_usd", "total_cost", "tokens_input", "tokens_output", "tokens_cached",
-            "num_turns", "duration_ms", "approval_gate_id",
-            "approval_gate_type", "pending_approval_count",
-            "blocked_reason", "can_recover", "latest_run_status", "observability",
-            "gate_results", "agent_runs", "activity_timeline", "updated_at",
+            "agent_name",
+            "runtime_sdk",
+            "provider",
+            "model",
+            "effort",
+            "cost_usd",
+            "total_cost",
+            "tokens_input",
+            "tokens_output",
+            "tokens_cached",
+            "num_turns",
+            "duration_ms",
+            "approval_gate_id",
+            "approval_gate_type",
+            "pending_approval_count",
+            "blocked_reason",
+            "can_recover",
+            "latest_run_status",
+            "observability",
+            "gate_results",
+            "agent_runs",
+            "activity_timeline",
+            "updated_at",
         }
         assert set(task_item.keys()) == expected_fields
 
@@ -774,10 +796,18 @@ class TestBoardEndpoint:
         assert "Used Edit on src/domain.py" in actions
         assert "Created src/domain.py (+12/-0)" in actions
         assert "Updated tests/test_domain.py (+6/-4)" in actions
-        assert actions.index("Started code-gen") < actions.index("Implementing the domain model now.")
-        assert actions.index("Implementing the domain model now.") < actions.index("Thinking: Checking how search should compose with the active filter.")
-        assert actions.index("Thinking: Checking how search should compose with the active filter.") < actions.index("Used Edit on src/domain.py")
-        assert actions.index("Used Edit on src/domain.py") < actions.index("Created src/domain.py (+12/-0)")
+        assert actions.index("Started code-gen") < actions.index(
+            "Implementing the domain model now."
+        )
+        assert actions.index("Implementing the domain model now.") < actions.index(
+            "Thinking: Checking how search should compose with the active filter."
+        )
+        assert actions.index(
+            "Thinking: Checking how search should compose with the active filter."
+        ) < actions.index("Used Edit on src/domain.py")
+        assert actions.index("Used Edit on src/domain.py") < actions.index(
+            "Created src/domain.py (+12/-0)"
+        )
         assert all("full transcript" not in action.lower() for action in actions)
 
     async def test_board_includes_sprint_execution_summary(self, client, test_db):
@@ -1044,9 +1074,7 @@ class TestBoardEndpoint:
         assert data["current_sprint"]["label"] == "Sprint 1 / Feature 4"
         assert data["current_sprint"]["active_phase"] == "blocked"
         completed_sprints = [
-            sprint
-            for sprint in data["sprints"]
-            if sprint["label"] != "Sprint 1 / Feature 4"
+            sprint for sprint in data["sprints"] if sprint["label"] != "Sprint 1 / Feature 4"
         ]
         assert all(sprint["active_phase"] == "shipped" for sprint in completed_sprints)
         assert all(len(sprint["generated_task_ids"]) == 1 for sprint in data["sprints"])
@@ -1140,9 +1168,19 @@ class TestMetricsEndpoint:
         resp = await client.get("/api/dashboard/metrics")
         data = resp.json()
         expected_fields = {
-            "total_cost", "total_estimated_cost_usd", "total_estimated_codex_credits", "total_tokens", "total_runs",
-            "gate_pass_rate", "optimization_summary", "optimization_decision", "runtime_decision_summary",
-            "deterministic_script_candidates", "voice_ledger", "context_budget", "runs",
+            "total_cost",
+            "total_estimated_cost_usd",
+            "total_estimated_codex_credits",
+            "total_tokens",
+            "total_runs",
+            "gate_pass_rate",
+            "optimization_summary",
+            "optimization_decision",
+            "runtime_decision_summary",
+            "deterministic_script_candidates",
+            "voice_ledger",
+            "context_budget",
+            "runs",
         }
         assert set(data.keys()) == expected_fields
         assert data["optimization_summary"]["primary_score"] == "raw_tokens"
@@ -1420,9 +1458,7 @@ class TestMetricsEndpoint:
         assert run["diff_summary"]["hunks"] == [{"path": "src/app.js", "added_lines": 5}]
         assert run["observability"]["command"] == "builder script run feature_acceptance --json"
         assert run["observability"]["data"]["command"] == ["test"]
-        assert run["observability"]["data"]["checks"] == [
-            {"command": ["test"], "status": "passed"}
-        ]
+        assert run["observability"]["data"]["checks"] == [{"command": ["test"], "status": "passed"}]
         serialized_observability = json.dumps(run["observability"])
         assert "node_modules" not in serialized_observability
         assert "preview" not in serialized_observability
@@ -1793,8 +1829,7 @@ class TestObservabilityEndpoint:
         assert "recommendations" in data
         assert data["runtime_aggregates"]["runtime_recovery"]["resume_retry_count"] == 1
         recommendation_codes = {
-            item["code"]
-            for item in data["observability_coverage"]["deterministic_recommendations"]
+            item["code"] for item in data["observability_coverage"]["deterministic_recommendations"]
         }
         resolved_codes = {
             item["code"] for item in data["observability_coverage"]["resolved_recommendations"]
@@ -1846,13 +1881,24 @@ class TestApprovalDetailsEndpoint:
         data = resp.json()
 
         expected_fields = {
-            "gate_id", "gate_type", "gate_status",
-            "task_id", "task_title", "task_status", "task_description",
-            "feature_title", "project_name",
-            "thread", "runs", "gate_results",
+            "gate_id",
+            "gate_type",
+            "gate_status",
+            "task_id",
+            "task_title",
+            "task_status",
+            "task_description",
+            "feature_title",
+            "project_name",
+            "thread",
+            "runs",
+            "gate_results",
             # Sprint-PR refactor adds optional sprint metadata; per-task gates
             # surface them as empty strings.
-            "sprint_id", "sprint_label", "sprint_pr_url", "sprint_changes_summary",
+            "sprint_id",
+            "sprint_label",
+            "sprint_pr_url",
+            "sprint_changes_summary",
         }
         assert set(data.keys()) == expected_fields
         assert data["gate_type"] == "planning"
@@ -1985,13 +2031,18 @@ class TestApprovalDetailsEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert [entry["role"] for entry in data["thread"]] == ["agent", "human"]
-        assert "Planner recommended a small Flask validation-run CRUD slice." in data["thread"][0]["content"]
+        assert (
+            "Planner recommended a small Flask validation-run CRUD slice."
+            in data["thread"][0]["content"]
+        )
 
 
 @pytest.mark.asyncio
 class TestDashboardUtilityEndpoints:
     async def test_shell_summary_includes_pending_gate_and_questions(self, client, test_db):
-        proj = await client.post("/api/projects/", json={"name": "shell-proj", "language": "python"})
+        proj = await client.post(
+            "/api/projects/", json={"name": "shell-proj", "language": "python"}
+        )
         feat = await client.post(
             f"/api/projects/{proj.json()['id']}/features",
             json={"title": "Shell feature"},
@@ -2075,7 +2126,9 @@ class TestDashboardUtilityEndpoints:
         ]
 
     async def test_inbox_returns_latest_run_context(self, client, test_db):
-        proj = await client.post("/api/projects/", json={"name": "inbox-proj", "language": "python"})
+        proj = await client.post(
+            "/api/projects/", json={"name": "inbox-proj", "language": "python"}
+        )
         feat = await client.post(
             f"/api/projects/{proj.json()['id']}/features",
             json={"title": "Inbox feature"},
@@ -2113,7 +2166,9 @@ class TestDashboardUtilityEndpoints:
         assert data[0]["approval_url"].startswith("/approvals/")
 
     async def test_compare_returns_both_runs(self, client, test_db):
-        proj = await client.post("/api/projects/", json={"name": "compare-proj", "language": "python"})
+        proj = await client.post(
+            "/api/projects/", json={"name": "compare-proj", "language": "python"}
+        )
         feat = await client.post(
             f"/api/projects/{proj.json()['id']}/features",
             json={"title": "Compare feature"},
@@ -2128,8 +2183,20 @@ class TestDashboardUtilityEndpoints:
         from autonomous_agent_builder.db.models import AgentRun
 
         async with factory() as session:
-            left = AgentRun(task_id=task_id, agent_name="baseline", status="completed", cost_usd=0.01, num_turns=2)
-            right = AgentRun(task_id=task_id, agent_name="variant", status="completed", cost_usd=0.03, num_turns=4)
+            left = AgentRun(
+                task_id=task_id,
+                agent_name="baseline",
+                status="completed",
+                cost_usd=0.01,
+                num_turns=2,
+            )
+            right = AgentRun(
+                task_id=task_id,
+                agent_name="variant",
+                status="completed",
+                cost_usd=0.03,
+                num_turns=4,
+            )
             session.add_all([left, right])
             await session.flush()
             left_id = left.id
@@ -2146,7 +2213,9 @@ class TestDashboardUtilityEndpoints:
         assert data["right"]["agent_name"] == "variant"
 
     async def test_command_index_returns_routes_and_task_actions(self, client, test_db):
-        proj = await client.post("/api/projects/", json={"name": "command-proj", "language": "python"})
+        proj = await client.post(
+            "/api/projects/", json={"name": "command-proj", "language": "python"}
+        )
         feat = await client.post(
             f"/api/projects/{proj.json()['id']}/features",
             json={"title": "Command feature"},

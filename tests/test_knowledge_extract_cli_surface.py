@@ -197,7 +197,9 @@ def test_extract_command_passes_doc_slug_to_pipeline(monkeypatch):
 
     with runner.isolated_filesystem():
         Path(".agent-builder").mkdir()
-        result = runner.invoke(app, ["knowledge", "extract", "--doc", "system-architecture", "--json"])
+        result = runner.invoke(
+            app, ["knowledge", "extract", "--doc", "system-architecture", "--json"]
+        )
 
     assert result.exit_code == 0
     assert captured["doc_slug"] == "system-architecture"
@@ -263,7 +265,9 @@ def test_extract_pipeline_ignores_non_blocking_generator_errors(tmp_path, monkey
 
     assert payload["passed"] is True
     assert payload["errors"][0]["slug"] == "project-overview"
-    assert payload["next_step"]["reason"] == "deterministic_validation_passed_with_non_blocking_errors"
+    assert (
+        payload["next_step"]["reason"] == "deterministic_validation_passed_with_non_blocking_errors"
+    )
 
 
 def test_extract_command_rejects_noncanonical_output_dir():

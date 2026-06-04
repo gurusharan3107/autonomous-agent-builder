@@ -247,7 +247,9 @@ async def test_choose_followup_marks_sprint_blocked_when_all_tasks_failed(test_d
         # Three tasks that all failed integration
         failed1 = Task(feature_id=feature.id, title="Set up domain model", status=TaskStatus.FAILED)
         failed2 = Task(feature_id=feature.id, title="Build UI shell", status=TaskStatus.FAILED)
-        failed3 = Task(feature_id=feature.id, title="Implement core behavior", status=TaskStatus.FAILED)
+        failed3 = Task(
+            feature_id=feature.id, title="Implement core behavior", status=TaskStatus.FAILED
+        )
         # Two tasks still pending (blocked by failed deps)
         pending1 = Task(feature_id=feature.id, title="Wire persistence", status=TaskStatus.PENDING)
         pending2 = Task(feature_id=feature.id, title="Verify feature", status=TaskStatus.PENDING)
@@ -273,13 +275,21 @@ async def test_choose_followup_marks_sprint_blocked_when_all_tasks_failed(test_d
         assert sprint.phase == SprintPhase.BLOCKED
         assert sprint.verification_status == "blocked"
         assert sprint.verification_evidence is not None
-        assert sprint.verification_evidence["blocked_reason"] == "all_active_tasks_failed_or_blocked"
-        assert set(sprint.verification_evidence["failed_task_ids"]) == {failed1.id, failed2.id, failed3.id}
+        assert (
+            sprint.verification_evidence["blocked_reason"] == "all_active_tasks_failed_or_blocked"
+        )
+        assert set(sprint.verification_evidence["failed_task_ids"]) == {
+            failed1.id,
+            failed2.id,
+            failed3.id,
+        }
         assert set(sprint.verification_evidence["pending_task_ids"]) == {pending1.id, pending2.id}
 
 
 @pytest.mark.asyncio
-async def test_choose_followup_marks_sprint_blocked_when_task_blocked_needs_operator(test_db) -> None:
+async def test_choose_followup_marks_sprint_blocked_when_task_blocked_needs_operator(
+    test_db,
+) -> None:
     """2026-05-29 (fuzzer-caught fixture-D hang): a task BLOCKED for an
     operator decision (quality_gate_cap_exceeded) with dependent pending tasks
     must transition the sprint to blocked — not quiesce silently. Reproduces the
@@ -297,12 +307,15 @@ async def test_choose_followup_marks_sprint_blocked_when_task_blocked_needs_oper
         db.add(feature)
         await db.flush()
         blocked = Task(
-            feature_id=feature.id, title="Set up domain model",
+            feature_id=feature.id,
+            title="Set up domain model",
             status=TaskStatus.BLOCKED,
             blocked_reason="quality_gate_cap_exceeded: task reached 6 gate-retry attempts",
         )
         done = Task(feature_id=feature.id, title="Build UI shell", status=TaskStatus.DONE)
-        pending1 = Task(feature_id=feature.id, title="Implement core behavior", status=TaskStatus.PENDING)
+        pending1 = Task(
+            feature_id=feature.id, title="Implement core behavior", status=TaskStatus.PENDING
+        )
         pending2 = Task(feature_id=feature.id, title="Wire persistence", status=TaskStatus.PENDING)
         pending3 = Task(feature_id=feature.id, title="Verify search", status=TaskStatus.PENDING)
         db.add_all([blocked, done, pending1, pending2, pending3])
@@ -324,9 +337,15 @@ async def test_choose_followup_marks_sprint_blocked_when_task_blocked_needs_oper
         assert decision.reason == "task_status_blocked"
         assert sprint.phase == SprintPhase.BLOCKED
         assert sprint.verification_evidence is not None
-        assert sprint.verification_evidence["blocked_reason"] == "all_active_tasks_failed_or_blocked"
+        assert (
+            sprint.verification_evidence["blocked_reason"] == "all_active_tasks_failed_or_blocked"
+        )
         assert set(sprint.verification_evidence["blocked_task_ids"]) == {blocked.id}
-        assert set(sprint.verification_evidence["pending_task_ids"]) == {pending1.id, pending2.id, pending3.id}
+        assert set(sprint.verification_evidence["pending_task_ids"]) == {
+            pending1.id,
+            pending2.id,
+            pending3.id,
+        }
 
 
 @pytest.mark.asyncio
@@ -340,18 +359,24 @@ async def test_choose_followup_does_not_stall_when_recoverable_capability_limit(
         db.add(project)
         await db.flush()
         feature = Feature(
-            project_id=project.id, title="Feature", status=FeatureStatus.SPRINT_PLANNED,
+            project_id=project.id,
+            title="Feature",
+            status=FeatureStatus.SPRINT_PLANNED,
         )
         db.add(feature)
         await db.flush()
         blocked = Task(feature_id=feature.id, title="Blocked", status=TaskStatus.BLOCKED)
-        cap = Task(feature_id=feature.id, title="Provider-limited", status=TaskStatus.CAPABILITY_LIMIT)
+        cap = Task(
+            feature_id=feature.id, title="Provider-limited", status=TaskStatus.CAPABILITY_LIMIT
+        )
         pending = Task(feature_id=feature.id, title="Pending", status=TaskStatus.PENDING)
         db.add_all([blocked, cap, pending])
         await db.flush()
 
         sprint = Sprint(
-            project_id=project.id, label="Sprint 1", phase=SprintPhase.IMPLEMENTATION,
+            project_id=project.id,
+            label="Sprint 1",
+            phase=SprintPhase.IMPLEMENTATION,
             approved_feature_ids=[feature.id],
             generated_task_ids=[blocked.id, cap.id, pending.id],
         )
@@ -380,7 +405,9 @@ async def test_choose_followup_does_not_mark_sprint_stalled_when_task_in_progres
         db.add(feature)
         await db.flush()
         failed = Task(feature_id=feature.id, title="Failed task", status=TaskStatus.FAILED)
-        in_prog = Task(feature_id=feature.id, title="Still running", status=TaskStatus.IMPLEMENTATION)
+        in_prog = Task(
+            feature_id=feature.id, title="Still running", status=TaskStatus.IMPLEMENTATION
+        )
         pending = Task(feature_id=feature.id, title="Blocked pending", status=TaskStatus.PENDING)
         db.add_all([failed, in_prog, pending])
         await db.flush()

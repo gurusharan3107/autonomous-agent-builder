@@ -240,7 +240,10 @@ def test_embedded_server_exposes_project_scoped_feature_routes(tmp_path: Path) -
 
         create_feature_response = client.post(
             f"/api/projects/{project_id}/features",
-            json={"title": "Canonical backlog lane", "description": "Use backlog as the public lane"},
+            json={
+                "title": "Canonical backlog lane",
+                "description": "Use backlog as the public lane",
+            },
         )
         assert create_feature_response.status_code == 201
         assert create_feature_response.json()["project_id"] == project_id
@@ -337,7 +340,11 @@ def test_embedded_server_dispatches_task_route(monkeypatch, tmp_path: Path) -> N
             feature = await db.get(Feature, feature_id)
             assert feature is not None
             feature.status = FeatureStatus.QUEUED
-            task = Task(feature_id=feature_id, title="Dispatchable task", description="Exercise embedded dispatch")
+            task = Task(
+                feature_id=feature_id,
+                title="Dispatchable task",
+                description="Exercise embedded dispatch",
+            )
             db.add(task)
             await db.commit()
             await db.refresh(task)
@@ -396,7 +403,9 @@ def test_embedded_dispatch_autonomously_starts_next_serial_task(
     async def seed_tasks() -> tuple[str, str]:
         factory = get_session_factory()
         async with factory() as db:
-            project = Project(name="Builder", description="Repo-local builder project", language="python")
+            project = Project(
+                name="Builder", description="Repo-local builder project", language="python"
+            )
             db.add(project)
             await db.flush()
             feature = Feature(
@@ -459,7 +468,9 @@ def test_embedded_dispatch_blocks_same_status_followup_cycle(
     async def seed_task() -> str:
         factory = get_session_factory()
         async with factory() as db:
-            project = Project(name="Builder", description="Repo-local builder project", language="python")
+            project = Project(
+                name="Builder", description="Repo-local builder project", language="python"
+            )
             db.add(project)
             await db.flush()
             feature = Feature(
@@ -525,7 +536,9 @@ def test_embedded_dispatch_blocks_task_after_unhandled_error(
     async def seed_task() -> str:
         factory = get_session_factory()
         async with factory() as db:
-            project = Project(name="Builder", description="Repo-local builder project", language="python")
+            project = Project(
+                name="Builder", description="Repo-local builder project", language="python"
+            )
             db.add(project)
             await db.flush()
             feature = Feature(
@@ -588,7 +601,9 @@ def test_embedded_server_serializes_gate_results(tmp_path: Path) -> None:
             project = Project(name="Gate project", description="Gate route", language="python")
             db.add(project)
             await db.flush()
-            feature = Feature(project_id=project.id, title="Gate feature", status=FeatureStatus.QUEUED)
+            feature = Feature(
+                project_id=project.id, title="Gate feature", status=FeatureStatus.QUEUED
+            )
             db.add(feature)
             await db.flush()
             task = Task(feature_id=feature.id, title="Gate task")
@@ -747,7 +762,9 @@ def test_embedded_server_hydrates_forward_engineering_feature_list_into_db(tmp_p
         async with factory() as db:
             feature_titles = [
                 feature.title
-                for feature in (await db.execute(select(Feature).order_by(Feature.priority.desc()))).scalars().all()
+                for feature in (await db.execute(select(Feature).order_by(Feature.priority.desc())))
+                .scalars()
+                .all()
             ]
             task_count = len((await db.execute(select(Task))).scalars().all())
             return feature_titles, task_count
@@ -784,7 +801,11 @@ def test_embedded_server_exposes_dispatch_compat_route(monkeypatch, tmp_path: Pa
             feature = await db.get(Feature, feature_id)
             assert feature is not None
             feature.status = FeatureStatus.QUEUED
-            task = Task(feature_id=feature_id, title="Dispatchable task", description="Exercise embedded dispatch")
+            task = Task(
+                feature_id=feature_id,
+                title="Dispatchable task",
+                description="Exercise embedded dispatch",
+            )
             db.add(task)
             await db.commit()
             await db.refresh(task)

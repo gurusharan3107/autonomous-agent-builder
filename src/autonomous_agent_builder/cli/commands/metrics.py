@@ -272,9 +272,7 @@ def _compact_optimization_summary(summary: Any) -> dict[str, Any]:
                 "agent_name": driver.get("agent_name", ""),
                 "runs": driver.get("runs", 0),
                 "raw_tokens": driver.get("raw_tokens", 0),
-                "noncached_plus_output_tokens": driver.get(
-                    "noncached_plus_output_tokens", 0
-                ),
+                "noncached_plus_output_tokens": driver.get("noncached_plus_output_tokens", 0),
                 "cached_tokens": driver.get("cached_tokens", 0),
                 "avoidable_token_estimate": driver.get("avoidable_token_estimate", 0),
             }
@@ -286,9 +284,7 @@ def _compact_optimization_summary(summary: Any) -> dict[str, Any]:
                 "agent_name": driver.get("agent_name", ""),
                 "runs": driver.get("runs", 0),
                 "raw_tokens": driver.get("raw_tokens", 0),
-                "noncached_plus_output_tokens": driver.get(
-                    "noncached_plus_output_tokens", 0
-                ),
+                "noncached_plus_output_tokens": driver.get("noncached_plus_output_tokens", 0),
                 "cached_tokens": driver.get("cached_tokens", 0),
                 "avoidable_token_estimate": driver.get("avoidable_token_estimate", 0),
             }

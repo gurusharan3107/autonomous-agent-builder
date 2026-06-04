@@ -116,9 +116,7 @@ class TestAPIEntityCreation:
 
     @pytest.mark.asyncio
     async def test_create_feature(self, client, test_db):
-        proj = await client.post(
-            "/api/projects/", json={"name": "feat-test", "language": "python"}
-        )
+        proj = await client.post("/api/projects/", json={"name": "feat-test", "language": "python"})
         resp = await client.post(
             f"/api/projects/{proj.json()['id']}/features",
             json={"title": "Add greeting endpoint", "description": "New endpoint"},

@@ -211,7 +211,8 @@ def analyze_fixture_agreement(iterations: list[dict]) -> dict:
     return {
         "pairs": dict(pair_agreement),
         "redundant_pairs": [
-            (a, b) for (a, b), stats in pair_agreement.items()
+            (a, b)
+            for (a, b), stats in pair_agreement.items()
             if stats["disagree"] == 0 and stats["agree"] >= 3
         ],
     }
@@ -284,7 +285,8 @@ def analyze_token_economics(optimize_rows: list[dict], per_prompt: list[dict]) -
     # Ranked by descending non-cached + output (i.e., the costly stuff)
     top_agents = sorted(
         ((a, v) for a, v in by_agent.items() if v["noncached_plus_output"] > 0),
-        key=lambda p: p[1]["noncached_plus_output"], reverse=True,
+        key=lambda p: p[1]["noncached_plus_output"],
+        reverse=True,
     )[:5]
     return {
         "total_iterations": total_iterations,
@@ -296,8 +298,7 @@ def analyze_token_economics(optimize_rows: list[dict], per_prompt: list[dict]) -
     }
 
 
-def analyze_loop_roi(optimize_rows: list[dict], iterations: list[dict],
-                     baseline: dict) -> dict:
+def analyze_loop_roi(optimize_rows: list[dict], iterations: list[dict], baseline: dict) -> dict:
     """Cumulative cost paid to run the loop vs cumulative composite savings.
 
     "Was the loop net-positive?" answers a question the user genuinely cares
@@ -351,8 +352,10 @@ def _break_even_remark(cost_usd: float, savings_pct: float, kept: list[dict]) ->
     avg_dispatch = 0.50
     saved_per_feature = avg_dispatch * (savings_pct / 100)
     features_to_breakeven = int(cost_usd / saved_per_feature) if saved_per_feature else 0
-    return (f"${cost_usd:.2f} spent, {savings_pct:.1f}% composite savings — "
-            f"break-even after ~{features_to_breakeven} future feature ships")
+    return (
+        f"${cost_usd:.2f} spent, {savings_pct:.1f}% composite savings — "
+        f"break-even after ~{features_to_breakeven} future feature ships"
+    )
 
 
 def query_workflow_knowledge(queries: list[str], skip: bool) -> dict:
@@ -360,8 +363,7 @@ def query_workflow_knowledge(queries: list[str], skip: bool) -> dict:
     if skip:
         return {"skipped": True, "results": []}
     if not WORKFLOW_BIN.exists():
-        return {"skipped": True, "error": f"workflow.py not found at {WORKFLOW_BIN}",
-                "results": []}
+        return {"skipped": True, "error": f"workflow.py not found at {WORKFLOW_BIN}", "results": []}
     results: list[dict] = []
     env = dict(os.environ)
     env["CODEX_WORKFLOW_PUBLIC_ENTRYPOINT"] = "1"
@@ -369,7 +371,9 @@ def query_workflow_knowledge(queries: list[str], skip: bool) -> dict:
         try:
             out = subprocess.check_output(
                 ["python3", str(WORKFLOW_BIN), "knowledge", "search", q],
-                env=env, stderr=subprocess.DEVNULL, timeout=10,
+                env=env,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
             ).decode()
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             continue
@@ -402,10 +406,7 @@ def analyze_idea_velocity(ideas_md: pathlib.Path) -> dict:
     # idea blocks contain at least one attempt line (an idea with 3 attempt
     # rows is still one attempted idea, not three).
     idea_blocks = re.split(r"(?m)^##\s+\d+\.\s+", text)[1:]  # drop preamble
-    attempted = sum(
-        1 for block in idea_blocks
-        if re.search(r"(?im)^\s*-\s*Attempted\b", block)
-    )
+    attempted = sum(1 for block in idea_blocks if re.search(r"(?im)^\s*-\s*Attempted\b", block))
     total = len(idea_blocks)
     return {
         "applicable": True,
@@ -449,8 +450,11 @@ def build_recommendations(findings: dict) -> list[str]:
     top_agents = econ.get("top_agents_by_cost") or []
     if top_agents:
         worst = top_agents[0]
-        share = (worst["noncached_plus_output"] / econ["total_noncached_plus_output"] * 100
-                 if econ.get("total_noncached_plus_output") else 0)
+        share = (
+            worst["noncached_plus_output"] / econ["total_noncached_plus_output"] * 100
+            if econ.get("total_noncached_plus_output")
+            else 0
+        )
         if share > 40:
             recs.append(
                 f"**Agent `{worst['agent']}` consumes {share:.0f}% of loop tokens.** "
@@ -593,8 +597,11 @@ def render_report(findings: dict, recommendations: list[str]) -> str:
         "",
     ]
     if econ["total_iterations"] == 0:
-        lines += ["- No per-prompt rows yet (zero iterations). Section becomes "
-                  "meaningful once `optimize_results.tsv` has rows.", ""]
+        lines += [
+            "- No per-prompt rows yet (zero iterations). Section becomes "
+            "meaningful once `optimize_results.tsv` has rows.",
+            "",
+        ]
     else:
         lines += [
             f"- **{econ['total_iterations']} iterations recorded** consuming "
@@ -710,9 +717,13 @@ def render_report(findings: dict, recommendations: list[str]) -> str:
             "",
         ]
 
-    lines += ["## 8. Lean recommendations", "",
-              "*Ranked by `(expected token reduction × applicability)`. Each item is "
-              "actionable today — no speculation.*", ""]
+    lines += [
+        "## 8. Lean recommendations",
+        "",
+        "*Ranked by `(expected token reduction × applicability)`. Each item is "
+        "actionable today — no speculation.*",
+        "",
+    ]
     if recommendations:
         for r in recommendations:
             lines.append(f"- {r}")
@@ -776,11 +787,13 @@ def _iter_from_optimize_row(r: dict) -> dict:
     verdict/gate/compound analyses expect. The TSV is the authoritative ledger
     (the runner appends one row per completed iteration); `iterations.json` is a
     derived render artifact that can lag it."""
+
     def _num(key: str) -> float:
         try:
             return float(r.get(key) or 0)
         except (TypeError, ValueError):
             return 0.0
+
     return {
         "verdict": (r.get("decision") or "").strip().lower() or "unknown",
         "composite": int(_num("composite")),
@@ -846,12 +859,19 @@ def main() -> int:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Autoresearch loop self-introspection.")
-    p.add_argument("--stdout-only", action="store_true",
-                   help="Emit report to stdout, don't overwrite INTROSPECTION.md")
-    p.add_argument("--quiet", action="store_true",
-                   help="Suppress stdout summary; just write the report file")
-    p.add_argument("--skip-kb", action="store_true",
-                   help="Don't query `workflow knowledge` for KB-grounded leads")
+    p.add_argument(
+        "--stdout-only",
+        action="store_true",
+        help="Emit report to stdout, don't overwrite INTROSPECTION.md",
+    )
+    p.add_argument(
+        "--quiet", action="store_true", help="Suppress stdout summary; just write the report file"
+    )
+    p.add_argument(
+        "--skip-kb",
+        action="store_true",
+        help="Don't query `workflow knowledge` for KB-grounded leads",
+    )
     return p.parse_args()
 
 

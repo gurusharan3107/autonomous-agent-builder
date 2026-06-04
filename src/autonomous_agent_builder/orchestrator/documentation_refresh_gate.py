@@ -187,7 +187,9 @@ async def record_documentation_bridge_run(
         error=error,
         output_text=str(bridge_payload.get("summary", "") or ""),
         observability=(
-            run_payload.get("observability") if isinstance(run_payload.get("observability"), dict) else None
+            run_payload.get("observability")
+            if isinstance(run_payload.get("observability"), dict)
+            else None
         ),
         completed_at=datetime.now(UTC),
     )

@@ -93,8 +93,7 @@ async def sprint_for_delivery_plan_id(db: AsyncSession, plan_id: str) -> Sprint 
 
 def run_token_totals(runs: list[AgentRun]) -> tuple[int, int, int]:
     raw_tokens = sum(
-        max(0, int(run.tokens_input or 0)) + max(0, int(run.tokens_output or 0))
-        for run in runs
+        max(0, int(run.tokens_input or 0)) + max(0, int(run.tokens_output or 0)) for run in runs
     )
     cached_tokens = sum(max(0, int(run.tokens_cached or 0)) for run in runs)
     noncached_plus_output = sum(
@@ -126,16 +125,22 @@ async def delivery_closeout_for_shipped_plan(
     }:
         return ""
 
-    task_ids = [str(task_id) for task_id in (sprint.generated_task_ids or []) if str(task_id).strip()]
+    task_ids = [
+        str(task_id) for task_id in (sprint.generated_task_ids or []) if str(task_id).strip()
+    ]
     feature_ids = [
-        str(feature_id) for feature_id in (sprint.approved_feature_ids or []) if str(feature_id).strip()
+        str(feature_id)
+        for feature_id in (sprint.approved_feature_ids or [])
+        if str(feature_id).strip()
     ]
     feature_titles: list[str] = []
     if feature_ids:
         feature_result = await db.execute(
             select(Feature).where(Feature.id.in_(feature_ids)).order_by(Feature.created_at.asc())
         )
-        feature_titles = [feature.title for feature in feature_result.scalars().all() if feature.title]
+        feature_titles = [
+            feature.title for feature in feature_result.scalars().all() if feature.title
+        ]
     if not feature_titles and task_ids:
         task_result = await db.execute(
             select(Task).where(Task.id.in_(task_ids)).options(selectinload(Task.feature))
@@ -154,7 +159,9 @@ async def delivery_closeout_for_shipped_plan(
     if task_ids:
         task_result = await db.execute(select(Task.status).where(Task.id.in_(task_ids)))
         completed_steps = sum(
-            1 for status in task_result.scalars().all() if enum_text(status) == TaskStatus.DONE.value
+            1
+            for status in task_result.scalars().all()
+            if enum_text(status) == TaskStatus.DONE.value
         )
     run_result = await db.execute(
         select(AgentRun)

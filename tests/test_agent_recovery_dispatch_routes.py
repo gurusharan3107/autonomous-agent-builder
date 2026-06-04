@@ -190,8 +190,7 @@ async def test_recover_and_keep_going_uses_model_to_recover_and_dispatch(
             )
         )
         stop_reasons = [
-            event.payload_json.get("stop_reason")
-            for event in status_result.scalars().all()
+            event.payload_json.get("stop_reason") for event in status_result.scalars().all()
         ]
 
     assert runtime_prompts
@@ -207,6 +206,7 @@ async def test_recover_and_keep_going_uses_model_to_recover_and_dispatch(
     assert "recovered and dispatched" in assistant_item["payload"]["content"]
     assert "task_dispatched" in stop_reasons
     assert "task_recovered_and_dispatched" not in stop_reasons
+
 
 @pytest.mark.asyncio
 async def test_plain_keep_going_lets_model_recover_and_dispatch_blocked_task(

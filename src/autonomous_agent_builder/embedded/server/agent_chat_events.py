@@ -115,7 +115,9 @@ async def append_voice_final_summary_if_needed(
         payload=payload,
         status=digest_service.event_status(payload["outcome"]),
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(event).model_dump(mode="json")
+    )
     return event
 
 

@@ -24,7 +24,10 @@ from tests.agent_route_test_support import append_chat_event, create_chat_sessio
             "can documentation also be generated on forward engineering testing again from onboarding",
             "forward_engineering",
         ),
-        ("can documentation also be generated on full end-to-end autonomous builder testing", "end_to_end"),
+        (
+            "can documentation also be generated on full end-to-end autonomous builder testing",
+            "end_to_end",
+        ),
     ],
 )
 def test_resolve_documentation_action_adds_missing_testing_docs(message, expected_scope):
@@ -95,7 +98,9 @@ def test_documentation_continuation_matcher_accepts_short_follow_ups():
 
 
 @pytest.mark.asyncio
-async def test_select_specialist_route_reactivates_previous_documentation_specialist(test_db, tmp_path):
+async def test_select_specialist_route_reactivates_previous_documentation_specialist(
+    test_db, tmp_path
+):
     _, factory = test_db
     now = datetime.now(UTC)
     session_id = await create_chat_session(
@@ -148,7 +153,9 @@ async def test_select_specialist_route_reactivates_previous_documentation_specia
 
 
 @pytest.mark.asyncio
-async def test_select_specialist_route_does_not_continue_without_previous_specialist(test_db, tmp_path):
+async def test_select_specialist_route_does_not_continue_without_previous_specialist(
+    test_db, tmp_path
+):
     _, factory = test_db
     now = datetime.now(UTC)
     session_id = await create_chat_session(
@@ -272,8 +279,9 @@ async def test_select_specialist_route_prefers_explicit_specialist_over_continua
 
     fake_policy = agent_routes.SpecialistRoutePolicy(
         name="architecture-reviewer",
-        explicit_intent_matcher=lambda message: agent_routes._normalized_follow_up_message(message)
-        == "go ahead",
+        explicit_intent_matcher=lambda message: (
+            agent_routes._normalized_follow_up_message(message) == "go ahead"
+        ),
         continuation_matcher=lambda message: False,
         context_builder=fake_context_builder,
         auto_approve_tools=frozenset(),

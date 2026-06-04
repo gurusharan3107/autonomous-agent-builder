@@ -2,6 +2,7 @@
 
 Extension bridge only: Windows Chrome + Hermes extension + native messaging Unix socket.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,22 +16,28 @@ try:
     from hermes_constants import get_hermes_home as _get_hermes_home  # noqa: F401
     from tools.registry import tool_error, tool_result
 except ImportError:
+
     def tool_result(data: Any) -> str:  # type: ignore[misc]
         return json.dumps({"success": True, **data} if isinstance(data, dict) else {"result": data})
 
     def tool_error(msg: str, *, success: bool = False, **_: Any) -> str:  # type: ignore[misc]
         return json.dumps({"success": success, "error": msg})
 
+
 PLUGIN_DIR = Path(__file__).resolve().parent
 DEFAULT_TIMEOUT_SECONDS = 45
 MAX_ACTIONS = 20
 MAX_TEXT_CHARS = 120_000
 
-_SOCKET_PATH = Path(os.environ.get("HERMES_CHROME_BRIDGE_SOCKET",
-    str(Path.home() / ".hermes" / "run" / "chrome-bridge.sock")))
+_SOCKET_PATH = Path(
+    os.environ.get(
+        "HERMES_CHROME_BRIDGE_SOCKET", str(Path.home() / ".hermes" / "run" / "chrome-bridge.sock")
+    )
+)
 
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
+
 
 def _coerce_positive_int(raw: Any, *, default: int, minimum: int, maximum: int) -> int:
     try:
@@ -61,6 +68,7 @@ def _normalise_actions(raw: Any) -> list[dict[str, Any]]:
 
 # ── Extension socket path (Windows Chrome + native messaging) ─────────────────
 
+
 def _socket_reachable(*, timeout: float = 2.0) -> bool:
     if not _SOCKET_PATH.exists():
         return False
@@ -76,16 +84,24 @@ def _socket_reachable(*, timeout: float = 2.0) -> bool:
 
 def _wake_chrome_extension() -> None:
     """Wake Chrome's MV3 service worker (goes idle after ~30s)."""
-    import subprocess, platform, time
+    import platform
+    import subprocess
+    import time
+
     try:
         if platform.system() == "Darwin":
-            subprocess.run(["open", "-a", "Google Chrome", "about:newtab"],
-                           capture_output=True, timeout=5)
+            subprocess.run(
+                ["open", "-a", "Google Chrome", "about:newtab"], capture_output=True, timeout=5
+            )
         else:
             subprocess.run(
-                ["powershell.exe", "-Command",
-                 "& { Start-Process 'cmd.exe' '/c start chrome about:newtab' }"],
-                capture_output=True, timeout=5,
+                [
+                    "powershell.exe",
+                    "-Command",
+                    "& { Start-Process 'cmd.exe' '/c start chrome about:newtab' }",
+                ],
+                capture_output=True,
+                timeout=5,
             )
     except Exception:
         pass
@@ -106,10 +122,15 @@ def _call_socket(payload: dict[str, Any], *, timeout_seconds: int) -> dict[str, 
                 break
             chunks.append(chunk)
     raw = b"".join(chunks).decode()
-    return json.loads(raw) if raw else {
-        "success": False, "error_code": "EMPTY_RESPONSE",
-        "error": "Extension bridge returned no output",
-    }
+    return (
+        json.loads(raw)
+        if raw
+        else {
+            "success": False,
+            "error_code": "EMPTY_RESPONSE",
+            "error": "Extension bridge returned no output",
+        }
+    )
 
 
 def _run_extension_bridge(request: dict[str, Any], *, timeout_seconds: int) -> dict[str, Any]:
@@ -143,6 +164,7 @@ def _run_extension_bridge(request: dict[str, Any], *, timeout_seconds: int) -> d
         pass
     _wake_chrome_extension()
     import time
+
     for _ in range(10):
         if _SOCKET_PATH.exists():
             try:
@@ -186,10 +208,12 @@ def _extension_health(*, timeout_seconds: int) -> dict[str, Any]:
 
 # ── Diagnostics (filesystem/manifest checks, bridge-independent) ──────────────
 
+
 def _diagnostics() -> dict[str, Any]:
     try:
         sys.path.insert(0, str(PLUGIN_DIR))
         from diagnostics import run_diagnostics  # type: ignore[import]
+
         return run_diagnostics()
     except Exception as exc:
         reachable = _socket_reachable()
@@ -300,12 +324,15 @@ HERMES_CHROME_BROWSER_SCHEMA = {
 
 # ── Handler ───────────────────────────────────────────────────────────────────
 
+
 def _handle_hermes_chrome_browser(args: dict, task_id: str | None = None, **_: Any) -> str:
     args = args or {}
     action = str(args.get("action") or "run").strip().lower()
     timeout_seconds = _coerce_positive_int(
         args.get("timeout_seconds"),
-        default=DEFAULT_TIMEOUT_SECONDS, minimum=5, maximum=180,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        minimum=5,
+        maximum=180,
     )
 
     # ── Static actions (no bridge needed) ─────────────────────────────────────
@@ -315,11 +342,13 @@ def _handle_hermes_chrome_browser(args: dict, task_id: str | None = None, **_: A
     if action in ("preflight", "diagnose"):
         diag = _diagnostics()
         ext = _extension_health(timeout_seconds=timeout_seconds)
-        return tool_result({
-            "extension": ext,
-            "diagnostics": diag,
-            "ready": ext.get("ready", False),
-        })
+        return tool_result(
+            {
+                "extension": ext,
+                "diagnostics": diag,
+                "ready": ext.get("ready", False),
+            }
+        )
 
     # ── Health / status ────────────────────────────────────────────────────────
     if action in ("health", "status"):
@@ -345,7 +374,10 @@ def _handle_hermes_chrome_browser(args: dict, task_id: str | None = None, **_: A
         "sessionName": str(args.get("session_name") or "Hermes Chrome"),
         "taskId": task_id or "",
         "maxTextChars": _coerce_positive_int(
-            args.get("max_text_chars"), default=20_000, minimum=1_000, maximum=MAX_TEXT_CHARS,
+            args.get("max_text_chars"),
+            default=20_000,
+            minimum=1_000,
+            maximum=MAX_TEXT_CHARS,
         ),
         "useSelectedTab": bool(args.get("use_selected_tab", True)),
     }

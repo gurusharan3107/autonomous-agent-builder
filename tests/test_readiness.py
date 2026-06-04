@@ -381,8 +381,7 @@ def test_forward_ready_project_stays_ready_after_generated_app_files(tmp_path: P
 
     assert payload["state"] == READY_STATE
     assert not any(
-        reason["code"] == "forward_workspace_shape"
-        for reason in payload["blocking_reasons"]
+        reason["code"] == "forward_workspace_shape" for reason in payload["blocking_reasons"]
     )
 
 
@@ -395,7 +394,9 @@ def test_readiness_cli_status_missing_is_unknown(tmp_path: Path) -> None:
     assert payload["exit_code"] == 3
     assert payload["next"][0]["command"] == "builder readiness assess --json"
     assert payload["actionable_next"] == "builder readiness assess --json"
-    assert payload["progressive_disclosure"][1]["command"] == "builder readiness status --json --full"
+    assert (
+        payload["progressive_disclosure"][1]["command"] == "builder readiness status --json --full"
+    )
     assert "phases" not in payload
 
 

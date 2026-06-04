@@ -36,7 +36,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
@@ -112,7 +112,7 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    state["committed_at"] = datetime.now(timezone.utc).isoformat()
+    state["committed_at"] = datetime.now(UTC).isoformat()
     STATE_PATH.write_text(json.dumps(state, indent=2) + "\n")
 
 
@@ -144,7 +144,7 @@ def detect() -> dict:
         "current_versions": current,
         "errors": errors,
         "since_committed_at": state.get("committed_at"),
-        "now": datetime.now(timezone.utc).isoformat(),
+        "now": datetime.now(UTC).isoformat(),
     }
 
 
@@ -162,13 +162,22 @@ def commit_state() -> dict:
         # Don't commit partial state — better to fail loudly
         return {"committed": False, "errors": errors}
     save_state(state)
-    return {"committed": True, "state_path": str(STATE_PATH), "surfaces": list(state["surfaces"].keys()), "committed_at": state["committed_at"]}
+    return {
+        "committed": True,
+        "state_path": str(STATE_PATH),
+        "surfaces": list(state["surfaces"].keys()),
+        "committed_at": state["committed_at"],
+    }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="KB upstream state-tracker")
-    parser.add_argument("--json", action="store_true", help="Emit JSON delta to stdout (default mode).")
-    parser.add_argument("--commit-state", action="store_true", help="Write current upstream versions to state.json.")
+    parser.add_argument(
+        "--json", action="store_true", help="Emit JSON delta to stdout (default mode)."
+    )
+    parser.add_argument(
+        "--commit-state", action="store_true", help="Write current upstream versions to state.json."
+    )
     args = parser.parse_args()
 
     if args.commit_state:

@@ -99,4 +99,6 @@ def test_compact_validate_output_payload_keeps_next_actions_and_counts() -> None
     assert compact["checks"] == [
         {"name": "freshness", "passed": False, "score": 0.25, "message": "stale"}
     ]
-    assert "builder knowledge show docs/runtime.md" in compact["progressive_disclosure"][1]["command"]
+    assert (
+        "builder knowledge show docs/runtime.md" in compact["progressive_disclosure"][1]["command"]
+    )

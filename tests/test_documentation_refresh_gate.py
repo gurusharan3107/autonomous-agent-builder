@@ -20,7 +20,9 @@ def test_resolve_documentation_project_root_prefers_existing_project_repo(tmp_pa
     workspace = tmp_path / "workspace"
     project_root.mkdir()
     workspace.mkdir()
-    task = SimpleNamespace(feature=SimpleNamespace(project=SimpleNamespace(repo_url=str(project_root))))
+    task = SimpleNamespace(
+        feature=SimpleNamespace(project=SimpleNamespace(repo_url=str(project_root)))
+    )
 
     assert resolve_documentation_project_root(task, str(workspace)) == project_root.resolve()
 

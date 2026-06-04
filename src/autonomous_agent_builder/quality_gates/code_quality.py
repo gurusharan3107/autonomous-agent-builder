@@ -135,7 +135,11 @@ class CodeQualityGate(QualityGate):
             )
 
         if not (package_dir / "node_modules").exists():
-            install_argv = ["npm", "ci"] if (package_dir / "package-lock.json").exists() else ["npm", "install"]
+            install_argv = (
+                ["npm", "ci"]
+                if (package_dir / "package-lock.json").exists()
+                else ["npm", "install"]
+            )
             install_code, install_output = await self._run_command(install_argv, package_dir)
             checks.append(
                 {

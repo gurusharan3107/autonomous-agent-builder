@@ -26,25 +26,16 @@ def load():
 
 
 def save(data):
-    data["metadata"]["done"] = sum(
-        1 for f in data["features"] if f["status"] == "done"
-    )
-    data["metadata"]["pending"] = sum(
-        1 for f in data["features"] if f["status"] == "pending"
-    )
+    data["metadata"]["done"] = sum(1 for f in data["features"] if f["status"] == "done")
+    data["metadata"]["pending"] = sum(1 for f in data["features"] if f["status"] == "pending")
     data["metadata"]["total_features"] = len(data["features"])
-    FEATURE_FILE.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    FEATURE_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def cmd_next(data):
     done_ids = {f["id"] for f in data["features"] if f["status"] == "done"}
     pending = [f for f in data["features"] if f["status"] == "pending"]
-    ready = [
-        f for f in pending
-        if all(d in done_ids for d in f.get("dependencies", []))
-    ]
+    ready = [f for f in pending if all(d in done_ids for d in f.get("dependencies", []))]
     ready.sort(key=lambda f: f.get("priority", "P2"))
     if ready:
         print(json.dumps(ready[0], indent=2))
@@ -112,10 +103,7 @@ def cmd_summary(data):
     done = sum(1 for f in data["features"] if f["status"] == "done")
     pending = sum(1 for f in data["features"] if f["status"] == "pending")
     total = len(data["features"])
-    p0 = sum(
-        1 for f in data["features"]
-        if f["status"] == "pending" and f.get("priority") == "P0"
-    )
+    p0 = sum(1 for f in data["features"] if f["status"] == "pending" and f.get("priority") == "P0")
     print(f"Total: {total}  Done: {done}  Pending: {pending}  P0 pending: {p0}")
 
 

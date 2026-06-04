@@ -10,8 +10,8 @@ from autonomous_agent_builder.db.models import (
     FeatureStatus,
     Project,
 )
-from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server import agent_sprint_planning
+from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server.routes import agent as agent_routes
 from tests.agent_route_test_support import (
     approve_pending_sprint_scope as _approve_pending_sprint_scope,
@@ -28,7 +28,9 @@ async def test_ship_new_feature_prompt_creates_feature_before_sprint_planning(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="javascript"))
@@ -86,10 +88,12 @@ async def test_ship_new_feature_prompt_creates_feature_before_sprint_planning(
 
     assert captured, assistant_item["payload"]["content"]
     assert "FEATURE_SPEC_JSON:" in str(captured["prompt"])
-    assert "There are no product backlog items available for sprint planning." not in assistant_item[
-        "payload"
-    ]["content"]
+    assert (
+        "There are no product backlog items available for sprint planning."
+        not in assistant_item["payload"]["content"]
+    )
     assert "I captured that feature" in assistant_item["payload"]["content"]
+
 
 @pytest.mark.asyncio
 async def test_todo_app_improvement_prompt_uses_model_and_captures_feature(
@@ -98,7 +102,9 @@ async def test_todo_app_improvement_prompt_uses_model_and_captures_feature(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="javascript"))
@@ -114,7 +120,7 @@ async def test_todo_app_improvement_prompt_uses_model_and_captures_feature(
             output_text=(
                 "AGREEMENT: Add todo filters and counts.\n\n"
                 'FEATURE_SPEC_JSON: {"title":"Todo filters and counts","description":"Users can '
-                'filter the todo list between all, unfinished, and completed items, with visible '
+                "filter the todo list between all, unfinished, and completed items, with visible "
                 'counts for each group.","priority":80,"acceptance_criteria":["A user can switch '
                 'between all, unfinished, and completed todo views.","The UI shows counts for total, '
                 'unfinished, and completed todos."],"dependencies":["Existing todo creation and completion state"]}'
@@ -131,7 +137,9 @@ async def test_todo_app_improvement_prompt_uses_model_and_captures_feature(
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
+    monkeypatch.setattr(
+        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
+    )
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -167,12 +175,15 @@ async def test_todo_app_improvement_prompt_uses_model_and_captures_feature(
     assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]
     assert "Tell me to build it" not in assistant_item["payload"]["content"]
 
+
 @pytest.mark.asyncio
 async def test_codex_feature_spec_lane_uses_turn_approval_gate(monkeypatch, test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="javascript"))
@@ -216,9 +227,7 @@ async def test_codex_feature_spec_lane_uses_turn_approval_gate(monkeypatch, test
         response = await client.post(
             "/api/agent/chat",
             json={
-                "message": (
-                    "I want to improve the todo app so overdue tasks stand out clearly."
-                )
+                "message": ("I want to improve the todo app so overdue tasks stand out clearly.")
             },
         )
         assert response.status_code == 200
@@ -227,21 +236,27 @@ async def test_codex_feature_spec_lane_uses_turn_approval_gate(monkeypatch, test
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "Make overdue todos stand out" in item["payload"].get(
-                "content",
-                "",
+            predicate=lambda item: (
+                "Make overdue todos stand out"
+                in item["payload"].get(
+                    "content",
+                    "",
+                )
             ),
         )
 
     assert "FEATURE_SPEC_JSON:" in str(captured["prompt"])
     assert captured["approval_policy"] == "on-request"
 
+
 @pytest.mark.asyncio
 async def test_imperative_todo_improvement_uses_feature_spec_lane(monkeypatch, test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="javascript"))
@@ -267,7 +282,7 @@ async def test_imperative_todo_improvement_uses_feature_spec_lane(monkeypatch, t
                     "AGREEMENT: Add a todo empty-state hint without changing existing behavior.\n\n"
                     'FEATURE_SPEC_JSON: {"title":"Todo empty-state hint",'
                     '"description":"Show a small hint when the current todo filter has no visible '
-                    'todos, while preserving existing add, complete, filter, and persistence '
+                    "todos, while preserving existing add, complete, filter, and persistence "
                     'behavior.","priority":50,"acceptance_criteria":["An empty visible todo list '
                     'shows a concise next-step hint.","Existing todo behavior is unchanged."],'
                     '"dependencies":[]}'
@@ -300,15 +315,19 @@ async def test_imperative_todo_improvement_uses_feature_spec_lane(monkeypatch, t
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "Todo empty-state hint" in item["payload"].get(
-                "content",
-                "",
+            predicate=lambda item: (
+                "Todo empty-state hint"
+                in item["payload"].get(
+                    "content",
+                    "",
+                )
             ),
         )
 
     assert "improvement-scoping guide" in str(captured["prompt"])
     assert "FEATURE_SPEC_JSON:" in str(captured["prompt"])
     assert captured["approval_policy"] == "on-request"
+
 
 @pytest.mark.asyncio
 async def test_natural_confirmation_routes_saved_feature_to_sprint_planning(
@@ -321,10 +340,14 @@ async def test_natural_confirmation_routes_saved_feature_to_sprint_planning(
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
+    monkeypatch.setattr(
+        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
+    )
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="javascript"))
@@ -340,7 +363,7 @@ async def test_natural_confirmation_routes_saved_feature_to_sprint_planning(
             output_text=(
                 "AGREEMENT: Add todo filters and counts.\n\n"
                 'FEATURE_SPEC_JSON: {"title":"Todo filters and counts","description":"Users can '
-                'filter the todo list between all, unfinished, and completed items, with visible '
+                "filter the todo list between all, unfinished, and completed items, with visible "
                 'counts for each group.","priority":80,"acceptance_criteria":["A user can switch '
                 'between all, unfinished, and completed todo views.","The UI shows counts for total, '
                 'unfinished, and completed todos."],"dependencies":["Existing todo creation and completion state"]}'
@@ -376,7 +399,9 @@ async def test_natural_confirmation_routes_saved_feature_to_sprint_planning(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "I captured that feature as" in item["payload"].get("content", ""),
+            predicate=lambda item: (
+                "I captured that feature as" in item["payload"].get("content", "")
+            ),
         )
 
         second = await client.post(
@@ -389,12 +414,16 @@ async def test_natural_confirmation_routes_saved_feature_to_sprint_planning(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "Builder prepared the work" in item["payload"].get("content", ""),
+            predicate=lambda item: (
+                "Builder prepared the work" in item["payload"].get("content", "")
+            ),
         )
         features_response = await client.get("/api/dashboard/features")
 
     feature = next(
-        item for item in features_response.json()["features"] if item["title"] == "Todo filters and counts"
+        item
+        for item in features_response.json()["features"]
+        if item["title"] == "Todo filters and counts"
     )
     assert feature["status"] == FeatureStatus.SPRINT_PLANNED.value
     assert "Todo filters and counts" in assistant_item["payload"]["content"]

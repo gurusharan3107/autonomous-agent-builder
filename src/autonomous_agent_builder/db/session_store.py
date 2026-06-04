@@ -228,9 +228,7 @@ class PostgresSessionStore(SessionStore):
     # Optional: list_session_summaries
     # ------------------------------------------------------------------
 
-    async def list_session_summaries(
-        self, project_key: str
-    ) -> list[SessionSummaryEntry]:
+    async def list_session_summaries(self, project_key: str) -> list[SessionSummaryEntry]:
         factory = get_session_factory()
         async with factory() as session:
             rows = (

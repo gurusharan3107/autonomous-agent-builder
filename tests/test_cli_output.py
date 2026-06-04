@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import json
 
-from autonomous_agent_builder.cli.output import emit_error, extract_next_command, format_status, normalize_json_payload, table, truncate
+from autonomous_agent_builder.cli.output import (
+    emit_error,
+    extract_next_command,
+    format_status,
+    normalize_json_payload,
+    table,
+    truncate,
+)
 
 
 class TestTruncate:
@@ -60,7 +67,10 @@ class TestFormatStatus:
 
 class TestCompactMachineFields:
     def test_extract_next_command(self):
-        assert extract_next_command("Run 'builder start' to start the local dashboard and API.") == "builder start"
+        assert (
+            extract_next_command("Run 'builder start' to start the local dashboard and API.")
+            == "builder start"
+        )
 
     def test_emit_error_json_uses_compact_fields(self, capsys):
         emit_error(
@@ -76,7 +86,9 @@ class TestCompactMachineFields:
         assert payload["error"]["hint"] == "builder start"
 
     def test_normalize_json_payload_adds_agent_contract_fields(self):
-        payload = normalize_json_payload({"status": "ok", "items": [{"id": "one"}], "next_step": "builder map --json"})
+        payload = normalize_json_payload(
+            {"status": "ok", "items": [{"id": "one"}], "next_step": "builder map --json"}
+        )
 
         assert payload["ok"] is True
         assert payload["exit_code"] == 0

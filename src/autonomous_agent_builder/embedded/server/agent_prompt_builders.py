@@ -90,9 +90,7 @@ def _general_chat_prompt(
     question_guidance = _question_tool_guidance(runtime_sdk)
     _normalized_sdk = str(runtime_sdk or "")
     _question_tool = (
-        "request_user_input"
-        if _normalized_sdk.startswith("codex")
-        else "AskUserQuestion"
+        "request_user_input" if _normalized_sdk.startswith("codex") else "AskUserQuestion"
     )
     continuation_guidance = ""
     if model_backed_delivery_context:
@@ -269,7 +267,11 @@ def _recent_chat_context_for_prompt(
         return ""
     entries: list[str] = []
     events = sorted(
-        (event for event in session.events if event.event_type in agent_chat_transcript.VISIBLE_EVENT_TYPES),
+        (
+            event
+            for event in session.events
+            if event.event_type in agent_chat_transcript.VISIBLE_EVENT_TYPES
+        ),
         key=lambda event: event.created_at,
     )
     for event in events:

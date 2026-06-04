@@ -243,9 +243,7 @@ class TestAttemptRemediation:
         gate = _make_gate_result(remediation_possible=True)
 
         mock_gate_instance = AsyncMock()
-        mock_gate_instance.remediate = AsyncMock(
-            side_effect=RuntimeError("remediation crashed")
-        )
+        mock_gate_instance.remediate = AsyncMock(side_effect=RuntimeError("remediation crashed"))
         handler._get_gate_instance = MagicMock(return_value=mock_gate_instance)
 
         result = await handler._attempt_remediation(task, [gate])
@@ -253,9 +251,7 @@ class TestAttemptRemediation:
 
     async def test_unknown_gate_skipped(self, handler):
         task = _make_task()
-        gate = _make_gate_result(
-            gate_name="nonexistent", remediation_possible=True
-        )
+        gate = _make_gate_result(gate_name="nonexistent", remediation_possible=True)
         handler._get_gate_instance = MagicMock(return_value=None)
 
         result = await handler._attempt_remediation(task, [gate])

@@ -6,9 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCAN_ROOTS = (REPO_ROOT / "frontend" / "src",)
@@ -50,10 +48,14 @@ FORBIDDEN_PATTERNS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
 def iter_text_files(root: Path) -> list[Path]:
     if not root.exists():
         return []
-    return sorted(path for path in root.rglob("*") if path.is_file() and path.suffix in TEXT_EXTENSIONS)
+    return sorted(
+        path for path in root.rglob("*") if path.is_file() and path.suffix in TEXT_EXTENSIONS
+    )
 
 
-def issue(path: Path, code: str, message: str, line: int | None = None, text: str | None = None) -> dict[str, object]:
+def issue(
+    path: Path, code: str, message: str, line: int | None = None, text: str | None = None
+) -> dict[str, object]:
     payload: dict[str, object] = {
         "code": code,
         "path": str(path.relative_to(REPO_ROOT)),

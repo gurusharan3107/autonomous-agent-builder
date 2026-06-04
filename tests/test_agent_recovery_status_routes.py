@@ -156,8 +156,9 @@ async def test_recovery_status_check_does_not_auto_dispatch_sprint_task(
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "Board status from Builder source of truth"
-            in item["payload"].get("content", ""),
+            predicate=lambda item: (
+                "Board status from Builder source of truth" in item["payload"].get("content", "")
+            ),
         )
 
     async with factory() as db:
@@ -168,8 +169,7 @@ async def test_recovery_status_check_does_not_auto_dispatch_sprint_task(
             )
         )
         stop_reasons = [
-            event.payload_json.get("stop_reason")
-            for event in status_result.scalars().all()
+            event.payload_json.get("stop_reason") for event in status_result.scalars().all()
         ]
 
     content = assistant_item["payload"]["content"]
@@ -185,14 +185,15 @@ async def test_recovery_status_check_does_not_auto_dispatch_sprint_task(
     assert "deterministic_status_check" not in stop_reasons
     assert "task_dispatched" not in stop_reasons
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("message", "runtime_output", "expected_content", "prompt_needle"),
     [
         (
             (
-                "Investigate the blocked task \"Verify Deterministic tests and build script "
-                "for shipping\" using Builder evidence. Tell me the exact failing command "
+                'Investigate the blocked task "Verify Deterministic tests and build script '
+                'for shipping" using Builder evidence. Tell me the exact failing command '
                 "or gate, the likely owner, and the next safe recovery step. Do not modify files."
             ),
             (
@@ -206,8 +207,8 @@ async def test_recovery_status_check_does_not_auto_dispatch_sprint_task(
         (
             (
                 "Using Builder evidence only, are the current deterministic checks and build "
-                "for the blocked task \"Verify Deterministic tests and build script for "
-                "shipping\" shippable right now? Tell me the exact verifier evidence you used "
+                'for the blocked task "Verify Deterministic tests and build script for '
+                'shipping" shippable right now? Tell me the exact verifier evidence you used '
                 "and answer BLOCKED, NEEDS_RECOVERY, or SHIPPABLE. Do not modify files or mark "
                 "anything done."
             ),
@@ -220,8 +221,8 @@ async def test_recovery_status_check_does_not_auto_dispatch_sprint_task(
         ),
         (
             (
-                "Give me a bounded recovery plan for the blocked task \"Verify Deterministic "
-                "tests and build script for shipping\" using Builder evidence only. Do not "
+                'Give me a bounded recovery plan for the blocked task "Verify Deterministic '
+                'tests and build script for shipping" using Builder evidence only. Do not '
                 "modify files, dispatch work, mark anything done, or create approvals. I want "
                 "the smallest safe operator plan: classify the issue, list the exact evidence, "
                 "list the proposed steps, and say what approval would be needed before execution."
@@ -325,8 +326,7 @@ async def test_blocked_task_evidence_requests_use_agent_lane_instead_of_status_s
             )
         )
         stop_reasons = [
-            event.payload_json.get("stop_reason")
-            for event in status_result.scalars().all()
+            event.payload_json.get("stop_reason") for event in status_result.scalars().all()
         ]
 
     assert runtime_prompts

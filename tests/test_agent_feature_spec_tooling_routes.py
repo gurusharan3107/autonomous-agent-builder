@@ -25,7 +25,9 @@ async def test_feature_spec_lane_allows_read_only_workspace_inspection_before_us
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="python"))
@@ -73,13 +75,16 @@ async def test_feature_spec_lane_allows_read_only_workspace_inspection_before_us
             },
         )
         session_id = response.json()["session_id"]
-        history_payload = (await client.get("/api/agent/chat/history", params={"session_id": session_id})).json()
+        history_payload = (
+            await client.get("/api/agent/chat/history", params={"session_id": session_id})
+        ).json()
 
     assert not any(
         item["type"] == "tool_error"
         and item["payload"].get("tool_name") == "mcp__workspace__get_project_info"
         for item in history_payload["items"]
     )
+
 
 @pytest.mark.asyncio
 async def test_chat_auto_approves_read_only_internal_inspection_tools(
@@ -139,6 +144,7 @@ async def test_chat_auto_approves_read_only_internal_inspection_tools(
 
     assert not any(item["type"] == "tool_approval_request" for item in history_payload["items"])
 
+
 @pytest.mark.asyncio
 async def test_chat_feature_spec_follow_up_stays_in_feature_backlog_lane(
     monkeypatch, test_db, tmp_path
@@ -146,7 +152,9 @@ async def test_chat_feature_spec_follow_up_stays_in_feature_backlog_lane(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async with factory() as db:
         db.add(Project(name="demo", description="demo", language="python"))
@@ -231,7 +239,9 @@ async def test_chat_feature_spec_follow_up_stays_in_feature_backlog_lane(
         features_response = await client.get("/api/dashboard/features")
         feature_payload = features_response.json()
         created_feature = next(
-            feature for feature in feature_payload["features"] if feature["title"] == "Private Post Bookmarking"
+            feature
+            for feature in feature_payload["features"]
+            if feature["title"] == "Private Post Bookmarking"
         )
         tasks_response = await client.get(f"/api/features/{created_feature['id']}/tasks")
 
@@ -242,7 +252,13 @@ async def test_chat_feature_spec_follow_up_stays_in_feature_backlog_lane(
     assert dispatched == []
     assert len(captured_prompts) == 2
     assert "When there are a few clear choices, use AskUserQuestion" in captured_prompts[1]
-    assert "continue the interview until the first implementation scope has no obvious gaps" in captured_prompts[1]
-    assert "I captured that feature as `Private Post Bookmarking`." in assistant_item["payload"]["content"]
+    assert (
+        "continue the interview until the first implementation scope has no obvious gaps"
+        in captured_prompts[1]
+    )
+    assert (
+        "I captured that feature as `Private Post Bookmarking`."
+        in assistant_item["payload"]["content"]
+    )
     assert "Ready for Builder to start now" not in assistant_item["payload"]["content"]
     assert "AGREEMENT:" not in assistant_item["payload"]["content"]

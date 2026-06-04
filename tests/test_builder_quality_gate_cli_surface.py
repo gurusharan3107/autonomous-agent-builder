@@ -35,16 +35,31 @@ def test_quality_gate_builder_cli_json():
     assert "builder server status --json" in payload["commands"]
     assert "builder server doctor --json" in payload["commands"]
     assert "startup orientation follows doctor -> map -> context" in payload["expectations"]
-    assert "builder start is the single startup owner for the local dashboard and API; do not add parallel start or dashboard-publish entrypoints" in payload["expectations"]
-    assert "builder server is inspection and cleanup only; it must not become a parallel start lane" in payload["expectations"]
+    assert (
+        "builder start is the single startup owner for the local dashboard and API; do not add parallel start or dashboard-publish entrypoints"
+        in payload["expectations"]
+    )
+    assert (
+        "builder server is inspection and cleanup only; it must not become a parallel start lane"
+        in payload["expectations"]
+    )
     assert any(
         item.startswith("the CLI is the product adapter over stable services and schemas")
         for item in payload["expectations"]
     )
-    assert "local knowledge list/search/summary/show remain usable when AAB_API_URL is unset, wrong, or the builder server is down" in payload["expectations"]
-    assert "before adding or renaming a builder command, inspect existing top-level and group help so new behavior extends an owned surface instead of creating a parallel one" in payload["expectations"]
+    assert (
+        "local knowledge list/search/summary/show remain usable when AAB_API_URL is unset, wrong, or the builder server is down"
+        in payload["expectations"]
+    )
+    assert (
+        "before adding or renaming a builder command, inspect existing top-level and group help so new behavior extends an owned surface instead of creating a parallel one"
+        in payload["expectations"]
+    )
     assert "builder quality-gate claude-agent-sdk --json" in payload["commands"]
-    assert 'AAB_API_URL=http://127.0.0.1:1 builder knowledge search "system architecture" --type system-docs --limit 3 --json' in payload["commands"]
+    assert (
+        'AAB_API_URL=http://127.0.0.1:1 builder knowledge search "system architecture" --type system-docs --limit 3 --json'
+        in payload["commands"]
+    )
     assert "workflow quality-gate cli-for-agents" in payload["commands"]
 
 
@@ -55,11 +70,15 @@ def test_quality_gate_claude_agent_sdk_json():
     payload = json.loads(result.stdout)
     assert payload["surface"] == "claude-agent-sdk"
     assert any(
-        item.startswith("Claude SDK-facing changes remain limited to sdk=claude runtime execution mechanics")
+        item.startswith(
+            "Claude SDK-facing changes remain limited to sdk=claude runtime execution mechanics"
+        )
         for item in payload["expectations"]
     )
     assert any(
-        item.startswith("shared services or stable product APIs are the preferred internal integration path")
+        item.startswith(
+            "shared services or stable product APIs are the preferred internal integration path"
+        )
         for item in payload["expectations"]
     )
 
@@ -176,7 +195,9 @@ def test_quality_gate_claude_agent_sdk_surface_json():
     payload = json.loads(result.stdout)
     assert payload["surface"] == "claude-agent-sdk"
     assert any(
-        item.startswith("routing, blocked states, retries, and human checkpoints are not reassigned")
+        item.startswith(
+            "routing, blocked states, retries, and human checkpoints are not reassigned"
+        )
         for item in payload["expectations"]
     )
 
@@ -192,13 +213,7 @@ def test_quality_gate_malformed_frontmatter_errors(monkeypatch, tmp_path):
     gate_dir = tmp_path / "quality-gate"
     gate_dir.mkdir()
     (gate_dir / "broken.md").write_text(
-        "---\n"
-        "title: Broken Gate\n"
-        "surface: broken\n"
-        "summary: bad\n"
-        "commands: nope\n"
-        "---\n\n"
-        "# Broken\n",
+        "---\ntitle: Broken Gate\nsurface: broken\nsummary: bad\ncommands: nope\n---\n\n# Broken\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(quality_gate_registry, "QUALITY_GATE_DIR", gate_dir)

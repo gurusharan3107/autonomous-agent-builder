@@ -39,7 +39,9 @@ def chat_status_token_usage(payload: dict[str, Any]) -> dict[str, int]:
     making old sessions disappear from totals.
     """
 
-    observability = payload.get("observability") if isinstance(payload.get("observability"), dict) else {}
+    observability = (
+        payload.get("observability") if isinstance(payload.get("observability"), dict) else {}
+    )
     optimization = (
         observability.get("optimization_summary")
         if isinstance(observability.get("optimization_summary"), dict)

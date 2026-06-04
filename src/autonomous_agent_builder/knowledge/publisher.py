@@ -118,7 +118,9 @@ def knowledge_root(scope: str) -> Path:
     return global_kb_root() if normalized == "global" else local_kb_root()
 
 
-def _resolve_kb_relative_path(root: Path, requested_path: str | Path, *, label: str) -> tuple[Path, Path]:
+def _resolve_kb_relative_path(
+    root: Path, requested_path: str | Path, *, label: str
+) -> tuple[Path, Path]:
     normalized = str(requested_path).strip().replace("\\", "/")
     if not normalized:
         raise PublishError(f"{label} cannot be empty.")

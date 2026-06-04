@@ -13,6 +13,7 @@ This script only surfaces candidates to investigate.
 Usage:
   python3 evidence.py [--src DIR] [--ext .py] [--days 90] [--top 20] [--json]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,8 +38,15 @@ def repo_root() -> Path:
 
 def deletion_ratio(root: Path, ext: str, days: int) -> dict:
     out = sh(
-        "git", "-C", str(root), "log", f"--since={days} days ago",
-        "--numstat", "--pretty=tformat:", "--", f"*{ext}",
+        "git",
+        "-C",
+        str(root),
+        "log",
+        f"--since={days} days ago",
+        "--numstat",
+        "--pretty=tformat:",
+        "--",
+        f"*{ext}",
     )
     added = removed = 0
     for line in out.splitlines():
@@ -48,9 +56,12 @@ def deletion_ratio(root: Path, ext: str, days: int) -> dict:
             removed += int(parts[1])
     ratio = round(removed / added, 3) if added else None
     band = (
-        "grows-only (cardinal sin)" if ratio is not None and ratio < 0.15
-        else "alive but grows faster than it prunes" if ratio is not None and ratio < 0.30
-        else "healthy pruning" if ratio is not None
+        "grows-only (cardinal sin)"
+        if ratio is not None and ratio < 0.15
+        else "alive but grows faster than it prunes"
+        if ratio is not None and ratio < 0.30
+        else "healthy pruning"
+        if ratio is not None
         else "no history"
     )
     return {"days": days, "added": added, "removed": removed, "ratio": ratio, "band": band}

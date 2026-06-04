@@ -1,8 +1,11 @@
 """Check knowledge base documents in the database."""
+
 import asyncio
-from autonomous_agent_builder.db.session import get_db_session
-from autonomous_agent_builder.db.models import DesignDocument
+
 from sqlalchemy import select
+
+from autonomous_agent_builder.db.models import DesignDocument
+from autonomous_agent_builder.db.session import get_db_session
 
 
 async def main():

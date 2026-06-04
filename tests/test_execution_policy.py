@@ -37,7 +37,13 @@ EXPECTED_ROLE_POLICIES = {
     # pr_model="haiku" in _settings_for_runtime → thinking disabled for haiku
     "pr-creator": ("low", None, "evidence_summary_only", False, None),
     "build-verifier": ("low", None, "scripted_verification", False, None),
-    "feature-verifier": ("medium", _ADAPTIVE, "agentic_acceptance_then_durable_playwright", True, 120_000),
+    "feature-verifier": (
+        "medium",
+        _ADAPTIVE,
+        "agentic_acceptance_then_durable_playwright",
+        True,
+        120_000,
+    ),
     "documentation-bridge": ("low", _ADAPTIVE, "delegated_doc_refresh", False, None),
 }
 
@@ -121,7 +127,9 @@ def test_canonical_phase_agents_have_builder_owned_role_policy(agent_name: str) 
         get_agent_definition(agent_name),
         _settings_for_runtime("claude"),
     )
-    expected_effort, expected_thinking, expected_context, expected_autocompact, expected_budget = EXPECTED_ROLE_POLICIES[agent_name]
+    expected_effort, expected_thinking, expected_context, expected_autocompact, expected_budget = (
+        EXPECTED_ROLE_POLICIES[agent_name]
+    )
 
     assert policy.effort == expected_effort
     assert policy.thinking == expected_thinking
@@ -143,7 +151,9 @@ def test_runtime_switch_preserves_phase_agent_policy_shape(
         get_agent_definition(agent_name),
         _settings_for_runtime(runtime_sdk),
     )
-    expected_effort, expected_thinking, expected_context, expected_autocompact, expected_budget = EXPECTED_ROLE_POLICIES[agent_name]
+    expected_effort, expected_thinking, expected_context, expected_autocompact, expected_budget = (
+        EXPECTED_ROLE_POLICIES[agent_name]
+    )
 
     assert policy.effort == expected_effort
     assert policy.context_strategy == expected_context

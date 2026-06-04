@@ -218,8 +218,12 @@ async def _run_dispatch_step(task_id: str, chain_state: DispatchChainState) -> s
                 except OperationalError as oe:
                     await db.rollback()
                     msg = str(oe).lower()
-                    if "database is locked" in msg and attempt + 1 < _DISPATCH_DB_LOCK_RETRY_ATTEMPTS and not committed:
-                        backoff = _DISPATCH_DB_LOCK_RETRY_BASE_SECONDS * (2 ** attempt)
+                    if (
+                        "database is locked" in msg
+                        and attempt + 1 < _DISPATCH_DB_LOCK_RETRY_ATTEMPTS
+                        and not committed
+                    ):
+                        backoff = _DISPATCH_DB_LOCK_RETRY_BASE_SECONDS * (2**attempt)
                         log.warning(
                             "dispatch_db_lock_retry",
                             task_id=task_id,

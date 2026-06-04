@@ -177,9 +177,7 @@ def test_quality_gate_soft_migration_warns_for_older_doc_without_commit_baseline
     assert "migration warning" in freshness.message
     assert freshness.details is not None
     assert freshness.details["issues"] == []
-    assert freshness.details["warnings"] == [
-        "older-feature-doc: missing documented_against_commit"
-    ]
+    assert freshness.details["warnings"] == ["older-feature-doc: missing documented_against_commit"]
 
 
 def test_quality_gate_blocks_newer_doc_missing_commit_baseline(tmp_path):

@@ -259,9 +259,7 @@ async def test_reconcile_completed_task_with_dirty_workspace_blocks_shipped_spri
 
 
 @pytest.mark.asyncio
-async def test_reconcile_completed_task_ignores_only_runtime_guidance_dirty(
-    test_db, tmp_path
-):
+async def test_reconcile_completed_task_ignores_only_runtime_guidance_dirty(test_db, tmp_path):
     _, factory = test_db
     repo = tmp_path / "repo"
     _init_repo(repo)
@@ -300,9 +298,7 @@ async def test_reconcile_completed_task_ignores_only_runtime_guidance_dirty(
 
 
 @pytest.mark.asyncio
-async def test_reconcile_completed_task_undoes_package_lock_only_false_positive(
-    test_db, tmp_path
-):
+async def test_reconcile_completed_task_undoes_package_lock_only_false_positive(test_db, tmp_path):
     _, factory = test_db
     repo = tmp_path / "repo"
     _init_repo(repo)
@@ -350,9 +346,7 @@ async def test_reconcile_completed_task_undoes_package_lock_only_false_positive(
 
 
 @pytest.mark.asyncio
-async def test_reconcile_blocked_sprint_materializes_missing_head_files(
-    test_db, tmp_path
-):
+async def test_reconcile_blocked_sprint_materializes_missing_head_files(test_db, tmp_path):
     _, factory = test_db
     repo = tmp_path / "repo"
     _init_repo(repo)

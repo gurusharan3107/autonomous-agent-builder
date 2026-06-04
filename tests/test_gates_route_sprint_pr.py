@@ -199,9 +199,7 @@ async def test_sprint_pr_request_changes_redispatches_sprint_tasks():
         )
 
     # Both sprint tasks should have been re-dispatched.
-    dispatched_ids = sorted(
-        call.args[1] for call in background.add_task.call_args_list
-    )
+    dispatched_ids = sorted(call.args[1] for call in background.add_task.call_args_list)
     assert dispatched_ids == ["task-1", "task-2"]
     # Sprint phase rolled back to VERIFY for the re-implementation cycle.
     assert sprint.phase == SprintPhase.VERIFY

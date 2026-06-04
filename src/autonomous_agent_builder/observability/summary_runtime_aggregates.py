@@ -414,9 +414,7 @@ def _error_summary(conn: sqlite3.Connection) -> dict[str, Any]:
                or (event_type = 'voice_tool_output' and status = 'failed')
             """
     total_count = int(
-        conn.execute(
-            f"select count(*) from chat_events where {error_types_where}"
-        ).fetchone()[0]
+        conn.execute(f"select count(*) from chat_events where {error_types_where}").fetchone()[0]
         or 0
     )
     # Retention window: only rows within the last N days contribute to active_count

@@ -20,6 +20,7 @@ Run after any KB mutation (REFRESH Phase E, INGEST I3, MAINTAIN fixes):
     python3 .claude/skills/knowledge-base/scripts/build_browser.py
 Idempotent. No args. Exit 0 on success.
 """
+
 import json
 import re
 import sys
@@ -55,7 +56,7 @@ def strip_frontmatter(text: str) -> str:
     if text.startswith("---"):
         end = text.find("\n---", 3)
         if end != -1:
-            return text[end + 4:].lstrip("\n")
+            return text[end + 4 :].lstrip("\n")
     return text
 
 
@@ -64,15 +65,17 @@ def collect():
     for f in sorted(RAW.glob("*.md")):
         text = f.read_text(encoding="utf-8")
         d = parse_frontmatter(text)
-        arts.append({
-            "name": f.stem,
-            "title": d.get("title", f.stem),
-            "tags": d.get("tags", []),
-            "date": d.get("date_published") or d.get("date_processed") or f.stem[:10],
-            "source_url": d.get("source_url", ""),
-            "source_title": d.get("source_title", ""),
-            "source_author": d.get("source_author", ""),
-        })
+        arts.append(
+            {
+                "name": f.stem,
+                "title": d.get("title", f.stem),
+                "tags": d.get("tags", []),
+                "date": d.get("date_published") or d.get("date_processed") or f.stem[:10],
+                "source_url": d.get("source_url", ""),
+                "source_title": d.get("source_title", ""),
+                "source_author": d.get("source_author", ""),
+            }
+        )
         bodies[f.stem] = strip_frontmatter(text)
     data = {"generated": date.today().isoformat(), "count": len(arts), "articles": arts}
     return data, bodies
@@ -443,12 +446,13 @@ def main() -> int:
         return 1
     data, bodies = collect()
     tag_count = len(Counter(t for a in data["articles"] for t in a["tags"]))
-    html = (TEMPLATE
-            .replace("__COUNT__", str(data["count"]))
-            .replace("__TAGCOUNT__", str(tag_count))
-            .replace("__GEN__", data["generated"])
-            .replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
-            .replace("__BODIES__", json.dumps(bodies, ensure_ascii=False, separators=(",", ":"))))
+    html = (
+        TEMPLATE.replace("__COUNT__", str(data["count"]))
+        .replace("__TAGCOUNT__", str(tag_count))
+        .replace("__GEN__", data["generated"])
+        .replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+        .replace("__BODIES__", json.dumps(bodies, ensure_ascii=False, separators=(",", ":")))
+    )
     OUT.write_text(html, encoding="utf-8")
     kb = OUT.stat().st_size / 1024
     print(f"wrote {OUT} ({kb:.0f} KB, {data['count']} articles, {tag_count} tags)")

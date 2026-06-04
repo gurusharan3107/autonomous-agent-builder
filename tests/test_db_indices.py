@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from autonomous_agent_builder.db.migrations.add_indices_2026_05 import INDICES, apply
 from autonomous_agent_builder.db.models import Base
 
-
 EXPECTED_INDEX_NAMES = {name for name, _table, _cols in INDICES}
 
 
@@ -23,9 +22,7 @@ async def test_init_creates_all_expected_indices(tmp_path):
             await apply(conn)
 
         async with engine.connect() as conn:
-            result = await conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='index'")
-            )
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index'"))
             existing = {row[0] for row in result.fetchall()}
 
         missing = EXPECTED_INDEX_NAMES - existing
@@ -47,10 +44,7 @@ async def test_apply_is_idempotent(tmp_path):
 
         async with engine.connect() as conn:
             result = await conn.execute(
-                text(
-                    "SELECT name FROM sqlite_master WHERE type='index' "
-                    "AND name LIKE 'ix_%'"
-                )
+                text("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'ix_%'")
             )
             named = {row[0] for row in result.fetchall()}
 

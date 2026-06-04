@@ -23,7 +23,9 @@ async def test_forward_engineering_greeting_uses_general_model_backed_chat(
 ):
     dashboard_root = tmp_path.parent / f"{tmp_path.name}-dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     write_forward_engineering_ready_state(tmp_path)
     captured: dict[str, object] = {}
 
@@ -60,17 +62,16 @@ async def test_forward_engineering_greeting_uses_general_model_backed_chat(
         )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
-        assert response.json()["model"] == agent_routes._runtime_metadata_for_agent("chat")[
-            "model"
-        ]
+        assert response.json()["model"] == agent_routes._runtime_metadata_for_agent("chat")["model"]
 
         _history_payload, assistant_item = await wait_for_history_item(
             client,
             session_id,
             "assistant_message",
             timeout=10.0,
-            predicate=lambda item: item["payload"].get("content")
-            == "Hi. What would you like to build?",
+            predicate=lambda item: (
+                item["payload"].get("content") == "Hi. What would you like to build?"
+            ),
         )
 
     prompt = str(captured["prompt"])
@@ -88,7 +89,9 @@ async def test_forward_engineering_first_product_prompt_ignores_stale_delivery_f
     _, factory = test_db
     dashboard_root = tmp_path.parent / f"{tmp_path.name}-dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     write_forward_engineering_ready_state(tmp_path)
     async with factory() as db:
         project = Project(name="habit-lab", description="Habit Lab", language="javascript")
@@ -147,8 +150,8 @@ async def test_forward_engineering_first_product_prompt_ignores_stale_delivery_f
             session_id,
             "assistant_message",
             timeout=10.0,
-            predicate=lambda item: "Who is this Habit Lab app for" in item["payload"].get(
-                "content", ""
+            predicate=lambda item: (
+                "Who is this Habit Lab app for" in item["payload"].get("content", "")
             ),
         )
 
@@ -162,11 +165,15 @@ async def test_forward_engineering_first_product_prompt_ignores_stale_delivery_f
 
 
 @pytest.mark.asyncio
-async def test_forward_engineering_chat_marks_provider_limit_blocked(monkeypatch, test_db, tmp_path):
+async def test_forward_engineering_chat_marks_provider_limit_blocked(
+    monkeypatch, test_db, tmp_path
+):
     _, factory = test_db
     dashboard_root = tmp_path.parent / f"{tmp_path.name}-dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     write_forward_engineering_ready_state(tmp_path)
 
     async def fake_run_phase(self, **kwargs):
@@ -238,7 +245,9 @@ async def test_forward_engineering_chat_marks_provider_limit_blocked(monkeypatch
 async def test_built_project_does_not_bootstrap_init_project_chat(monkeypatch, test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     write_forward_engineering_ready_state(tmp_path)
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "main.js").write_text("console.log('built');\n", encoding="utf-8")
@@ -327,7 +336,9 @@ async def test_forward_engineering_new_thread_does_not_reuse_bootstrap_session(
     write_forward_engineering_ready_state(tmp_path)
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async def fake_run_phase(self, **kwargs):
         return RunResult(

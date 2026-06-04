@@ -25,7 +25,9 @@ async def test_assistant_delivery_permission_prompt_becomes_pending_question(
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async def fake_run_phase(self, **kwargs):
         return RunResult(
@@ -65,11 +67,10 @@ async def test_assistant_delivery_permission_prompt_becomes_pending_question(
 
     assert question_item["status"] == "pending"
     assert question_item["payload"]["source"] == "assistant_delivery_permission_prompt"
-    assert question_item["payload"]["question"] == (
-        "Ready for Builder to start this work?"
-    )
+    assert question_item["payload"]["question"] == ("Ready for Builder to start this work?")
     assert question_item["payload"]["options"][0]["label"] == "Start now"
     assert history_payload["status"]["running"] is False
+
 
 @pytest.mark.asyncio
 async def test_codex_init_project_prompt_uses_native_question_tool_and_card(
@@ -78,7 +79,9 @@ async def test_codex_init_project_prompt_uses_native_question_tool_and_card(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     _write_forward_engineering_ready_state(tmp_path)
     async with factory() as db:
         db.add(Project(name="ChoreFlow", description="demo", language="python"))
@@ -192,20 +195,27 @@ async def test_codex_init_project_prompt_uses_native_question_tool_and_card(
     assert captured_prompts
     assert "request_user_input" in captured_prompts[0]
     assert "AskUserQuestion" not in captured_prompts[0]
-    updated_question = next(item for item in history_payload["items"] if item["id"] == question_item["id"])
+    updated_question = next(
+        item for item in history_payload["items"] if item["id"] == question_item["id"]
+    )
     assert updated_question["payload"]["answered"] is True
     assert updated_question["payload"]["answer_value"] == "Effort balance (Recommended)"
     assert "Great, I will use effort balance" not in assistant_item["payload"]["content"]
-    assert "ChoreFlow will use effort-balanced chore rotation" in assistant_item["payload"]["content"]
+    assert (
+        "ChoreFlow will use effort-balanced chore rotation" in assistant_item["payload"]["content"]
+    )
     assert "backlog" not in assistant_item["payload"]["content"].lower()
     assert "sprint" not in assistant_item["payload"]["content"].lower()
     assert "task" not in assistant_item["payload"]["content"].lower()
+
 
 @pytest.mark.asyncio
 async def test_tool_approval_card_can_be_denied_and_run_continues(monkeypatch, test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async def fake_run_phase(self, **kwargs):
         # IMP-020 denies ungranted mutating *built-ins* (Edit/Write/Bash) outright
@@ -261,7 +271,9 @@ async def test_tool_approval_card_can_be_denied_and_run_continues(monkeypatch, t
             client, session_id, "assistant_message"
         )
 
-    updated_approval = next(item for item in history_payload["items"] if item["id"] == approval_item["id"])
+    updated_approval = next(
+        item for item in history_payload["items"] if item["id"] == approval_item["id"]
+    )
     assert updated_approval["payload"]["answered"] is True
     assert updated_approval["payload"]["decision"] == "deny"
     assert assistant_item["payload"]["content"] == "Understood. I will not publish anything yet."
@@ -274,7 +286,9 @@ async def test_chat_lane_denies_direct_edit_and_routes_to_dispatch(monkeypatch, 
     is routed to capture-and-dispatch, preserving the dashboard-first lifecycle."""
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async def fake_run_phase(self, **kwargs):
         permission = await kwargs["can_use_tool"](
@@ -307,7 +321,9 @@ async def test_chat_lane_denies_direct_edit_and_routes_to_dispatch(monkeypatch, 
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post("/api/agent/chat", json={"message": "Add a total-cards stat to the home screen"})
+        response = await client.post(
+            "/api/agent/chat", json={"message": "Add a total-cards stat to the home screen"}
+        )
         session_id = response.json()["session_id"]
 
         # The deny surfaces as a tool_error in history (operator sees the routing
@@ -316,6 +332,4 @@ async def test_chat_lane_denies_direct_edit_and_routes_to_dispatch(monkeypatch, 
         assert error_item["payload"]["tool_name"] == "Edit"
 
     # No approval card was ever created for the direct edit.
-    assert not any(
-        item["type"] == "tool_approval_request" for item in history_payload["items"]
-    )
+    assert not any(item["type"] == "tool_approval_request" for item in history_payload["items"])

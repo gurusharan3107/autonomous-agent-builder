@@ -873,7 +873,9 @@ async def builder_backlog_item_update(
     if not payload:
         return _error_payload("No fields to update", exit_code=1)
     try:
-        data = await _api_request("PUT", f"/backlog/items/{item_id}", json_body=payload, project_root=project_root)
+        data = await _api_request(
+            "PUT", f"/backlog/items/{item_id}", json_body=payload, project_root=project_root
+        )
         compact = _compact_backlog_item_detail(data) if isinstance(data, dict) else {"raw": data}
         compact["ok"] = True
         compact["updated"] = True

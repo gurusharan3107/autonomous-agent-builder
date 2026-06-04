@@ -12,8 +12,8 @@ from autonomous_agent_builder.db.models import (
     Project,
     Task,
 )
-from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server import agent_sprint_planning
+from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server.routes import agent as agent_routes
 from tests.agent_route_test_support import (
     approve_pending_sprint_scope as _approve_pending_sprint_scope,
@@ -30,10 +30,14 @@ from tests.agent_route_test_support import (
 
 
 @pytest.mark.asyncio
-async def test_chat_routes_explicit_documentation_intent_to_subagent(monkeypatch, test_db, tmp_path):
+async def test_chat_routes_explicit_documentation_intent_to_subagent(
+    monkeypatch, test_db, tmp_path
+):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     captured: dict[str, object] = {}
 
     async def fake_run_phase(self, **kwargs):
@@ -73,7 +77,9 @@ async def test_chat_routes_explicit_documentation_intent_to_subagent(monkeypatch
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
+    monkeypatch.setattr(
+        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
+    )
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -83,7 +89,9 @@ async def test_chat_routes_explicit_documentation_intent_to_subagent(monkeypatch
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post("/api/agent/chat", json={"message": "is documentation updated?"})
+        response = await client.post(
+            "/api/agent/chat", json={"message": "is documentation updated?"}
+        )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
         history_payload, _ = await _wait_for_history_item(
@@ -112,8 +120,11 @@ async def test_chat_routes_explicit_documentation_intent_to_subagent(monkeypatch
     assert "publishing" in phases
     assert "verifying" in phases
     assert "completed" in phases
-    specialist_item = next(item for item in history_payload["items"] if item["type"] == "specialist_status")
+    specialist_item = next(
+        item for item in history_payload["items"] if item["type"] == "specialist_status"
+    )
     assert specialist_item["payload"]["diagnostic"]["kind"] == "specialist_status"
+
 
 @pytest.mark.asyncio
 async def test_chat_does_not_route_unrelated_message_to_documentation_subagent(
@@ -121,7 +132,9 @@ async def test_chat_does_not_route_unrelated_message_to_documentation_subagent(
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     captured: dict[str, object] = {}
 
     async def fake_run_phase(self, **kwargs):
@@ -145,7 +158,9 @@ async def test_chat_does_not_route_unrelated_message_to_documentation_subagent(
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
+    monkeypatch.setattr(
+        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
+    )
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -155,7 +170,9 @@ async def test_chat_does_not_route_unrelated_message_to_documentation_subagent(
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post("/api/agent/chat", json={"message": "what files are in this repo?"})
+        response = await client.post(
+            "/api/agent/chat", json={"message": "what files are in this repo?"}
+        )
         assert response.status_code == 200
         session_id = response.json()["session_id"]
         history_payload, _ = await _wait_for_history_item(client, session_id, "assistant_message")
@@ -164,6 +181,7 @@ async def test_chat_does_not_route_unrelated_message_to_documentation_subagent(
     assert "Documentation routing is active for this turn." not in captured["prompt"]
     assert all(item["type"] != "specialist_status" for item in history_payload["items"])
 
+
 @pytest.mark.asyncio
 async def test_chat_proactively_routes_when_latest_task_requires_docs(
     monkeypatch, test_db, tmp_path
@@ -171,14 +189,18 @@ async def test_chat_proactively_routes_when_latest_task_requires_docs(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     await _create_project_feature_task(
         factory,
         project_name="demo",
         feature_title="Task-scoped KB requirement docs",
         task_title="Refresh maintained docs",
         task_description="Keep maintained feature and testing knowledge current after implementation.",
-        depends_on={"system_docs": {"required_docs": ["reverse-engineering/system-architecture.md"]}},
+        depends_on={
+            "system_docs": {"required_docs": ["reverse-engineering/system-architecture.md"]}
+        },
     )
     captured: dict[str, object] = {}
 
@@ -203,7 +225,9 @@ async def test_chat_proactively_routes_when_latest_task_requires_docs(
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
+    monkeypatch.setattr(
+        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
+    )
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -225,6 +249,7 @@ async def test_chat_proactively_routes_when_latest_task_requires_docs(
     assert "active_task_doc_expectation" in captured["prompt"]
     assert "required_docs" in captured["prompt"]
 
+
 @pytest.mark.asyncio
 async def test_chat_feature_spec_request_does_not_trigger_documentation_specialist(
     monkeypatch, test_db, tmp_path
@@ -232,14 +257,18 @@ async def test_chat_feature_spec_request_does_not_trigger_documentation_speciali
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     await _create_project_feature_task(
         factory,
         project_name="demo",
         feature_title="Task-scoped KB requirement docs",
         task_title="Refresh maintained docs",
         task_description="Keep maintained feature and testing knowledge current after implementation.",
-        depends_on={"system_docs": {"required_docs": ["reverse-engineering/system-architecture.md"]}},
+        depends_on={
+            "system_docs": {"required_docs": ["reverse-engineering/system-architecture.md"]}
+        },
     )
     captured: dict[str, object] = {}
 
@@ -295,6 +324,7 @@ async def test_chat_feature_spec_request_does_not_trigger_documentation_speciali
     assert "FEATURE_SPEC_JSON:" in captured["prompt"]
     assert all(item["type"] != "specialist_status" for item in history_payload["items"])
 
+
 @pytest.mark.asyncio
 async def test_mission_aligned_delivery_prompt_does_not_route_to_documentation_agent(
     monkeypatch, test_db, tmp_path
@@ -305,10 +335,14 @@ async def test_mission_aligned_delivery_prompt_does_not_route_to_documentation_a
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
+    monkeypatch.setattr(
+        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
+    )
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     _write_forward_engineering_ready_state(tmp_path)
 
     _, factory = test_db
@@ -339,7 +373,9 @@ async def test_mission_aligned_delivery_prompt_does_not_route_to_documentation_a
                 title="Refresh feature documentation",
                 description="Documentation follow-up from the last sprint.",
                 status="done",
-                depends_on={"system_docs": {"required_docs": ["system-docs/system-architecture.md"]}},
+                depends_on={
+                    "system_docs": {"required_docs": ["system-docs/system-architecture.md"]}
+                },
             )
         )
         setup_project = Project(
@@ -361,7 +397,9 @@ async def test_mission_aligned_delivery_prompt_does_not_route_to_documentation_a
         await db.commit()
 
     async def fake_run_phase(self, **kwargs):
-        raise AssertionError("delivery continuation should use lifecycle planning, not chat subagents")
+        raise AssertionError(
+            "delivery continuation should use lifecycle planning, not chat subagents"
+        )
 
     monkeypatch.setattr(
         "autonomous_agent_builder.embedded.server.routes.agent.AgentRunner.run_phase",
@@ -373,7 +411,9 @@ async def test_mission_aligned_delivery_prompt_does_not_route_to_documentation_a
         dispatched.append(task_id)
 
     monkeypatch.setattr(agent_routes, "_schedule_task_dispatch", fake_schedule_task_dispatch)
-    monkeypatch.setattr(agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch)
+    monkeypatch.setattr(
+        agent_sprint_planning, "schedule_task_dispatch", fake_schedule_task_dispatch
+    )
 
     app = create_app(
         db_path=tmp_path / ".agent-builder" / "agent_builder.db",
@@ -399,7 +439,9 @@ async def test_mission_aligned_delivery_prompt_does_not_route_to_documentation_a
             client,
             session_id,
             "assistant_message",
-            predicate=lambda item: "Builder prepared the work" in item["payload"].get("content", ""),
+            predicate=lambda item: (
+                "Builder prepared the work" in item["payload"].get("content", "")
+            ),
         )
 
     assert "Today List View" in assistant_item["payload"]["content"]

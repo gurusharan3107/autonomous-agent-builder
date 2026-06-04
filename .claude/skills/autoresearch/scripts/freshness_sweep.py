@@ -245,7 +245,7 @@ def check_explainer_data_block() -> Finding | None:
         return Finding(
             "explainer_data_block_invalid",
             "hard",
-            f'autoresearch-explainer.html data block contains invalid JSON: {exc}',
+            f"autoresearch-explainer.html data block contains invalid JSON: {exc}",
             "Run render_iterations.py to re-inject valid data.",
         )
     return None
@@ -335,7 +335,8 @@ def _refresh_explainer(quiet: bool = False) -> None:
         return
     result = subprocess.run(
         [sys.executable, str(render_script)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if not quiet:
         if result.returncode == 0:
@@ -347,10 +348,15 @@ def _refresh_explainer(quiet: bool = False) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    parser.add_argument("--skip-refresh", action="store_true",
-                        help="Skip the automatic render_iterations.py refresh.")
+    parser.add_argument(
+        "--skip-refresh",
+        action="store_true",
+        help="Skip the automatic render_iterations.py refresh.",
+    )
     args = parser.parse_args()
 
     if not args.skip_refresh:
@@ -393,7 +399,9 @@ def main() -> int:
         print(f"      fix: {finding.fix}")
         print()
     if hard:
-        print("Next: switch to Fix lane and address each hard finding before closing the current lane.")
+        print(
+            "Next: switch to Fix lane and address each hard finding before closing the current lane."
+        )
     return exit_code
 
 

@@ -157,7 +157,9 @@ async def test_sprint_execution_creates_next_sprint_after_previous_ships(test_db
 
         sprint_two = await persist_sprint_execution_artifacts(db, project, [second])
 
-        sprints = list((await db.execute(select(Sprint).order_by(Sprint.created_at))).scalars().all())
+        sprints = list(
+            (await db.execute(select(Sprint).order_by(Sprint.created_at))).scalars().all()
+        )
         assert [sprint.label for sprint in sprints] == ["Sprint 1", "Sprint 2"]
         assert sprints[0].approved_feature_ids == [first.id]
         assert sprints[1].approved_feature_ids == [second.id]
@@ -279,7 +281,9 @@ async def test_existing_feature_tests_run_first_then_trigger_verifier_on_failure
 
         async def run_agent(*args, **kwargs):
             order.append("feature-verifier")
-            return RunResult(output_text='{"status":"pass","recommended_next_action":"rerun tests"}')
+            return RunResult(
+                output_text='{"status":"pass","recommended_next_action":"rerun tests"}'
+            )
 
         orchestrator._record_feature_acceptance_tests = AsyncMock(side_effect=acceptance_tests)
         orchestrator._run_agent = AsyncMock(side_effect=run_agent)
@@ -343,7 +347,9 @@ async def test_shipped_sprint_runs_deterministic_post_ship_optimization(test_db)
                 "telemetry_health": {},
             },
             "runtime_aggregates": {"runtime_recovery": {}, "tool_observability": {}, "totals": {}},
-            "optimization_decision": {"next_action": "convert_repeated_operations_to_deterministic_scripts"},
+            "optimization_decision": {
+                "next_action": "convert_repeated_operations_to_deterministic_scripts"
+            },
             "runtime": {"selected_runtime_sdk": "claude_agent_sdk"},
         }
         orchestrator._run_deterministic_post_ship_optimization = AsyncMock(
@@ -383,9 +389,7 @@ async def test_post_ship_optimization_probe_summarizes_cli_evidence(test_db) -> 
             "builder metrics show --json --full",
             0,
             {
-                "optimization_decision": {
-                    "next_action": "use_available_deterministic_script"
-                },
+                "optimization_decision": {"next_action": "use_available_deterministic_script"},
                 "optimization_summary": {"raw_token_total": 12345},
             },
         )
@@ -535,7 +539,10 @@ async def test_post_ship_optimization_refreshes_generated_app_sdk_guidance(
             return_value=[
                 {"command": "builder metrics show --json --full", "result": "pass"},
                 {"command": "builder logs --info --compact --json", "result": "pass"},
-                {"command": "builder logs analyze --session <latest-session> --json", "result": "pass"},
+                {
+                    "command": "builder logs analyze --session <latest-session> --json",
+                    "result": "pass",
+                },
             ]
         )
         orchestrator._run_agent = AsyncMock()
@@ -634,9 +641,7 @@ def test_post_preflight_decision_defers_builder_owned_generated_app_residuals(
     assert decision["target_scope"] == "generated_app"
     assert decision["model_backed_review_required"] is False
     assert decision["residual_recommendations"] == []
-    by_code = {
-        item["code"]: item for item in decision["recommendation_decisions"]
-    }
+    by_code = {item["code"]: item for item in decision["recommendation_decisions"]}
     assert by_code["runtime_token_budget_over_target"]["lifecycle_status"] == "deferred"
     assert by_code["agent_chat_readonly_intent_budget"]["lifecycle_status"] == "deferred"
     assert "generated-app optimization is resolved" in decision["reason"]
@@ -850,16 +855,19 @@ async def test_sprint_execution_uses_selected_codex_model(test_db, monkeypatch) 
         task = (await db.execute(select(Task).order_by(Task.created_at))).scalars().first()
         assert task is not None
         assert task.depends_on[SPRINT_EXECUTION_KEY]["recommended_model"] == "gpt-5.5"
-        assert task.depends_on[SPRINT_EXECUTION_KEY]["runtime_decision"]["selected_runtime"] == "codex_sdk"
+        assert (
+            task.depends_on[SPRINT_EXECUTION_KEY]["runtime_decision"]["selected_runtime"]
+            == "codex_sdk"
+        )
         assert task.depends_on[SPRINT_EXECUTION_KEY]["skip_task_design"] is True
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_agent_run_uses_project_runtime_settings(test_db, tmp_path, monkeypatch) -> None:
+async def test_orchestrator_agent_run_uses_project_runtime_settings(
+    test_db, tmp_path, monkeypatch
+) -> None:
     Path(os.environ["AAB_BUILDER_SOURCE_ENV"]).write_text(
-        'RUNTIME_SDK="codex_sdk"\n'
-        'RUNTIME_PROVIDER="codex_subscription"\n'
-        'RUNTIME_MODEL="gpt-5.5"\n',
+        'RUNTIME_SDK="codex_sdk"\nRUNTIME_PROVIDER="codex_subscription"\nRUNTIME_MODEL="gpt-5.5"\n',
         encoding="utf-8",
     )
     captured: dict[str, str] = {}
@@ -915,7 +923,9 @@ async def test_orchestrator_agent_run_uses_project_runtime_settings(test_db, tmp
         project = Project(name="ProjectRuntime", language="python", repo_url=str(tmp_path))
         db.add(project)
         await db.flush()
-        feature = Feature(project_id=project.id, title="Runtime", description="Use selected runtime", priority=1)
+        feature = Feature(
+            project_id=project.id, title="Runtime", description="Use selected runtime", priority=1
+        )
         db.add(feature)
         await db.flush()
         task = Task(
@@ -943,18 +953,26 @@ async def test_orchestrator_agent_run_uses_project_runtime_settings(test_db, tmp
         assert captured["provider"] == "codex_subscription"
         assert captured["model"] == "gpt-5.5"
         added_runs = (
-            await db.execute(select(AgentRun).where(AgentRun.task_id == task.id))
-        ).scalars().all()
+            (await db.execute(select(AgentRun).where(AgentRun.task_id == task.id))).scalars().all()
+        )
         assert added_runs[-1].runtime_sdk == "codex_sdk"
         assert added_runs[-1].provider == "codex_subscription"
         assert added_runs[-1].model == "gpt-5.5"
         events = (
-            await db.execute(select(AgentRunEvent).where(AgentRunEvent.run_id == added_runs[-1].id))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(AgentRunEvent).where(AgentRunEvent.run_id == added_runs[-1].id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         event_types = [event.event_type for event in events]
         assert "agent_output" in event_types
         assert "thinking" in event_types
-        tool_event = next(event for event in events if event.tool_name == "mcp__workspace__run_command")
+        tool_event = next(
+            event for event in events if event.tool_name == "mcp__workspace__run_command"
+        )
         assert tool_event.event_type == "tool_use"
         assert tool_event.tool_input["tool_use_id"] == "toolu-test"
         assert "40 tests passed" in tool_event.output_preview

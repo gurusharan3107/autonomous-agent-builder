@@ -84,10 +84,30 @@ async def seed() -> None:
 
         # Seed quality gate configurations
         gates_data = [
-            {"name": "ruff", "gate_type": "code_quality", "tier": "pre_integration", "timeout_seconds": 30},
-            {"name": "pytest", "gate_type": "testing", "tier": "pre_integration", "timeout_seconds": 120},
-            {"name": "semgrep", "gate_type": "security", "tier": "post_integration", "timeout_seconds": 60},
-            {"name": "trivy", "gate_type": "dependency", "tier": "post_integration", "timeout_seconds": 45},
+            {
+                "name": "ruff",
+                "gate_type": "code_quality",
+                "tier": "pre_integration",
+                "timeout_seconds": 30,
+            },
+            {
+                "name": "pytest",
+                "gate_type": "testing",
+                "tier": "pre_integration",
+                "timeout_seconds": 120,
+            },
+            {
+                "name": "semgrep",
+                "gate_type": "security",
+                "tier": "post_integration",
+                "timeout_seconds": 60,
+            },
+            {
+                "name": "trivy",
+                "gate_type": "dependency",
+                "tier": "post_integration",
+                "timeout_seconds": 45,
+            },
         ]
 
         for gd in gates_data:

@@ -24,7 +24,9 @@ async def test_chat_turn_persists_tool_error_events(monkeypatch, test_db, tmp_pa
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async def fake_run_phase(self, **kwargs):
         await kwargs["on_tool_event"](
@@ -86,12 +88,15 @@ async def test_chat_turn_persists_tool_error_events(monkeypatch, test_db, tmp_pa
     assert "doc_type=feature" in tool_item["payload"]["diagnostic"]["input_focus"]
     assert "failed" in tool_item["payload"]["diagnostic"]["summary"]
 
+
 @pytest.mark.asyncio
 async def test_chat_turn_accepts_codex_keyword_tool_events(monkeypatch, test_db, tmp_path):
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     async def fake_run_phase(self, **kwargs):
         await kwargs["on_tool_event"](
@@ -147,13 +152,16 @@ async def test_chat_turn_accepts_codex_keyword_tool_events(monkeypatch, test_db,
     assert event.payload_json["content"] == "item/started"
     assert event.payload_json["diagnostic"]["tool_name"] == "shell_command"
 
+
 @pytest.mark.asyncio
 async def test_codex_chat_suppresses_draft_stream_deltas_in_agent_transcript(
     monkeypatch, test_db, tmp_path
 ):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     release_stream = asyncio.Event()
 
@@ -202,11 +210,14 @@ async def test_codex_chat_suppresses_draft_stream_deltas_in_agent_transcript(
     assert assistant_item["payload"]["content"] == "Do shipping/state reconciliation next."
     assert all(event["data"]["type"] != "assistant_stream_delta" for event in queued_events)
 
+
 @pytest.mark.asyncio
 async def test_claude_chat_keeps_user_visible_stream_deltas(monkeypatch, test_db, tmp_path):
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
 
     release_stream = asyncio.Event()
 

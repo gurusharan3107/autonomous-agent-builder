@@ -137,8 +137,10 @@ async def approve_pending_sprint_scope(client: AsyncClient, session_id: str):
         client,
         session_id,
         "tool_approval_request",
-        predicate=lambda item: item["payload"].get("tool_name") == "Delivery scope approval"
-        and item["status"] == "pending",
+        predicate=lambda item: (
+            item["payload"].get("tool_name") == "Delivery scope approval"
+            and item["status"] == "pending"
+        ),
     )
     assert approval_item["payload"]["summary"] == "Approve this improvement before work starts"
     approval = await client.post(

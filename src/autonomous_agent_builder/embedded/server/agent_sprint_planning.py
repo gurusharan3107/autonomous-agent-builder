@@ -92,9 +92,7 @@ def _feature_dependency_ids(feature: Feature) -> list[str]:
     return [str(item).strip() for item in dependencies if str(item).strip()]
 
 
-def _feature_ready_for_next_sprint(
-    feature: Feature, features_by_id: dict[str, Feature]
-) -> bool:
+def _feature_ready_for_next_sprint(feature: Feature, features_by_id: dict[str, Feature]) -> bool:
     for dependency_id in _feature_dependency_ids(feature):
         dependency = features_by_id.get(dependency_id)
         if dependency is None or dependency.status != FeatureStatus.DONE:
@@ -188,7 +186,9 @@ async def append_persisted_delivery_permission_question_if_needed(
     hub: ChatSessionHub,
     force: bool = False,
 ) -> ChatEvent | None:
-    if not force and not agent_chat_transcript.assistant_requests_delivery_permission(response_text):
+    if not force and not agent_chat_transcript.assistant_requests_delivery_permission(
+        response_text
+    ):
         return None
     session_factory = get_session_factory()
     async with session_factory() as db:
@@ -421,9 +421,7 @@ async def handle_sprint_planning_turn(
     decision = str(approval.get("decision", "deny")).strip().lower() or "deny"
     if decision != "allow":
         return "Delivery scope was not approved. I kept the captured improvement unchanged."
-    return await create_delivery_plan_for_approved_features(
-        session_id, project_root, selected_ids
-    )
+    return await create_delivery_plan_for_approved_features(session_id, project_root, selected_ids)
 
 
 async def create_delivery_plan_for_approved_features(
@@ -443,9 +441,7 @@ async def create_delivery_plan_for_approved_features(
         )
         planned_features = list(feature_result.scalars().all())
         if not planned_features:
-            return (
-                "Delivery could not create work steps because the selected improvements changed."
-            )
+            return "Delivery could not create work steps because the selected improvements changed."
         project_ids = {feature.project_id for feature in planned_features}
         if len(project_ids) != 1:
             return "Delivery is blocked because the approved improvements span multiple projects."
@@ -478,6 +474,7 @@ async def create_delivery_plan_for_approved_features(
         await db.commit()
 
     from autonomous_agent_builder.api.routes.dashboard_api import publish_board_snapshot
+
     async with session_factory() as db:
         await publish_board_snapshot(db)
     task_titles = [task.title for task in artifacts.get("tasks", [])]
@@ -494,7 +491,4 @@ async def create_delivery_plan_for_approved_features(
     feature_label = ", ".join(f"`{title}`" for title in feature_titles[:3])
     if not feature_label:
         feature_label = "the approved improvement"
-    return (
-        f"Approved. Builder prepared the work for {feature_label}. "
-        "Delivery has started."
-    )
+    return f"Approved. Builder prepared the work for {feature_label}. Delivery has started."

@@ -38,6 +38,7 @@ Usage (CLI):
     python3 .claude/skills/autoresearch/scripts/self_heal.py --evidence-dir DIR
     # exit 0 if fix applied, 1 if no match, 2 on escalation
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,7 +49,7 @@ import re
 import sqlite3
 import subprocess
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = SKILL_DIR / "seed_manifest.json"
@@ -90,7 +91,9 @@ def _pip_install_into_seed(seed_dir: pathlib.Path, packages: list[str]) -> tuple
             return False, f"seed venv missing at {venv_py}"
         r = subprocess.run(
             [str(venv_py), "-m", "pip", "install", "-q", *packages],
-            capture_output=True, text=True, timeout=180,
+            capture_output=True,
+            text=True,
+            timeout=180,
         )
         if r.returncode != 0:
             return False, f"pip install failed: {(r.stderr or r.stdout)[:400]}"
@@ -99,9 +102,7 @@ def _pip_install_into_seed(seed_dir: pathlib.Path, packages: list[str]) -> tuple
         _restore_seed_readonly(seed_dir)
 
 
-def fix_missing_python_module(
-    seed_dir: pathlib.Path, module: str
-) -> dict:
+def fix_missing_python_module(seed_dir: pathlib.Path, module: str) -> dict:
     """Install the missing module into seed `.venv`. PyPI name often equals
     import name; map known aliases."""
     pypi_name = {
@@ -119,9 +120,7 @@ def fix_missing_python_module(
     }
 
 
-def fix_missing_pytest_plugin(
-    seed_dir: pathlib.Path, option: str
-) -> dict:
+def fix_missing_pytest_plugin(seed_dir: pathlib.Path, option: str) -> dict:
     plugin = PYTEST_PLUGIN_FOR_OPTION.get(option)
     if not plugin:
         return {
@@ -146,39 +145,67 @@ def fix_seed_uncommitted(seed_dir: pathlib.Path) -> dict:
     expected (this only auto-applies because the alternative is silently
     losing them on the next `git checkout` inside a Builder task workspace)."""
     if not _make_seed_writable(seed_dir):
-        return {"applied": False, "pattern": "seed-uncommitted",
-                "detail": f"chmod -R u+w {seed_dir} failed"}
+        return {
+            "applied": False,
+            "pattern": "seed-uncommitted",
+            "detail": f"chmod -R u+w {seed_dir} failed",
+        }
     try:
         r = subprocess.run(
             ["git", "-C", str(seed_dir), "status", "--porcelain"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if r.returncode != 0:
-            return {"applied": False, "pattern": "seed-uncommitted",
-                    "detail": f"git status returned {r.returncode}"}
-        dirty = [ln for ln in r.stdout.splitlines()
-                 if ln and not ln[3:].startswith(".venv/")
-                 and not ln[3:].startswith(".claude/")]
+            return {
+                "applied": False,
+                "pattern": "seed-uncommitted",
+                "detail": f"git status returned {r.returncode}",
+            }
+        dirty = [
+            ln
+            for ln in r.stdout.splitlines()
+            if ln and not ln[3:].startswith(".venv/") and not ln[3:].startswith(".claude/")
+        ]
         if not dirty:
-            return {"applied": False, "pattern": "seed-uncommitted",
-                    "detail": "no tracked-file divergence; nothing to commit"}
+            return {
+                "applied": False,
+                "pattern": "seed-uncommitted",
+                "detail": "no tracked-file divergence; nothing to commit",
+            }
         # Stage only the dirty tracked files (not .venv/.claude noise).
         files = [ln[3:].strip() for ln in dirty]
         subprocess.run(
             ["git", "-C", str(seed_dir), "add", *files],
-            check=True, timeout=10,
+            check=True,
+            timeout=10,
         )
         subprocess.run(
-            ["git", "-C", str(seed_dir), "commit",
-             "-m", "self_heal: commit seed working-tree divergence"],
-            check=True, capture_output=True, timeout=10,
+            [
+                "git",
+                "-C",
+                str(seed_dir),
+                "commit",
+                "-m",
+                "self_heal: commit seed working-tree divergence",
+            ],
+            check=True,
+            capture_output=True,
+            timeout=10,
         )
-        return {"applied": True, "pattern": "seed-uncommitted",
-                "files": files,
-                "detail": f"committed {len(files)} file(s): {', '.join(files[:3])}"}
+        return {
+            "applied": True,
+            "pattern": "seed-uncommitted",
+            "files": files,
+            "detail": f"committed {len(files)} file(s): {', '.join(files[:3])}",
+        }
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        return {"applied": False, "pattern": "seed-uncommitted",
-                "detail": f"{type(exc).__name__}: {exc}"}
+        return {
+            "applied": False,
+            "pattern": "seed-uncommitted",
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
     finally:
         _restore_seed_readonly(seed_dir)
 
@@ -195,14 +222,19 @@ def fix_seed_db_pollution(seed_dir: pathlib.Path, manifest: dict) -> dict:
     tables = db_rules.get("must_be_empty_tables", [])
     db_path = seed_dir / rel
     if not db_path.exists():
-        return {"applied": False, "pattern": "seed-db-pollution",
-                "detail": f"no DB at {db_path}"}
+        return {"applied": False, "pattern": "seed-db-pollution", "detail": f"no DB at {db_path}"}
     if not tables:
-        return {"applied": False, "pattern": "seed-db-pollution",
-                "detail": "manifest declared no must_be_empty_tables"}
+        return {
+            "applied": False,
+            "pattern": "seed-db-pollution",
+            "detail": "manifest declared no must_be_empty_tables",
+        }
     if not _make_seed_writable(seed_dir):
-        return {"applied": False, "pattern": "seed-db-pollution",
-                "detail": f"chmod -R u+w {seed_dir} failed"}
+        return {
+            "applied": False,
+            "pattern": "seed-db-pollution",
+            "detail": f"chmod -R u+w {seed_dir} failed",
+        }
     wiped: list[dict] = []
     try:
         conn = sqlite3.connect(str(db_path), timeout=10)
@@ -221,17 +253,18 @@ def fix_seed_db_pollution(seed_dir: pathlib.Path, manifest: dict) -> dict:
         finally:
             conn.close()
     except sqlite3.Error as exc:
-        return {"applied": False, "pattern": "seed-db-pollution",
-                "detail": f"DB error: {exc}"}
+        return {"applied": False, "pattern": "seed-db-pollution", "detail": f"DB error: {exc}"}
     finally:
         _restore_seed_readonly(seed_dir)
     if not wiped:
-        return {"applied": False, "pattern": "seed-db-pollution",
-                "detail": "no stale rows found"}
-    return {"applied": True, "pattern": "seed-db-pollution",
-            "wiped": wiped,
-            "detail": f"DELETE'd {sum(w['rows_deleted'] for w in wiped)} rows across "
-                      f"{len(wiped)} table(s)"}
+        return {"applied": False, "pattern": "seed-db-pollution", "detail": "no stale rows found"}
+    return {
+        "applied": True,
+        "pattern": "seed-db-pollution",
+        "wiped": wiped,
+        "detail": f"DELETE'd {sum(w['rows_deleted'] for w in wiped)} rows across "
+        f"{len(wiped)} table(s)",
+    }
 
 
 def _git_tracked(seed_dir: pathlib.Path, rel_path: str) -> bool:
@@ -241,16 +274,18 @@ def _git_tracked(seed_dir: pathlib.Path, rel_path: str) -> bool:
     try:
         r = subprocess.run(
             ["git", "-C", str(seed_dir), "ls-files", "--error-unmatch", rel_path],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return r.returncode == 0
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return False
 
 
-def fix_seed_forbidden_files(seed_dir: pathlib.Path, manifest: dict,
-                              upstream_source: str = "",
-                              re_snapshot_cmd: str = "") -> dict:
+def fix_seed_forbidden_files(
+    seed_dir: pathlib.Path, manifest: dict, upstream_source: str = "", re_snapshot_cmd: str = ""
+) -> dict:
     """Remediate forbidden_path_patterns matches in manifest.
 
     Decision tree (first-principles: never introduce new divergence to fix
@@ -265,8 +300,11 @@ def fix_seed_forbidden_files(seed_dir: pathlib.Path, manifest: dict,
     files_rules = (manifest.get("pristine_invariants", {}) or {}).get("files", {})
     patterns = files_rules.get("forbidden_path_patterns", [])
     if not patterns:
-        return {"applied": False, "pattern": "seed-forbidden-files",
-                "detail": "manifest declared no forbidden patterns"}
+        return {
+            "applied": False,
+            "pattern": "seed-forbidden-files",
+            "detail": "manifest declared no forbidden patterns",
+        }
     hits: list[pathlib.Path] = []
     for found in seed_dir.rglob("*"):
         if not found.is_file():
@@ -279,8 +317,11 @@ def fix_seed_forbidden_files(seed_dir: pathlib.Path, manifest: dict,
                 hits.append(found)
                 break
     if not hits:
-        return {"applied": False, "pattern": "seed-forbidden-files",
-                "detail": "no forbidden files found"}
+        return {
+            "applied": False,
+            "pattern": "seed-forbidden-files",
+            "detail": "no forbidden files found",
+        }
     # Classify: tracked vs untracked.
     tracked: list[str] = []
     untracked: list[pathlib.Path] = []
@@ -328,23 +369,28 @@ def fix_seed_forbidden_files(seed_dir: pathlib.Path, manifest: dict,
                     ),
                     "options": [
                         {
-                            "label": (f"Recapture from upstream"
-                                       + (f" ({upstream_source})" if upstream_source else "")),
+                            "label": (
+                                "Recapture from upstream"
+                                + (f" ({upstream_source})" if upstream_source else "")
+                            ),
                             "description": (
-                                (f"Run `{re_snapshot_cmd}`" if re_snapshot_cmd
-                                  else "Re-snapshot the seed from the upstream source")
+                                (
+                                    f"Run `{re_snapshot_cmd}`"
+                                    if re_snapshot_cmd
+                                    else "Re-snapshot the seed from the upstream source"
+                                )
                                 + ". Guaranteed pristine if upstream is clean."
                             ),
                         },
                         {
                             "label": "Hard-reset seed to a pre-pollution sha",
                             "description": "Operator picks the last clean sha from "
-                                           "seed git log and resets there.",
+                            "seed git log and resets there.",
                         },
                         {
                             "label": "Abort and investigate",
                             "description": "Operator inspects how these tracked files "
-                                           "got into the seed.",
+                            "got into the seed.",
                         },
                     ],
                 },
@@ -352,11 +398,17 @@ def fix_seed_forbidden_files(seed_dir: pathlib.Path, manifest: dict,
             "detail": "model-backed escalation — tracked files require operator-level recovery",
         }
     if removed:
-        return {"applied": True, "pattern": "seed-forbidden-files",
-                "removed": removed,
-                "detail": f"rm'd {len(removed)} untracked forbidden file(s)"}
-    return {"applied": False, "pattern": "seed-forbidden-files",
-            "detail": f"found {len(hits)} files but neither tracked nor unlinkable"}
+        return {
+            "applied": True,
+            "pattern": "seed-forbidden-files",
+            "removed": removed,
+            "detail": f"rm'd {len(removed)} untracked forbidden file(s)",
+        }
+    return {
+        "applied": False,
+        "pattern": "seed-forbidden-files",
+        "detail": f"found {len(hits)} files but neither tracked nor unlinkable",
+    }
 
 
 def detect_seed_history_pollution(seed_dir: pathlib.Path, manifest: dict) -> dict | None:
@@ -373,7 +425,9 @@ def detect_seed_history_pollution(seed_dir: pathlib.Path, manifest: dict) -> dic
         # of scope for substrate-at-HEAD identity.
         r = subprocess.run(
             ["git", "-C", str(seed_dir), "log", "--format=%h %s", "HEAD"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return None
@@ -387,14 +441,13 @@ def detect_seed_history_pollution(seed_dir: pathlib.Path, manifest: dict) -> dic
     if not matches:
         return None
     upstream = manifest.get("upstream_source", "~/Builder-Workspace/devpulse")
-    re_snapshot_cmd = manifest.get("re_snapshot_command",
-                                    "bash scripts/autoresearch/setup_seed.sh")
+    re_snapshot_cmd = manifest.get("re_snapshot_command", "bash scripts/autoresearch/setup_seed.sh")
     return {
         "applied": False,
         "pattern": "seed-history-pollution",
         "confidence": "high",
         "diagnosis": f"seed git log contains {len(matches)} past-agent commit(s) "
-                     f"matching manifest forbidden patterns",
+        f"matching manifest forbidden patterns",
         "evidence": matches[:8],
         "proposed_questions": [
             {
@@ -408,18 +461,18 @@ def detect_seed_history_pollution(seed_dir: pathlib.Path, manifest: dict) -> dic
                     {
                         "label": f"Recapture from upstream ({upstream})",
                         "description": f"Run `{re_snapshot_cmd}` to re-snapshot from "
-                                       f"{upstream}. Assumes upstream is pristine.",
+                        f"{upstream}. Assumes upstream is pristine.",
                     },
                     {
                         "label": "Hard-reset seed to a specific pre-agent sha",
                         "description": "Operator inspects seed git log, picks the "
-                                       "last clean sha, runs `git reset --hard <sha>`. "
-                                       "Use when upstream itself is also polluted.",
+                        "last clean sha, runs `git reset --hard <sha>`. "
+                        "Use when upstream itself is also polluted.",
                     },
                     {
                         "label": "Abort baseline and investigate manually",
                         "description": "No safe auto-recovery. Operator inspects "
-                                       "seed git log + .seed/devpulse manually.",
+                        "seed git log + .seed/devpulse manually.",
                     },
                 ],
             },
@@ -447,22 +500,34 @@ def detect_unknown_error_signature(log_path: pathlib.Path) -> dict | None:
     # isn't in the explicit catalog yet.
     generic_signatures = [
         # (regex, hypothesis, confidence)
-        (r"FileNotFoundError: \[Errno 2\] No such file or directory: ['\"]([^'\"]+)['\"]",
-         "missing file/directory in seed", "medium"),
-        (r"sqlite3\.OperationalError: (no such table|database is locked|attempt to write a readonly database): (\w+)",
-         "DB schema or permission issue", "medium"),
-        (r"ConnectionRefusedError|ConnectionError: .* port (\d+)",
-         "service not running on expected port", "low"),
-        (r"PermissionError: \[Errno 13\] Permission denied: ['\"]([^'\"]+)['\"]",
-         "filesystem permission issue (likely seed chmod -R a-w boundary)", "medium"),
+        (
+            r"FileNotFoundError: \[Errno 2\] No such file or directory: ['\"]([^'\"]+)['\"]",
+            "missing file/directory in seed",
+            "medium",
+        ),
+        (
+            r"sqlite3\.OperationalError: (no such table|database is locked|attempt to write a readonly database): (\w+)",
+            "DB schema or permission issue",
+            "medium",
+        ),
+        (
+            r"ConnectionRefusedError|ConnectionError: .* port (\d+)",
+            "service not running on expected port",
+            "low",
+        ),
+        (
+            r"PermissionError: \[Errno 13\] Permission denied: ['\"]([^'\"]+)['\"]",
+            "filesystem permission issue (likely seed chmod -R a-w boundary)",
+            "medium",
+        ),
     ]
     matches = []
     for rx, hypothesis, conf in generic_signatures:
         m = re.search(rx, text)
         if m:
-            matches.append({"signature": m.group(0)[:200],
-                            "hypothesis": hypothesis,
-                            "confidence": conf})
+            matches.append(
+                {"signature": m.group(0)[:200], "hypothesis": hypothesis, "confidence": conf}
+            )
     if not matches:
         return None
     return {
@@ -470,7 +535,7 @@ def detect_unknown_error_signature(log_path: pathlib.Path) -> dict | None:
         "pattern": "unknown-error-signature",
         "confidence": "medium",
         "diagnosis": f"{len(matches)} generic error signature(s) detected in feature_check.log; "
-                     f"not in explicit catalog",
+        f"not in explicit catalog",
         "evidence": matches,
         "proposed_questions": [
             {
@@ -487,15 +552,15 @@ def detect_unknown_error_signature(log_path: pathlib.Path) -> dict | None:
                     {
                         "label": "Investigate signature and propose catalog entry",
                         "description": "Agent reads the full feature_check.log, "
-                                       "identifies the precise pattern, drafts a "
-                                       "new LOG_PATTERNS entry, validates fix is "
-                                       "safe, then either applies or asks operator.",
+                        "identifies the precise pattern, drafts a "
+                        "new LOG_PATTERNS entry, validates fix is "
+                        "safe, then either applies or asks operator.",
                     },
                     {
                         "label": "Escalate to operator",
                         "description": "Surface the signature + log path to operator "
-                                       "via AskUserQuestion. Use when the signature "
-                                       "is genuinely ambiguous.",
+                        "via AskUserQuestion. Use when the signature "
+                        "is genuinely ambiguous.",
                     },
                 ],
             },
@@ -524,9 +589,7 @@ LOG_PATTERNS: list[tuple[str, str, Callable]] = [
 ]
 
 
-def diagnose_and_fix_from_log(
-    log_path: pathlib.Path, seed_dir: pathlib.Path
-) -> dict | None:
+def diagnose_and_fix_from_log(log_path: pathlib.Path, seed_dir: pathlib.Path) -> dict | None:
     if not log_path.exists():
         return None
     try:
@@ -542,7 +605,8 @@ def diagnose_and_fix_from_log(
 
 
 def run_self_heal(
-    evidence_dir: pathlib.Path, seed_dir: pathlib.Path,
+    evidence_dir: pathlib.Path,
+    seed_dir: pathlib.Path,
     manifest_path: pathlib.Path = DEFAULT_MANIFEST,
 ) -> dict:
     """Top-level remediation. Order of attempt:
@@ -574,9 +638,9 @@ def run_self_heal(
     db_fix = fix_seed_db_pollution(seed_dir, manifest)
     if db_fix.get("applied"):
         return db_fix
-    files_fix = fix_seed_forbidden_files(seed_dir, manifest,
-                                          upstream_source=upstream,
-                                          re_snapshot_cmd=re_snap)
+    files_fix = fix_seed_forbidden_files(
+        seed_dir, manifest, upstream_source=upstream, re_snapshot_cmd=re_snap
+    )
     # forbidden-files may auto-apply (untracked rm) OR escalate (tracked file).
     # Escalation propagates straight back to the caller.
     if files_fix.get("applied") or files_fix.get("proposed_questions"):
@@ -595,15 +659,20 @@ def run_self_heal(
     if (seed_dir / ".git").exists():
         r = subprocess.run(
             ["git", "-C", str(seed_dir), "status", "--porcelain"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if r.returncode == 0:
-            dirty = [ln for ln in r.stdout.splitlines()
-                     if ln
-                     and not ln[3:].startswith(".venv/")
-                     and not ln[3:].startswith(".claude/")
-                     and "__pycache__/" not in ln[3:]
-                     and not ln[3:].endswith(".pyc")]
+            dirty = [
+                ln
+                for ln in r.stdout.splitlines()
+                if ln
+                and not ln[3:].startswith(".venv/")
+                and not ln[3:].startswith(".claude/")
+                and "__pycache__/" not in ln[3:]
+                and not ln[3:].endswith(".pyc")
+            ]
             if dirty:
                 return {
                     "applied": False,
@@ -683,12 +752,12 @@ def run_self_heal(
                     {
                         "label": "Inspect evidence_dir manually",
                         "description": f"Read {evidence_dir}/feature_check.log + "
-                                       f"analyze.json + metrics.json + builder logs.",
+                        f"analyze.json + metrics.json + builder logs.",
                     },
                     {
                         "label": "Escalate to operator with full diagnosis",
                         "description": "Use AskUserQuestion to surface the failure "
-                                       "with context. Operator picks recovery path.",
+                        "with context. Operator picks recovery path.",
                     },
                 ],
             },

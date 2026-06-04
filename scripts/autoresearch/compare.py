@@ -48,7 +48,9 @@ def load_row(tsv: pathlib.Path, run_id: str) -> dict | None:
     return None
 
 
-def patch_row(tsv: pathlib.Path, run_id: str, decision: str, composite_delta_pct: float | None) -> None:
+def patch_row(
+    tsv: pathlib.Path, run_id: str, decision: str, composite_delta_pct: float | None
+) -> None:
     if not tsv.exists():
         return
     rows: list[dict] = []
@@ -76,21 +78,33 @@ def main() -> int:
     args = parse_args()
     baseline = load_baseline_for_fixture(args.fixture)
     if baseline is None:
-        print(json.dumps({
-            "decision": "crash",
-            "reason": "no_baseline",
-            "detail": "baseline_runs_summary.json missing or fixture unstable",
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "decision": "crash",
+                    "reason": "no_baseline",
+                    "detail": "baseline_runs_summary.json missing or fixture unstable",
+                },
+                indent=2,
+            )
+        )
         return 2
 
-    candidate_tsv = TSV_ROOT / ("baseline_runs.tsv" if args.candidate_baseline else "optimize_results.tsv")
+    candidate_tsv = TSV_ROOT / (
+        "baseline_runs.tsv" if args.candidate_baseline else "optimize_results.tsv"
+    )
     candidate = load_row(candidate_tsv, args.candidate_run)
     if candidate is None:
-        print(json.dumps({
-            "decision": "crash",
-            "reason": "candidate_not_found",
-            "detail": f"{args.candidate_run} not in {candidate_tsv}",
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "decision": "crash",
+                    "reason": "candidate_not_found",
+                    "detail": f"{args.candidate_run} not in {candidate_tsv}",
+                },
+                indent=2,
+            )
+        )
         return 2
 
     # Gate 1: crash check
@@ -168,7 +182,9 @@ def per_prompt_sanity_check(run_id: str) -> list[str]:
             continue
         prev = prev_by_agent.get(agent)
         if prev and ncpo > prev * 1.5:
-            warnings.append(f"prompt_index={r.get('prompt_index')} agent={agent} ncpo={ncpo} (prev {prev}, +{(ncpo/prev-1)*100:.0f}%)")
+            warnings.append(
+                f"prompt_index={r.get('prompt_index')} agent={agent} ncpo={ncpo} (prev {prev}, +{(ncpo / prev - 1) * 100:.0f}%)"
+            )
         prev_by_agent[agent] = ncpo
     return warnings
 
@@ -181,8 +197,14 @@ def emit_and_patch(verdict: dict, tsv: pathlib.Path, run_id: str, delta_pct: flo
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Two-run verdict generator.")
     p.add_argument("--fixture", required=True)
-    p.add_argument("--candidate-run", required=True, help="run_id of candidate row in optimize_results.tsv")
-    p.add_argument("--candidate-baseline", action="store_true", help="Look up candidate in baseline_runs.tsv instead")
+    p.add_argument(
+        "--candidate-run", required=True, help="run_id of candidate row in optimize_results.tsv"
+    )
+    p.add_argument(
+        "--candidate-baseline",
+        action="store_true",
+        help="Look up candidate in baseline_runs.tsv instead",
+    )
     return p.parse_args()
 
 

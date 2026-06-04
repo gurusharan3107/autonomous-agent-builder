@@ -77,9 +77,7 @@ async def _maybe_mark_sprint_stalled(
     block has NO autonomous path, so the sprint quiesced silently. BLOCKED now
     counts as a stall trigger alongside FAILED.
     """
-    result = await db.execute(
-        select(Sprint).where(Sprint.phase == SprintPhase.IMPLEMENTATION)
-    )
+    result = await db.execute(select(Sprint).where(Sprint.phase == SprintPhase.IMPLEMENTATION))
     sprints = result.scalars().all()
 
     sprint: Sprint | None = None
@@ -104,7 +102,10 @@ async def _maybe_mark_sprint_stalled(
     # provider reset, review_pending → approval), still has a path to progress.
     # BLOCKED is terminal-without-operator and DOES count (see docstring).
     _TERMINAL_OR_WAITING = {
-        TaskStatus.FAILED, TaskStatus.PENDING, TaskStatus.DONE, TaskStatus.BLOCKED,
+        TaskStatus.FAILED,
+        TaskStatus.PENDING,
+        TaskStatus.DONE,
+        TaskStatus.BLOCKED,
     }
     for task in sprint_tasks:
         ts = task.status if isinstance(task.status, TaskStatus) else TaskStatus(str(task.status))
@@ -112,7 +113,9 @@ async def _maybe_mark_sprint_stalled(
             return False
 
     def _is(t: Task, status: TaskStatus) -> bool:
-        return (t.status if isinstance(t.status, TaskStatus) else TaskStatus(str(t.status))) == status
+        return (
+            t.status if isinstance(t.status, TaskStatus) else TaskStatus(str(t.status))
+        ) == status
 
     failed_ids = [t.id for t in sprint_tasks if _is(t, TaskStatus.FAILED)]
     blocked_ids = [t.id for t in sprint_tasks if _is(t, TaskStatus.BLOCKED)]

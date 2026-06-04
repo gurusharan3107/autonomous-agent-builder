@@ -104,7 +104,9 @@ async def _supersede_redundant_delivery_scope_approvals(
         payload = dict(event.payload_json or {})
         if payload.get("tool_name") != "Delivery scope approval":
             continue
-        tool_input = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+        tool_input = (
+            payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
+        )
         feature_ids = {
             str(feature_id).strip()
             for feature_id in tool_input.get("feature_ids", [])

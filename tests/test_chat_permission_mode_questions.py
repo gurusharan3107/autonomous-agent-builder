@@ -106,7 +106,9 @@ async def test_authorize_chat_tool_collects_askuserquestion_answers(monkeypatch)
 
 @pytest.mark.parametrize("tool_name", ["Edit", "Write", "Bash", "MultiEdit", "NotebookEdit"])
 @pytest.mark.asyncio
-async def test_authorize_chat_tool_denies_ungranted_mutating_builtins(monkeypatch, tool_name) -> None:
+async def test_authorize_chat_tool_denies_ungranted_mutating_builtins(
+    monkeypatch, tool_name
+) -> None:
     """IMP-020: the chat lane denies ungranted mutating built-ins (no approval
     card) and routes the model to capture-and-dispatch. An operator clicking
     Approve on a direct Edit/Write/Bash would bypass the dashboard-first

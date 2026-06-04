@@ -39,30 +39,69 @@ ROADMAP = Path("docs/goal/ROADMAP.md")
 
 # Signals → backend test is not directly runnable (needs live app)
 DASHBOARD_GATED_BACKEND = [
-    "ship one feature", "run one sprint", "operator drives",
-    "forward-engineering on fresh workspace", "reverse-engineering",
-    "both lanes ship", "devpulse e2e",
+    "ship one feature",
+    "run one sprint",
+    "operator drives",
+    "forward-engineering on fresh workspace",
+    "reverse-engineering",
+    "both lanes ship",
+    "devpulse e2e",
 ]
 
 # Signals → item has pytest coverage (can run pytest directly)
 PYTEST_SIGNALS = [
-    "test_", "pytest", "fix", "cache_ratio", "schema", "mcp tool",
-    "tool-call", "retain", "resolution", "classify", "intent",
-    "phase planner", "task count", "proposed_tasks", "cost", "token",
-    "cache", "ratio", "permission_mode", "can_use_tool",
+    "test_",
+    "pytest",
+    "fix",
+    "cache_ratio",
+    "schema",
+    "mcp tool",
+    "tool-call",
+    "retain",
+    "resolution",
+    "classify",
+    "intent",
+    "phase planner",
+    "task count",
+    "proposed_tasks",
+    "cost",
+    "token",
+    "cache",
+    "ratio",
+    "permission_mode",
+    "can_use_tool",
 ]
 
 # Signals → browser-testable via hermes-chrome
 BROWSER_SIGNALS = [
-    "dashboard", "board", "backlog", "frontend", "ui", "widget",
-    "overlay", "tasklist", "sprint", "render", "react", "tsx",
-    "sidebar", "trace", "clickable", "visible", "button",
+    "dashboard",
+    "board",
+    "backlog",
+    "frontend",
+    "ui",
+    "widget",
+    "overlay",
+    "tasklist",
+    "sprint",
+    "render",
+    "react",
+    "tsx",
+    "sidebar",
+    "trace",
+    "clickable",
+    "visible",
+    "button",
 ]
 
 # Signals → browser test needs live running app (beyond what hermes-chrome alone can do)
 DASHBOARD_GATED_BROWSER = [
-    "live run", "live dispatch", "operator session", "real sprint",
-    "actual feature", "e2e feature", "devpulse sprint",
+    "live run",
+    "live dispatch",
+    "operator session",
+    "real sprint",
+    "actual feature",
+    "e2e feature",
+    "devpulse sprint",
 ]
 
 
@@ -132,25 +171,28 @@ def main():
         body = body.strip()
 
         bold = re.search(r"\*\*([^*]+)\*\*", body)
-        item_id = (re.sub(r"[^a-z0-9]+", "-", bold.group(1).lower()).strip("-")
-                   if bold else body[:30])
+        item_id = (
+            re.sub(r"[^a-z0-9]+", "-", bold.group(1).lower()).strip("-") if bold else body[:30]
+        )
 
         body_lower = body.lower()
         linux_backend, backend_cmd = classify_backend(body_lower)
         linux_browser, browser_cmd = classify_browser(body_lower)
 
-        results.append({
-            "milestone": current_milestone,
-            "id": item_id,
-            "raw_line": line,
-            "body": body,
-            "backend": backend,
-            "browser": browser,
-            "linux_backend": linux_backend,
-            "linux_browser": linux_browser,
-            "backend_cmd": backend_cmd if backend == "pending" else "",
-            "browser_cmd": browser_cmd if browser == "pending" else "",
-        })
+        results.append(
+            {
+                "milestone": current_milestone,
+                "id": item_id,
+                "raw_line": line,
+                "body": body,
+                "backend": backend,
+                "browser": browser,
+                "linux_backend": linux_backend,
+                "linux_browser": linux_browser,
+                "backend_cmd": backend_cmd if backend == "pending" else "",
+                "browser_cmd": browser_cmd if browser == "pending" else "",
+            }
+        )
 
     if not results:
         print(json.dumps([]))

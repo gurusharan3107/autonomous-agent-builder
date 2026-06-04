@@ -151,9 +151,7 @@ def build_voice_digest(
         )
     if queued_count:
         if status_prompt:
-            return detailed_status(
-                f"{scoped_label}still has {queued_count} queued board task(s)."
-            )
+            return detailed_status(f"{scoped_label}still has {queued_count} queued board task(s).")
         if backlog_feature_count and backlog_open_count == 0:
             return (
                 f"Backlog features are complete ({backlog_done_count}/{backlog_feature_count} done). "
@@ -167,7 +165,9 @@ def build_voice_digest(
     if status_prompt:
         return detailed_status()
     if scope == "current_sprint" and current_sprint_label and current_sprint_phase == "shipped":
-        return f"Current sprint `{current_sprint_label}` is shipped. No operator decision is pending."
+        return (
+            f"Current sprint `{current_sprint_label}` is shipped. No operator decision is pending."
+        )
     if prefer_latest_summary and latest_voice_summary:
         return f"Builder finished: {latest_voice_summary}"
     if latest_voice_summary:

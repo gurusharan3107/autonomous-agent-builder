@@ -205,9 +205,7 @@ async def sprint_maybe_ff_merge(sprint: Sprint, repo_root: Path) -> str | None:
     if head_code != 0:
         return None
     guidance_snapshot = project_runtime_guidance_snapshot(repo_root)
-    clean_error = await clean_project_runtime_guidance_for_git_operation(
-        run_git, guidance_snapshot
-    )
+    clean_error = await clean_project_runtime_guidance_for_git_operation(run_git, guidance_snapshot)
     if clean_error:
         return clean_error
     checkout_code, checkout_output = await run_git("checkout", "main")
@@ -446,9 +444,7 @@ async def sprint_mark_shipped(orchestrator: Any, task: Task) -> None:
     )
     acceptance_runs = list(acceptance_result.scalars().all())
     acceptance_run_ids = [run.id for run in acceptance_runs if run.status == "completed"]
-    approved_feature_ids = [
-        str(feature_id) for feature_id in (sprint.approved_feature_ids or [])
-    ]
+    approved_feature_ids = [str(feature_id) for feature_id in (sprint.approved_feature_ids or [])]
 
     verification_summary = (
         "All generated sprint tasks completed; feature-verifier acceptance, "

@@ -66,7 +66,10 @@ def test_verify_product_lifecycle_changes_require_focused_lifecycle_tests():
         proof for proof in proofs if proof.code == "product_lifecycle_optimization_tests"
     )
     assert "test_post_ship_optimization_probe_summarizes_cli_evidence" in lifecycle_proof.command
-    assert "test_post_ship_optimization_refreshes_generated_app_sdk_guidance" in lifecycle_proof.command
+    assert (
+        "test_post_ship_optimization_refreshes_generated_app_sdk_guidance"
+        in lifecycle_proof.command
+    )
 
 
 def test_verify_changed_files_classify_agent_definitions_as_agent_quality():
@@ -94,7 +97,10 @@ def test_verify_agent_quality_changes_require_definition_tests():
     proofs = verify_module._proofs_for_surfaces(["agent-quality"])
 
     agent_proof = next(proof for proof in proofs if proof.code == "agent_quality_definition_tests")
-    assert "test_optimization_agent_is_post_ship_bounded_and_observability_grounded" in agent_proof.command
+    assert (
+        "test_optimization_agent_is_post_ship_bounded_and_observability_grounded"
+        in agent_proof.command
+    )
     assert "test_all_have_prompt_templates" in agent_proof.command
 
 
@@ -120,7 +126,9 @@ def test_verify_codex_subagent_changes_require_owned_gate_and_tests():
     proofs = verify_module._proofs_for_surfaces(["codex-subagents"])
 
     codes = {proof.code for proof in proofs}
-    docs_proof = next(proof for proof in proofs if proof.code == "codex_subagent_quality_gate_contract")
+    docs_proof = next(
+        proof for proof in proofs if proof.code == "codex_subagent_quality_gate_contract"
+    )
     assert "codex_subagent_gate" in codes
     assert "codex_subagent_tests" in codes
     assert "docs/quality-gate/codex-subagents.md" in docs_proof.command
@@ -134,7 +142,9 @@ def test_verify_codex_subagent_owner_surfaces_require_owned_gate_and_docs_proof(
 
     proofs = verify_module._proofs_for_surfaces(["codex-subagents", "docs"])
     codes = {proof.code for proof in proofs}
-    docs_proof = next(proof for proof in proofs if proof.code == "codex_subagent_quality_gate_contract")
+    docs_proof = next(
+        proof for proof in proofs if proof.code == "codex_subagent_quality_gate_contract"
+    )
     assert "codex_subagent_gate" in codes
     assert "codex_subagent_tests" in codes
     assert "docs/quality-gate/codex-subagents.md" in docs_proof.command

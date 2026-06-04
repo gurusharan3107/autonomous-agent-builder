@@ -56,9 +56,7 @@ async def test_sprint_status_index_present(tmp_path):
     engine = await _bootstrap(db_path)
     try:
         async with engine.connect() as conn:
-            result = await conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='index'")
-            )
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index'"))
             indices = {row[0] for row in result.fetchall()}
         assert "ix_approval_gates_sprint_status" in indices
     finally:

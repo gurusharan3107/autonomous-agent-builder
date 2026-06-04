@@ -256,9 +256,12 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
             "judgment rather than free-text Q&A."
         ),
         params=(
-            ToolParam("questions", "array", "Array of question objects with "
-                                              "question/header/options/multiSelect",
-                       required=True),
+            ToolParam(
+                "questions",
+                "array",
+                "Array of question objects with question/header/options/multiSelect",
+                required=True,
+            ),
         ),
     ),
     # ── CLI Tools (builder CLI bridge) ──
@@ -320,8 +323,9 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
         ),
         params=(
             ToolParam("project_id", "string", "Project ID", required=True),
-            ToolParam("language", "string",
-                       "Primary language (python, node, etc.)", required=False),
+            ToolParam(
+                "language", "string", "Primary language (python, node, etc.)", required=False
+            ),
         ),
     ),
     "mcp__builder__metrics": ToolSchema(
@@ -360,7 +364,12 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
         ),
         params=(
             ToolParam("item_id", "string", "Backlog item ID", required=True),
-            ToolParam("status", "string", "New status (e.g. done, backlog, sprint_planned)", required=False),
+            ToolParam(
+                "status",
+                "string",
+                "New status (e.g. done, backlog, sprint_planned)",
+                required=False,
+            ),
             ToolParam("title", "string", "New title", required=False),
             ToolParam("description", "string", "New description", required=False),
         ),
@@ -661,7 +670,9 @@ _SDK_BUILTINS: dict[str, ToolSchema] = {
     "mcp__browser__click_text": ToolSchema(
         name="mcp__browser__click_text",
         description="Click the first element whose visible text matches, then return page context.",
-        params=(ToolParam("text", "string", "Visible text of the element to click", required=True),),
+        params=(
+            ToolParam("text", "string", "Visible text of the element to click", required=True),
+        ),
     ),
     "mcp__browser__fill": ToolSchema(
         name="mcp__browser__fill",

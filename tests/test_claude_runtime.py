@@ -404,7 +404,10 @@ async def test_run_claude_sdk_prompt_uses_builder_source_env_not_onecli(
     assert captured["options_kwargs"]["setting_sources"] == ["project"]
     assert captured["options_kwargs"]["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "builder-token"
     assert captured["options_kwargs"]["env"]["CLAUDE_CODE_ENABLE_TELEMETRY"] == "1"
-    assert captured["options_kwargs"]["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://collector.example.com:4318"
+    assert (
+        captured["options_kwargs"]["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"]
+        == "http://collector.example.com:4318"
+    )
     assert captured["options_kwargs"]["env"]["OTEL_SERVICE_NAME"] == "autonomous-agent-builder"
 
 

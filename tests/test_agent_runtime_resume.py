@@ -55,7 +55,10 @@ def test_compatible_resume_session_reuses_session_for_same_runtime():
         name = "codex_sdk"
         provider = "codex_subscription"
 
-    assert agent_chat_sessions.compatible_resume_session(session, CodexRuntime()) == "codex-sdk-session"
+    assert (
+        agent_chat_sessions.compatible_resume_session(session, CodexRuntime())
+        == "codex-sdk-session"
+    )
 
 
 @pytest.mark.asyncio
@@ -65,12 +68,12 @@ async def test_chat_history_preserves_thread_runtime_after_runtime_switch(
     _, factory = test_db
     dashboard_root = tmp_path / "dashboard"
     dashboard_root.mkdir()
-    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+    (dashboard_root / "index.html").write_text(
+        "<html><body>embedded</body></html>", encoding="utf-8"
+    )
     env_path = Path(os.environ["AAB_BUILDER_SOURCE_ENV"])
     env_path.write_text(
-        'RUNTIME_SDK="codex_sdk"\n'
-        'RUNTIME_PROVIDER="codex_subscription"\n'
-        'RUNTIME_MODEL="gpt-5.5"\n',
+        'RUNTIME_SDK="codex_sdk"\nRUNTIME_PROVIDER="codex_subscription"\nRUNTIME_MODEL="gpt-5.5"\n',
         encoding="utf-8",
     )
 

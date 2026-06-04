@@ -122,7 +122,8 @@ def mine(args) -> dict:
     ctx_re = re.compile(ctx_src, re.I) if ctx_src else None
 
     files = [
-        f for f in glob.glob(os.path.join(root, "*", "*.jsonl"))
+        f
+        for f in glob.glob(os.path.join(root, "*", "*.jsonl"))
         if os.path.getmtime(f) >= cutoff
         and (not args.project_filter or args.project_filter in os.path.basename(os.path.dirname(f)))
     ]
@@ -158,11 +159,15 @@ def mine(args) -> dict:
                     s = max(0, m.start() - args.context)
                     e = min(len(prose), m.end() + args.context)
                     snip = re.sub(r"\s+", " ", prose[s:e]).strip()
-                    findings.append({
-                        "project": proj, "session": sess,
-                        "role": msg.get("role") or obj.get("type", ""),
-                        "is_error": is_err, "snippet": snip,
-                    })
+                    findings.append(
+                        {
+                            "project": proj,
+                            "session": sess,
+                            "role": msg.get("role") or obj.get("type", ""),
+                            "is_error": is_err,
+                            "snippet": snip,
+                        }
+                    )
         except Exception:
             continue
 

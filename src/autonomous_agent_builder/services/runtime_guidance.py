@@ -556,8 +556,7 @@ def runtime_guidance_contract_status(project_root: Path) -> dict[str, Any]:
     missing_sections = [section for section in _REQUIRED_DAY0_SECTIONS if section not in text]
     command_slots = all(f"- {label}:" in text for label in _command_labels())
     unknown_command_count = sum(
-        1 for label in _command_labels()
-        if re.search(rf"- {re.escape(label)}:.*`unknown`", text)
+        1 for label in _command_labels() if re.search(rf"- {re.escape(label)}:.*`unknown`", text)
     )
     commands_filled = command_slots and unknown_command_count == 0
     if not builder_generated:

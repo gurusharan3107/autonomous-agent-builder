@@ -12,6 +12,7 @@ Exit codes:
     1  hard findings — skill violates spec or sanity bounds
     2  IO / parse error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,20 +25,21 @@ from pathlib import Path
 # --- limits ---------------------------------------------------------------
 
 NAME_RE = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
-DESC_SOFT_MAX = 1024          # agentskills.io specification cap
-DESC_HARD_MAX = 8000          # sanity guardrail — beyond this, activation cost dominates
-BODY_TOKENS_SOFT_MAX = 5000   # spec recommendation
+DESC_SOFT_MAX = 1024  # agentskills.io specification cap
+DESC_HARD_MAX = 8000  # sanity guardrail — beyond this, activation cost dominates
+BODY_TOKENS_SOFT_MAX = 5000  # spec recommendation
 BODY_TOKENS_HARD_MAX = 15000  # sanity guardrail
-CHARS_PER_TOKEN = 4           # rough estimate; tiktoken not assumed present
+CHARS_PER_TOKEN = 4  # rough estimate; tiktoken not assumed present
 
 
 # --- model ----------------------------------------------------------------
 
+
 @dataclass
 class Finding:
     check: str
-    severity: str           # "hard" | "soft"
-    status: str             # "pass" | "warn" | "fail"
+    severity: str  # "hard" | "soft"
+    status: str  # "pass" | "warn" | "fail"
     message: str
 
 
@@ -52,6 +54,7 @@ class SkillReport:
 
 # --- frontmatter parser (no PyYAML dep) -----------------------------------
 
+
 def split_frontmatter(text: str) -> tuple[dict, str]:
     """Return (frontmatter_dict, body). Empty dict if no frontmatter."""
     if not text.startswith("---\n"):
@@ -60,7 +63,7 @@ def split_frontmatter(text: str) -> tuple[dict, str]:
     if end == -1:
         return {}, text
     raw_fm = text[4:end]
-    body = text[end + 5:]
+    body = text[end + 5 :]
     return parse_simple_yaml(raw_fm), body
 
 
@@ -123,7 +126,9 @@ def parse_simple_yaml(raw: str) -> dict:
                 out[key] = parse_simple_yaml(sub_text)
             continue
         # inline scalar
-        if (rest.startswith('"') and rest.endswith('"')) or (rest.startswith("'") and rest.endswith("'")):
+        if (rest.startswith('"') and rest.endswith('"')) or (
+            rest.startswith("'") and rest.endswith("'")
+        ):
             rest = rest[1:-1]
         out[key] = rest
         i += 1
@@ -131,6 +136,7 @@ def parse_simple_yaml(raw: str) -> dict:
 
 
 # --- checks ---------------------------------------------------------------
+
 
 def check_skill(skill_md: Path, strict: bool) -> SkillReport:
     rep = SkillReport(path=str(skill_md))
@@ -144,8 +150,14 @@ def check_skill(skill_md: Path, strict: bool) -> SkillReport:
     fm, body = split_frontmatter(text)
 
     if not fm:
-        rep.checks.append(Finding("frontmatter_present", "hard", "fail",
-                                  "no YAML frontmatter found (must start with ---)"))
+        rep.checks.append(
+            Finding(
+                "frontmatter_present",
+                "hard",
+                "fail",
+                "no YAML frontmatter found (must start with ---)",
+            )
+        )
         rep.hard_findings = 1
         return rep
     rep.checks.append(Finding("frontmatter_present", "hard", "pass", "frontmatter parsed"))
@@ -158,17 +170,25 @@ def check_skill(skill_md: Path, strict: bool) -> SkillReport:
     else:
         rep.checks.append(Finding("name_present", "hard", "pass", name))
         if NAME_RE.match(name):
-            rep.checks.append(Finding("name_kebab_case", "hard", "pass",
-                                      "kebab-case valid"))
+            rep.checks.append(Finding("name_kebab_case", "hard", "pass", "kebab-case valid"))
         else:
-            rep.checks.append(Finding("name_kebab_case", "hard", "fail",
-                                      f"`{name}` violates kebab-case: ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ "
-                                      "(no uppercase, no leading/trailing hyphen, no consecutive hyphens)"))
+            rep.checks.append(
+                Finding(
+                    "name_kebab_case",
+                    "hard",
+                    "fail",
+                    f"`{name}` violates kebab-case: ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ "
+                    "(no uppercase, no leading/trailing hyphen, no consecutive hyphens)",
+                )
+            )
         # name should match dir
         dir_name = skill_md.parent.name
         if name != dir_name:
-            rep.checks.append(Finding("name_matches_dir", "soft", "warn",
-                                      f"name `{name}` != directory `{dir_name}`"))
+            rep.checks.append(
+                Finding(
+                    "name_matches_dir", "soft", "warn", f"name `{name}` != directory `{dir_name}`"
+                )
+            )
         else:
             rep.checks.append(Finding("name_matches_dir", "soft", "pass", "name == dir"))
 
@@ -178,90 +198,164 @@ def check_skill(skill_md: Path, strict: bool) -> SkillReport:
         desc = " ".join(desc)
     desc = desc.strip()
     if not desc:
-        rep.checks.append(Finding("description_present", "hard", "fail",
-                                  "`description:` is required (loaded at discovery)"))
+        rep.checks.append(
+            Finding(
+                "description_present",
+                "hard",
+                "fail",
+                "`description:` is required (loaded at discovery)",
+            )
+        )
     else:
-        rep.checks.append(Finding("description_present", "hard", "pass",
-                                  f"{len(desc)} chars"))
+        rep.checks.append(Finding("description_present", "hard", "pass", f"{len(desc)} chars"))
         # length
         if len(desc) > DESC_HARD_MAX:
-            rep.checks.append(Finding("description_length", "hard", "fail",
-                                      f"{len(desc)} chars > sanity max {DESC_HARD_MAX}"))
+            rep.checks.append(
+                Finding(
+                    "description_length",
+                    "hard",
+                    "fail",
+                    f"{len(desc)} chars > sanity max {DESC_HARD_MAX}",
+                )
+            )
         elif len(desc) > DESC_SOFT_MAX:
             sev = "hard" if strict else "soft"
-            rep.checks.append(Finding("description_length", sev,
-                                      "fail" if strict else "warn",
-                                      f"{len(desc)} chars > spec limit {DESC_SOFT_MAX} "
-                                      "(local style permits — see references/description.md)"))
+            rep.checks.append(
+                Finding(
+                    "description_length",
+                    sev,
+                    "fail" if strict else "warn",
+                    f"{len(desc)} chars > spec limit {DESC_SOFT_MAX} "
+                    "(local style permits — see references/description.md)",
+                )
+            )
         else:
-            rep.checks.append(Finding("description_length", "soft", "pass",
-                                      f"{len(desc)} chars ≤ {DESC_SOFT_MAX}"))
+            rep.checks.append(
+                Finding(
+                    "description_length", "soft", "pass", f"{len(desc)} chars ≤ {DESC_SOFT_MAX}"
+                )
+            )
         # heuristic — should contain a "use when" / "triggers" / activation hint
         low = desc.lower()
         has_trigger_phrase = any(
-            kw in low for kw in (
-                "use when", "use whenever", "triggers", "trigger:", "on invocation",
-                "use this skill", "invoke", "fires when", "use as", "activate",
+            kw in low
+            for kw in (
+                "use when",
+                "use whenever",
+                "triggers",
+                "trigger:",
+                "on invocation",
+                "use this skill",
+                "invoke",
+                "fires when",
+                "use as",
+                "activate",
             )
         )
         if has_trigger_phrase:
-            rep.checks.append(Finding("description_has_triggers", "soft", "pass",
-                                      "trigger phrasing detected"))
+            rep.checks.append(
+                Finding("description_has_triggers", "soft", "pass", "trigger phrasing detected")
+            )
         else:
-            rep.checks.append(Finding("description_has_triggers", "soft", "warn",
-                                      "description has no 'Use when …' / 'Triggers:' phrasing — "
-                                      "may activate unreliably. See references/description.md."))
+            rep.checks.append(
+                Finding(
+                    "description_has_triggers",
+                    "soft",
+                    "warn",
+                    "description has no 'Use when …' / 'Triggers:' phrasing — "
+                    "may activate unreliably. See references/description.md.",
+                )
+            )
 
     # allowed-tools shape (optional)
     at = fm.get("allowed-tools")
     if at is not None:
         if isinstance(at, str):
-            rep.checks.append(Finding("allowed_tools_shape", "soft", "pass",
-                                      f"allowed-tools: {at}"))
+            rep.checks.append(
+                Finding("allowed_tools_shape", "soft", "pass", f"allowed-tools: {at}")
+            )
         elif isinstance(at, list):
-            rep.checks.append(Finding("allowed_tools_shape", "soft", "pass",
-                                      f"allowed-tools list[{len(at)}]"))
+            rep.checks.append(
+                Finding("allowed_tools_shape", "soft", "pass", f"allowed-tools list[{len(at)}]")
+            )
         else:
-            rep.checks.append(Finding("allowed_tools_shape", "soft", "warn",
-                                      f"allowed-tools has unusual shape: {type(at).__name__}"))
+            rep.checks.append(
+                Finding(
+                    "allowed_tools_shape",
+                    "soft",
+                    "warn",
+                    f"allowed-tools has unusual shape: {type(at).__name__}",
+                )
+            )
 
     # body size
     body_tokens = max(1, len(body) // CHARS_PER_TOKEN)
     if body_tokens > BODY_TOKENS_HARD_MAX:
-        rep.checks.append(Finding("body_token_budget", "hard", "fail",
-                                  f"~{body_tokens} tokens > sanity max {BODY_TOKENS_HARD_MAX} "
-                                  "— move bulk into references/ and link from body"))
+        rep.checks.append(
+            Finding(
+                "body_token_budget",
+                "hard",
+                "fail",
+                f"~{body_tokens} tokens > sanity max {BODY_TOKENS_HARD_MAX} "
+                "— move bulk into references/ and link from body",
+            )
+        )
     elif body_tokens > BODY_TOKENS_SOFT_MAX:
         sev = "hard" if strict else "soft"
-        rep.checks.append(Finding("body_token_budget", sev,
-                                  "fail" if strict else "warn",
-                                  f"~{body_tokens} tokens > spec recommendation {BODY_TOKENS_SOFT_MAX} "
-                                  "— consider splitting into references/"))
+        rep.checks.append(
+            Finding(
+                "body_token_budget",
+                sev,
+                "fail" if strict else "warn",
+                f"~{body_tokens} tokens > spec recommendation {BODY_TOKENS_SOFT_MAX} "
+                "— consider splitting into references/",
+            )
+        )
     else:
-        rep.checks.append(Finding("body_token_budget", "soft", "pass",
-                                  f"~{body_tokens} tokens ≤ {BODY_TOKENS_SOFT_MAX}"))
+        rep.checks.append(
+            Finding(
+                "body_token_budget",
+                "soft",
+                "pass",
+                f"~{body_tokens} tokens ≤ {BODY_TOKENS_SOFT_MAX}",
+            )
+        )
 
     # progressive disclosure — body should be a router, not a content dump
     rep.checks.append(check_progressive_disclosure(body, body_tokens))
 
     # self-validate directive — body must instruct the agent to re-validate after edits
     if _SELF_VALIDATE_DIRECTIVE_RE.search(body):
-        rep.checks.append(Finding("self_validate_directive", "soft", "pass",
-                                  "self-validate directive present"))
+        rep.checks.append(
+            Finding("self_validate_directive", "soft", "pass", "self-validate directive present")
+        )
     else:
-        rep.checks.append(Finding("self_validate_directive", "soft", "warn",
-                                  "missing the canonical '> **Self-validate after edits.**' "
-                                  "blockquote near the top of the body — agents that modify "
-                                  "this skill won't be reminded to run scripts/validate.sh."))
+        rep.checks.append(
+            Finding(
+                "self_validate_directive",
+                "soft",
+                "warn",
+                "missing the canonical '> **Self-validate after edits.**' "
+                "blockquote near the top of the body — agents that modify "
+                "this skill won't be reminded to run scripts/validate.sh.",
+            )
+        )
 
     # referenced files exist
     missing = check_local_refs(body, skill_md.parent)
     if missing:
-        rep.checks.append(Finding("referenced_files_exist", "soft", "warn",
-                                  f"{len(missing)} missing local ref(s): {', '.join(missing[:5])}"))
+        rep.checks.append(
+            Finding(
+                "referenced_files_exist",
+                "soft",
+                "warn",
+                f"{len(missing)} missing local ref(s): {', '.join(missing[:5])}",
+            )
+        )
     else:
-        rep.checks.append(Finding("referenced_files_exist", "soft", "pass",
-                                  "all local refs resolve"))
+        rep.checks.append(
+            Finding("referenced_files_exist", "soft", "pass", "all local refs resolve")
+        )
 
     rep.hard_findings = sum(1 for c in rep.checks if c.severity == "hard" and c.status == "fail")
     rep.soft_findings = sum(1 for c in rep.checks if c.severity == "soft" and c.status == "warn")
@@ -316,7 +410,9 @@ def check_progressive_disclosure(body: str, body_tokens: int) -> Finding:
 
     if max_count >= 2:
         return Finding(
-            "progressive_disclosure", "soft", "warn",
+            "progressive_disclosure",
+            "soft",
+            "warn",
             f"body has {breakdown} — repeated lane markers indicate multiple lanes inline. "
             "Move per-lane Preflight/Do/Closeout to references/<lane>.md; body should "
             "always-load only routing content.",
@@ -324,12 +420,16 @@ def check_progressive_disclosure(body: str, body_tokens: int) -> Finding:
     # Soft warn: large body even without lane repetition might still hide non-routing bulk.
     if body_tokens > 4000 and n_ref_links == 0:
         return Finding(
-            "progressive_disclosure", "soft", "warn",
+            "progressive_disclosure",
+            "soft",
+            "warn",
             f"body is ~{body_tokens} tokens with no references/ links. Even single-flow skills "
             "should split deep procedure into references/ when bulk isn't always needed.",
         )
     return Finding(
-        "progressive_disclosure", "soft", "pass",
+        "progressive_disclosure",
+        "soft",
+        "pass",
         f"{breakdown}, references/ links={n_ref_links} — router-shape OK",
     )
 
@@ -369,6 +469,7 @@ def check_local_refs(body: str, skill_dir: Path) -> list[str]:
 
 # --- driver ---------------------------------------------------------------
 
+
 def resolve_targets(args: argparse.Namespace) -> list[Path]:
     if args.all:
         root = Path(args.skills_root)
@@ -399,14 +500,22 @@ def render_human(reports: list[SkillReport]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("paths", nargs="*")
     ap.add_argument("--all", action="store_true", help="audit every skill under --skills-root")
-    ap.add_argument("--skills-root", default=".claude/skills",
-                    help="root directory when --all is used (default: .claude/skills)")
+    ap.add_argument(
+        "--skills-root",
+        default=".claude/skills",
+        help="root directory when --all is used (default: .claude/skills)",
+    )
     ap.add_argument("--json", action="store_true")
-    ap.add_argument("--strict", action="store_true",
-                    help="treat spec-soft warnings as hard (e.g., description > 1024 chars)")
+    ap.add_argument(
+        "--strict",
+        action="store_true",
+        help="treat spec-soft warnings as hard (e.g., description > 1024 chars)",
+    )
     args = ap.parse_args(argv)
 
     targets = resolve_targets(args)
@@ -442,8 +551,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, indent=2))
     else:
         print(render_human(reports))
-        print(f"\nTotal: hard={sum(r.hard_findings for r in reports)} "
-              f"soft={sum(r.soft_findings for r in reports)}")
+        print(
+            f"\nTotal: hard={sum(r.hard_findings for r in reports)} "
+            f"soft={sum(r.soft_findings for r in reports)}"
+        )
 
     return 1 if any(r.hard_findings for r in reports) else 0
 

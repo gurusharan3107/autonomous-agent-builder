@@ -276,7 +276,9 @@ def test_task_show_full_includes_gate_results(monkeypatch):
     )
     monkeypatch.setattr(task_module, "get_client", lambda **_: client)
 
-    result = runner.invoke(app, ["backlog", "task", "show", "verification", "surface", "--full", "--json"])
+    result = runner.invoke(
+        app, ["backlog", "task", "show", "verification", "surface", "--full", "--json"]
+    )
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)

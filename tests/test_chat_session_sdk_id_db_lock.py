@@ -1,6 +1,7 @@
 """Regression: chat_sessions.sdk_session_id write must survive `database is
 locked` (P18 class) and never fail a completed run over bookkeeping.
 Caught 2026-05-29 by the autoresearch fuzzer (fixture-D hang)."""
+
 import asyncio
 
 from sqlalchemy.exc import OperationalError
@@ -36,7 +37,9 @@ def _factory(behavior, session):
     def get_factory():
         def factory():
             return _FakeDB(behavior, session)
+
         return factory
+
     return get_factory
 
 

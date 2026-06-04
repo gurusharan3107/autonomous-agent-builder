@@ -171,8 +171,7 @@ class CodexAppServerRuntime(AgentRuntime):
         if self._provider != "codex_subscription":
             return RunResult(
                 error=(
-                    f"{self.name} only supports provider=codex_subscription, "
-                    f"got {self._provider}."
+                    f"{self.name} only supports provider=codex_subscription, got {self._provider}."
                 ),
                 stop_reason="configuration_error",
             )
@@ -647,9 +646,7 @@ class CodexAppServerRuntime(AgentRuntime):
         observability: dict[str, Any] | None = None,
     ) -> RunResult:
         duration = (
-            duration_ms
-            if duration_ms is not None
-            else int((time.monotonic() - started_at) * 1000)
+            duration_ms if duration_ms is not None else int((time.monotonic() - started_at) * 1000)
         )
         metrics = metrics or {}
         observability = observability or self._observability(
@@ -934,11 +931,7 @@ def _is_command_output_event(event: dict[str, Any]) -> bool:
     item = params.get("item") if isinstance(params.get("item"), dict) else {}
     item_type = str(item.get("type") or params.get("type") or "").lower()
     tool_name = str(
-        item.get("name")
-        or item.get("toolName")
-        or item.get("tool_name")
-        or item.get("title")
-        or ""
+        item.get("name") or item.get("toolName") or item.get("tool_name") or item.get("title") or ""
     ).lower()
     haystack = f"{method.lower()} {item_type} {tool_name}"
     return any(marker in haystack for marker in ("command", "bash", "shell", "exec", "terminal"))
@@ -1097,9 +1090,7 @@ async def _read_until_response(
         try:
             message = await _read_message(process, timeout_seconds=timeout_seconds)
         except TimeoutError as exc:
-            timeout_text = (
-                f" after {timeout_seconds:.0f}s" if timeout_seconds is not None else ""
-            )
+            timeout_text = f" after {timeout_seconds:.0f}s" if timeout_seconds is not None else ""
             raise TimeoutError(
                 f"Codex app-server response timeout{timeout_text} while waiting for "
                 f"{operation} response."
@@ -1326,12 +1317,8 @@ def _error_stop_reason(text: str) -> str:
 
 def _is_retryable_codex_process_error(text: str) -> bool:
     lower = text.lower()
-    return (
-        "separator is not found" in lower
-        and "chunk exceed" in lower
-    ) or (
-        "separator is found" in lower
-        and "chunk is longer than limit" in lower
+    return ("separator is not found" in lower and "chunk exceed" in lower) or (
+        "separator is found" in lower and "chunk is longer than limit" in lower
     )
 
 

@@ -41,28 +41,35 @@ async def _persist_sdk_session_id(session_id: str, sdk_session_id: str | None) -
                 await db.commit()
             return True
         except OperationalError as oe:
-            if ("database is locked" in str(oe).lower()
-                    and attempt + 1 < _SESSION_DB_LOCK_RETRY_ATTEMPTS):
-                backoff = _SESSION_DB_LOCK_RETRY_BASE_SECONDS * (2 ** attempt)
-                log.warning("chat_session_sdk_id_db_lock_retry",
-                            session_id=session_id, attempt=attempt + 1,
-                            max_attempts=_SESSION_DB_LOCK_RETRY_ATTEMPTS,
-                            backoff_seconds=backoff)
+            if (
+                "database is locked" in str(oe).lower()
+                and attempt + 1 < _SESSION_DB_LOCK_RETRY_ATTEMPTS
+            ):
+                backoff = _SESSION_DB_LOCK_RETRY_BASE_SECONDS * (2**attempt)
+                log.warning(
+                    "chat_session_sdk_id_db_lock_retry",
+                    session_id=session_id,
+                    attempt=attempt + 1,
+                    max_attempts=_SESSION_DB_LOCK_RETRY_ATTEMPTS,
+                    backoff_seconds=backoff,
+                )
                 await asyncio.sleep(backoff)
                 continue
             # Out of retries or non-lock error — bookkeeping write, don't kill
             # a completed run; log and move on.
-            log.warning("chat_session_sdk_id_persist_failed",
-                        session_id=session_id, error=str(oe))
+            log.warning("chat_session_sdk_id_persist_failed", session_id=session_id, error=str(oe))
             return False
         except Exception as exc:  # noqa: BLE001 — never let bookkeeping kill the run
-            log.warning("chat_session_sdk_id_persist_error",
-                        session_id=session_id, error=str(exc))
+            log.warning("chat_session_sdk_id_persist_error", session_id=session_id, error=str(exc))
             return False
     return False
+
+
 from autonomous_agent_builder.embedded.server import agent_chat_transcript
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_chat_event as _append_chat_event,
+)
+from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
 )
 from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
@@ -70,13 +77,23 @@ from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
 )
 from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
     extract_feature_list_payload as _extract_feature_list_payload,
+)
+from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
     extract_feature_spec_payload as _extract_feature_spec_payload,
 )
 from autonomous_agent_builder.embedded.server.agent_project_context import (
     apply_chat_answers_to_project_context as _apply_chat_answers_to_project_context,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
     apply_forward_project_constraints as _apply_forward_project_constraints,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
     collect_ask_user_question_answers as _collect_ask_user_question_answers,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
     extract_technical_constraints as _extract_technical_constraints,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
     inject_feature_list_constraints as _inject_feature_list_constraints,
 )
 from autonomous_agent_builder.embedded.server.agent_runtime_status import (
@@ -84,6 +101,8 @@ from autonomous_agent_builder.embedded.server.agent_runtime_status import (
 )
 from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
     append_persisted_delivery_permission_question_if_needed as _append_persisted_delivery_permission_question_if_needed,
+)
+from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
     handle_sprint_planning_turn as _handle_sprint_planning_turn,
 )
 from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
@@ -123,7 +142,9 @@ async def _publish_agent_run_error_result(
         status="completed",
         mirror_message=("assistant", error_content, 0, 0.0),
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(error_event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(error_event).model_dump(mode="json")
+    )
     status_event = await _append_chat_event(
         session_id,
         event_type="run_status",
@@ -137,7 +158,9 @@ async def _publish_agent_run_error_result(
         ),
         status="completed",
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json")
+    )
 
 
 async def _publish_provider_limit_result(
@@ -175,7 +198,9 @@ async def _publish_provider_limit_result(
         status="blocked",
         mirror_message=("assistant", visible_response, 0, 0.0),
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json")
+    )
     await _append_voice_final_summary_if_needed(
         session_id,
         assistant_event_id=assistant_event.id,
@@ -196,7 +221,9 @@ async def _publish_provider_limit_result(
         ),
         status="blocked",
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json")
+    )
 
 
 async def _publish_successful_chat_result(
@@ -289,7 +316,9 @@ async def _publish_successful_chat_result(
             run_totals.cost_usd,
         ),
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(assistant_event).model_dump(mode="json")
+    )
     # force=feature_captured bypasses the model-intent text heuristic intentionally:
     # the publisher owns the delivery question whenever a feature spec is persisted,
     # regardless of what the model's text said. The answer is handled by
@@ -322,7 +351,9 @@ async def _publish_successful_chat_result(
             status="completed",
             mirror_message=("assistant", sprint_response, 0, 0.0),
         )
-        await hub.publish(session_id, agent_chat_transcript.serialize_event(sprint_event).model_dump(mode="json"))
+        await hub.publish(
+            session_id, agent_chat_transcript.serialize_event(sprint_event).model_dump(mode="json")
+        )
         await _append_voice_final_summary_if_needed(
             session_id,
             assistant_event_id=sprint_event.id,
@@ -341,4 +372,6 @@ async def _publish_successful_chat_result(
         ),
         status="completed",
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(status_event).model_dump(mode="json")
+    )

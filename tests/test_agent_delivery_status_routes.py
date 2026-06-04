@@ -168,10 +168,7 @@ async def test_continue_building_records_terminal_dispatch_status(
         or "Derive the next tool call from your responsibility" in captured_prompts[0]
     )
     if "Model-backed delivery context is active" in captured_prompts[0]:
-        assert (
-            "dispatch that Board task with `mcp__builder__task_dispatch`"
-            in captured_prompts[0]
-        )
+        assert "dispatch that Board task with `mcp__builder__task_dispatch`" in captured_prompts[0]
         assert "Do not use generic code-editing or shell tools" in captured_prompts[0]
     assert all(event.payload_json["running"] is False for event in dispatch_statuses)
     with_payload = [event for event in dispatch_statuses if "dispatch" in event.payload_json]
@@ -181,6 +178,7 @@ async def test_continue_building_records_terminal_dispatch_status(
         "status": "dispatched",
         "current_status": "implementation",
     }
+
 
 @pytest.mark.asyncio
 async def test_continue_remaining_verification_task_dispatches_current_sprint_task(
@@ -334,19 +332,20 @@ async def test_continue_remaining_verification_task_dispatches_current_sprint_ta
             )
         )
         stop_reasons = [
-            event.payload_json.get("stop_reason")
-            for event in status_result.scalars().all()
+            event.payload_json.get("stop_reason") for event in status_result.scalars().all()
         ]
 
     assert captured_prompts
     assert "Model-backed delivery context is active for this turn." in captured_prompts[0]
     assert "do not treat it as a fixed command or deterministic shortcut" in captured_prompts[0]
     assert dispatched == []
-    assert "Started work on `Deterministic tests and build script`." in assistant_item[
-        "payload"
-    ]["content"]
+    assert (
+        "Started work on `Deterministic tests and build script`."
+        in assistant_item["payload"]["content"]
+    )
     assert "current sprint task" not in assistant_item["payload"]["content"]
-    assert "There are no product backlog items available for sprint planning." not in assistant_item[
-        "payload"
-    ]["content"]
+    assert (
+        "There are no product backlog items available for sprint planning."
+        not in assistant_item["payload"]["content"]
+    )
     assert "task_dispatched" in stop_reasons
