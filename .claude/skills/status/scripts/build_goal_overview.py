@@ -49,9 +49,12 @@ MS_NAME = re.compile(r"^\s*[—-]\s*(.*)$")
 # TESTING.md (browser-testing roadmap) parsing.
 #   `## S1 — Bootstrap & readiness`  (surface group heading)
 SC_HEADING = re.compile(r"^##\s+(S\d+)\s+[—-]\s+(.*)$")
-#   ``- `SC-01` **Title** — desc. `S:inflight` `` (scenario line; state is source of truth)
+#   ``- `SC-01` **Title** — desc. `K:N/browser` `S:inflight` `` (state is source of truth;
+#   the `K:<P|N>/<backend|browser>` kind+lane token is optional for backward compat)
 SC_LINE = re.compile(
-    r"^\s*-\s*`(SC-\d+)`\s*\*\*(.+?)\*\*\s*[—-]\s*(.*?)\s*`S:(pending|inflight|pass|fail|blocked)`\s*$"
+    r"^\s*-\s*`(SC-\d+)`\s*\*\*(.+?)\*\*\s*[—-]\s*(.*?)\s*"
+    r"(?:`K:([PN])/(backend|browser)`\s*)?"
+    r"`S:(pending|inflight|pass|fail|blocked)`\s*$"
 )
 SC_STATES = ("pass", "inflight", "fail", "blocked", "pending")
 
@@ -284,11 +287,13 @@ def parse_testing(text: str) -> tuple[list[dict], dict, int]:
             continue
         m = SC_LINE.match(line)
         if m and cur is not None:
-            state = m.group(4)
+            state = m.group(6)
             cur["scenarios"].append({
                 "id": m.group(1),
                 "title": m.group(2).strip(),
                 "desc": item_label(m.group(3), cap=160),
+                "kind": m.group(4),   # "P" | "N" | None (untagged, backward compat)
+                "lane": m.group(5),   # "backend" | "browser" | None
                 "state": state,
             })
             counts[state] += 1
@@ -296,16 +301,27 @@ def parse_testing(text: str) -> tuple[list[dict], dict, int]:
     return groups, counts, sum(counts.values())
 
 
-def testing_summary_html(counts: dict, total: int) -> str:
-    """One-line tally; `in flight` is the current testing effort."""
+def testing_summary_html(counts: dict, total: int, groups: list[dict] | None = None) -> str:
+    """One-line tally; `in flight` is the current testing effort.
+
+    When scenario rows carry `K:` kind tokens, append a positive/negative split.
+    """
     if not total:
         return "No scenarios yet — add them to <a href=\"TESTING.md\">TESTING.md</a>."
+    pos = neg = 0
+    for g in (groups or []):
+        for s in g["scenarios"]:
+            if s.get("kind") == "P":
+                pos += 1
+            elif s.get("kind") == "N":
+                neg += 1
+    kind_split = f' &middot; {pos} positive / {neg} negative' if (pos or neg) else ""
     return (
         f'<b>{total}</b> scenarios &middot; '
         f'<b style="color:var(--clay)">{counts["inflight"]}</b> in flight (current effort) &middot; '
         f'<span style="color:var(--olive)">{counts["pass"]} passed</span> &middot; '
         f'{counts["fail"]} bugs &middot; {counts["blocked"]} blocked &middot; '
-        f'{counts["pending"]} pending'
+        f'{counts["pending"]} pending{kind_split}'
     )
 
 
@@ -322,10 +338,18 @@ def testing_html(groups: list[dict], total: int) -> str:
         )
         for s in g["scenarios"]:
             cls, glyph, lbl = _SC_BADGE[s["state"]]
+            kind, lane = s.get("kind"), s.get("lane")
+            kchip = ""
+            if kind and lane:
+                ktitle = ("positive" if kind == "P" else "negative") + f" · {lane}"
+                kcls = "k-pos" if kind == "P" else "k-neg"
+                kchip = (f'<span class="kchip {kcls}" title="{ktitle}">'
+                         f'{kind}·{lane[:3]}</span>')
             parts.append(
                 '<div class="screw">'
                 f'<span class="scid">{_esc(s["id"])}</span>'
                 f'<span class="badge {cls}" title="{lbl}">{glyph} {_esc(lbl)}</span>'
+                f'{kchip}'
                 f'<span class="sclabel" title="{_esc(s["desc"])}">{_esc(s["title"])}</span>'
                 '</div>'
             )
@@ -463,14 +487,14 @@ def main() -> int:
             summary.append(f"gen:{name}")
     # Browser-testing markers are optional (soft-skip if the section isn't in the HTML).
     for name, value in (
-        ("testing_summary", testing_summary_html(tcounts, ttotal)),
+        ("testing_summary", testing_summary_html(tcounts, ttotal, tgroups)),
         ("testing", testing_html(tgroups, ttotal)),
     ):
         pat = re.compile(rf"(<!-- gen:{name} -->)(.*?)(<!-- /gen:{name} -->)", re.DOTALL)
         if not pat.search(html):
             continue
         before = html
-        html = pat.sub(lambda m: m.group(1) + value + m.group(3), html)
+        html = pat.sub(lambda m, value=value: m.group(1) + value + m.group(3), html)
         if html != before:
             summary.append(f"gen:{name}")
     html, meters = update_meters(html, milestones)
