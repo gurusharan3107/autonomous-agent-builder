@@ -21,7 +21,6 @@ Usage:
   build_goal_overview.py [--root DIR] [--check]
     --check : exit 1 if the file WOULD change (no write) — used by the idempotency eval.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -66,12 +65,12 @@ def item_label(rest: str, cap: int = 90) -> str:
     """Strip markdown emphasis/code/links from an item line and shorten to one phrase."""
     s = rest
     s = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)  # [text](url) -> text
-    s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)  # **bold**
-    s = re.sub(r"`([^`]*)`", r"\1", s)  # `code`
-    s = re.sub(r"\*(.+?)\*", r"\1", s)  # *italic*
+    s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)          # **bold**
+    s = re.sub(r"`([^`]*)`", r"\1", s)              # `code`
+    s = re.sub(r"\*(.+?)\*", r"\1", s)              # *italic*
     s = re.sub(r"\s+", " ", s).strip()
     dot = s.find(". ")
-    if 0 <= dot < cap:  # cut at first sentence end if early
+    if 0 <= dot < cap:                              # cut at first sentence end if early
         s = s[:dot]
     elif len(s) > cap:
         s = s[:cap].rstrip() + "…"
@@ -130,14 +129,12 @@ def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict], list[dic
         for line in body:
             im = OPEN_ITEM.match(line)
             if im and im.group(1):
-                priorities.append(
-                    {
-                        "pri": im.group(1),
-                        "milestone": mid,
-                        "label": item_label(strip_meta_tokens(im.group(2))),
-                        "_order": order,
-                    }
-                )
+                priorities.append({
+                    "pri": im.group(1),
+                    "milestone": mid,
+                    "label": item_label(strip_meta_tokens(im.group(2))),
+                    "_order": order,
+                })
             tm = ITEM_LINE.match(line)
             if tm:
                 state, pri, rest = tm.group(1), tm.group(2), tm.group(3)
@@ -151,19 +148,17 @@ def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict], list[dic
                             st = tk.group(2) or "pass"  # "pending" | "na" | "pass"
                     return st
 
-                tasks.append(
-                    {
-                        "ms": mid,
-                        "ms_name": mname,
-                        "pri": pri or "",
-                        "label": item_label(strip_meta_tokens(rest)),
-                        "done": is_done,
-                        "inflight": inflight,
-                        "backend": _test_state("backend"),
-                        "browser": _test_state("browser"),
-                        "_order": order,
-                    }
-                )
+                tasks.append({
+                    "ms": mid,
+                    "ms_name": mname,
+                    "pri": pri or "",
+                    "label": item_label(strip_meta_tokens(rest)),
+                    "done": is_done,
+                    "inflight": inflight,
+                    "backend": _test_state("backend"),
+                    "browser": _test_state("browser"),
+                    "_order": order,
+                })
             order += 1
     priorities.sort(key=lambda p: (PRI_RANK[p["pri"]], p["_order"]))
     for p in priorities:
@@ -171,10 +166,10 @@ def parse_roadmap(text: str) -> tuple[list[dict], int, int, list[dict], list[dic
 
     def _bucket(t: dict) -> int:
         if t["done"]:
-            return 0  # completed
+            return 0          # completed
         if t["inflight"]:
-            return 1  # in-flight
-        return 2  # pending
+            return 1          # in-flight
+        return 2              # pending
 
     tasks.sort(key=lambda t: (_bucket(t), t["_order"]))
     for t in tasks:
@@ -202,11 +197,9 @@ def cap_priorities(priorities: list[dict]) -> list[dict]:
 def priorities_html(priorities: list[dict]) -> str:
     """Render tagged open items as priority rows (P0→P3), each with a colored badge."""
     if not priorities:
-        return (
-            '<div class="empty">No prioritized items — tag a ROADMAP item with '
-            "<code>`P0`</code>/<code>`P1`</code>/<code>`P2`</code> after its "
-            "checkbox.</div>"
-        )
+        return ('<div class="empty">No prioritized items — tag a ROADMAP item with '
+                "<code>`P0`</code>/<code>`P1`</code>/<code>`P2`</code> after its "
+                "checkbox.</div>")
     rows = []
     for p in priorities:
         cls = p["pri"].lower()
@@ -241,27 +234,22 @@ def tasks_html(tasks: list[dict]) -> str:
         group = [t for t in tasks if pred(t)]
         if not group:
             continue
-        parts.append(
-            f'<div class="tbucket {cls}"><span class="tbhead">{title}</span>'
-            f'<span class="tbn">{len(group)}</span></div>'
-        )
+        parts.append(f'<div class="tbucket {cls}"><span class="tbhead">{title}</span>'
+                     f'<span class="tbn">{len(group)}</span></div>')
         for t in group:
             done_tick = "pass" if t["done"] else "none"
             pri = t["pri"]
-            badge = (
-                f'<span class="badge {pri.lower()}">{pri}</span>'
-                if pri
-                else '<span class="badge blank"></span>'
-            )
+            badge = (f'<span class="badge {pri.lower()}">{pri}</span>' if pri
+                     else '<span class="badge blank"></span>')
             parts.append(
                 '<div class="trow">'
                 f'<span class="tms" title="{_esc(t["ms_name"])}">{t["ms"]}</span>'
-                f"{badge}"
+                f'{badge}'
                 f'<span class="tlabel">{_esc(t["label"])}</span>'
                 f'<span class="{_TICK_CLS[done_tick]}" title="Done">{_TICK[done_tick]}</span>'
                 f'<span class="{_TICK_CLS[t["browser"]]}" title="Browser-tested">{_TICK[t["browser"]]}</span>'
                 f'<span class="{_TICK_CLS[t["backend"]]}" title="Backend-tested">{_TICK[t["backend"]]}</span>'
-                "</div>"
+                '</div>'
             )
     return "".join(parts)
 
@@ -297,14 +285,12 @@ def parse_testing(text: str) -> tuple[list[dict], dict, int]:
         m = SC_LINE.match(line)
         if m and cur is not None:
             state = m.group(4)
-            cur["scenarios"].append(
-                {
-                    "id": m.group(1),
-                    "title": m.group(2).strip(),
-                    "desc": item_label(m.group(3), cap=160),
-                    "state": state,
-                }
-            )
+            cur["scenarios"].append({
+                "id": m.group(1),
+                "title": m.group(2).strip(),
+                "desc": item_label(m.group(3), cap=160),
+                "state": state,
+            })
             counts[state] += 1
     groups = [g for g in groups if g["scenarios"]]
     return groups, counts, sum(counts.values())
@@ -313,23 +299,21 @@ def parse_testing(text: str) -> tuple[list[dict], dict, int]:
 def testing_summary_html(counts: dict, total: int) -> str:
     """One-line tally; `in flight` is the current testing effort."""
     if not total:
-        return 'No scenarios yet — add them to <a href="TESTING.md">TESTING.md</a>.'
+        return "No scenarios yet — add them to <a href=\"TESTING.md\">TESTING.md</a>."
     return (
-        f"<b>{total}</b> scenarios &middot; "
+        f'<b>{total}</b> scenarios &middot; '
         f'<b style="color:var(--clay)">{counts["inflight"]}</b> in flight (current effort) &middot; '
         f'<span style="color:var(--olive)">{counts["pass"]} passed</span> &middot; '
-        f"{counts['fail']} bugs &middot; {counts['blocked']} blocked &middot; "
-        f"{counts['pending']} pending"
+        f'{counts["fail"]} bugs &middot; {counts["blocked"]} blocked &middot; '
+        f'{counts["pending"]} pending'
     )
 
 
 def testing_html(groups: list[dict], total: int) -> str:
     """Render TESTING.md scenarios, grouped by surface, each with a status badge."""
     if not total:
-        return (
-            '<div class="empty">No scenarios — add them to '
-            '<a href="TESTING.md">TESTING.md</a>.</div>'
-        )
+        return ('<div class="empty">No scenarios — add them to '
+                "<a href=\"TESTING.md\">TESTING.md</a>.</div>")
     parts: list[str] = []
     for g in groups:
         parts.append(
@@ -343,14 +327,13 @@ def testing_html(groups: list[dict], total: int) -> str:
                 f'<span class="scid">{_esc(s["id"])}</span>'
                 f'<span class="badge {cls}" title="{lbl}">{glyph} {_esc(lbl)}</span>'
                 f'<span class="sclabel" title="{_esc(s["desc"])}">{_esc(s["title"])}</span>'
-                "</div>"
+                '</div>'
             )
     return "".join(parts)
 
 
 def parse_status(text: str) -> dict:
     """Pull Epoch, Milestone, Last-Update date from the `## Current Position` table."""
-
     def cell(label: str) -> str:
         m = re.search(rf"\|\s*{re.escape(label)}\s*\|\s*(.+?)\s*\|", text)
         if not m:
@@ -398,7 +381,7 @@ def replace_artifact_data(html: str, payload: dict) -> tuple[str, bool]:
     merged = dict(existing)
     merged.update(payload)  # derivable keys overwrite; non-derivable (tiers/source) preserved
     new_json = json.dumps(merged, indent=2)
-    new = html[: m.start()] + m.group(1) + new_json + m.group(3) + html[m.end() :]
+    new = html[: m.start()] + m.group(1) + new_json + m.group(3) + html[m.end():]
     return new, new != html
 
 
@@ -411,33 +394,28 @@ def update_meters(html: str, milestones: list[dict]) -> tuple[str, list[str]]:
         anchor = re.search(rf'<span class="id">{re.escape(mid)}</span>', html)
         if not anchor:
             continue
-        nxt = re.search(r'<span class="id">M\d+\.\d+</span>', html[anchor.end() :])
+        nxt = re.search(r'<span class="id">M\d+\.\d+</span>', html[anchor.end():])
         seg_end = anchor.end() + (nxt.start() if nxt else len(html) - anchor.end())
-        seg = html[anchor.end() : seg_end]
+        seg = html[anchor.end():seg_end]
         done, opn = by_id[mid]["done"], by_id[mid]["open"]
         total = done + opn
         if total == 0 or "<small>" not in seg:
             continue
         pct = round(100 * done / total)
         new_seg = re.sub(r"width:\d+%", f"width:{pct}%", seg, count=1)
-        new_seg = re.sub(
-            r"<small>\s*\d+\s*/\s*\d+\s*</small>",
-            f"<small>{done} / {total}</small>",
-            new_seg,
-            count=1,
-        )
+        new_seg = re.sub(r"<small>\s*\d+\s*/\s*\d+\s*</small>",
+                         f"<small>{done} / {total}</small>", new_seg, count=1)
         if new_seg != seg:
             changed.append(mid)
-            html = html[: anchor.end()] + new_seg + html[seg_end:]
+            html = html[:anchor.end()] + new_seg + html[seg_end:]
     return html, changed
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Regenerate goal-overview.html live numbers.")
     ap.add_argument("--root", default=".", help="repo root (default: cwd)")
-    ap.add_argument(
-        "--check", action="store_true", help="exit 1 if the file would change; do not write"
-    )
+    ap.add_argument("--check", action="store_true",
+                    help="exit 1 if the file would change; do not write")
     args = ap.parse_args()
 
     goal = Path(args.root) / "docs" / "goal"
@@ -447,8 +425,7 @@ def main() -> int:
             die(f"missing {p}")
 
     milestones, closed, opn, priorities, tasks = parse_roadmap(
-        (goal / "ROADMAP.md").read_text(encoding="utf-8")
-    )
+        (goal / "ROADMAP.md").read_text(encoding="utf-8"))
     status = parse_status((goal / "STATUS.md").read_text(encoding="utf-8"))
     priorities_view = cap_priorities(priorities)
     # TESTING.md is optional; when present it drives the Browser Testing section.
@@ -512,9 +489,7 @@ def main() -> int:
     if would_change:
         html_path.write_text(html, encoding="utf-8")
         print(f"build_goal_overview: updated {html_path}")
-        print(
-            f"  totals: {closed} closed / {opn} open · epoch={status['epoch']} · date={status['date']}"
-        )
+        print(f"  totals: {closed} closed / {opn} open · epoch={status['epoch']} · date={status['date']}")
         print("  changed: " + (", ".join(summary) or "(formatting)"))
     else:
         print("build_goal_overview: no change — already in sync")
