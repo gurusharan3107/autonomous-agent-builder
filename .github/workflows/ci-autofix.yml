@@ -46,10 +46,19 @@ jobs:
       - name: Install ruff (same version the gate uses)
         run: pip install -e ".[dev]"
 
-      - name: Ruff auto-fix + format
+      - name: Ruff auto-fix (scoped to PR-changed Python files only)
+        # Scoped to the files THIS PR changed — never repo-wide, so it can't
+        # avalanche-reformat a repo that was never format-clean. Small, reviewable diffs.
         run: |
-          ruff check --fix . || true
-          ruff format . || true
+          git fetch origin "${{ github.base_ref }}" --quiet || true
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- '*.py')
+          if [ -z "$CHANGED" ]; then
+            echo "No changed Python files in this PR — nothing to autofix."
+            exit 0
+          fi
+          echo "Autofixing PR-changed files:"; echo "$CHANGED"
+          ruff check --fix $CHANGED || true
+          ruff format $CHANGED || true
 
       - name: Commit + push fixes if any
         run: |
