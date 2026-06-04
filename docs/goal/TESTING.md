@@ -46,8 +46,8 @@ Line shape (parser-stable):
 - `SC-05` **Vague one-word ask** — "build me an app". Expect: model interviews for audience/workflow/data/first-outcome, not a generic-MVP dump. (forward-flow step 3). `S:pass`
 - `SC-06` **Structured question card integrity** — answer a clarification card. Expect: 3 options, recommended-first, inline custom box; answer stays visible on the card post-submit. (IMP-018). `S:pass`
 - `SC-07` **Empty/blank answer** — submit a clarification with no input. Expect: graceful re-prompt, no crash / stuck card. (negative input). `S:pass`
-- `SC-08` **Rapid double-submit answer** — click submit twice fast. Expect: no stranded answer-control lock; controls recover. (IMP-029). `S:pending`
-- `SC-09` **Builder-self-improvement ask in app chat** — "make the builder faster" typed into app chat. Expect: NOT captured into the app backlog; routed to builder-self lane. (IMP-016). `S:pending`
+- `SC-08` **Rapid double-submit answer** — click submit twice fast. Expect: no stranded answer-control lock; controls recover. (IMP-029). `S:blocked`
+- `SC-09` **Builder-self-improvement ask in app chat** — "make the builder faster" typed into app chat. Expect: NOT captured into the app backlog; routed to builder-self lane. (IMP-016). `S:pass`
 - `SC-10` **Contradictory follow-up answers** — answer A then contradict in next round. Expect: model reconciles or re-asks; no silent pick. (negative input). `S:pending`
 
 ## S3 — Backlog & sprint
@@ -71,8 +71,8 @@ Line shape (parser-stable):
 
 - `SC-22` **Approval card controls** — reach an approval gate. Expect: enabled Start now/Hold; answer registers. (IMP-018). `S:pass`
 - `SC-23` **Hung respond recovers** — respond stalls. Expect: controls re-enable via timeout, not permanently disabled. (IMP-029). `S:pending`
-- `SC-24` **Provider-limit blocked card** — hit a provider limit. Expect: blocked card w/ reset metadata, not a stale gate failure or DB-repair ask. (CLAUDE.md provider-limit contract). `S:pending`
-- `SC-25` **Chat can't edit app files** — ask chat to directly edit a generated file. Expect: denied + routed to dispatch, no Approve/Deny bypass card. (IMP-020). `S:pending`
+- `SC-24` **Provider-limit blocked card** — hit a provider limit. Expect: blocked card w/ reset metadata, not a stale gate failure or DB-repair ask. (CLAUDE.md provider-limit contract). `S:blocked`
+- `SC-25` **Chat can't edit app files** — ask chat to directly edit a generated file. Expect: denied + routed to dispatch, no Approve/Deny bypass card. (IMP-020). `S:pass`
 
 ## S6 — Metrics & observability
 
