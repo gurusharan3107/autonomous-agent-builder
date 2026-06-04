@@ -163,8 +163,16 @@ Full library map (all IDs, surface → library routing, key queries):
   self-initiate `pytest tests/ -q` (must pass) and
   `builder quality-gate <surface> --json` for the touched surface.
   Do not wait for the operator to ask — verify proactively and report
-  evidence in the same message as the completion claim.
+  evidence in the same message as the completion claim. State the **root
+  cause** the change fixes, not the symptom — if you can't name it, the fix
+  is a patch and isn't done.
   Skip when the change is docs-only (no `src/` or `tests/` modified).
+- When the change touches a UI/dashboard surface (`frontend/`, the embedded
+  dashboard bundle, or any operator-visible page/control): the completion
+  claim must also include a live `/hermes-chrome` **browser-leg** result
+  (real browser, visible cursor, surface swept) — pytest + quality-gate alone
+  do not prove a UI change. No browser-leg evidence ⇒ the item stays
+  `T:browser:pending`, not done.
 - When adding `os.environ["X"] = ...` in any non-test file:
   add `"X"` to the `isolate_runtime_settings` delenv list in
   `tests/conftest.py` in the same commit — env var side-effects leak into

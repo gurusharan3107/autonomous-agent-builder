@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>When to use what — automating away manual maintenance</title>
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC;
+  --olive:#788C5D; --rust:#B04A3F;
+  --gray-150:#F0EEE6; --gray-300:#D1CFC5; --gray-500:#87867F; --gray-700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ivory); color:var(--gray-700);
+  font-family:var(--sans); font-size:16px; line-height:1.6;
+  margin:0; padding:56px 24px 96px;
+}
+.wrap{max-width:1120px; margin:0 auto}
+.eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--gray-500); margin-bottom:12px}
+h1{font-family:var(--serif); font-weight:500; font-size:clamp(32px,4.5vw,44px); letter-spacing:-0.018em; color:var(--slate); margin:0 0 14px; line-height:1.1}
+h1 em{font-style:italic; color:var(--clay)}
+.lead{font-size:19px; line-height:1.5; color:var(--gray-700); max-width:680px; margin:0 0 8px}
+.sub{font-size:15px; color:var(--gray-500); max-width:680px; margin:0}
+h2{font-family:var(--serif); font-weight:500; font-size:27px; letter-spacing:-0.01em; color:var(--slate); margin:0 0 6px}
+h3{font-family:var(--sans); font-weight:650; font-size:16px; color:var(--slate); margin:0 0 6px}
+section{margin-top:64px}
+.s-eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--clay); margin-bottom:10px}
+.s-intro{max-width:700px; margin:0 0 28px; color:var(--gray-700)}
+code{font-family:var(--mono); font-size:.86em; background:var(--gray-150); padding:1px 5px; border-radius:4px; color:var(--slate)}
+hr{border:none; border-top:1.5px solid var(--gray-300); margin:0}
+a{color:var(--clay-d)}
+
+/* hero card */
+.hero{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:12px; padding:30px 28px; margin-top:34px}
+.hero svg{display:block; width:100%; height:auto; max-width:760px; margin:0 auto}
+
+/* axis / mental-model grid */
+.axes{display:grid; grid-template-columns:repeat(4,1fr); gap:16px}
+.axis{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; padding:18px 16px}
+.axis .n{font-family:var(--mono); font-size:11px; color:var(--gray-500); letter-spacing:.08em}
+.axis h3{margin:8px 0 8px}
+.axis p{font-size:13.5px; line-height:1.5; margin:0; color:var(--gray-700)}
+.axis .spectrum{font-family:var(--mono); font-size:11.5px; color:var(--clay-d); margin-top:10px; line-height:1.45}
+
+/* surface cards */
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+.card{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:12px; padding:22px 22px 20px; position:relative; overflow:hidden}
+.card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--accent,var(--clay))}
+.card.c-hook{--accent:var(--olive)}
+.card.c-actions{--accent:var(--clay)}
+.card.c-webhook{--accent:var(--gray-500)}
+.card.c-managed{--accent:var(--clay-d)}
+.card .tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent,var(--clay)); font-weight:700}
+.card h3{font-family:var(--serif); font-weight:500; font-size:21px; margin:7px 0 12px}
+.kv{display:grid; grid-template-columns:84px 1fr; gap:4px 12px; font-size:13.5px; margin-bottom:12px}
+.kv dt{font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--gray-500); padding-top:2px}
+.kv dd{margin:0; color:var(--gray-700)}
+.reach{background:var(--gray-150); border-radius:8px; padding:11px 13px; font-size:13.5px}
+.reach b{color:var(--slate)}
+.caveat{font-size:12.5px; color:var(--rust); margin-top:11px; line-height:1.45}
+
+/* composition rule */
+.rule{background:var(--slate); color:var(--ivory); border-radius:12px; padding:26px 28px}
+.rule .s-eyebrow{color:var(--oat)}
+.rule h2{color:var(--ivory)}
+.rule p{color:#E8E5DC; max-width:720px}
+.rule strong{color:#fff}
+.rule .pill{display:inline-block; font-family:var(--mono); font-size:12px; background:rgba(217,119,87,.22); border:1px solid var(--clay); color:#F3C9B7; padding:3px 10px; border-radius:20px; margin:6px 6px 0 0}
+
+/* interactive widget */
+.tool{background:var(--paper); border:1.5px solid var(--gray-300); border-radius:12px; padding:24px 24px 26px}
+.tool .q{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px}
+.chip{font-family:var(--sans); font-size:13.5px; cursor:pointer; background:var(--ivory); border:1.5px solid var(--gray-300); color:var(--gray-700); border-radius:22px; padding:9px 15px; transition:all .12s; user-select:none}
+.chip:hover{border-color:var(--clay)}
+.chip[aria-pressed="true"]{background:var(--clay); border-color:var(--clay); color:#fff; font-weight:600}
+.chip .h{font-family:var(--mono); font-size:10px; letter-spacing:.06em; opacity:.7; display:block; margin-bottom:2px; text-transform:uppercase}
+.out{border-top:1.5px dashed var(--gray-300); padding-top:18px; min-height:96px}
+.out .ph{color:var(--gray-500); font-size:14px}
+.rec-name{font-family:var(--serif); font-size:23px; color:var(--slate); margin:0 0 4px}
+.rec-name .dot{display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:9px; vertical-align:middle}
+.rec-why{font-size:14.5px; color:var(--gray-700); margin:6px 0 0; max-width:680px}
+.rec-tip{font-size:13px; color:var(--clay-d); margin:12px 0 0; font-family:var(--mono); line-height:1.5}
+.reset{font-family:var(--mono); font-size:11px; color:var(--gray-500); background:none; border:none; cursor:pointer; text-decoration:underline; padding:0; margin-left:auto}
+.qrow{display:flex; align-items:baseline; gap:12px; margin-bottom:8px}
+.qrow .lab{font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--gray-500); min-width:0}
+
+/* examples table */
+table{width:100%; border-collapse:collapse; background:var(--paper); border:1.5px solid var(--gray-300); border-radius:10px; overflow:hidden; font-size:14px}
+th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--gray-300); vertical-align:top}
+th{font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--gray-500); background:var(--gray-150)}
+tr:last-child td{border-bottom:none}
+td .sf{font-family:var(--mono); font-size:11px; font-weight:700; padding:2px 8px; border-radius:5px; white-space:nowrap; color:#fff}
+.sf-hook{background:var(--olive)} .sf-actions{background:var(--clay)} .sf-webhook{background:var(--gray-500)} .sf-managed{background:var(--clay-d)}
+
+/* gotchas */
+.gotchas{background:#FBF2EE; border:1.5px solid var(--clay); border-radius:12px; padding:24px 26px}
+.gotchas .s-eyebrow{color:var(--clay-d)}
+.gotchas ul{margin:0; padding:0; list-style:none}
+.gotchas li{padding:11px 0; border-bottom:1px solid var(--oat); font-size:14.5px}
+.gotchas li:last-child{border-bottom:none}
+.gotchas li b{color:var(--slate)}
+
+footer{margin-top:72px; padding-top:22px; border-top:1.5px solid var(--gray-300); font-family:var(--mono); font-size:11px; color:var(--gray-500); line-height:1.7}
+
+@media(max-width:840px){
+  .axes{grid-template-columns:1fr 1fr}
+  .cards{grid-template-columns:1fr}
+}
+@media(max-width:560px){ .axes{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Automation · Mental model · For cutting hands-on toil</div>
+  <h1>When to use <em>what</em> — so the machine maintains itself</h1>
+  <p class="lead">Four automation surfaces, one decision. Git hooks, GitHub Actions, GitHub webhooks, and Claude Managed Agents are not competing tools — they are <strong>four rungs of one ladder</strong>. Learn the ladder and the manual-maintenance part of your week shrinks toward zero.</p>
+  <p class="sub">The trick isn't picking one. It's pushing every task down to the cheapest rung that can do it — and letting the expensive rungs fire automatically so you're never the trigger.</p>
+</header>
+
+<!-- ===================== HERO: the ladder/pyramid ===================== -->
+<div class="hero">
+<svg viewBox="0 0 760 430" role="img" aria-label="Automation pyramid: git hooks at the base, GitHub Actions in the middle, Managed Agents at the top, webhooks as connective glue">
+  <style>
+    .lyr{stroke:var(--slate); stroke-width:1.5}
+    .lt{font-family:var(--sans); font-weight:650; fill:#fff}
+    .ls{font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; fill:#fff; opacity:.92}
+    .axl{font-family:var(--mono); font-size:10px; letter-spacing:.06em; fill:var(--gray-500); text-transform:uppercase}
+    .gl{stroke:var(--clay-d); stroke-width:1.5; fill:none; stroke-dasharray:4 3}
+    .glab{font-family:var(--mono); font-size:9.5px; fill:var(--clay-d)}
+    .note{font-family:var(--sans); font-size:11px; fill:var(--gray-700)}
+    .bignote{font-family:var(--serif); font-style:italic; font-size:13px; fill:var(--slate)}
+  </style>
+
+  <!-- left axis: cost / latency, increasing upward -->
+  <line x1="70" y1="40" x2="70" y2="382" stroke="var(--gray-300)" stroke-width="1.5"/>
+  <polygon points="70,34 66,46 74,46" fill="var(--gray-500)"/>
+  <text class="axl" x="64" y="58" text-anchor="end" transform="rotate(-90 64,58)">COST · LATENCY · AUTONOMY  →</text>
+  <text class="axl" x="86" y="398">cheap · instant · deterministic</text>
+  <text class="axl" x="86" y="26">expensive · async · judgment</text>
+
+  <!-- base: git hooks (widest trapezoid) -->
+  <polygon class="lyr" fill="var(--olive)" points="120,382 640,382 580,300 180,300"/>
+  <text class="lt" x="380" y="334" text-anchor="middle" font-size="17">GIT HOOKS</text>
+  <text class="ls" x="380" y="352" text-anchor="middle">your machine · fires on commit/push · no model</text>
+  <text class="ls" x="380" y="368" text-anchor="middle">instant deterministic fence — block bad code before history</text>
+
+  <!-- middle: GitHub Actions -->
+  <polygon class="lyr" fill="var(--clay)" points="180,298 580,298 524,206 236,206"/>
+  <text class="lt" x="380" y="240" text-anchor="middle" font-size="17">GITHUB ACTIONS / WORKFLOWS</text>
+  <text class="ls" x="380" y="258" text-anchor="middle">GitHub cloud · PR · cron · events · manual</text>
+  <text class="ls" x="380" y="274" text-anchor="middle">the CI backbone + scheduler + the orchestrator that calls upward</text>
+
+  <!-- top: Managed Agents -->
+  <polygon class="lyr" fill="var(--clay-d)" points="236,204 524,204 470,118 290,118"/>
+  <text class="lt" x="380" y="150" text-anchor="middle" font-size="16">MANAGED AGENTS</text>
+  <text class="ls" x="380" y="168" text-anchor="middle">Anthropic cloud · async · stateful</text>
+  <text class="ls" x="380" y="184" text-anchor="middle">long, judgment-heavy work · returns a PR / comment</text>
+
+  <!-- apex label -->
+  <text class="bignote" x="380" y="104" text-anchor="middle">judgment that shouldn't hold your terminal</text>
+
+  <!-- webhooks = glue arrows on the right -->
+  <path class="gl" d="M598,340 C672,332 672,250 600,250"/>
+  <path class="gl" d="M548,250 C660,234 660,158 500,158"/>
+  <text class="glab" x="678" y="300" transform="rotate(90 678,300)">WEBHOOKS = the wires between rungs</text>
+
+  <!-- the payoff bracket -->
+  <path d="M690,382 q14,0 14,-14 v-150 q0,-14 14,-14" stroke="var(--clay)" stroke-width="1.5" fill="none"/>
+  <text class="bignote" x="700" y="300" transform="rotate(90 700,300)" fill="var(--clay-d)">automate UP → your manual toil → 0</text>
+</svg>
+</div>
+
+<!-- ===================== THE ONE MENTAL MODEL ===================== -->
+<section>
+  <div class="s-eyebrow">The one mental model</div>
+  <h2>Every surface is just a point on four axes</h2>
+  <p class="s-intro">Stop memorising features. Any automation surface is fully described by four questions. Answer them for your task and the right tool falls out — that's the whole skill.</p>
+  <div class="axes">
+    <div class="axis">
+      <span class="n">AXIS 1</span>
+      <h3>Where does it run?</h3>
+      <p>The machine that executes the work. Determines what it can touch and whether it needs setup.</p>
+      <div class="spectrum">your laptop → GitHub runner → your server → Anthropic cloud</div>
+    </div>
+    <div class="axis">
+      <span class="n">AXIS 2</span>
+      <h3>What triggers it?</h3>
+      <p>The event that wakes it. The closer to "the moment work happens", the tighter the feedback loop.</p>
+      <div class="spectrum">git commit → PR / cron → any repo event → API call</div>
+    </div>
+    <div class="axis">
+      <span class="n">AXIS 3</span>
+      <h3>Deterministic or judgment?</h3>
+      <p>The decider. A fixed rule (lint passes / fails) needs no model. A call that varies needs one.</p>
+      <div class="spectrum">fixed rule (free) → a model decides (tokens)</div>
+    </div>
+    <div class="axis">
+      <span class="n">AXIS 4</span>
+      <h3>What does it cost?</h3>
+      <p>Time + money + a thing you now own. Cheapest-that-works wins; every automation is also maintenance.</p>
+      <div class="spectrum">milliseconds → cloud minutes → model tokens</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== THE FOUR SURFACES ===================== -->
+<section>
+  <div class="s-eyebrow">The four rungs</div>
+  <h2>Each surface, by its sweet spot</h2>
+  <p class="s-intro">Read each card as: <em>where it runs · what fires it · the one job it's best at · what it costs you.</em> The "reach for it when" line is the trigger to memorise.</p>
+  <div class="cards">
+
+    <div class="card c-hook">
+      <span class="tag">Rung 1 · local fence</span>
+      <h3>Git hooks</h3>
+      <dl class="kv">
+        <dt>Runs</dt><dd>Your machine, before code enters git history</dd>
+        <dt>Fires on</dt><dd><code>git commit</code> / <code>git push</code></dd>
+        <dt>Decider</dt><dd>Deterministic — no model</dd>
+        <dt>Cost</dt><dd>Milliseconds to seconds · free</dd>
+      </dl>
+      <div class="reach"><b>Reach for it when</b> a fast, fixed check must block bad code <i>before it ever exists</i>: format, lint, test-sync, secret-scan.</div>
+      <div class="caveat">⚠ Bypassable with <code>--no-verify</code> and only on your machine — always mirror the same check in Actions so it's actually enforced.</div>
+    </div>
+
+    <div class="card c-actions">
+      <span class="tag">Rung 2 · cloud backbone</span>
+      <h3>GitHub Actions / workflows</h3>
+      <dl class="kv">
+        <dt>Runs</dt><dd>GitHub cloud runners, clean each time</dd>
+        <dt>Fires on</dt><dd>push · PR · <code>cron</code> · issue/PR events · manual · webhook</dd>
+        <dt>Decider</dt><dd>Usually deterministic; can call a model</dd>
+        <dt>Cost</dt><dd>Minutes · runner time</dd>
+      </dl>
+      <div class="reach"><b>Reach for it when</b> work needs a clean environment, must run regardless of local discipline, or should happen <i>on a schedule</i>: full test suite, build/deploy, nightly sweeps. Also the <b>orchestrator</b> that triggers the rung above.</div>
+      <div class="caveat">⚠ "Workflows" and "Actions" are the same thing — the YAML in <code>.github/workflows/</code> configures Actions runs.</div>
+    </div>
+
+    <div class="card c-webhook">
+      <span class="tag">The wiring</span>
+      <h3>GitHub webhooks</h3>
+      <dl class="kv">
+        <dt>Runs</dt><dd>Nothing — delivers an event to <i>your</i> endpoint</dd>
+        <dt>Fires on</dt><dd>Any GitHub event, in real time</dd>
+        <dt>Decider</dt><dd>N/A — pure transport</dd>
+        <dt>Cost</dt><dd>An endpoint you must host + secure</dd>
+      </dl>
+      <div class="reach"><b>Reach for it when</b> a GitHub event must reach a <i>long-running external service</i> (a Managed Agent, a bot, Slack) that Actions can't reach, or you need real-time push instead of a polling job.</div>
+      <div class="caveat">⚠ Lowest-level rung. If an Action can already do the job, you don't need a webhook.</div>
+    </div>
+
+    <div class="card c-managed">
+      <span class="tag">Rung 3 · autonomous worker</span>
+      <h3>Claude Managed Agents</h3>
+      <dl class="kv">
+        <dt>Runs</dt><dd>Anthropic cloud — sessions, memory, sandbox</dd>
+        <dt>Fires on</dt><dd>API call · webhook · schedule</dd>
+        <dt>Decider</dt><dd>A model — judgment is the point</dd>
+        <dt>Cost</dt><dd>Model tokens + an integration to build</dd>
+      </dl>
+      <div class="reach"><b>Reach for it when</b> work is <i>long-running, async, stateful, and judgment-heavy</i> and shouldn't hold a terminal: triage a queue, investigate over many runs, draft autonomous fix-PRs.</div>
+      <div class="caveat">⚠ Beta (header required), not ZDR/HIPAA-eligible, rate-limited (~300/600 RPM), and <b>can't touch your local files</b> — it works through git/GitHub. Earns its keep at <b>queue/team scale</b>, not solo housekeeping.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===================== THE COMPOSITION RULE ===================== -->
+<section>
+  <div class="rule">
+    <div class="s-eyebrow">The rule that ties it together</div>
+    <h2>Push down. Trigger up.</h2>
+    <p><strong>Push every task to the cheapest rung that can do it</strong> — deterministic work belongs in hooks and Actions, never a model. <strong>Then trigger the expensive rungs automatically</strong> — a scheduled Action or a webhook wakes the agent, so <i>you are never the trigger</i>. Manual maintenance is just work that hasn't been pushed down or wired up yet.</p>
+    <div>
+      <span class="pill">deterministic → hook / Action</span>
+      <span class="pill">needs a model → Claude, fired by an Action</span>
+      <span class="pill">long &amp; async at volume → Managed Agent</span>
+      <span class="pill">event → external agent → webhook</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== INTERACTIVE: classify your task ===================== -->
+<section>
+  <div class="s-eyebrow">Try it · classify your task</div>
+  <h2>Pick the traits → see the rung</h2>
+  <p class="s-intro">Toggle the traits that describe a maintenance task you keep doing by hand. The recommendation updates live, with the reasoning — so you learn the <i>why</i>, not just the answer.</p>
+  <div class="tool">
+    <div class="qrow"><span class="lab">Your task…</span></div>
+    <div class="q" id="chips">
+      <button class="chip" data-k="block" aria-pressed="false"><span class="h">Trait</span>Must block a bad commit before it lands</button>
+      <button class="chip" data-k="env" aria-pressed="false"><span class="h">Trait</span>Needs a clean env / runs on a schedule</button>
+      <button class="chip" data-k="judgment" aria-pressed="false"><span class="h">Trait</span>Needs a model's judgment (not a fixed rule)</button>
+      <button class="chip" data-k="async" aria-pressed="false"><span class="h">Trait</span>Long-running / async / a queue of items</button>
+      <button class="reset" id="reset">reset</button>
+    </div>
+    <div class="out" id="out">
+      <p class="ph">↑ Toggle one or more traits to get a recommendation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== WORKED EXAMPLES ===================== -->
+<section>
+  <div class="s-eyebrow">Worked examples</div>
+  <h2>Real maintenance tasks, placed</h2>
+  <p class="s-intro">The same logic applied to chores you probably do by hand today.</p>
+  <table>
+    <thead><tr><th style="width:38%">Maintenance task</th><th style="width:20%">Rung</th><th>Why there</th></tr></thead>
+    <tbody>
+      <tr><td>Block an unformatted / lint-failing commit</td><td><span class="sf sf-hook">Git hook</span></td><td>Deterministic + must stop it before history. Instant, free.</td></tr>
+      <tr><td>Run the full test suite + type-check on every PR</td><td><span class="sf sf-actions">Actions</span></td><td>Too slow for a hook; needs a clean env; must gate merge regardless of local discipline.</td></tr>
+      <tr><td>Nightly dependency bumps + KB-freshness PR</td><td><span class="sf sf-actions">Actions</span></td><td>Scheduled (<code>cron</code>), deterministic-ish, opens a PR while you sleep.</td></tr>
+      <tr><td>Auto-fix the failing CI on a PR</td><td><span class="sf sf-actions">Actions</span> + model</td><td>Needs judgment but it's short and PR-bound — Claude fired by an Action (e.g. autofix).</td></tr>
+      <tr><td>Triage + dedupe + label a 200-item issue backlog</td><td><span class="sf sf-managed">Managed Agent</span></td><td>Judgment, long, async, a queue — exactly the cloud-agent shape. Fired by a schedule.</td></tr>
+      <tr><td>Issue opened → agent investigates &amp; comments</td><td><span class="sf sf-webhook">Webhook</span> → <span class="sf sf-managed">Agent</span></td><td>A GitHub event must reach a long-running external worker in real time.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===================== GOTCHAS ===================== -->
+<section>
+  <div class="gotchas">
+    <div class="s-eyebrow">Honest caveats — read before you build</div>
+    <h2 style="margin-bottom:10px">What bites people</h2>
+    <ul>
+      <li><b>Don't build the cloud-agent pipeline before you have the volume.</b> For a solo dev / single repo, Actions + the Claude GitHub integration covers ~80%. Managed Agents pay off at <i>queue / team / product</i> scale — a backlog, long async jobs — not one repo's chores.</li>
+      <li><b>Every automation is a thing you now maintain.</b> Question the chore before automating it: a flaky, low-value gate should be <i>deleted</i>, not wrapped in YAML. Automate the frequent, deterministic, genuinely-yours tasks; cut the rest.</li>
+      <li><b>Match the model tier even inside CI.</b> A scheduled triage/label job that calls a model should call a <i>cheap</i> one; reserve the frontier model for the investigate/fix-PR jobs. Same "cheapest that works" rule, applied to automation.</li>
+      <li><b>Hooks are a fence, not a wall.</b> <code>--no-verify</code> walks right past them and they only run on your machine. The real enforcement is the mirrored check in Actions.</li>
+      <li><b>Webhooks are infrastructure.</b> An endpoint to host, a secret to verify, retries to handle. Don't reach for one when a scheduled Action polling the API would do.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  CONCEPT EXPLAINER · automation surfaces · built with /html-artifact (report lane)<br>
+  Grounded: Claude Managed Agents rubric (beta caveats, ~300/600 RPM) · Claude Code what's-new W15–W22 (Actions integration, autofix, ultrareview) · model-tier cost ~Haiku $0.25 / Sonnet $3 / Opus $15 per MTok (approx).<br>
+  Verify current Managed Agents beta status + GitHub integration setup against live docs before building.
+</footer>
+
+</div>
+
+<!-- machine-readable copy of the surface model so an agent re-reading this file pays for data, not markup -->
+<script type="application/json" id="artifact-data">
+{
+  "title": "Automation surfaces — when to use what",
+  "axes": ["where it runs", "what triggers it", "deterministic vs judgment", "cost/latency"],
+  "rule": "Push every task to the cheapest rung that can do it; trigger the expensive rungs automatically so you are never the trigger.",
+  "surfaces": [
+    {"name":"Git hooks","runs":"local, pre-commit/pre-push","fires":"git commit/push","decider":"deterministic","cost":"ms, free","sweet_spot":"fast fixed checks that block bad code before history (format/lint/test-sync/secret-scan)","caveat":"bypassable with --no-verify; local only; mirror in Actions"},
+    {"name":"GitHub Actions/workflows","runs":"GitHub cloud runners","fires":"push/PR/cron/events/manual/webhook","decider":"deterministic; can call a model","cost":"cloud minutes","sweet_spot":"CI backbone, scheduled sweeps, deploy; orchestrator that invokes Claude/Managed Agents","caveat":"Actions == workflows (.github/workflows/*.yml)"},
+    {"name":"GitHub webhooks","runs":"delivers events to your endpoint","fires":"any GitHub event, realtime","decider":"transport, no model","cost":"an endpoint to host + secure","sweet_spot":"push a GitHub event to a long-running external service (Managed Agent/bot/Slack)","caveat":"lowest-level; skip if an Action can do it"},
+    {"name":"Claude Managed Agents","runs":"Anthropic cloud (sessions, memory, sandbox)","fires":"API call/webhook/schedule","decider":"a model; judgment is the point","cost":"model tokens + integration","sweet_spot":"long, async, stateful, judgment-heavy work: triage queues, investigations, autonomous fix-PRs","caveat":"beta header, not ZDR/HIPAA, ~300/600 RPM, no local FS access; earns keep at queue/team scale"}
+  ],
+  "decision_logic": {
+    "needs_judgment + long/async/queue": "Managed Agent, triggered by scheduled Action or webhook",
+    "needs_judgment + short/PR-bound": "Claude (GitHub integration) run via Actions on the PR",
+    "deterministic + must block commit": "Git hook, mirrored as an Actions PR-gate",
+    "deterministic + clean-env/scheduled": "GitHub Actions",
+    "deterministic + trivial": "Git hook (cheapest)",
+    "event must reach external agent": "GitHub webhook as the wire"
+  }
+}
+</script>
+
+<script>
+(function(){
+  var state = {block:false, env:false, judgment:false, async:false};
+  var COLORS = {hook:'#788C5D', actions:'#D97757', webhook:'#87867F', managed:'#B85C3E'};
+
+  function recommend(s){
+    // returns {name, color, why, tip}
+    if (s.judgment){
+      if (s.async){
+        return {
+          name:'Claude Managed Agents', color:COLORS.managed,
+          why:'It needs a model AND it’s long / async / a queue — that’s the cloud-agent shape exactly. Server-managed session, memory and sandbox so it doesn’t hold your terminal.',
+          tip:'// trigger it from a scheduled Action or a webhook — never by hand. Worth it at queue/team scale.'
+        };
+      }
+      return {
+        name:'Claude, fired by a GitHub Action', color:COLORS.actions,
+        why:'It needs judgment but it’s short and PR-bound, so you don’t need standalone cloud-agent infra. Run Claude inside an Action on the PR (e.g. auto-fix CI, address review comments).',
+        tip:'// use a cheap model tier for routine jobs; reserve the frontier model for real fixes.'
+      };
+    }
+    // deterministic
+    if (s.block){
+      return {
+        name:'Git hook  (+ mirror in Actions)', color:COLORS.hook,
+        why:'A fixed check that must stop bad code before it enters history — instant and free at commit time. But hooks are bypassable and local-only.',
+        tip:'// mirror the exact check in an Actions PR-gate so --no-verify can’t slip past it.'
+      };
+    }
+    if (s.env || s.async){
+      return {
+        name:'GitHub Actions / workflow', color:COLORS.actions,
+        why:'Deterministic work that needs a clean environment or a schedule, and must run regardless of anyone’s local setup. The always-on cloud tier.',
+        tip:'// cron for nightly sweeps; on: pull_request for the merge gate.'
+      };
+    }
+    return {
+      name:'Git hook', color:COLORS.hook,
+      why:'A simple deterministic check with no clean-env or scheduling need — keep it on the cheapest rung: instant, local, free.',
+      tip:'// if it ever needs to be enforced for others, promote it to an Action too.'
+    };
+  }
+
+  var out = document.getElementById('out');
+  function render(){
+    var any = state.block||state.env||state.judgment||state.async;
+    if(!any){ out.innerHTML = '<p class="ph">↑ Toggle one or more traits to get a recommendation.</p>'; return; }
+    var r = recommend(state);
+    out.innerHTML =
+      '<p class="rec-name"><span class="dot" style="background:'+r.color+'"></span>'+r.name+'</p>'+
+      '<p class="rec-why">'+r.why+'</p>'+
+      '<p class="rec-tip">'+r.tip+'</p>';
+  }
+
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.addEventListener('click', function(){
+      var k = c.getAttribute('data-k');
+      state[k] = !state[k];
+      c.setAttribute('aria-pressed', state[k] ? 'true':'false');
+      render();
+    });
+  });
+  document.getElementById('reset').addEventListener('click', function(){
+    Object.keys(state).forEach(function(k){ state[k]=false; });
+    document.querySelectorAll('.chip').forEach(function(c){ c.setAttribute('aria-pressed','false'); });
+    render();
+  });
+})();
+</script>
+</body>
+</html>
