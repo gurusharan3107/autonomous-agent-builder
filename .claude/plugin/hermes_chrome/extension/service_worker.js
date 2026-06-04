@@ -3,6 +3,7 @@ let port = null;
 const attachedTabs = new Set();
 const injectedTabs = new Set();
 const sessionGroups = new Map(); // sessionName → groupId
+const sessionTabs = new Map();   // sessionName → tabId (cross-call reuse: one session ⇒ one tab)
 
 function connectHost() {
   try {
@@ -48,6 +49,26 @@ async function ensureSessionGroup(sessionName, tabId) {
     sessionGroups.set(sessionName, groupId);
   }
   return groupId;
+}
+
+// Cross-call tab memory the per-request state otherwise lacks: reuse the tab a
+// prior call in this session opened, if it still exists and is controllable.
+// Keeps one named session pinned to ONE tab instead of spawning a new tab or
+// hijacking whatever is active on every call (orphan-tab proliferation).
+async function resolveSessionTab(sessionName) {
+  if (!sessionName) return undefined;
+  const tabId = sessionTabs.get(sessionName);
+  if (tabId === undefined) return undefined;
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab || !isControllableUrl(tab.url)) {
+    sessionTabs.delete(sessionName);
+    return undefined;
+  }
+  return tabId;
+}
+
+function rememberSessionTab(sessionName, tabId) {
+  if (sessionName && tabId !== undefined) sessionTabs.set(sessionName, tabId);
 }
 
 function isControllableUrl(url) {
@@ -387,6 +408,7 @@ async function runBrowserAction(action, state) {
   const type = action.type;
   if (action.tabId) {
     state.tabId = action.tabId;
+    rememberSessionTab(state.groupName, action.tabId);
   }
 
   if (type === "goto") {
@@ -403,6 +425,7 @@ async function runBrowserAction(action, state) {
     }
     state.tabId = tab.id;
     state.lastUrl = tab.url || action.url;
+    rememberSessionTab(state.groupName, state.tabId);
     if (state.groupName) await ensureSessionGroup(state.groupName, state.tabId).catch(() => {});
     await new Promise((resolve) => setTimeout(resolve, action.waitMs || 2000));
     await ensureAttached(state.tabId).catch(() => {}); // pre-attach so screenshots never race
@@ -507,6 +530,7 @@ async function runBrowserAction(action, state) {
     if (tab?.url) state.lastUrl = tab.url;
     await chrome.tabs.remove(state.tabId);
     const closed = state.tabId;
+    if (state.groupName) sessionTabs.delete(state.groupName);
     state.tabId = undefined;
     return { type, tabId: closed, url: state.lastUrl };
   }
@@ -607,11 +631,15 @@ async function runBrowserAction(action, state) {
 }
 
 async function handleHostMessage(message) {
+  // Reuse this session's existing tab if one is remembered and still alive;
+  // otherwise fall back to the active tab (useSelectedTab) or a fresh tab.
+  const rememberedTab = await resolveSessionTab(message.sessionName);
   const state = {
     maxTextChars: message.maxTextChars || 20000,
-    tabId: message.useSelectedTab ? (await currentTab()).id : undefined,
+    tabId: rememberedTab ?? (message.useSelectedTab ? (await currentTab()).id : undefined),
     groupName: message.sessionName || null,
   };
+  if (state.tabId) rememberSessionTab(state.groupName, state.tabId);
   if (state.tabId && state.groupName) await ensureSessionGroup(state.groupName, state.tabId).catch(() => {});
   if (message?.type === "reload") {
     post({ id: message.id, success: true, message: "reloading" });

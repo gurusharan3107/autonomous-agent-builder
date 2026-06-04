@@ -102,9 +102,10 @@ r = bridge({"type":"run","sessionName":"IMP-017","useSelectedTab":True,"actions"
 ]})
 ```
 
-- **`useSelectedTab: True` is the default for every call.** Only use `False` on the first call of a session when the active tab is blocked — see Blocked URL Recovery below.
+- **The bridge persists one tab per `sessionName`** (`service_worker.js` `sessionTabs`): once a call opens/binds a tab for a session, every later call with that same `sessionName` **reuses that exact tab** — even `useSelectedTab:False`, even after the active tab drifts. So pass a **stable `sessionName`** for a whole task and you get one tab, no orphan proliferation. `close_tab` clears the mapping.
+- **`useSelectedTab: True` is the default for every call.** It only matters on the **first** call (seed from the active tab); after that the persisted session tab wins. Use `False` on the first call when the active tab is blocked — see Blocked URL Recovery below.
 - All bridge calls in the same session carry the same `sessionName`.
-- Omitting `sessionName` defaults to `"Hermes Chrome"` — all tabs land in one group.
+- Omitting `sessionName` defaults to `"Hermes Chrome"` — all tabs land in one group/tab.
 - The group persists after tab close; Chrome collapses it automatically when empty.
 
 ---
