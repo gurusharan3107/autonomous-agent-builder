@@ -37,8 +37,8 @@ Line shape (parser-stable):
 ## S1 — Bootstrap & readiness
 
 - `SC-01` **Dirty/non-empty workspace init** — `builder init` where the dir already has files. Expect: clean init or explicit guard, no silent half-state. (forward-flow step 2). `S:pass`
-- `SC-02` **Re-init an initialized workspace** — `builder init` twice. Expect: idempotent, no duplicate `.agent-builder` or wiped state. (day-0 readiness). `S:pending`
-- `SC-03` **Start on occupied port w/o `--force`** — port already bound. Expect: actionable error, not a silent failed bind. (forward-flow step 1). `S:pending`
+- `SC-02` **Re-init an initialized workspace** — `builder init` twice. Expect: idempotent, no duplicate `.agent-builder` or wiped state. (day-0 readiness). `S:pass`
+- `SC-03` **Start on occupied port w/o `--force`** — port already bound. Expect: actionable error, not a silent failed bind. (forward-flow step 1). `S:pass`
 - `SC-04` **Readiness gate visible pre-product** — first product ask before readiness passes. Expect: Day-0 readiness gates autonomous work, surfaced in UI. (CLAUDE.md day-0-readiness). `S:pass`
 
 ## S2 — Requirements interview (Agent page)
@@ -54,9 +54,9 @@ Line shape (parser-stable):
 
 - `SC-11` **Trivial ask not over-decomposed** — ask for one small feature. Expect: ~1 task, not a fixed 5-task keyword sprint (token burn). (IMP-027). `S:pass`
 - `SC-12` **Feature type label** — create `type=feature` item. Expect: rendered "Feature", never "Improvement". (IMP-015). `S:pass`
-- `SC-13` **Cancel/remove a backlog item** — use the cancel control. Expect: drives to terminal `cancelled`. (IMP-017). `S:pending`
+- `SC-13` **Cancel/remove a backlog item** — use the cancel control. Expect: drives to terminal `cancelled`. (IMP-017). `S:pass`
 - `SC-14` **Reject a sprint proposal** — reject at the approval card. Expect: sane non-stuck state; can re-plan. (lifecycle step 4). `S:pending`
-- `SC-15` **Malformed item create** — empty title / junk type. Expect: validation error, no broken row. (negative input). `S:pending`
+- `SC-15` **Malformed item create** — empty title / junk type. Expect: validation error, no broken row. (negative input). `S:blocked`
 
 ## S4 — Dispatch / Board / execution
 
@@ -70,7 +70,7 @@ Line shape (parser-stable):
 ## S5 — Approvals & blocked states
 
 - `SC-22` **Approval card controls** — reach an approval gate. Expect: enabled Start now/Hold; answer registers. (IMP-018). `S:pass`
-- `SC-23` **Hung respond recovers** — respond stalls. Expect: controls re-enable via timeout, not permanently disabled. (IMP-029). `S:pending`
+- `SC-23` **Hung respond recovers** — respond stalls. Expect: controls re-enable via timeout, not permanently disabled. (IMP-029). `S:blocked`
 - `SC-24` **Provider-limit blocked card** — hit a provider limit. Expect: blocked card w/ reset metadata, not a stale gate failure or DB-repair ask. (CLAUDE.md provider-limit contract). `S:blocked`
 - `SC-25` **Chat can't edit app files** — ask chat to directly edit a generated file. Expect: denied + routed to dispatch, no Approve/Deny bypass card. (IMP-020). `S:pass`
 
@@ -78,18 +78,18 @@ Line shape (parser-stable):
 
 - `SC-26` **Headline tokens/cost non-zero** — after a run, read Metrics. Expect: headline tokens/cost/prompt_count populated, not 0 while raw is non-zero. (IMP-023). `S:pass`
 - `SC-27` **In-progress run note** — during an active run, read Metrics. Expect: `active_runs_note` renders. (IMP-003). `S:pending`
-- `SC-28` **Stale-error rec not blocking** — old `mcp__builder__task_*` errors present. Expect: no dispatch-blocking optimization rec; optimization vs workflow-state separated. (IMP-014). `S:pending`
-- `SC-29` **cache_ratio bounded** — read telemetry. Expect: `cache_ratio` ∈ [0,1]. (IMP-024). `S:pending`
+- `SC-28` **Stale-error rec not blocking** — old `mcp__builder__task_*` errors present. Expect: no dispatch-blocking optimization rec; optimization vs workflow-state separated. (IMP-014). `S:pass`
+- `SC-29` **cache_ratio bounded** — read telemetry. Expect: `cache_ratio` ∈ [0,1]. (IMP-024). `S:pass`
 
 ## S7 — UI integrity / persistence
 
-- `SC-30` **Fresh bundle served** — load the dashboard. Expect: current build assets, not a stale pre-pipeline bundle. (IMP-030). `S:pending`
+- `SC-30` **Fresh bundle served** — load the dashboard. Expect: current build assets, not a stale pre-pipeline bundle. (IMP-030). `S:pass`
 - `SC-31` **Reload mid-task** — refresh during a run. Expect: Board/task state intact, run continues. (resumability). `S:pass`
-- `SC-32` **Navigate away & back** — switch pages during a run. Expect: state intact, run uninterrupted. (UI integrity). `S:pending`
+- `SC-32` **Navigate away & back** — switch pages during a run. Expect: state intact, run uninterrupted. (UI integrity). `S:pass`
 
 ## S8 — Session continuity
 
-- `SC-33` **Resume after restart** — restart builder mid-task. Expect: resume reuses same workspace cwd; task continues. (CLAUDE.md state/isolation). `S:pending`
+- `SC-33` **Resume after restart** — restart builder mid-task. Expect: resume reuses same workspace cwd; task continues. (CLAUDE.md state/isolation). `S:pass`
 - `SC-34` **Phase-run sidebar** — open a task detail. Expect: phase-level agent runs render in the sidebar. (IMP-022). `S:pass`
 
 ---
