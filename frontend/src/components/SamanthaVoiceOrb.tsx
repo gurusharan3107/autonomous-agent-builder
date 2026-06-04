@@ -2,26 +2,24 @@ import { useState } from "react";
 
 import { useRealtimeVoice } from "@/hooks/use-realtime-voice";
 
-function SamanthaKnotIcon() {
+function SamanthaVoiceIcon() {
   return (
     <svg
       width="29"
       height="29"
       viewBox="0 0 64 64"
       fill="none"
+      stroke="currentColor"
+      strokeWidth="4"
+      strokeLinecap="round"
       aria-hidden="true"
-      data-samantha-knot-icon
+      data-samantha-voice-icon
     >
-      <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4.8">
-        <path d="M31.7 8.4c7.7-6.8 19.4-1.3 19.4 8.9 0 3.8-1.8 7.2-4.8 9.5" />
-        <path d="M46.3 26.8c9.9 2.1 13.2 14.7 5.1 20.9-3 2.3-6.8 2.9-10.4 1.7" />
-        <path d="M41 49.4c-3.5 9.5-16.6 9.5-20.1 0-1.3-3.5-.8-7.4 1.4-10.4" />
-        <path d="M22.3 39c-9.9-2.1-13.2-14.7-5.1-20.9 3-2.3 6.8-2.9 10.4-1.7" />
-        <path d="M27.6 16.4c3.5-9.5 16.6-9.5 20.1 0 1.3 3.5.8 7.4-1.4 10.4" />
-        <path d="M17.7 18.1C9.6 24.3 12.9 36.9 22.8 39" />
-        <path d="M20.7 22.7 32 16.2l11.3 6.5v13L32 42.2l-11.3-6.5v-13Z" />
-        <path d="M20.9 22.9 32 29.2l11.1-6.3M32 29.2v12.6" />
-      </g>
+      <circle cx="32" cy="32" r="4.4" fill="currentColor" stroke="none" />
+      <path d="M43 23a13 13 0 0 1 0 18" />
+      <path d="M21 23a13 13 0 0 0 0 18" />
+      <path d="M50.5 16a23.5 23.5 0 0 1 0 32" />
+      <path d="M13.5 16a23.5 23.5 0 0 0 0 32" />
     </svg>
   );
 }
@@ -109,7 +107,7 @@ export function SamanthaVoiceOrb() {
             transform: `scale(${hovered ? 1.08 : scale})`,
           }}
         >
-          <SamanthaKnotIcon />
+          <SamanthaVoiceIcon />
         </span>
         <span
           className="font-sans text-[9px] font-light uppercase tracking-[0.20em] transition-all duration-300"
