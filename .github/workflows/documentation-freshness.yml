@@ -3,7 +3,7 @@ name: Documentation Freshness
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -32,8 +32,8 @@ jobs:
       - name: Install builder CLI
         run: pip install -e .
 
-      - name: Ensure local main ref exists
-        run: git fetch origin main:main
+      - name: Ensure local master ref exists
+        run: git fetch origin master:master
 
       - name: Run deterministic knowledge validation
         run: builder knowledge validate --json > kb-validate.json
@@ -81,10 +81,10 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: automation/documentation-freshness-${{ github.run_id }}
-          commit-message: "Refresh maintained docs after main push"
-          title: "Refresh maintained docs after main push"
+          commit-message: "Refresh maintained docs after master push"
+          title: "Refresh maintained docs after master push"
           body: |
-            The repo-owned documentation-agent bridge handled bounded maintained-doc freshness gaps after a push to `main`.
+            The repo-owned documentation-agent bridge handled bounded maintained-doc freshness gaps after a push to `master`.
 
             Trigger summary:
             - See `documentation-refresh.json` in the workflow artifacts for the bridge summary and targeted docs.

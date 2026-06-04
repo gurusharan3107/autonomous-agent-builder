@@ -9,6 +9,24 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-04 - Enforcement wiring: activate test-sync gate (local hook + CI) + goal-doc progress-routing lint
+
+`/self-optimize` (14d) found "behavioral change without test update" still the #1 recurring theme (score 30, 7 fix-commits) **despite** the existing `pre_commit_checks.py` gate — root cause: the gate was never activated. Rule existed; nothing enforced it.
+
+### Added
+
+- `.github/workflows/ci.yml` — CI wall: `ruff check` + `ruff format --check` + `pytest` on PR + push to `master`. Enforces the test-failure gate regardless of a local `--no-verify` bypass.
+- `lint_goal_docs.py` `PROGRESS_ROUTING` — WARN-only check flagging autoresearch run-log markers (`baseline_runs_summary` / `iteration #N` / `run #N`) misrouted into ROADMAP/STATUS instead of `docs/autoresearch/PROGRESS.md`. Zero-false-positive tokens (σ-floor / cache_ratio deliberately excluded; verified against current docs). See `feedback_autoresearch_progress_routing`.
+
+### Fixed
+
+- `.githooks/pre-commit` — was inert (`core.hooksPath` unset, so git used empty `.git/hooks`) and called `python` (absent on WSL → exit 127, would block every commit once active). Activated via `git config core.hooksPath .githooks`; hardened to a `python3`/`python` fallback + `exec`.
+- `.github/workflows/documentation-freshness.yml` — `main` → `master` across trigger, `git fetch origin master:master` (would otherwise fail — `main` is deleted), and PR text. Default branch is `master`.
+
+### Notes
+
+- Pre-existing repo-wide `builder lint` debt (2 memory errors + 31 complexity ratchet violations, from uncommitted WIP on disk) is unrelated to this change and not addressed here.
+
 ## 2026-05-31 - IMP-023 Fix B (real root cause: telemetry clobbering) + chat-turn annotation repair
 
 builder-test static→DB root-cause dig on the live pomodoro forward-eng app. Two fixes, both root-cause not symptom.
