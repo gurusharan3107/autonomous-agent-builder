@@ -13,7 +13,7 @@ Live state. If it lies, system is blind.
 | --- | --- |
 | Current Epoch | **Epoch 1 — Stabilize** |
 | Current Milestone | **M3.5 — Optimization loop activation** (autoresearch Track B) |
-| Current Item In Flight | **IMP-033 batch 1** — negative-scenario browser campaign on a fresh Kanban app: 16/34 pass, 4 blocked (fault-injection), 0 product bugs; full forward lifecycle proven end-to-end. Fixed 1 infra bug (hermes bridge session-tab). Next: IMP-033 batch 2 (14 pending) or IMP-027b. |
+| Current Item In Flight | **IMP-033 batch 1** — negative-scenario browser campaign on a fresh Kanban app: 25/34 pass, 7 blocked (fault-injection), 2 pending, 0 product bugs; full forward lifecycle proven end-to-end. Fixed 1 infra bug (hermes bridge session-tab). Next: IMP-033 SC-10/SC-14 or IMP-027b. |
 | Active Workspace | `/home/gurusharangupta/Builder-Workspace/kanban` (IMP-033); devpulse idle |
 | Active Runtime Lane | Claude SDK (`claude`) complete; Codex SDK (`codex_sdk`) deferred (M1.2 remaining) |
 | Last Update | 2026-06-04 — IMP-033 batch 1 (16 pass/4 blocked/0 product bugs) + hermes bridge session-tab fix. TESTING.md + goal-overview §12 added. |

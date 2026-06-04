@@ -54,7 +54,7 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [x] **IMP-030** — repeatable dashboard build→sync pipeline (`scripts/build_dashboard.sh`); rebuilt + served fresh bundle `index-jlc1ZA4V.js` (was stale 2026-05-20). `T:backend` `T:browser:na`
 - [x] **IMP-031** — Board "Recover" reset a blocked task without dispatching it → stranded. Fixed `BoardPage.tsx` to chain `dispatchTask`; live-verified `active_runs` 0→1. `T:backend:na` `T:browser`
 - [ ] `P1` **IMP-032** — Board shows only the current sprint; a prior-sprint blocked task is invisible (`board` API `blocked:1` but the view shows Blocked 0), no sprint switcher → operator can't find/Recover it. Add a sprint switcher or cross-sprint needs-attention view. `T:backend:na` `T:browser:pending`
-- [ ] `P0` `IF` **IMP-033** — negative-scenario browser-testing campaign on a fresh Kanban app (34 `TESTING.md` scenarios). Batch 1: 16 pass / 4 blocked / 14 pending / 0 product bugs; +1 infra fix (hermes bridge session-tab). `T:backend:na` `T:browser:pending`
+- [ ] `P0` `IF` **IMP-033** — negative-scenario browser-testing campaign on a fresh Kanban app (34 `TESTING.md` scenarios). 25 pass / 7 blocked (need fault injection) / 2 pending / 0 product bugs; +1 infra fix (hermes bridge session-tab). `T:backend:na` `T:browser:pending`
 
 ### M1.2 — Both lanes ship one feature on devpulse end-to-end
 

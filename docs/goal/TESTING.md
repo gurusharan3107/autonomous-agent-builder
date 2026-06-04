@@ -63,7 +63,7 @@ Line shape (parser-stable):
 - `SC-16` **Dispatch with no dispatchable task** — hit dispatch on an empty Board. Expect: clear empty state, no phantom run. (lifecycle step 5). `S:blocked`
 - `SC-17` **Dispatch while one is running** — dispatch a 2nd task mid-run. Expect: concurrency guard, no double active run. (lifecycle step 5). `S:pass`
 - `SC-18` **Recover blocked task dispatches** — Recover a blocked task. Expect: recover *and* dispatch (active_run starts), not stranded reset-only. (IMP-031). `S:blocked`
-- `SC-19` **Stop a running task** — cancel mid-run. Expect: clean terminal state, run actually stops. (lifecycle). `S:pending`
+- `SC-19` **Stop a running task** — cancel mid-run. Expect: clean terminal state, run actually stops. (lifecycle). `S:blocked`
 - `SC-20` **Live token/cost rail** — watch a running turn. Expect: Session rail tokens/cost tick live during the run. (G1). `S:pass`
 - `SC-21` **No blank wait state** — during agent work. Expect: live tool-activity count visible, never empty transient boxes / blank wait. (forward-flow step 3). `S:pass`
 
@@ -77,7 +77,7 @@ Line shape (parser-stable):
 ## S6 — Metrics & observability
 
 - `SC-26` **Headline tokens/cost non-zero** — after a run, read Metrics. Expect: headline tokens/cost/prompt_count populated, not 0 while raw is non-zero. (IMP-023). `S:pass`
-- `SC-27` **In-progress run note** — during an active run, read Metrics. Expect: `active_runs_note` renders. (IMP-003). `S:pending`
+- `SC-27` **In-progress run note** — during an active run, read Metrics. Expect: `active_runs_note` renders. (IMP-003). `S:pass`
 - `SC-28` **Stale-error rec not blocking** — old `mcp__builder__task_*` errors present. Expect: no dispatch-blocking optimization rec; optimization vs workflow-state separated. (IMP-014). `S:pass`
 - `SC-29` **cache_ratio bounded** — read telemetry. Expect: `cache_ratio` ∈ [0,1]. (IMP-024). `S:pass`
 
