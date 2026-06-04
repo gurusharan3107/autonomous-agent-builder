@@ -21,6 +21,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from autonomous_agent_builder.agents.design_directive import design_directive_block
 from autonomous_agent_builder.agents.documentation_bridge import (
     run_documentation_refresh_bridge,
 )
@@ -53,6 +54,7 @@ from autonomous_agent_builder.orchestrator.approval_outcomes import (
 )
 from autonomous_agent_builder.orchestrator.build_verification import (
     build_verifier_failure,
+    is_ui_task,
     sprint_branch_name,
     task_sprint_execution_payload,
     use_deterministic_build_verifier,
@@ -489,12 +491,19 @@ class Orchestrator:
         # instead of spending turns on list_directory/Read to rediscover the tree —
         # each turn replays the full cached system prompt (IMP-027 context follow-up).
         _ws_map = compact_workspace_map(workspace.path)
+        # IMP-034a: inject the Product-UI design directive only for UI-bearing
+        # work. Static text → rides the cached system-prompt prefix that code-gen
+        # already replays each turn, so ~0 marginal tokens/turn after the first.
+        _design_directive = design_directive_block(
+            is_ui_task(task, getattr(task, "feature", None))
+        )
         result = await self._run_agent(
             task,
             "code-gen",
             {
                 "task_description": task.description,
                 "design_context": f"Design: {_design_ctx}\n" if _design_ctx else "",
+                "design_directive": _design_directive,
                 "gate_feedback": await self._quality_gate_feedback_context(task),
                 "recovery_context": self._recovery_context(task),
                 "workspace_path": workspace.path,

@@ -9,6 +9,27 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-04 - IMP-034a: Product-UI design directive injected into UI code-gen
+
+Operator observation: generated apps lack UI taste. Root cause — **no design guidance existed in any agent prompt**, so `code-gen` shipped generic AI-slop UIs (default blue/purple, missing interactive states, ad-hoc spacing, flat type). Fix distills the transferable, stack-agnostic subset of the third-party `taste-skill` project + Vercel Web Interface Guidelines / Refactoring UI / NN/g heuristics into a compact directive (the upstream skill is landing-page-scoped, React/Tailwind-bound, and ~35K tokens — deliberately NOT inlined). Mechanism rejected: installing the skill via `npx skills add` — the builder's code-gen runs in ephemeral workspaces with no `.claude`, so it discovers no filesystem skills; guidance must be prompt-enrichment (see `verifier-skill-vs-prompt`).
+
+### Added
+
+- `agents/design_directive.py` — `PRODUCT_UI_DESIGN_DIRECTIVE` (~520 tok, repo `estimate_tokens`) + `design_directive_block(is_ui)`. STATIC, stack-agnostic, principle-level (color/spacing/hierarchy/depth/states/forms/a11y/motion). Sourced from taste-skill + Vercel WIG / Refactoring UI / NN/g.
+- `tests/test_design_directive.py` — 7 tests: highest-slop-signal coverage, stack-agnostic (no React/Tailwind/GSAP leak), UI gate, KeyError-safe template formatting both ways, <900-tok compactness ceiling.
+
+### Changed
+
+- `agents/definitions.py` — `code-gen` `prompt_template` gains a `{design_directive}` block beside `{workspace_map}`.
+- `orchestrator/orchestrator.py` — injects the directive into the code-gen prompt gated by `is_ui_task(task, feature)` (reused from IMP-019); empty for CLI/library/non-UI work.
+- `orchestrator/agent_run_lifecycle.py` — `template_vars.setdefault("design_directive", "")` keeps every other agent's `format()` KeyError-safe.
+- `services/codex_optimization.py` — `prompt_budget_breakdown` registers a `design_directive` token segment for observability.
+
+### Notes
+
+- **Efficiency (capability-fit, Claude lane):** directive is STATIC and injected once → amortizes to ~0 marginal tokens/turn via **conversation-history prefix caching** (the IMP-028 replay path), NOT system-prompt caching (the builder's `system_prompt` is the pure `claude_code` preset with `exclude_dynamic_sections`; the rendered template is the first user message). `claude-agent-sdk` gate `ok:true` — this is model-loop judgment guidance, not a deterministic shortcut. Considered + rejected: moving the directive to `system_prompt: {append}` (marginal cross-run cache gain vs. fragmenting the single-prompt model).
+- IMP-034b (operator-selectable UI prototype preview) still open. `T:browser` live-verification of 034a still pending.
+
 ## 2026-06-04 - Enforcement wiring: activate test-sync gate (local hook + CI) + goal-doc progress-routing lint
 
 `/self-optimize` (14d) found "behavioral change without test update" still the #1 recurring theme (score 30, 7 fix-commits) **despite** the existing `pre_commit_checks.py` gate — root cause: the gate was never activated. Rule existed; nothing enforced it.

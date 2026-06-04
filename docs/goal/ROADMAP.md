@@ -55,6 +55,9 @@ Closed = root cause + SDK-grounded fix + regression test + evidence pointer. Ful
 - [x] **IMP-031** — Board "Recover" reset a blocked task without dispatching it → stranded. Fixed `BoardPage.tsx` to chain `dispatchTask`; live-verified `active_runs` 0→1. `T:backend:na` `T:browser`
 - [ ] `P1` **IMP-032** — Board shows only the current sprint; a prior-sprint blocked task is invisible (`board` API `blocked:1` but the view shows Blocked 0), no sprint switcher → operator can't find/Recover it. Add a sprint switcher or cross-sprint needs-attention view. `T:backend:na` `T:browser:pending`
 - [ ] `P0` `IF` **IMP-033** — negative-scenario browser-testing campaign on a fresh Kanban app (34 `TESTING.md` scenarios). 25 pass / 7 blocked (need fault injection) / 2 pending / 0 product bugs; +1 infra fix (hermes bridge session-tab). `T:backend:na` `T:browser:pending`
+- [ ] `P1` **IMP-034** — generated apps lack UI taste: no design guidance exists in any agent prompt, so code-gen ships generic AI-slop UIs (default blue/purple, no empty/loading/error states, ad-hoc spacing, flat type). Fix sourced from the taste-skill project + Vercel Web Interface Guidelines / Refactoring UI / NN/g heuristics.
+  - **(034a) Direct, always-on —** compact (~520 tok) stack-agnostic Product-UI design directive in `agents/design_directive.py`, injected into the `code-gen` system prompt gated by `is_ui_task()` (reused from IMP-019). STATIC → rides the cached prompt prefix (≈0 tok/turn after first; respects IMP-028 budget); empty for CLI/library/non-UI work. `T:backend:pending` `T:browser:pending`
+  - **(034b) Prototype-first, operator-selectable —** opt-in UI prototype/mockup preview in the design phase the operator approves before implementation; reuses the 034a directive. Owner: orchestrator phase routing + Agent-page affordance. `T:backend:pending` `T:browser:pending`
 
 ### M1.2 — Both lanes ship one feature on devpulse end-to-end
 

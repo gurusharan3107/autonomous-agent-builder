@@ -46,6 +46,7 @@ def prompt_budget_breakdown(
         "tool_context": estimate_tokens(template_vars.get("tool_context")),
         "sprint_plan": estimate_tokens(template_vars.get("planning_context")),
         "sprint_design": estimate_tokens(template_vars.get("design_context")),
+        "design_directive": estimate_tokens(template_vars.get("design_directive")),
         "task_brief": estimate_tokens(template_vars.get("task_description")),
         "repo_context": estimate_tokens(template_vars.get("knowledge_requirements")),
         "gate_feedback": estimate_tokens(template_vars.get("gate_feedback")),

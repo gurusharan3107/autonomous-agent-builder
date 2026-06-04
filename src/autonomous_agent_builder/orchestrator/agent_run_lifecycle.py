@@ -178,6 +178,9 @@ async def run_agent_lifecycle(
     # Code-gen receives a compact workspace file map; default empty so every other
     # agent's prompt_template.format() stays KeyError-safe (str.format requires the key).
     template_vars.setdefault("workspace_map", "")
+    # Code-gen receives the Product-UI design directive only for UI-bearing tasks
+    # (IMP-034a). Default empty keeps format() KeyError-safe for every other agent.
+    template_vars.setdefault("design_directive", "")
 
     prompt = agent_def.prompt_template.format(**template_vars)
     prompt_budget = prompt_budget_breakdown(
