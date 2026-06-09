@@ -157,17 +157,17 @@ async def test_flask_language_runs_python_quality_gate(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_flask_language_runs_python_testing_gate(tmp_path, monkeypatch):
+async def test_flask_language_runs_python_testing_gate(tmp_path):
+    # "Flask" language config must route to the PYTHON testing gate (pytest),
+    # not the Node path. No dependency manifest → no venv provisioning needed;
+    # a trivial real test proves the python branch ran under a real interpreter.
+    # (Interpreter selection is owned by quality_gates.python_env.)
     workspace = tmp_path / "flask-workspace"
     workspace.mkdir()
     (workspace / "app.py").write_text("print('hello')\n", encoding="utf-8")
-
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    pytest_bin = bin_dir / "pytest"
-    pytest_bin.write_text("#!/usr/bin/env bash\necho '1 passed'\nexit 0\n", encoding="utf-8")
-    pytest_bin.chmod(0o755)
-    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    tests_dir = workspace / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_smoke.py").write_text("def test_ok():\n    assert True\n", encoding="utf-8")
 
     result = await NodeTestingGate(language="Flask").run(str(workspace))
 

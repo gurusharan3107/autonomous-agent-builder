@@ -9,6 +9,24 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-09 - IMP-036: owned Python workspace env provisioning + classify-before-agent
+
+Generated Python apps had no dep-provisioning owner (the Node lane did, via `npm install` guards). Every phase that ran pytest invoked bare `pytest` / `sys.executable` against an interpreter where the app's third-party deps were never installed → `ModuleNotFoundError` → the LLM gate-remediator burned its retry cap "fixing" an environmental problem it cannot fix by editing code. Fix: a single owned module for *how a Python app's tests are run*, plus a classify-before-agent step so environmental gate failures re-provision deterministically instead of dispatching the model.
+
+### Added
+
+- `quality_gates/python_env.py` — single source of truth for Python-lane test provisioning: `is_python_workspace`, `setup_commands` (idempotent venv-create + editable/`-r` install, mirrors the Node `npm install` guard), `pytest_argv` (canonical venv-interpreter invocation, `venv_required` for plan-time callers), `ensure_python_env` (inline async provision, `force=True` rebuild), and `is_environmental_failure` (missing-dep / interpreter signature matcher). Deterministic by design — never delegated to an agent.
+- `tests/test_python_env.py` — provisioning command shape, idempotency, env-failure signatures, venv-interpreter selection.
+
+### Changed
+
+- `orchestrator/gate_feedback.py` — Step 1.5 classify-before-agent: a failed gate with an environmental signature re-provisions the workspace env (`ensure_python_env(force=True)`) and re-runs the gates, bounded by the retry budget (escalates to capability-limit when exhausted), instead of burning the gate-remediator on an unfixable-by-source failure.
+- `quality_gates/testing.py`, `embedded/scripts/build_verify.py`, `agents/tools/workspace_tools.py`, `services/runtime_guidance.py` — all four test-running / command-discovery call sites now route through `python_env` so the interpreter rule lives in one place (provision the venv, run pytest under it; bare `pytest` hits the host env lacking the app's deps).
+
+### Validation
+
+- 57 targeted tests pass (`test_python_env` + `test_gate_feedback` + `test_node_quality_gates` + `test_orchestrator_build_verification`); changed files ruff-clean. `T:backend` `T:browser:na` (no operator surface).
+
 ## 2026-06-04 - IMP-034b (backend): operator-selectable UI prototype preview
 
 Backend for the prototype-first half of IMP-034: for UI features where the operator opted in, the builder generates a static HTML mockup after design and holds for approval BEFORE implementation. Reuses the existing ApprovalGate + DESIGN_REVIEW + DesignDocument plumbing — no schema migration, no new TaskStatus. Frontend preview/approve card is the next increment (IMP-034 stays open).

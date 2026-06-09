@@ -176,3 +176,38 @@ def test_browser_evidence_tier_non_ui_task_bridge_unavailable_is_jsdom_fallback(
     result = browser_evidence_tier(output, bridge_available=False, is_ui=False)
     assert result["tier"] == "jsdom_fallback"
     assert result["browser_evidence_tier"] == "jsdom_fallback"
+
+
+def test_build_verify_python_branch_provisions_venv_then_runs_under_it(tmp_path) -> None:
+    """build_verify must prepend venv provisioning (peer to npm_install) and run
+    pytest under the workspace venv — never bare sys.executable."""
+    import sys
+
+    from autonomous_agent_builder.embedded.scripts.build_verify import BuildVerifyScript
+
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nname='x'\n[project.optional-dependencies]\ndev=['pytest']\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tests").mkdir()
+
+    checks = BuildVerifyScript()._planned_checks(tmp_path)
+    codes = [c["code"] for c in checks]
+    assert codes == ["venv_create", "pip_install", "pytest"]
+    assert checks[0]["command"] == [sys.executable, "-m", "venv", str(tmp_path / ".venv")]
+    venv_python = str(tmp_path / ".venv" / "bin" / "python")
+    assert checks[-1]["command"] == [venv_python, "-m", "pytest", "-q"]
+
+
+def test_build_verify_python_branch_noop_provision_when_venv_present(tmp_path) -> None:
+    from autonomous_agent_builder.embedded.scripts.build_verify import BuildVerifyScript
+
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    venv_python = tmp_path / ".venv" / "bin" / "python"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_text("")
+
+    checks = BuildVerifyScript()._planned_checks(tmp_path)
+    assert [c["code"] for c in checks] == ["pytest"]  # already provisioned → just test
+    assert checks[0]["command"] == [str(venv_python), "-m", "pytest", "-q"]

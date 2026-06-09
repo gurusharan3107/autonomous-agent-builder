@@ -1130,12 +1130,15 @@ def _discover_commands(project_root: Path, *, language: str) -> dict[str, str]:
         commands["format"] = _script_command(prefix, scripts, ("format",))
         commands["setup"] = "npm install" if runner == "npm" else f"{runner} install"
     if language == "python":
+        # Provision into a workspace .venv and run tests under it — bare
+        # ``pip``/``pytest`` hit the host interpreter, which lacks the app's deps.
+        # Matches the builder's own testing/build_verify gates (quality_gates.python_env).
         if (project_root / "pyproject.toml").exists():
-            commands["setup"] = "python -m pip install -e ."
+            commands["setup"] = "python -m venv .venv && .venv/bin/pip install -e '.[dev]'"
         elif (project_root / "requirements.txt").exists():
-            commands["setup"] = "python -m pip install -r requirements.txt"
+            commands["setup"] = "python -m venv .venv && .venv/bin/pip install -r requirements.txt"
         if (project_root / "pytest.ini").exists() or (project_root / "tests").exists():
-            commands["test"] = "pytest"
+            commands["test"] = ".venv/bin/python -m pytest"
         if (project_root / "ruff.toml").exists() or "ruff" in _read_text(
             project_root / "pyproject.toml"
         ).lower():
