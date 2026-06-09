@@ -110,8 +110,30 @@ async function ensureAttached(tabId) {
 
 async function send(tabId, method, params = {}) {
   await ensureAttached(tabId);
-  return chrome.debugger.sendCommand({ tabId }, method, params);
+  try {
+    return await chrome.debugger.sendCommand({ tabId }, method, params);
+  } catch (e) {
+    // The debugger can detach without us hearing about it — cross-origin
+    // navigation swaps the renderer/target, DevTools opens, the target crashes.
+    // attachedTabs then holds a stale entry, ensureAttached early-returns, and
+    // sendCommand fails "Debugger is not attached". Drop the stale entry,
+    // re-attach once, and retry — this self-heals evaluate / wait_for_selector /
+    // screenshot / zoom after a navigation instead of failing the whole batch.
+    if (/not attached|No tab with given id|Cannot access/i.test(String(e?.message || e))) {
+      attachedTabs.delete(tabId);
+      await ensureAttached(tabId);
+      return await chrome.debugger.sendCommand({ tabId }, method, params);
+    }
+    throw e;
+  }
 }
+
+// Keep attachedTabs in sync with reality: when Chrome detaches the debugger
+// (cross-origin navigation, DevTools, target crash, manual close), forget the
+// tab so the next send() re-attaches instead of trusting a dead session.
+chrome.debugger.onDetach.addListener((source) => {
+  if (source && source.tabId !== undefined) attachedTabs.delete(source.tabId);
+});
 
 async function evaluate(tabId, expression) {
   const result = await send(tabId, "Runtime.evaluate", {
@@ -403,6 +425,25 @@ async function sendToContentScript(tabId, action, args = []) {
   return result;
 }
 
+// Wait for a tab's navigation to actually commit and finish loading, instead of
+// a blind fixed delay. A fixed 2s wait races real navigations: a slow SPA (the
+// docs site) isn't ready, so the following page_context / wait_for_selector runs
+// against a half-loaded or stale document and the whole batch fails — then a
+// manual retry "works" only because the page finished loading in the meantime.
+// Polling tab.status makes goto deterministic.
+async function waitForTabComplete(tabId, timeout = 15000) {
+  const deadline = Date.now() + timeout;
+  // Lead-in so we don't observe the pre-navigation 'complete' before status flips to 'loading'.
+  await new Promise((r) => setTimeout(r, 150));
+  while (Date.now() < deadline) {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab) return null;
+    if (tab.status === "complete") return tab;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return await chrome.tabs.get(tabId).catch(() => null);
+}
+
 // ---- Browser Actions ----
 async function runBrowserAction(action, state) {
   const type = action.type;
@@ -427,7 +468,12 @@ async function runBrowserAction(action, state) {
     state.lastUrl = tab.url || action.url;
     rememberSessionTab(state.groupName, state.tabId);
     if (state.groupName) await ensureSessionGroup(state.groupName, state.tabId).catch(() => {});
-    await new Promise((resolve) => setTimeout(resolve, action.waitMs || 2000));
+    // Honor an explicit waitMs override; otherwise wait for real load completion.
+    if (action.waitMs) {
+      await new Promise((resolve) => setTimeout(resolve, action.waitMs));
+    } else {
+      await waitForTabComplete(state.tabId);
+    }
     await ensureAttached(state.tabId).catch(() => {}); // pre-attach so screenshots never race
     return { type, tabId: state.tabId, url: tab.url || action.url };
   }
