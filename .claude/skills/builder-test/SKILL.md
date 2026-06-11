@@ -179,6 +179,18 @@ See `reference/assertions.md` for the assertion catalog and known bad patterns.
 
 ## Gotchas
 
+- **A backend-first feature ship has NO E2E lane until its operator surface
+  exists — that's `dashboard-gated`, not a FAIL.** This repo routinely ships the
+  backend (gate/predicate/agent) ahead of the dashboard card (IMP-029/030/034b).
+  Before driving hermes-chrome for a feature, `grep -rni "<feature flag>"
+  frontend/src src/.../embedded/dashboard/` — **zero frontend refs ⇒ no operator
+  control ⇒ E2E is gated**; verify the backend predicate via its unit suite and
+  record E2E as `dashboard-gated: no operator surface yet (frontend card pending)`.
+  Don't manufacture a hermes session against a feature an operator can't reach —
+  it proves nothing and burns tokens. The bridge being READY (`diagnose.py` 6/6)
+  does NOT mean the feature is E2E-able. *(IMP-034b: ui_preview gate shipped
+  backend-only; `should_run_ui_preview` unit-covered, but no UI to toggle
+  `ui_preview_enabled`, 2026-06-04.)*
 - **builder CLI JSON result keys VARY PER COMMAND — always check `ok` first,
   then the command-specific key. Never assume `data`.** A naive `d.get("data")`
   / `d.get("items")` silently returns `None`/`[]` and looks like "0 results" or
