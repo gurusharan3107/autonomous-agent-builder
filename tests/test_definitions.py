@@ -317,6 +317,32 @@ class TestAgentDefinitions:
         # Prompt encodes GATE_FIX_RESULT_JSON sentinel and scope boundary.
         assert "GATE_FIX_RESULT_JSON" in gate.prompt_template
         assert "Never delete any existing file" in gate.prompt_template
+        # FIX 3: python3 not bare python — bare python exits 127 in workspaces.
+        assert "python3" in gate.prompt_template
+        assert '"python"' not in gate.prompt_template
+
+    def test_scaffold_prompt_instructs_no_claude_skills_dir(self):
+        # FIX 4: the prompt must contain an explicit negative constraint so the
+        # model does not attempt to load skills from .claude/skills/ (which does
+        # not exist in ephemeral workspaces — skills arrive via prompt enrichment).
+        scaffold = get_agent_definition("scaffold")
+        assert "ephemeral workspaces have no" in scaffold.prompt_template
+        assert "skills are provided via prompt enrichment" in scaffold.prompt_template
+
+    def test_codegen_instructs_no_claude_skills_dir(self):
+        # FIX 4: same constraint for code-gen.
+        codegen = get_agent_definition("code-gen")
+        assert "ephemeral workspaces have no" in codegen.prompt_template
+        assert "skills are provided via prompt enrichment" in codegen.prompt_template
+
+    def test_codegen_command_discipline_python3_and_mcp_not_bash(self):
+        # FIX 3+5: code-gen must instruct python3 (not bare python) and route
+        # build/test commands through mcp__workspace__ tools, not Bash.
+        codegen = get_agent_definition("code-gen")
+        assert "python3" in codegen.prompt_template
+        assert "mcp__workspace__run_tests" in codegen.prompt_template
+        assert "mcp__workspace__run_command" in codegen.prompt_template
+        assert "never pass" in codegen.prompt_template
 
     def test_subagent_definition_supports_max_turns(self):
         # SubagentDefinition.max_turns is forwarded to the SDK as maxTurns.

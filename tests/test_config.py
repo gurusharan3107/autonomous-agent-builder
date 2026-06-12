@@ -30,6 +30,22 @@ class TestConfig:
         assert settings.agent.query_timeout_seconds == 300
         assert settings.agent.auth_backend == "auto"
 
+    def test_background_agent_permission_mode_default_is_accept_edits(self):
+        # Background (non-interactive) agents fall through to the global default.
+        # "acceptEdits" auto-accepts file edits while keeping AskUserQuestion
+        # enabled (unlike "dontAsk" which bypasses can_use_tool entirely and
+        # silently disabled Edit/Write/Bash tool grants in background agents).
+        settings = Settings()
+        assert settings.agent.permission_mode == "acceptEdits"
+
+    def test_interactive_chat_lane_overrides_permission_mode_to_default(self):
+        # Interactive lanes must remain under "default" so the can_use_tool
+        # callback fires for AskUserQuestion cards — they must not regress to
+        # the global background setting.
+        from autonomous_agent_builder.agents.definitions import get_agent_definition
+
+        assert get_agent_definition("chat").permission_mode == "default"
+
     def test_gate_defaults(self):
         settings = Settings()
         assert settings.gate.max_retries == 2

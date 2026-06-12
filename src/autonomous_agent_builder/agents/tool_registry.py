@@ -131,24 +131,39 @@ class ToolRegistry:
         return True
 
     def get_tool_prompt_context(self) -> str:
-        """Emit behavioral constraints for tools that restrict execution scope.
+        """Emit behavioral constraints and param-usage notes for tools.
 
         The SDK already registers full tool schemas (name, description, params)
         with the model via allowed_tools and MCP server definitions — repeating
         that listing wastes tokens on every run. Only the constraint annotations
-        (workspace_boundary, argv_only) are not in the SDK-registered schemas
-        and are worth emitting explicitly.
+        (workspace_boundary, argv_only) and common param-mistake reminders are
+        not in the SDK-registered schemas and are worth emitting explicitly.
         """
+        lines: list[str] = []
+
         constrained: list[tuple[str, tuple[str, ...]]] = [
             (schema.name, schema.constraints)
             for schema in self.tools.values()
             if schema.constraints
         ]
-        if not constrained:
-            return ""
-        lines = ["## Tool Constraints\n"]
-        for name, constraints in constrained:
-            lines.append(f"- **{name}**: {', '.join(constraints)}")
+        if constrained:
+            lines.append("## Tool Constraints\n")
+            for name, constraints in constrained:
+                lines.append(f"- **{name}**: {', '.join(constraints)}")
+            lines.append("")
+
+        lines += [
+            "## Common param mistakes",
+            "- **Read**: `file_path` (not `pattern` or `path`)",
+            "- **Grep**: `pattern` + optional `path` (not `file_path`)",
+            "- **Glob**: `pattern` + optional `path` (not `description` or `file_path`)",
+            "- **Bash**: `command` + `timeout` int ms (not `timeout_ms`)",
+            "- **Edit**: `file_path`, `old_string`, `new_string` — never omit `old_string`",
+            "- **mcp__workspace__run_command**: `argv` string array (not `command`/`args`/`timeout_ms`)",
+            "- **mcp__builder__task_list**: requires `feature_id`",
+            "- **mcp__builder__task_show** / **task_dispatch** / **task_recover**: requires `task_id`",
+            "- **mcp__builder__backlog_item_show** / **backlog_item_update**: requires `item_id`",
+        ]
         return "\n".join(lines)
 
     def list_tools(self) -> list[str]:

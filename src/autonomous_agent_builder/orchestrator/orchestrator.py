@@ -1004,8 +1004,12 @@ class Orchestrator:
                 ).expanduser()
                 if project_root.exists() and not is_builder_source_repo(project_root):
                     self._refresh_app_runtime_guidance_payload(task, project_root)
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning(
+                    "runtime_guidance_refresh_failed",
+                    task_id=task.id,
+                    error=str(exc),
+                )
             set_task_status(task, TaskStatus.DONE)
             task.blocked_reason = None
             self._clear_operator_decision_handoff(task)

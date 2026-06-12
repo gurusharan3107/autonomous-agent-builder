@@ -82,18 +82,34 @@ class TestToolRegistry:
     def test_get_tool_prompt_context(self):
         registry = ToolRegistry.build(["Read", "Bash"])
         context = registry.get_tool_prompt_context()
-        # Read has no constraints — only Bash (workspace_boundary, argv_only) appears
-        assert "Read" not in context
+        # Bash has constraints — the Tool Constraints section appears
         assert "Bash" in context
         assert "Tool Constraints" in context
         assert "workspace_boundary" in context
         assert "argv_only" in context
+        # Common param mistakes section always present
+        assert "Common param mistakes" in context
+        assert "file_path" in context
+        assert "timeout" in context
 
     def test_get_tool_prompt_context_no_constraints(self):
         registry = ToolRegistry.build(["Read", "Glob"])
         context = registry.get_tool_prompt_context()
-        # No constrained tools — returns empty string
-        assert context == ""
+        # No constrained tools — Tool Constraints section absent but Common param
+        # mistakes section always present.
+        assert "Tool Constraints" not in context
+        assert "Common param mistakes" in context
+        assert "file_path" in context
+
+    def test_get_tool_prompt_context_includes_mcp_param_hints(self):
+        registry = ToolRegistry.build(["Read"])
+        context = registry.get_tool_prompt_context()
+        assert "mcp__workspace__run_command" in context
+        assert "argv" in context
+        assert "mcp__builder__task_list" in context
+        assert "feature_id" in context
+        assert "task_id" in context
+        assert "item_id" in context
 
     def test_read_only_flag(self):
         registry = ToolRegistry.build(["Read", "Edit"])
