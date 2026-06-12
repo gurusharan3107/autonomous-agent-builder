@@ -205,6 +205,20 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
 | `/autoresearch` | "run autoresearch", "baseline", "iterate", "fix the gap" | Three-lane optimization loop (Baseline / Iterate / Fix); owns `docs/autoresearch/` freshness |
 | `/self-optimize` | "self-optimize", "what mistakes am I making", "what keeps going wrong", "analyze recurring issues", "why do I keep correcting you", "encode learnings", "self-introspect", ≥3-day gap with unresolved correction entries in memory | Analyze session transcripts + git fix-commit patterns → cluster recurring mistake themes → map to target surfaces → apply operator-approved edits; tracks last-run history to detect recurred patterns |
 
+## Subagent Fleet (orchestrator routing)
+
+Dev work on this repo is orchestrator-led: the main thread routes, synthesizes,
+commits, and approves; mechanical/search/verify/isolated work is delegated to the
+project-local fleet in `.claude/agents/` (`repo-scout`, `planner`, `implementer`,
+`test-sync-verifier`, `browser-verifier`, `security-reviewer`, `session-maintainer`).
+Code review uses the `/code-review` command. Routing rules, per-agent model·effort·
+isolation, the no-hooks approval model, and the `permission_mode: default` keystone:
+`workflow --docs-dir docs read workflows/orchestrator-routing`.
+
+- Any `src/` change → `implementer` then `test-sync-verifier` before the orchestrator commits.
+- "mine the agent sessions / fix blockers agents hit / tighten agent prompts" → `session-maintainer`.
+- No hooks in this managed env: enforcement is tool allowlists + orchestrator-owned commits + CI.
+
 ## Product Validation Rules
 
 - Dashboard lifecycle validation is browser-visible. Use Chrome first for the

@@ -83,6 +83,22 @@ fi
 
 If CURRENT.md is missing OR >48h: skip the tactical block; STATUS Current Position + Next Action is the authoritative starting point.
 
+### Step 3.5 — Loop re-arm surface (orchestrator hand-off)
+
+This managed env has no headless execution and `CronCreate durable:true` does not persist,
+so the orchestrator loops are session-scoped and must be re-armed each session.
+
+```bash
+# Source of truth for the loops; list their ids/schedules
+test -f .claude/loops/loops.json && python3 -c "import json;d=json.load(open('.claude/loops/loops.json'));[print('  -',l['id'],'('+l['cron']+')',l['label']) for l in d['loops']]" 2>/dev/null
+```
+
+`/start` is read-only and **cannot** call `CronCreate` (allowed-tools: Bash, Read). It only
+**surfaces** the re-arm in the briefing. After `/start` returns, the **orchestrator** (main
+thread) re-arms each loop by passing its `cron` + `prompt` from `.claude/loops/loops.json`
+to `CronCreate` (recurring). If the file is absent, skip silently. This is advisory, like
+drift warnings — `/start` never arms loops itself.
+
 ### Step 4 — Synthesize ONE briefing message
 
 ≤30 lines total. Five sections in order; **omit any section that has no content** (do not write empty headers).
@@ -92,6 +108,7 @@ If CURRENT.md is missing OR >48h: skip the tactical block; STATUS Current Positi
 3. **Recent durable decisions** — top 2 dated lines from STATUS § Recent Decisions.
 4. **From prior session** *(only when CURRENT.md fresh)* — `working_on` + `next_action` + open `blockers`.
 5. **Drift warnings** *(only when check_status_drift surfaced any)* — one line per finding, severity-prefixed.
+6. **Loops to re-arm** *(only when `.claude/loops/loops.json` exists)* — list the loop ids + schedules, and note "orchestrator: re-arm via CronCreate after this briefing."
 
 End with: **"Suggested next move: \<derived from STATUS § Next Action OR first `[ ]` in current milestone\>. Ready to proceed?"** Wait for operator direction.
 

@@ -1,0 +1,26 @@
+{
+  "_note": "Source-of-truth for orchestrator loops. CronCreate durable:true does NOT persist in this managed env (verified 2026-06-12) and there is no headless background execution — loops fire only while a Claude session is open + idle, and must be re-armed each session. Re-arm by passing each entry's cron+prompt to CronCreate at session entry (see docs/workflows/orchestrator-routing.md > Loops). Recurring CronCreate jobs also auto-expire after 7 days.",
+  "loops": [
+    {
+      "id": "stabilization",
+      "label": "Stabilization (bug-fix before features)",
+      "cron": "7 9 * * *",
+      "attendance": "attended; commit-on-green, pause-on-gates",
+      "prompt": "Stabilization loop tick — BUG-FIX BEFORE FEATURES (operator directive). Do NOT start new feature/ROADMAP feature work. Goal this tick: find bugs, fix at root, code-review, patch to best practices. Steps: (1) Discover (bounded — cap context: read at most the top ~15 TESTING.md pending/S:fail rows, and review the diff in compact form) — run `/builder-test ledger` to sweep docs/goal/TESTING.md pending/S:fail rows in the matching phase, AND run `/code-review` on the current diff / recent changes. (2) For each REAL bug or best-practice finding: dispatch repo-scout to locate -> implementer to fix at root (code + tests in the SAME change) -> test-sync-verifier to gate (pytest + ruff + quality-gate + test-sync). (3) Commit ON GREEN only (fix-complete / TESTING ledger token flipped to passed — no intermediate commits). PAUSE and surface to the operator via AskUserQuestion at: PR creation, any runtime-policy or agent-prompt edit, dashboard-gated items, or anything ambiguous. (4) Stop the tick when no in-scope bugs remain. Route every step per docs/workflows/orchestrator-routing.md. Use python3 not python; argv-style Bash; never edit a managed-app workspace. If nothing actionable, report \"stabilization: clean this tick\"."
+    },
+    {
+      "id": "maintenance",
+      "label": "Maintenance (mine orchestrated-agent sessions, propose-only)",
+      "cron": "3 7 * * *",
+      "attendance": "unattended; propose-only, never applies runtime/prompt edits",
+      "prompt": "Maintenance loop tick — PROPOSE-ONLY. Dispatch the session-maintainer subagent (.claude/agents/session-maintainer.md) to mine the Builder's ORCHESTRATED-agent sessions (project prefixes -tmp-aab-workspaces-*, -tmp-devpulse-*, -tmp-claude-*-aab-workspaces-*) over the last 24h using scripts/mine_sessions.py --errors-only (and builder logs analyze where useful). Classify each recurring blocker by root cause into permission / env / tool-schema / sandbox / code-test, with counts and distinct sessions. PROPOSE minimal fixes at the owning surface (execution_policy.py for permission_mode/dontAsk; quality_gates/python_env.py for env; agent-prompt tightening for tool-schema/sandbox) but do NOT apply any runtime-policy or agent-prompt edit — surface the diffs to the operator for approval. File durable findings via `builder backlog item create --source validation` (incident/improvement/optimization) and propose `builder memory add` for reusable patterns. If no new agent sessions since the last run, report \"maintenance: no new sessions\" and stop."
+    },
+    {
+      "id": "hygiene",
+      "label": "Hygiene (/self-optimize on dev sessions, propose-only)",
+      "cron": "13 7 * * 1",
+      "attendance": "unattended; propose-only, weekly",
+      "prompt": "Hygiene loop tick — PROPOSE-ONLY (weekly). Run the /self-optimize skill (clustering lane) over my dev sessions for the last 7 days. Cluster recurring operator corrections into ranked themes, map each to the single owning surface (a .claude/agents/ fleet prompt, AGENTS.md, a skill SKILL.md, or tests/conftest.py), and PROPOSE the targeted edit — do NOT apply without surfacing the ranked findings to the operator first. Append genuinely new durable learnings to project memory (additive only) and update MEMORY.md. Keep it root-cause not symptom; one surface per theme. If no meaningful new corrections this week, report \"hygiene: no new themes\" and stop."
+    }
+  ]
+}
