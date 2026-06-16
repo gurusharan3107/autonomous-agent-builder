@@ -23,6 +23,7 @@ Design notes (Claude-Agent-SDK-native):
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import re
@@ -66,24 +67,20 @@ async def hermes_bridge(payload: dict[str, Any], *, timeout: float = _BRIDGE_TIM
         reader, writer = await asyncio.wait_for(
             asyncio.open_unix_connection(path), timeout=10.0
         )
-    except (OSError, asyncio.TimeoutError) as exc:
+    except (TimeoutError, OSError) as exc:
         return {"ok": False, "error": "bridge_connect_failed", "detail": str(exc)}
     try:
         writer.write(json.dumps(payload).encode())
         await writer.drain()
-        try:
+        with contextlib.suppress(OSError):
             writer.write_eof()
-        except OSError:
-            pass
         raw = await asyncio.wait_for(reader.read(), timeout=timeout)
-    except (OSError, asyncio.TimeoutError) as exc:
+    except (TimeoutError, OSError) as exc:
         return {"ok": False, "error": "bridge_io_failed", "detail": str(exc)}
     finally:
         writer.close()
-        try:
+        with contextlib.suppress(OSError):
             await writer.wait_closed()
-        except OSError:
-            pass
     try:
         return json.loads(raw.decode(errors="replace"))
     except json.JSONDecodeError as exc:

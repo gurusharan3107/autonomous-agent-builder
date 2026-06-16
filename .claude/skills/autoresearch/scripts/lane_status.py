@@ -30,7 +30,6 @@ import subprocess
 import sys
 import time
 
-
 LANE_PRODUCERS = ("baseline.py", "loop.py")
 RUN_PY = "run.py"
 BUILDER_START = "builder start"
@@ -240,7 +239,7 @@ def format_human(report: dict) -> str:
 
 def build_report() -> dict:
     procs = discover_processes()
-    lanes = [summarize_lane(l, procs["runs"]) for l in procs["lanes"]]
+    lanes = [summarize_lane(lane, procs["runs"]) for lane in procs["lanes"]]
     return {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "lanes": lanes,

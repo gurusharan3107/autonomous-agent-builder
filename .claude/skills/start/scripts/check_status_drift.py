@@ -14,7 +14,7 @@ import json
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -113,7 +113,7 @@ def main() -> int:
         })
 
     # Check 2 — Last Update date is no more than 7 days old
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     m = re.match(r"(\d{4}-\d{2}-\d{2})", last_update)
     if m:
         try:

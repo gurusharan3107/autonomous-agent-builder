@@ -76,7 +76,9 @@ def _socket_reachable(*, timeout: float = 2.0) -> bool:
 
 def _wake_chrome_extension() -> None:
     """Wake Chrome's MV3 service worker (goes idle after ~30s)."""
-    import subprocess, platform, time
+    import platform
+    import subprocess
+    import time
     try:
         if platform.system() == "Darwin":
             subprocess.run(["open", "-a", "Google Chrome", "about:newtab"],

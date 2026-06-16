@@ -322,7 +322,7 @@ def main() -> int:
     }
 
     print(f"Generated payload at {generated_at}:")
-    print(f"  fixtures: " + ", ".join(
+    print("  fixtures: " + ", ".join(
         f"{f}={fixtures[f]['status']}(runs={fixtures[f]['total_runs']})"
         for f in PROMO_ORDER
     ))
@@ -349,7 +349,7 @@ def main() -> int:
                 text = EXPLAINER.read_text()
                 new_text, found = rewrite_data_block(text, data_json_str)
                 if not found:
-                    print(f"[dry-run] FAIL: <script id=\"autoresearch-data\"> tag missing in explainer")
+                    print("[dry-run] FAIL: <script id=\"autoresearch-data\"> tag missing in explainer")
                 else:
                     print(f"[dry-run] would rewrite {EXPLAINER.relative_to(REPO)}:"
                           f" {len(text)} → {len(new_text)} bytes")

@@ -9,6 +9,26 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-16 - Restore green ruff-lint CI floor (157 → 0 errors)
+
+CI's `ruff check .` step (`ci.yml`, Python 3.11) had been red since the workflow was wired (6/6 `ci.yml` runs failed). A failed lint step **skips** the format-check and pytest steps, so the test wall had not actually run in CI for ~12 days. Found during a stabilization sweep (STATUS claimed "ruff clean" — it was scoped to changed files only, not `ruff check .`).
+
+### Fixed
+
+- **py311 parse failure** (`.claude/plugin/hermes_chrome/scripts/install_hermes_chrome_bridge.py:117`): backslash escape sequences inside an f-string replacement field — valid only on Python 3.12+, but the project targets `py311`. Extracted the `str.replace(...)` chain into a local `win_ext_path` variable before the f-string (byte-identical output). This was 8 of the `invalid-syntax` errors.
+- **103 autofixable lint errors** via `ruff check --fix` (I001 import-sort, F401 unused imports, W293 whitespace, F541 f-prefix, UP017 `datetime.UTC`, UP041, E401, etc.) across 39 files — all behavior-preserving.
+- **56 manual errors**: E402 import-reorder to top blocks (`agent_chat_result_publisher.py`, `agent_run_lifecycle.py`, `quality_gate_runner.py`, `tests/test_orchestrator_gates.py` — no circular deps, verified by import); SIM105 → `contextlib.suppress` (9); N806/ASYNC230 `# noqa` (intentional in-function constants / one-off script); B904 `raise ... from`; B905 `strict=False`; E741 rename; SIM103 direct-bool-return.
+- **Regression self-corrected**: the F401 autofix wrongly stripped two test-surface re-exports from `routes/agent.py` (`_append_voice_final_summary_if_needed`, `_message_has_documentation_intent`) — they used a non-redundant `name as _name` alias and lacked `# noqa`. Restored both with `# noqa: F401` (the file's existing re-export convention). Caught by the full suite (2 failures), fixed before commit.
+
+### Notes
+
+- **Scoped lint-only** (operator decision): `ruff format` (216 files would reformat) deliberately NOT run — that is the documented repo-wide-format avalanche (`feedback_ci_autofix_design`, ~219 files reverted before). CI's `Ruff format check` step stays red pending a separate reviewed pass.
+
+### Validation
+
+- `ruff check .` → "All checks passed!" (0 errors).
+- Full suite: **1644 passed, 0 failed** (clean post-fix run). `T:backend` `T:browser:na`.
+
 ## 2026-06-09 - IMP-036: owned Python workspace env provisioning + classify-before-agent
 
 Generated Python apps had no dep-provisioning owner (the Node lane did, via `npm install` guards). Every phase that ran pytest invoked bare `pytest` / `sys.executable` against an interpreter where the app's third-party deps were never installed → `ModuleNotFoundError` → the LLM gate-remediator burned its retry cap "fixing" an environmental problem it cannot fix by editing code. Fix: a single owned module for *how a Python app's tests are run*, plus a classify-before-agent step so environmental gate failures re-provision deterministically instead of dispatching the model.

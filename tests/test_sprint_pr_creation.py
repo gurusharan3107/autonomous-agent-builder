@@ -7,22 +7,17 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy import select
 
 from autonomous_agent_builder.agents.runner import RunResult
 from autonomous_agent_builder.config import get_settings
 from autonomous_agent_builder.db.models import (
     ApprovalGate,
-    Feature,
-    Project,
     Sprint,
     SprintPhase,
     Task,
-    TaskPhase,
     TaskStatus,
 )
 from autonomous_agent_builder.orchestrator.orchestrator import Orchestrator
-from autonomous_agent_builder.services.sprint_execution import SPRINT_EXECUTION_KEY
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:

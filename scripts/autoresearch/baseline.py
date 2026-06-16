@@ -12,6 +12,7 @@ compare.py reads when deciding keep/discard.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import pathlib
 import statistics
@@ -88,10 +89,8 @@ def _kill_watchdog(proc: subprocess.Popen | None) -> None:
         proc.terminate()
         proc.wait(timeout=5)
     except (subprocess.TimeoutExpired, OSError):
-        try:
+        with contextlib.suppress(OSError):
             proc.kill()
-        except OSError:
-            pass
 
 
 def _latest_stuck_dump(dump_root: pathlib.Path,
@@ -246,7 +245,7 @@ def run_one_fixture(
         raise subprocess.CalledProcessError(
             1, cmd, output=stdout,
             stderr=f"run.py exit=0 but output not JSON: {exc}; stdout tail={(stdout or '')[-300:]}"
-        )
+        ) from exc
 
 
 def _stuck_proposed_questions(pattern_id: str, category: str,
@@ -316,7 +315,7 @@ def _stuck_proposed_questions(pattern_id: str, category: str,
     return [{
         "header": "Unknown stuck pattern",
         "question": (
-            f"Iter is stuck but no catalog pattern matched (verdict=unknown). "
+            "Iter is stuck but no catalog pattern matched (verdict=unknown). "
             "Forensic dump preserved. How to proceed?"
         ),
         "options": [
@@ -414,7 +413,7 @@ def main() -> int:
     # Per-iter self-heal attempt cap: prevents an unfixable error from looping
     # forever (e.g., self_heal applies the wrong fix and the iter keeps failing).
     # 2 = at most one auto-fix + one retry per iter.
-    MAX_HEAL_ATTEMPTS = 2
+    MAX_HEAL_ATTEMPTS = 2  # noqa: N806
 
     def _gate_issues(res: dict) -> list[str]:
         """Return the list of imperfections in an iter result. Empty = clean."""

@@ -105,6 +105,11 @@ def install_runtime_wsl() -> dict:
 
     bat_dst.write_text(f"@echo off\nwsl python3 {native_dst}\n", encoding="utf-8")
 
+    # Backslash-bearing expression kept out of the f-string: escape sequences
+    # inside f-string replacement fields require Python 3.12+, but this repo
+    # targets py311 (pyproject target-version). Semantics are byte-identical.
+    win_ext_path = str(ext_dst).replace("/mnt/c/", "C:\\\\").replace("/", "\\\\")
+
     return {
         "platform": "wsl",
         "extension_dir": f"C:\\Users\\...\\{ext_dst.relative_to(ext_dst.parents[1])}",
@@ -113,8 +118,7 @@ def install_runtime_wsl() -> dict:
         "batch_wrapper_wsl": str(bat_dst),
         "launcher_command": f"wsl python3 {native_dst}",
         "next_step": (
-            f"Open chrome://extensions → Load unpacked → select: "
-            f"{str(ext_dst).replace('/mnt/c/', 'C:\\\\').replace('/', '\\\\')}"
+            f"Open chrome://extensions → Load unpacked → select: {win_ext_path}"
         ),
     }
 

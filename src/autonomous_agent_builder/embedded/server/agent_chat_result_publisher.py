@@ -12,6 +12,55 @@ from sqlalchemy.exc import OperationalError
 from autonomous_agent_builder.agents.runner import RunResult
 from autonomous_agent_builder.db.models import ChatSession, utcnow
 from autonomous_agent_builder.db.session import get_session_factory
+from autonomous_agent_builder.embedded.server import agent_chat_transcript
+from autonomous_agent_builder.embedded.server.agent_chat_events import (
+    append_chat_event as _append_chat_event,
+)
+from autonomous_agent_builder.embedded.server.agent_chat_events import (
+    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
+)
+from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
+    persist_feature_spec as _persist_feature_spec,
+)
+from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
+    extract_feature_list_payload as _extract_feature_list_payload,
+)
+from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
+    extract_feature_spec_payload as _extract_feature_spec_payload,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
+    apply_chat_answers_to_project_context as _apply_chat_answers_to_project_context,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
+    apply_forward_project_constraints as _apply_forward_project_constraints,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
+    collect_ask_user_question_answers as _collect_ask_user_question_answers,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
+    extract_technical_constraints as _extract_technical_constraints,
+)
+from autonomous_agent_builder.embedded.server.agent_project_context import (
+    inject_feature_list_constraints as _inject_feature_list_constraints,
+)
+from autonomous_agent_builder.embedded.server.agent_runtime_status import (
+    chat_run_status_payload as _chat_run_status_payload,
+)
+from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
+    append_persisted_delivery_permission_question_if_needed as _append_persisted_delivery_permission_question_if_needed,
+)
+from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
+    handle_sprint_planning_turn as _handle_sprint_planning_turn,
+)
+from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
+from autonomous_agent_builder.embedded.server.chat_turn_intent import ChatRunTotals
+from autonomous_agent_builder.embedded.server.documentation_routing import ActiveSpecialistRoute
+from autonomous_agent_builder.onboarding import (
+    load_onboarding_state,
+    sync_forward_engineering_feature_backlog,
+    write_feature_list_file,
+)
+from autonomous_agent_builder.services.readiness import assess_readiness
 
 # Bookkeeping write (chat_sessions.sdk_session_id) retries on SQLite
 # `database is locked` — same P18 class as agent_run_lifecycle, different write
@@ -60,41 +109,6 @@ async def _persist_sdk_session_id(session_id: str, sdk_session_id: str | None) -
                         session_id=session_id, error=str(exc))
             return False
     return False
-from autonomous_agent_builder.embedded.server import agent_chat_transcript
-from autonomous_agent_builder.embedded.server.agent_chat_events import (
-    append_chat_event as _append_chat_event,
-    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
-)
-from autonomous_agent_builder.embedded.server.agent_feature_delivery import (
-    persist_feature_spec as _persist_feature_spec,
-)
-from autonomous_agent_builder.embedded.server.agent_feature_payloads import (
-    extract_feature_list_payload as _extract_feature_list_payload,
-    extract_feature_spec_payload as _extract_feature_spec_payload,
-)
-from autonomous_agent_builder.embedded.server.agent_project_context import (
-    apply_chat_answers_to_project_context as _apply_chat_answers_to_project_context,
-    apply_forward_project_constraints as _apply_forward_project_constraints,
-    collect_ask_user_question_answers as _collect_ask_user_question_answers,
-    extract_technical_constraints as _extract_technical_constraints,
-    inject_feature_list_constraints as _inject_feature_list_constraints,
-)
-from autonomous_agent_builder.embedded.server.agent_runtime_status import (
-    chat_run_status_payload as _chat_run_status_payload,
-)
-from autonomous_agent_builder.embedded.server.agent_sprint_planning import (
-    append_persisted_delivery_permission_question_if_needed as _append_persisted_delivery_permission_question_if_needed,
-    handle_sprint_planning_turn as _handle_sprint_planning_turn,
-)
-from autonomous_agent_builder.embedded.server.chat_state import ChatSessionHub
-from autonomous_agent_builder.embedded.server.chat_turn_intent import ChatRunTotals
-from autonomous_agent_builder.embedded.server.documentation_routing import ActiveSpecialistRoute
-from autonomous_agent_builder.onboarding import (
-    load_onboarding_state,
-    sync_forward_engineering_feature_backlog,
-    write_feature_list_file,
-)
-from autonomous_agent_builder.services.readiness import assess_readiness
 
 
 async def _publish_agent_run_error_result(

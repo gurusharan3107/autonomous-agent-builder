@@ -658,7 +658,7 @@ def render_report(findings: dict, recommendations: list[str]) -> str:
     lines += ["## 5. What's redundant", ""]
     redundancy = []
     gate_stats = {n: s for n, s in gates.items() if not n.startswith("_")}
-    GATE_MEASURE_MIN_N = 10
+    GATE_MEASURE_MIN_N = 10  # noqa: N806
     if not gates.get("_measurable"):
         redundancy.append(
             "- **Gate discrimination not measurable** — per-gate booleans aren't "

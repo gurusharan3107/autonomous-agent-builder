@@ -23,6 +23,7 @@ The composite metric is `noncached_plus_output_tokens` read straight from
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import json
 import os
@@ -850,10 +851,8 @@ def main() -> int:
             builder_proc.wait(timeout=15)
         except subprocess.TimeoutExpired:
             builder_proc.kill()
-        try:
+        with contextlib.suppress(OSError):
             builder_log_fh.close()
-        except OSError:
-            pass
         time.sleep(3)
 
     capture_evidence(workspace, session_id or "", evidence_dir)

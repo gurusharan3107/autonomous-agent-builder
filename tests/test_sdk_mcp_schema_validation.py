@@ -14,15 +14,14 @@ Guards that validate_mcp_args:
 from __future__ import annotations
 
 from autonomous_agent_builder.agents.tools.sdk_mcp import (
+    _LIST_DIRECTORY_SCHEMA,
     _PARAM_ALIASES,
     _READ_FILE_SCHEMA,
     _RUN_TESTS_SCHEMA,
     _TASK_LIST_SCHEMA,
-    _LIST_DIRECTORY_SCHEMA,
     validate_mcp_args,
 )
 from autonomous_agent_builder.embedded.server.agent_tool_policy import normalize_tool_response
-
 
 # ── validate_mcp_args: happy-path (None means valid) ─────────────────────────
 
@@ -214,4 +213,4 @@ def test_param_aliases_covers_key_read_file_aliases():
 
 def test_param_aliases_covers_key_task_list_aliases():
     assert "item_id" in _PARAM_ALIASES.get("task_list", {})
-    assert "feature_id" == _PARAM_ALIASES["task_list"]["item_id"]
+    assert _PARAM_ALIASES["task_list"]["item_id"] == "feature_id"

@@ -96,6 +96,7 @@ Source: [docs/quality-gate/complexity.md](../quality-gate/complexity.md) + `comp
     - [x] `tests/test_builder_cli_surfaces.py` 2734→2574 (extracted runtime cases). `T:backend` `T:browser:na`
     - [x] `.claude/skills/autoresearch/scripts/introspect.py` 806 — baseline entry (tooling). `T:backend` `T:browser:na`
     - [x] `scripts/autoresearch/run.py` 636 — baseline entry (tooling). `T:backend` `T:browser:na`
+- [x] Restore the green `ruff check .` CI floor (157→0; py311 f-string syntax bug + 103 autofix + 56 manual + 2 re-export restores). Lint-only — `ruff format` (216 files) deferred as a separate reviewed pass. (2026-06-16) `T:backend` `T:browser:na`
 
 ### M1.4 — Two-workspace validation rotation
 

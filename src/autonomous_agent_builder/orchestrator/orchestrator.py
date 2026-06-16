@@ -11,6 +11,7 @@ pr_creation → review → build_verify
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import shutil
 from pathlib import Path
@@ -332,10 +333,8 @@ class Orchestrator:
             # inside run_agent_lifecycle rolled the transaction back), issue an
             # explicit rollback so the session can accept new operations before we
             # flush the blocked-reason state.
-            try:
+            with contextlib.suppress(Exception):
                 await self.db.rollback()
-            except Exception:
-                pass
             set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = str(e)
             await self.db.flush()

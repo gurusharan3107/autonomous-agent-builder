@@ -73,10 +73,10 @@ from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_chat_event as _append_chat_event,
 )
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
-    update_request_event as _update_request_event,
+    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,  # noqa: F401  # re-exported for test access via module namespace
 )
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
-    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
+    update_request_event as _update_request_event,
 )
 from autonomous_agent_builder.embedded.server.agent_chat_result_publisher import (
     _publish_agent_run_error_result,
@@ -218,7 +218,7 @@ from autonomous_agent_builder.embedded.server.documentation_routing import (
     SpecialistRoutePolicy,  # noqa: F401
 )
 from autonomous_agent_builder.embedded.server.documentation_routing import (
-    message_has_documentation_intent as _message_has_documentation_intent,
+    message_has_documentation_intent as _message_has_documentation_intent,  # noqa: F401  # re-exported for test access via module namespace
 )
 from autonomous_agent_builder.embedded.server.documentation_routing import (
     resolve_documentation_action as _resolve_documentation_action,  # noqa: F401

@@ -122,7 +122,7 @@ def _closest_param(key: str, candidates: set[str]) -> str | None:
     for c in candidates:
         c_lower = c.lower().replace("_", "")
         # Count shared leading characters and common substrings (cheap heuristic).
-        overlap = sum(1 for a, b in zip(key_lower, c_lower) if a == b)
+        overlap = sum(1 for a, b in zip(key_lower, c_lower, strict=False) if a == b)
         if overlap > best_score:
             best_score = overlap
             best = c

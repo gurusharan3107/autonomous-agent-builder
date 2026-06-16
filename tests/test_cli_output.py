@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import json
 
-from autonomous_agent_builder.cli.output import emit_error, extract_next_command, format_status, normalize_json_payload, table, truncate
+from autonomous_agent_builder.cli.output import (
+    emit_error,
+    extract_next_command,
+    format_status,
+    normalize_json_payload,
+    table,
+    truncate,
+)
 
 
 class TestTruncate:

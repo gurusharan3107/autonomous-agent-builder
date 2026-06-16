@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from autonomous_agent_builder.db.migrations.add_indices_2026_05 import INDICES, apply
 from autonomous_agent_builder.db.models import Base
 
-
 EXPECTED_INDEX_NAMES = {name for name, _table, _cols in INDICES}
 
 

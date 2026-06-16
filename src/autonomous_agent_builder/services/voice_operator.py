@@ -37,6 +37,12 @@ from autonomous_agent_builder.services.task_dispatch_policy import (
     task_status_value as _task_status_value,
 )
 from autonomous_agent_builder.services.voice_completion_digest import AgentVoiceDigestService
+from autonomous_agent_builder.services.voice_cost_ledger import VoiceCostLedger
+from autonomous_agent_builder.services.voice_high_risk_actions import HighRiskVoiceActionService
+from autonomous_agent_builder.services.voice_operator_board_status import (
+    load_voice_board_status as _load_voice_board_status,
+)
+from autonomous_agent_builder.services.voice_operator_digest_builder import build_voice_digest
 from autonomous_agent_builder.services.voice_operator_interaction import (
     NAVIGATION_TARGETS as _NAVIGATION_TARGETS,
 )
@@ -80,12 +86,6 @@ from autonomous_agent_builder.services.voice_operator_support import (
     VoiceCapabilityDecisionService,
     VoiceCompletionNotifier,
 )
-from autonomous_agent_builder.services.voice_cost_ledger import VoiceCostLedger
-from autonomous_agent_builder.services.voice_high_risk_actions import HighRiskVoiceActionService
-from autonomous_agent_builder.services.voice_operator_board_status import (
-    load_voice_board_status as _load_voice_board_status,
-)
-from autonomous_agent_builder.services.voice_operator_digest_builder import build_voice_digest
 from autonomous_agent_builder.services.voice_thread_routing import (
     VoiceThreadRoute,
     VoiceThreadRouter,

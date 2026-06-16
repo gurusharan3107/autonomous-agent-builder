@@ -21,7 +21,6 @@ from autonomous_agent_builder.services.dispatch_lock import (
     reserve_project_dispatch,
 )
 
-
 # ---------------------------------------------------------------------------
 # Unit tests for dispatch_lock project-level guard (IMP-007)
 # ---------------------------------------------------------------------------

@@ -48,7 +48,7 @@ import re
 import sqlite3
 import subprocess
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = SKILL_DIR / "seed_manifest.json"
@@ -328,7 +328,7 @@ def fix_seed_forbidden_files(seed_dir: pathlib.Path, manifest: dict,
                     ),
                     "options": [
                         {
-                            "label": (f"Recapture from upstream"
+                            "label": ("Recapture from upstream"
                                        + (f" ({upstream_source})" if upstream_source else "")),
                             "description": (
                                 (f"Run `{re_snapshot_cmd}`" if re_snapshot_cmd

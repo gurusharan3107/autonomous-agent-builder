@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from typing import Any
 
@@ -16,8 +17,6 @@ from autonomous_agent_builder.orchestrator.build_verification import (
     is_sprint_feature_verification_task,
     is_ui_task,
 )
-
-log = structlog.get_logger(__name__)
 from autonomous_agent_builder.orchestrator.deterministic_verification import (
     record_feature_acceptance_tests,
 )
@@ -30,6 +29,8 @@ from autonomous_agent_builder.quality_gates.base import (
 )
 from autonomous_agent_builder.quality_gates.code_quality import CodeQualityGate
 from autonomous_agent_builder.quality_gates.testing import TestingGate
+
+log = structlog.get_logger(__name__)
 
 
 async def run_phase_quality_gates(orchestrator: Any, task: Task) -> None:
@@ -256,10 +257,8 @@ async def run_feature_acceptance_gate(
     # IMP-019: tear down the dedicated verification tab the in-process browser
     # tools opened, so a run leaves no orphan tabs in the operator's browser
     # (hermes-chrome closeout). Never let teardown break the gate.
-    try:
+    with contextlib.suppress(Exception):  # noqa: BLE001 - teardown is best-effort
         await browser_close()
-    except Exception:  # noqa: BLE001 - teardown is best-effort
-        pass
 
     test_success, test_output = await orchestrator._record_feature_acceptance_tests(
         task,

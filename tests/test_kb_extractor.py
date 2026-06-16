@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from autonomous_agent_builder.knowledge.evidence_graph import build_shared_evidence_graph
 from autonomous_agent_builder.knowledge.extractor import KnowledgeExtractor
 from autonomous_agent_builder.knowledge.generators.architecture import ArchitectureGenerator
-from autonomous_agent_builder.knowledge.evidence_graph import build_shared_evidence_graph
 
 
 def _repo_root() -> Path:

@@ -20,11 +20,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import sys
-
-import os
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = SKILL_DIR / "seed_manifest.json"
