@@ -119,6 +119,10 @@ async def init_db() -> None:
                 await conn.execute(
                     text("ALTER TABLE features ADD COLUMN proposed_tasks JSON DEFAULT '[]'")
                 )
+            if "ui_preview_enabled" not in feature_columns:
+                await conn.execute(
+                    text("ALTER TABLE features ADD COLUMN ui_preview_enabled BOOLEAN DEFAULT 0")
+                )
             result = await conn.execute(text("PRAGMA table_info(agent_runs)"))
             run_columns = {row[1] for row in result.fetchall()}
             if "output_text" not in run_columns:

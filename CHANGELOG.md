@@ -9,6 +9,18 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-17 - fix(db): ui_preview_enabled upgrade-path migration (found by the optimization loop's baseline)
+
+The new `optimization` loop's first activation step — an autoresearch baseline — surfaced a real Builder upgrade-path bug. IMP-034b added `Feature.ui_preview_enabled` (`db/models.py:257`) but no matching idempotent migration in `db/session.py`. Since `Base.metadata.create_all` only CREATEs absent tables (never ALTERs existing ones), **any Builder DB created before IMP-034b** — real users upgrading, and the autoresearch seed snapshot — crashed on every ORM query touching `features` with `sqlite3.OperationalError: no such column: features.ui_preview_enabled`. The Builder server never became ready, blocking the entire baseline.
+
+### Fixed
+
+- `db/session.py`: added the missing `if "ui_preview_enabled" not in feature_columns: ALTER TABLE features ADD COLUMN ui_preview_enabled BOOLEAN DEFAULT 0` guard, matching the existing idempotent migration pattern for the other 8 Feature columns.
+
+### Validation
+
+- New regression test `test_init_db_adds_ui_preview_enabled_column_to_legacy_features_table` (seeds a legacy `features` table without the column, runs `init_db`, asserts the column exists + a `SELECT` no longer raises) — fails-without/passes-with the fix. `tests/test_db_sprint_pr_migration.py` neighborhood 13 passed; ruff clean. `T:backend` `T:browser:na`.
+
 ## 2026-06-17 - IMP-023 Fix B: accurate cost + dispatch count in the `logs analyze` headline
 
 The `builder logs analyze --session <id> --json` headline reported `total_cost_usd=0` for chat-target sessions even when sub-agent runs spent money (Fix A, 2026-05-31, already corrected the token total). The session cost was invisible to the operator and to the autoresearch baseline (cost attribution), and there was no field at all for the sub-agent dispatch fan-out. The enabler half of the cost-optimization work (M2.3) — get the measurement right before optimizing against it.
