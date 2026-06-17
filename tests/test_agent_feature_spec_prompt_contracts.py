@@ -18,6 +18,20 @@ def test_general_chat_prompt_lets_model_classify_improvement_requests(tmp_path):
     assert "The operator does not need to know backlog, sprint, product backlog, or task terminology." in prompt
     assert agent_routes._message_has_documentation_intent(message) is False
 
+
+def test_general_chat_prompt_front_loads_no_direct_edit_rule(tmp_path):
+    """IMP-037: the chat lane must state upfront that it never edits the app
+    directly (Edit/Write/Bash are denied by IMP-020), and that app changes go
+    through task dispatch — so the model stops attempting direct edits and
+    eating the denial. The rule must be front-loaded, not buried in a
+    conditional block."""
+    prompt = agent_routes._general_chat_prompt(tmp_path, "make the header blue")
+    assert "never edits the app directly" in prompt
+    assert "mcp__builder__task_dispatch" in prompt
+    # front-loaded: appears before the detailed LOOKUP RULE block
+    assert prompt.index("never edits the app directly") < prompt.index("LOOKUP RULE")
+
+
 def test_forward_engineering_first_product_prompt_requires_user_specific_intake(tmp_path):
     prompt = agent_routes._general_chat_prompt(
         tmp_path,
