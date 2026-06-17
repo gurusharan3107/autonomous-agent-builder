@@ -61,7 +61,7 @@ policy in `execution_policy.py`.
 
 ## Loops (orchestrator-run, not headless)
 
-Seven loops drive the fleet (3 cron + 4 on-demand). **Env constraint (verified 2026-06-12):** this managed env
+Six loops drive the fleet (3 cron + 3 on-demand). **Env constraint (verified 2026-06-12):** this managed env
 has no headless background execution and `CronCreate durable:true` does not persist —
 loops fire only while a Claude session is open + idle, recurring jobs auto-expire after
 7 days, and they must be **re-armed each session**. Source of truth: `.claude/loops/loops.json`.
@@ -73,8 +73,7 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
 | **Hygiene** | `hygiene` | weekly Mon 07:13 | unattended, **propose-only** | `/self-optimize` on dev sessions |
 | **Capfit-currency** | `capfit-currency` | on-demand (do NOT cron) | attended, **propose-only**, browser-verified | refresh capability-fit skill + rubrics from live docs |
 | **Optimization** | `optimization` | on-demand (do NOT cron) | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
-| **Builder-test** | `builder-test` | on-demand (do NOT cron) | attended, **build+observe only** | a RUN-ONLY browser driver (`browser-verifier`) drives one real app-build sprint via the dashboard — NOT the self-fixing `/builder-test` skill; captures session ids + lane + STUCK + observed frictions; applies no source fixes |
-| **Build→Maintain→Fix cycle** | `build-maintain-cycle` | on-demand (do NOT cron) | attended, **main-thread sole writer** | composes builder-test → maintenance (propose-only) → orchestrator applies root-cause fixes in an isolated worktree, validated by signature non-recurrence |
+| **Build→Maintain→Fix cycle** | `build-maintain-cycle` | on-demand (do NOT cron) | attended, **main-thread sole writer** | self-contained dogfooding flywheel: **step-1 build-drive** (a RUN-ONLY `browser-verifier` drives one real sprint — provisions a new app via `builder init`+`builder start` or continues the running one; NOT the self-fixing `/builder-test` skill) → maintenance mine (propose-only) → orchestrator triages + applies root-cause fixes in an isolated worktree, validated by signature non-recurrence |
 
 - **Stabilization runs before any new feature work** (operator directive): find bugs →
   fix at root → code-review → best-practices patch. Commits only on green; pauses at PRs,
@@ -85,8 +84,9 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
   → VALIDATE saving (autoresearch 2σ when active; else a `logs analyze` estimate flagged
   pending baseline), then **STOPS at a propose-at-PR approval gate** — never auto-merges or
   pushes to master. One efficiency/cost IMP per tick; resumes an in-flight branch if present.
-- **Build→Maintain→Fix cycle** is the dogfooding flywheel: `builder-test` drives a real
-  sprint (build+observe only, no source fixes) → `maintenance` mines the sessions it produced
+- **Build→Maintain→Fix cycle** is the dogfooding flywheel (self-contained — no separate
+  builder-test loop): its step-1 build-drive runs a real sprint via a RUN-ONLY `browser-verifier`
+  (build+observe only, no source fixes) → `maintenance` mines the sessions it produced
   (propose-only) → the **main thread** (sole writer) applies each real recurring root cause in an
   **isolated worktree**, gated by verifiers. A fix is root-cause ONLY if its friction **signature
   does not recur** in the next sprint's mining (else it was a symptom patch → reopen). Skips
