@@ -61,7 +61,7 @@ policy in `execution_policy.py`.
 
 ## Loops (orchestrator-run, not headless)
 
-Six loops drive the fleet (3 cron + 3 on-demand). **Env constraint (verified 2026-06-12):** this managed env
+Seven loops drive the fleet (3 cron + 4 on-demand). **Env constraint (verified 2026-06-12):** this managed env
 has no headless background execution and `CronCreate durable:true` does not persist —
 loops fire only while a Claude session is open + idle, recurring jobs auto-expire after
 7 days, and they must be **re-armed each session**. Source of truth: `.claude/loops/loops.json`.
@@ -74,6 +74,7 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
 | **Capfit-currency** | `capfit-currency` | on-demand (do NOT cron) | attended, **propose-only**, browser-verified | refresh capability-fit skill + rubrics from live docs |
 | **Optimization** | `optimization` | on-demand (do NOT cron) | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
 | **Build→Maintain→Fix cycle** | `build-maintain-cycle` | on-demand (do NOT cron) | attended, **main-thread sole writer** | self-contained dogfooding flywheel: **step-1 build-drive** (a RUN-ONLY `browser-verifier` drives one real sprint — provisions a new app via `builder init`+`builder start` or continues the running one; NOT the self-fixing `/builder-test` skill) → maintenance mine (propose-only) → orchestrator triages + applies root-cause fixes in an isolated worktree, validated by signature non-recurrence |
+| **Codebase review** | `codebase-review` | on-demand (do NOT cron) | attended, **main-thread sole writer** | proactive quality-debt paydown of EXISTING code: per tick reviews ONE risk-prioritized slice via a run-only reviewer applying the code-review rubric (the built-in `/code-review` is diff-scoped) → triages findings (verify-before-fix) → auto-fixes confirmed correctness/safety + high-confidence dead-code/dedup ONLY (nits/opinions filed, never churned) → commit-on-green + watermark (`codebase-review-state.json`). Structural decomposition deferred to M1.3 |
 
 - **Stabilization runs before any new feature work** (operator directive): find bugs →
   fix at root → code-review → best-practices patch. Commits only on green; pauses at PRs,
@@ -94,6 +95,14 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
   ≥2 distinct sessions; builder-self findings → ROADMAP (never a managed-app backlog). On a STUCK
   task, mine that session immediately — a hang is the highest-signal friction. Claude-lane only
   (codex_sdk sprints are a maintenance COVERAGE GAP).
+- **Codebase review** is proactive quality-debt paydown of *existing* code (vs Stabilization's
+  reactive ledger/diff focus): one risk-prioritized slice per tick, reviewed by a run-only reviewer
+  applying the code-review rubric (the built-in `/code-review` is diff-scoped). **Every finding is a
+  candidate, not a defect** — verify against the code before acting. Auto-fixes only confirmed
+  correctness/safety + high-confidence dead-code/dedup/reuse; nits/opinions/uncertain are **filed to
+  ROADMAP, never churned into working code**. Main-thread sole writer; commit-on-green; a watermark
+  (`codebase-review-state.json`) advances coverage and skips unchanged slices. Structural god-file
+  decomposition stays with M1.3 — this loop does bounded in-place fixes only.
 - **Do not run Stabilization and `/autoresearch` live at once** — both commit to the repo.
   Finish a stabilization batch, then resume autoresearch (the active M3.5 loop).
 
