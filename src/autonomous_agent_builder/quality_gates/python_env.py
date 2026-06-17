@@ -128,6 +128,36 @@ async def ensure_python_env(
             return
 
 
+async def ensure_node_env(project_root: Path, *, timeout_per_step: int = 300) -> None:
+    """Provision Node deps for the workspace (idempotent, best-effort).
+
+    No-op when ``package.json`` is absent. Runs ``npm ci`` when a lockfile is
+    present, otherwise ``npm install``. Mirrors the ``npm install`` guards that
+    ``code_quality`` and ``testing`` run INSIDE their gate timeout; this variant
+    runs OUT-OF-BAND so a cold workspace does not trigger DEADLINE_EXCEEDED.
+    Best-effort: on ``OSError`` (npm not found) or ``TimeoutError`` the child is
+    killed + awaited before returning so the subprocess is never leaked.
+    Idempotent — does NOT delete node_modules (no rmtree).
+    """
+    if not (project_root / "package.json").exists():
+        return
+    cmd = ["npm", "ci"] if (project_root / "package-lock.json").exists() else ["npm", "install"]
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=str(project_root),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            await asyncio.wait_for(proc.communicate(), timeout=timeout_per_step)
+        except TimeoutError:
+            proc.kill()
+            await proc.wait()
+    except OSError:
+        return
+
+
 _ENV_FAILURE_SIGNATURES = (
     "ModuleNotFoundError",
     "No module named",
@@ -135,6 +165,14 @@ _ENV_FAILURE_SIGNATURES = (
     "ImportError: cannot import name",
     "command not found: pytest",
     "No module named pytest",
+    # Node corruption: npm install exits 0 with tar errors → node_modules present
+    # but packages incomplete → eslint/build tools emit "Cannot find module".
+    # "MODULE_NOT_FOUND" is the Node.js error code — low false-positive risk.
+    # "Cannot find module" is broader; accepted here because it appears in Node
+    # runtime output (not in Python test assertion strings) and is the canonical
+    # signal that node_modules are incomplete — not a source-level import typo.
+    "Cannot find module",
+    "MODULE_NOT_FOUND",
 )
 
 
