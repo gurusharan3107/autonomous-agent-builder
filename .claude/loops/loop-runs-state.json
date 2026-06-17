@@ -1,0 +1,3 @@
+{
+  "_doc": "loop-id -> last-run ISO date; run-if-stale reads this at session entry"
+}

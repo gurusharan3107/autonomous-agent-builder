@@ -106,9 +106,34 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
 - **Do not run Stabilization and `/autoresearch` live at once** — both commit to the repo.
   Finish a stabilization batch, then resume autoresearch (the active M3.5 loop).
 
-**Re-arm at session entry:** read `.claude/loops/loops.json` and pass each loop's `cron` +
-`prompt` to `CronCreate` (recurring). Manage with `CronList` / `CronDelete`. The cron only
-fires while this session is idle, so keep a session open for unattended loops to run.
+### Shared fix contract
+
+Every loop that *fixes* (Stabilization, Build→Maintain→Fix step-3+, Codebase-review) follows this —
+their prompts **reference it** instead of restating it (single source; no drift):
+
+1. **Triage:** a finding is a *candidate, not proof* — verify against source before calling it a
+   defect; dismiss usage errors / tooling artifacts / opinions; separate observation from speculation.
+2. **Auto-fix gate:** fix only a *confirmed* root cause that is **deterministic OR observed-recurring
+   (≥2 sessions/repros)**. Uncertain / intent-dependent / style → **file to ROADMAP, never guess-fix
+   or churn working code**.
+3. **Who writes:** the `implementer` applies code+test edits in the SAME change, gated by
+   `test-sync-verifier` (+ `browser-verifier` if frontend). **No subagent touches git; the main thread
+   owns all commits.** Never symptom-patch.
+4. **Commit:** on green only, isolated branch; no push/merge to master unattended; PR-gate anything risky.
+5. **Pause** (AskUserQuestion) at: owner boundary (AGENTS.md/CLAUDE.md/docs ownership), runtime-policy /
+   agent-prompt edit, large refactor, or anything ambiguous.
+6. **Route findings:** builder-self → `docs/goal/ROADMAP.md` (never a managed-app backlog); reusable
+   patterns → `builder memory`; dedup against open items.
+
+### Run-if-stale at session entry (cron is unreliable here)
+
+`CronCreate durable` does NOT persist in this env (verified 2026-06-12), so the cadence loops
+(`stabilization`/`maintenance`/`hygiene`) rarely fire on their cron. Treat each `cron` as a *cadence
+hint, not a guarantee.* At session entry, read the last-run watermark
+`.claude/loops/loop-runs-state.json` (loop-id → ISO date); for any cadence loop overdue past its
+cadence, **run it** (maintenance/hygiene are cheap propose-only) **or surface it** (stabilization
+commits — ask first), then record the run date back to the watermark. Arming `CronCreate` is still
+fine for the rare idle-session case, but **staleness-at-entry is the real trigger**.
 
 ## Guardrails baked into every agent prompt (from /self-optimize)
 
