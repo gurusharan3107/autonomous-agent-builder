@@ -61,7 +61,7 @@ policy in `execution_policy.py`.
 
 ## Loops (orchestrator-run, not headless)
 
-Three loops drive the fleet. **Env constraint (verified 2026-06-12):** this managed env
+Five loops drive the fleet (3 cron + 2 on-demand). **Env constraint (verified 2026-06-12):** this managed env
 has no headless background execution and `CronCreate durable:true` does not persist —
 loops fire only while a Claude session is open + idle, recurring jobs auto-expire after
 7 days, and they must be **re-armed each session**. Source of truth: `.claude/loops/loops.json`.
@@ -71,12 +71,18 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
 | **Stabilization** ⭐ first | `stabilization` | daily 09:07 | attended — commit-on-green, pause-on-gates | `/builder-test ledger` + `/code-review` → fleet |
 | **Maintenance** | `maintenance` | daily 07:03 | unattended, **propose-only** | `session-maintainer` mines orchestrated-agent sessions |
 | **Hygiene** | `hygiene` | weekly Mon 07:13 | unattended, **propose-only** | `/self-optimize` on dev sessions |
+| **Capfit-currency** | `capfit-currency` | on-demand (do NOT cron) | attended, **propose-only**, browser-verified | refresh capability-fit skill + rubrics from live docs |
+| **Optimization** | `optimization` | on-demand (do NOT cron) | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
 
 - **Stabilization runs before any new feature work** (operator directive): find bugs →
   fix at root → code-review → best-practices patch. Commits only on green; pauses at PRs,
   runtime/prompt edits, dashboard-gated items.
 - **Maintenance & Hygiene never apply runtime/prompt edits** — they file backlog items +
   proposal reports for orchestrator approval.
+- **Optimization** is autonomous through SELECT → BUILD (isolated branch) → VERIFY correctness
+  → VALIDATE saving (autoresearch 2σ when active; else a `logs analyze` estimate flagged
+  pending baseline), then **STOPS at a propose-at-PR approval gate** — never auto-merges or
+  pushes to master. One efficiency/cost IMP per tick; resumes an in-flight branch if present.
 - **Do not run Stabilization and `/autoresearch` live at once** — both commit to the repo.
   Finish a stabilization batch, then resume autoresearch (the active M3.5 loop).
 
