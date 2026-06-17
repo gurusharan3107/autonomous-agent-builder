@@ -61,7 +61,7 @@ policy in `execution_policy.py`.
 
 ## Loops (orchestrator-run, not headless)
 
-Five loops drive the fleet (3 cron + 2 on-demand). **Env constraint (verified 2026-06-12):** this managed env
+Seven loops drive the fleet (3 cron + 4 on-demand). **Env constraint (verified 2026-06-12):** this managed env
 has no headless background execution and `CronCreate durable:true` does not persist —
 loops fire only while a Claude session is open + idle, recurring jobs auto-expire after
 7 days, and they must be **re-armed each session**. Source of truth: `.claude/loops/loops.json`.
@@ -73,6 +73,8 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
 | **Hygiene** | `hygiene` | weekly Mon 07:13 | unattended, **propose-only** | `/self-optimize` on dev sessions |
 | **Capfit-currency** | `capfit-currency` | on-demand (do NOT cron) | attended, **propose-only**, browser-verified | refresh capability-fit skill + rubrics from live docs |
 | **Optimization** | `optimization` | on-demand (do NOT cron) | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
+| **Builder-test** | `builder-test` | on-demand (do NOT cron) | attended, **build+observe only** | `/builder-test e2e` drives one real app-build sprint via the dashboard; captures session ids + lane + STUCK signal; applies no source fixes |
+| **Build→Maintain→Fix cycle** | `build-maintain-cycle` | on-demand (do NOT cron) | attended, **main-thread sole writer** | composes builder-test → maintenance (propose-only) → orchestrator applies root-cause fixes in an isolated worktree, validated by signature non-recurrence |
 
 - **Stabilization runs before any new feature work** (operator directive): find bugs →
   fix at root → code-review → best-practices patch. Commits only on green; pauses at PRs,
@@ -83,6 +85,15 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
   → VALIDATE saving (autoresearch 2σ when active; else a `logs analyze` estimate flagged
   pending baseline), then **STOPS at a propose-at-PR approval gate** — never auto-merges or
   pushes to master. One efficiency/cost IMP per tick; resumes an in-flight branch if present.
+- **Build→Maintain→Fix cycle** is the dogfooding flywheel: `builder-test` drives a real
+  sprint (build+observe only, no source fixes) → `maintenance` mines the sessions it produced
+  (propose-only) → the **main thread** (sole writer) applies each real recurring root cause in an
+  **isolated worktree**, gated by verifiers. A fix is root-cause ONLY if its friction **signature
+  does not recur** in the next sprint's mining (else it was a symptom patch → reopen). Skips
+  expected-by-design guardrails (e.g. IMP-020 chat-lane denials); only fixes signatures seen in
+  ≥2 distinct sessions; builder-self findings → ROADMAP (never a managed-app backlog). On a STUCK
+  task, mine that session immediately — a hang is the highest-signal friction. Claude-lane only
+  (codex_sdk sprints are a maintenance COVERAGE GAP).
 - **Do not run Stabilization and `/autoresearch` live at once** — both commit to the repo.
   Finish a stabilization batch, then resume autoresearch (the active M3.5 loop).
 
