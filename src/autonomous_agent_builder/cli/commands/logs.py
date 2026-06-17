@@ -928,14 +928,17 @@ def _analyze_timeline(
     # not always persisted (notably chat-session prompts), leaving the headline
     # at 0 while the session-scoped raw event-payload aggregate IS populated.
     # Fall back to the same optimization_summary source raw_token_total uses so
-    # the self-optimizer headline is never blind. (Cost has no in-scope raw
-    # fallback — deferred to Fix B / chat-turn telemetry persistence.)
+    # the self-optimizer headline is never blind.
     if not total_tokens:
         total_tokens = int(
             optimization.get("noncached_plus_output_tokens")
             or optimization.get("raw_token_total")
             or 0
         )
+    # IMP-023 Fix B: mirror the token fallback for cost — fold the session-scoped
+    # agent_runs cost aggregate when prompt telemetry and agent_run cost are both 0.
+    if not total_cost:
+        total_cost = float(runtime_aggregates.get("totals", {}).get("cost_usd") or 0.0)
     context_budget = runtime_aggregates.get("context_budget", {})
     selected_runtime = _selected_runtime_from_coverage(coverage)
     decisions = runtime_decision_summary(
@@ -955,6 +958,7 @@ def _analyze_timeline(
         "session_id": session.get("id", ""),
         "sdk_session_id": session.get("sdk_session_id"),
         "prompt_count": len(prompts),
+        "run_count": int(runtime_aggregates.get("totals", {}).get("runs") or 0),
         "total_tokens": total_tokens,
         "total_cost_usd": total_cost,
         "analysis_target": (

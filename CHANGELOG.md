@@ -9,6 +9,26 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-17 - IMP-023 Fix B: accurate cost + dispatch count in the `logs analyze` headline
+
+The `builder logs analyze --session <id> --json` headline reported `total_cost_usd=0` for chat-target sessions even when sub-agent runs spent money (Fix A, 2026-05-31, already corrected the token total). The session cost was invisible to the operator and to the autoresearch baseline (cost attribution), and there was no field at all for the sub-agent dispatch fan-out. The enabler half of the cost-optimization work (M2.3) — get the measurement right before optimizing against it.
+
+### Fixed
+
+- `_analyze_timeline` (`cli/commands/logs.py`): `total_cost_usd` now falls back to the session-scoped `runtime_aggregates["totals"]["cost_usd"]` (sum of `agent_runs.cost_usd`) when both prompt telemetry and the analysis-target agent_run carry no cost — mirroring the existing token fallback.
+
+### Added
+
+- New `run_count` field in the analyze headline (`runtime_aggregates["totals"]["runs"]`) — exposes the sub-agent dispatch count. Deliberately a distinct field rather than overloading `prompt_count` (which stays `len(prompts)` = operator-chat-turn count, bound by the Bar 1 vocabulary contract).
+
+### Notes
+
+- Does NOT change `recommended_next_change` / `avoidable_token_estimate` — those read the token-based `optimization_summary` (already covered by Fix A), not the headline cost. Fix B's value is accurate operator-facing cost + dispatch visibility (unblocks autoresearch cost attribution).
+
+### Validation
+
+- New prove-fail-without-fix test `test_logs_analyze_headline_cost_and_run_count_fall_back_to_session_aggregate_imp023b`; analyze tests 9 passed, consumer files 45 passed, `test_builder_cli_surfaces.py` 58 passed; ruff clean. `T:backend` `T:browser:na`.
+
 ## 2026-06-16 - Restore green ruff-lint CI floor (157 → 0 errors)
 
 CI's `ruff check .` step (`ci.yml`, Python 3.11) had been red since the workflow was wired (6/6 `ci.yml` runs failed). A failed lint step **skips** the format-check and pytest steps, so the test wall had not actually run in CI for ~12 days. Found during a stabilization sweep (STATUS claimed "ruff clean" — it was scoped to changed files only, not `ruff check .`).
