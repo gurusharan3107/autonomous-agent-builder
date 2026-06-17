@@ -318,3 +318,129 @@ async def test_chat_question_card_can_be_answered_and_run_resumes(monkeypatch, t
     assert updated_question["payload"]["answered"] is True
     assert updated_question["payload"]["answer_value"] == "FastAPI"
     assert assistant_item["payload"]["content"] == "Great, I will use FastAPI."
+
+
+@pytest.mark.asyncio
+async def test_answer_pending_question_returns_409_when_session_already_running(
+    monkeypatch,
+    test_db,
+    tmp_path,
+):
+    """Answering a general pending question while another run is active must yield
+    409 (not a silent dead-end) — mirrors the delivery-permission-prompt 409."""
+    _, factory = test_db
+    dashboard_root = tmp_path / "dashboard"
+    dashboard_root.mkdir()
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+
+    async with factory() as db:
+        session = ChatSession(
+            repo_identity=str(tmp_path.resolve()),
+            workspace_cwd=str(tmp_path.resolve()),
+        )
+        db.add(session)
+        await db.flush()
+        question = ChatEvent(
+            session_id=session.id,
+            event_type="ask_user_question",
+            payload_json={
+                "question": "Which stack?",
+                "options": [{"label": "FastAPI"}],
+                "answered": False,
+                "answer_value": "",
+            },
+            status="pending",
+        )
+        db.add(question)
+        await db.commit()
+        session_id = session.id
+        question_id = question.id
+
+    # Simulate attach_run returning False (session already running).
+    async def fake_continue_busy(*args, **kwargs) -> bool:
+        return False
+
+    monkeypatch.setattr(agent_routes, "_continue_after_persisted_response", fake_continue_busy)
+
+    app = create_app(
+        db_path=tmp_path / ".agent-builder" / "agent_builder.db",
+        dashboard_path=dashboard_root,
+        project_root=tmp_path,
+    )
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        answer = await client.post(
+            "/api/agent/chat/respond",
+            json={
+                "session_id": session_id,
+                "event_id": question_id,
+                "selected_options": ["FastAPI"],
+            },
+        )
+    assert answer.status_code == 409
+    assert "already running" in answer.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_answer_tool_approval_returns_409_when_session_already_running(
+    monkeypatch,
+    test_db,
+    tmp_path,
+):
+    """Answering a persisted tool-approval while another run is active must yield
+    409 — mirrors the question-path 409 and the delivery-permission-prompt 409."""
+    _, factory = test_db
+    dashboard_root = tmp_path / "dashboard"
+    dashboard_root.mkdir()
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+
+    async with factory() as db:
+        session = ChatSession(
+            repo_identity=str(tmp_path.resolve()),
+            workspace_cwd=str(tmp_path.resolve()),
+        )
+        db.add(session)
+        await db.flush()
+        approval = ChatEvent(
+            session_id=session.id,
+            event_type="tool_approval_request",
+            payload_json={
+                "tool_name": "mcp__workspace__run_command",
+                "summary": "Run tests",
+                "answered": False,
+                "decision": "",
+                "reason": "",
+            },
+            status="pending",
+        )
+        db.add(approval)
+        await db.commit()
+        session_id = session.id
+        approval_id = approval.id
+
+    # Simulate attach_run returning False (session already running).
+    async def fake_continue_busy(*args, **kwargs) -> bool:
+        return False
+
+    monkeypatch.setattr(agent_routes, "_continue_after_persisted_response", fake_continue_busy)
+
+    app = create_app(
+        db_path=tmp_path / ".agent-builder" / "agent_builder.db",
+        dashboard_path=dashboard_root,
+        project_root=tmp_path,
+    )
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        answer = await client.post(
+            "/api/agent/chat/respond",
+            json={
+                "session_id": session_id,
+                "event_id": approval_id,
+                "decision": "allow",
+                "reason": "go ahead",
+            },
+        )
+    assert answer.status_code == 409
+    assert "already running" in answer.json()["detail"]
