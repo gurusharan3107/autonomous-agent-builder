@@ -1,0 +1,7 @@
+{
+  "src/autonomous_agent_builder/embedded/server/routes/agent.py": {
+    "reviewed_at": "e9b8a4c",
+    "date": "2026-06-17",
+    "result": "fixed: 409-on-busy persisted-response + SSE pool-conn release (e9b8a4c); filed: IMP-040 (await-future timeout), IMP-041 (denial-block dedup); refuted: missing-commit (get_db auto-commits); skipped: dead defensive guard"
+  }
+}
