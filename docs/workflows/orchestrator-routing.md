@@ -73,7 +73,7 @@ loops fire only while a Claude session is open + idle, recurring jobs auto-expir
 | **Hygiene** | `hygiene` | weekly Mon 07:13 | unattended, **propose-only** | `/self-optimize` on dev sessions |
 | **Capfit-currency** | `capfit-currency` | on-demand (do NOT cron) | attended, **propose-only**, browser-verified | refresh capability-fit skill + rubrics from live docs |
 | **Optimization** | `optimization` | on-demand (do NOT cron) | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
-| **Builder-test** | `builder-test` | on-demand (do NOT cron) | attended, **build+observe only** | `/builder-test e2e` drives one real app-build sprint via the dashboard; captures session ids + lane + STUCK signal; applies no source fixes |
+| **Builder-test** | `builder-test` | on-demand (do NOT cron) | attended, **build+observe only** | a RUN-ONLY browser driver (`browser-verifier`) drives one real app-build sprint via the dashboard — NOT the self-fixing `/builder-test` skill; captures session ids + lane + STUCK + observed frictions; applies no source fixes |
 | **Build→Maintain→Fix cycle** | `build-maintain-cycle` | on-demand (do NOT cron) | attended, **main-thread sole writer** | composes builder-test → maintenance (propose-only) → orchestrator applies root-cause fixes in an isolated worktree, validated by signature non-recurrence |
 
 - **Stabilization runs before any new feature work** (operator directive): find bugs →
