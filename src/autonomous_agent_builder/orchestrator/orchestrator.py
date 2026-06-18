@@ -11,6 +11,7 @@ pr_creation → review → build_verify
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import shutil
 from pathlib import Path
@@ -21,6 +22,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from autonomous_agent_builder.agents.design_directive import design_directive_block
 from autonomous_agent_builder.agents.documentation_bridge import (
     run_documentation_refresh_bridge,
 )
@@ -30,6 +32,7 @@ from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.db.models import (
     AgentRun,
     ApprovalGate,
+    DesignDocument,
     Feature,
     Sprint,
     Task,
@@ -53,6 +56,8 @@ from autonomous_agent_builder.orchestrator.approval_outcomes import (
 )
 from autonomous_agent_builder.orchestrator.build_verification import (
     build_verifier_failure,
+    is_ui_task,
+    should_run_ui_preview,
     sprint_branch_name,
     task_sprint_execution_payload,
     use_deterministic_build_verifier,
@@ -328,10 +333,8 @@ class Orchestrator:
             # inside run_agent_lifecycle rolled the transaction back), issue an
             # explicit rollback so the session can accept new operations before we
             # flush the blocked-reason state.
-            try:
+            with contextlib.suppress(Exception):
                 await self.db.rollback()
-            except Exception:
-                pass
             set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = str(e)
             await self.db.flush()
@@ -447,14 +450,86 @@ class Orchestrator:
             )
         else:
             await self._ensure_workspace(task)
-            store_phase_context(
-                task,
-                "design_context",
-                compact_phase_output(result.output_text),
-            )
-            set_task_status(task, TaskStatus.IMPLEMENTATION)
+            design_context = compact_phase_output(result.output_text)
+            store_phase_context(task, "design_context", design_context)
+            # IMP-034b: when the operator opted into a UI prototype preview for a
+            # UI-bearing feature, generate a static HTML mockup and hold for
+            # approval (DESIGN_REVIEW) BEFORE implementation. Otherwise proceed
+            # straight to implementation (existing behavior).
+            if should_run_ui_preview(task):
+                await self._run_ui_preview(task, design_context)
+            else:
+                set_task_status(task, TaskStatus.IMPLEMENTATION)
 
         await self.db.flush()
+
+    async def _run_ui_preview(self, task: Task, design_context: str) -> None:
+        """Generate a static UI mockup and hold for operator approval (IMP-034b).
+
+        On agent error the task fails (mirrors the design-phase error path). On
+        success the mockup is persisted as a ``ui_preview`` DesignDocument, a
+        ``ui_preview`` ApprovalGate is opened, and the task parks in
+        DESIGN_REVIEW until the operator approves (→ IMPLEMENTATION) or rejects.
+        """
+        feature = getattr(task, "feature", None)
+        result = await self._run_agent(
+            task,
+            "ui-prototyper",
+            {
+                "design_directive": design_directive_block(True),
+                "feature_title": str(getattr(feature, "title", "") or ""),
+                "feature_description": str(getattr(feature, "description", "") or ""),
+                "design_context": design_context,
+                "workspace_path": task.workspace.path if task.workspace else "",
+            },
+        )
+
+        if result.error:
+            set_task_status(task, TaskStatus.FAILED)
+            task.blocked_reason = diagnose_task_failure(
+                result.error,
+                workspace_path=task.workspace.path if task.workspace else "",
+                result=result,
+            )
+            return
+        if self._apply_operator_decision_handoff(task, result.output_text):
+            return
+        if result.hit_capability_limit:
+            await self._mark_capability_limit(
+                task,
+                f"SDK limit: {result.stop_reason}",
+                output_text=result.output_text,
+            )
+            return
+
+        mockup_rel = ".ui-preview/mockup.html"
+        mockup_html = self._read_ui_preview_mockup(task, mockup_rel)
+        content = {"mockup_path": mockup_rel, "html": mockup_html}
+        self.db.add(
+            DesignDocument(
+                task_id=task.id,
+                doc_type="ui_preview",
+                title="UI preview mockup",
+                content=json.dumps(content, ensure_ascii=True, indent=2, sort_keys=True),
+            )
+        )
+        self.db.add(ApprovalGate(task_id=task.id, gate_type="ui_preview"))
+        set_task_status(task, TaskStatus.DESIGN_REVIEW)
+
+    @staticmethod
+    def _read_ui_preview_mockup(task: Task, mockup_rel: str) -> str:
+        """Read the generated mockup file from the task workspace.
+
+        Returns the HTML contents, or the relative path as a fallback when the
+        workspace path or file is unavailable (the path is still durable evidence).
+        """
+        workspace_path = task.workspace.path if task.workspace else ""
+        if not workspace_path:
+            return mockup_rel
+        try:
+            return (Path(workspace_path) / mockup_rel).read_text(encoding="utf-8")
+        except OSError:
+            return mockup_rel
 
     async def _phase_implementation(self, task: Task) -> None:
         """Run code-gen agent in workspace, then trigger quality gates."""
@@ -489,12 +564,19 @@ class Orchestrator:
         # instead of spending turns on list_directory/Read to rediscover the tree —
         # each turn replays the full cached system prompt (IMP-027 context follow-up).
         _ws_map = compact_workspace_map(workspace.path)
+        # IMP-034a: inject the Product-UI design directive only for UI-bearing
+        # work. Static text → rides the cached system-prompt prefix that code-gen
+        # already replays each turn, so ~0 marginal tokens/turn after the first.
+        _design_directive = design_directive_block(
+            is_ui_task(task, getattr(task, "feature", None))
+        )
         result = await self._run_agent(
             task,
             "code-gen",
             {
                 "task_description": task.description,
                 "design_context": f"Design: {_design_ctx}\n" if _design_ctx else "",
+                "design_directive": _design_directive,
                 "gate_feedback": await self._quality_gate_feedback_context(task),
                 "recovery_context": self._recovery_context(task),
                 "workspace_path": workspace.path,
@@ -921,8 +1003,12 @@ class Orchestrator:
                 ).expanduser()
                 if project_root.exists() and not is_builder_source_repo(project_root):
                     self._refresh_app_runtime_guidance_payload(task, project_root)
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning(
+                    "runtime_guidance_refresh_failed",
+                    task_id=task.id,
+                    error=str(exc),
+                )
             set_task_status(task, TaskStatus.DONE)
             task.blocked_reason = None
             self._clear_operator_decision_handoff(task)

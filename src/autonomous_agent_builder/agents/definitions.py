@@ -374,6 +374,64 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         max_turns=20,
         max_budget_usd=3.00,
     ),
+    "ui-prototyper": AgentDefinition(
+        name="ui-prototyper",
+        description=(
+            "Generate a static HTML UI mockup for operator preview before "
+            "implementation (IMP-034b)."
+        ),
+        prompt_template=(
+            "You are a UI prototyper. Produce ONE self-contained static HTML file "
+            "that mocks up the primary screen(s) of the feature below, so the "
+            "operator can preview and approve the visual direction BEFORE any code "
+            "is implemented.\n\n"
+            "{design_directive}"
+            "Deliverable:\n"
+            "- Write exactly one file at `{workspace_path}/.ui-preview/mockup.html` "
+            "using the `Write` tool. Create the `.ui-preview/` directory if needed.\n"
+            "- The HTML must be fully self-contained: inline CSS in a <style> block, "
+            "no external build step, no CDN/framework/library dependencies, no "
+            "external network assets. Inline SVG is fine.\n"
+            "- Use realistic, domain-specific placeholder content — NOT lorem-ipsum.\n"
+            "- A static mockup does NOT need working empty/loading/error behavior, "
+            "but the visual hierarchy, color discipline, spacing scale, typography, "
+            "and the STYLING of interactive states (hover/active/focus-visible/"
+            "disabled) per the design bar above ARE required.\n"
+            "- Only write inside {workspace_path}. Never create or edit CLAUDE.md, "
+            ".claude/CLAUDE.md, or AGENTS.md.\n\n"
+            "Output discipline:\n"
+            "- Do not narrate progress. Keep responses short.\n"
+            "- Use the `Write` tool to create the file; do not echo the full HTML "
+            "back in your response.\n"
+            "- End with EXACTLY one line, no trailing text:\n\n"
+            "UI_PREVIEW_RESULT_JSON: {{\"mockup_path\": \".ui-preview/mockup.html\", "
+            "\"summary\": \"<one sentence>\"}}\n\n"
+            "{tool_context}\n\n"
+            "Feature: {feature_title}\n"
+            "Feature description: {feature_description}\n"
+            "Design context: {design_context}\n"
+            "Workspace: {workspace_path}\n"
+        ),
+        tools=(
+            "Read",
+            "Write",
+            "Edit",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+            "mcp__workspace__run_command",
+        ),
+        auto_approve_tools=(
+            "Read",
+            "Write",
+            "Edit",
+            "mcp__workspace__list_directory",
+            "mcp__workspace__read_file",
+            "mcp__workspace__run_command",
+        ),
+        model="sonnet",
+        max_turns=10,
+        max_budget_usd=2.00,
+    ),
     "scaffold": AgentDefinition(
         name="scaffold",
         description=(
@@ -415,6 +473,8 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "  sections, read it first; do not overwrite.\n"
             "- Only write inside {workspace_path}. Never edit Builder runtime "
             "  guidance files (`CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md`).\n"
+            "- Do NOT look for `.claude/skills/` — ephemeral workspaces have no "
+            "  `.claude/` directory; skills are provided via prompt enrichment.\n"
             "- ALWAYS use the `Write` tool to create files. NEVER use shell "
             "  heredoc (`cat > file << 'EOF'`) or `echo` redirects to write "
             "  file content — those are blocked by the workspace enforcement "
@@ -509,7 +569,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "CRITICAL — how to run commands:\n"
             "- Use ONLY mcp__workspace__run_command with argv as a string array.\n"
             "- JavaScript/Node example: {{\"argv\": [\"npm\", \"run\", \"build\"]}}\n"
-            "- Python example: {{\"argv\": [\"python\", \"-m\", \"pytest\"]}}\n"
+            "- Python example: {{\"argv\": [\"python3\", \"-m\", \"pytest\"]}}\n"
             "- Do NOT use the Bash tool — it is not available here.\n"
             "- Do NOT use shell metacharacters (|, >, &&, 2>&1).\n\n"
             "Scope boundary:\n"
@@ -565,6 +625,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "- Run tests after implementation to verify\n"
             "- Run linter to check code quality\n"
             "- Fix any issues before completing\n\n"
+            "{design_directive}"
             "{workspace_map}"
             "Output discipline for Codex app-server stability:\n"
             "- Do not narrate progress while working.\n"
@@ -579,6 +640,13 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "or `AGENTS.md`; those are builder runtime guidance surfaces. If the "
             "task needs app developer notes, write `README.md` or a scoped file "
             "under `docs/`.\n\n"
+            "Do NOT look for `.claude/skills/` — ephemeral workspaces have no "
+            "`.claude/` directory; skills are provided via prompt enrichment.\n\n"
+            "Command discipline:\n"
+            "- Use `python3` not `python` — bare `python` exits 127 in workspaces.\n"
+            "- For build/lint/test, always use mcp__workspace__run_tests or "
+            "  mcp__workspace__run_command with an argv string array; never pass "
+            "  test/build commands to Bash.\n\n"
             "Use builder_task_show, builder_kb_search, builder_kb_show, and "
             "builder_memory_search only when the task brief or missing context requires it. "
             "Do not inspect the task board or backlog from this phase; the orchestrator "
@@ -818,7 +886,12 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         ),
         tools=(),
         auto_approve_tools=("Agent", *DOCUMENTATION_AGENT_TOOLS),
-        model="sonnet",
+        # IMP-035 win #1: this lane does zero reasoning — it dispatches one Agent
+        # call to documentation-agent and returns the child's JSON unchanged — so
+        # the parent runs on haiku. The real work happens in the (sonnet)
+        # documentation-agent child. Kept out of the implementation_model bucket
+        # in execution_policy._model_for_agent so this value is the resolved model.
+        model="haiku",
         max_turns=8,
         max_budget_usd=2.00,
     ),

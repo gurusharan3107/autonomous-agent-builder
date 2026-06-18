@@ -87,7 +87,7 @@ def check_command(name: str, cmd: str) -> Check:
 def check_python_module(name: str, module: str, hard: bool) -> Check:
     try:
         __import__(module)
-        return Check(name, "pass", f"importable")
+        return Check(name, "pass", "importable")
     except ImportError:
         status = "fail" if hard else "warn"
         fix = f"pip install {module}"
@@ -128,7 +128,7 @@ def check_ports() -> Check:
     status = "warn" if len(busy) < len(PORT_RANGE) else "fail"
     return Check("ports 9876–9880 free", status,
                  f"{len(busy)}/{len(PORT_RANGE)} in use: {busy}",
-                 fix=f"free the ports or pass --port-base in baseline.py")
+                 fix="free the ports or pass --port-base in baseline.py")
 
 
 def check_tmp_disk_space() -> Check:
@@ -541,7 +541,7 @@ def check_agent_registry_contract() -> Check:
         if "AssertionError" in ln or "FAILED" in ln or "missing from" in ln
     )[:500]
     return Check("agent registry contract", "fail",
-                 f"agent.tools references missing schemas (P19-class)",
+                 "agent.tools references missing schemas (P19-class)",
                  fix=f"Run `python3 -m pytest tests/test_agent_registry_contract.py -v` "
                      f"for details. Excerpt: {failure_tail[:300]}")
 

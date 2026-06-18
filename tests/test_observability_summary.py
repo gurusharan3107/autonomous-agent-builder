@@ -1133,3 +1133,73 @@ def test_observability_approval_stalled_is_operator_recommendation(
     assert payload["runtime_aggregates"]["approval_wait"]["active_unresolved"] == 1
     assert "approval_action_waiting" in open_codes
     assert "approval_stalled" in summary_codes
+
+
+def test_recommendations_never_emit_phantom_blank_row(monkeypatch, tmp_path):
+    """No summary recommendation may have a None category / blank detail (phantom card bug)."""
+    monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
+    monkeypatch.setenv("RUNTIME_PROVIDER", "codex_subscription")
+    db_path = tmp_path / "agent_builder.db"
+    _init_db(db_path)
+    # Insert a minimal run so we are past the missing-db early return.
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "insert into agent_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("run-1", "task-1", "code-gen", "codex_sdk", "codex_subscription",
+         "gpt-5.5", "medium", 0.0, 1000, 100, 500, 1, 500, "completed", None),
+    )
+    conn.commit()
+    conn.close()
+
+    payload = dashboard_observability_summary(db_path)
+    recs = payload["recommendations"]
+
+    # No row with blank/None content may appear — the phantom card is gone.
+    for item in recs:
+        assert item.get("code"), f"recommendation has empty code: {item}"
+        assert item.get("detail") or item.get("title"), (
+            f"recommendation has no content (phantom row): {item}"
+        )
+
+    # The summary baseline_ready duplicate must not appear; the deterministic
+    # surface owns baseline-ready signalling.
+    assert all(item.get("code") != "baseline_ready" for item in recs), (
+        "baseline_ready must not appear in summary recommendations"
+    )
+
+
+def test_recommendations_non_empty_in_active_case(monkeypatch, tmp_path):
+    """Summary recommendations remain non-empty when there is genuine signal."""
+    monkeypatch.setenv("RUNTIME_SDK", "codex_sdk")
+    monkeypatch.setenv("RUNTIME_PROVIDER", "codex_subscription")
+    db_path = tmp_path / "agent_builder.db"
+    _init_db(db_path)
+    import json as _json
+    optimization = {
+        "optimization_summary": {
+            "token_accounting": {
+                "raw_total_tokens": 10_000,
+                "noncached_plus_output_tokens": 2_000,
+                "cached_input_tokens": 8_000,
+                "output_tokens": 500,
+            },
+            "avoidable_cost_flags": ["prompt_over_phase_budget"],
+            "avoidable_token_estimate": 500,
+        }
+    }
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "insert into agent_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("run-1", "task-1", "code-gen", "codex_sdk", "codex_subscription",
+         "gpt-5.5", "medium", 0.0, 9_000, 500, 8_000, 1, 1000, "completed",
+         _json.dumps(optimization)),
+    )
+    conn.commit()
+    conn.close()
+
+    payload = dashboard_observability_summary(db_path)
+    assert payload["recommendations"], (
+        "summary recommendations must be non-empty when avoidable_cost_flags are present"
+    )
+    codes = {item["code"] for item in payload["recommendations"]}
+    assert "prompt_over_phase_budget" in codes

@@ -229,8 +229,14 @@ function recommendationEvidenceDetail(item: {
 function unifiedRecommendations(data: ObservabilityData): UnifiedRecommendation[] {
   const rules = deterministicRecommendations(data);
   const ruleDetails = new Set(rules.map((item) => item.recommendation));
+  const ruleCodes = new Set(rules.map((item) => item.code));
   const summaryRows: UnifiedRecommendation[] = data.recommendations
-    .filter((item) => !ruleDetails.has(item.detail))
+    .filter(
+      (item) =>
+        !ruleDetails.has(item.detail) &&
+        !ruleCodes.has(item.code) &&
+        Boolean(item.detail?.trim() || item.title?.trim()),
+    )
     .map((item) => ({
       id: `summary:${item.code}`,
       severity: item.severity,

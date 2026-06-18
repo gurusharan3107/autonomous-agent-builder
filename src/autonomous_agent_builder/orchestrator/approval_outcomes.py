@@ -27,6 +27,9 @@ def apply_approval_outcome(
             set_task_status(task, TaskStatus.DESIGN)
         elif gate_type == "design":
             set_task_status(task, TaskStatus.IMPLEMENTATION)
+        elif gate_type == "ui_preview":
+            # IMP-034b: operator approved the UI prototype preview → proceed to build.
+            set_task_status(task, TaskStatus.IMPLEMENTATION)
         elif gate_type == "pr":
             set_task_status(task, TaskStatus.BUILD_VERIFY)
         else:

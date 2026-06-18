@@ -108,7 +108,15 @@ async def run_tests(
         workspace_path: Absolute path to workspace root.
         test_pattern: Optional pytest pattern to filter tests.
     """
-    cmd = ["pytest", "--tb=short", "-q", "--no-header"]
+    # Provision the venv + install deps, then run pytest under that interpreter
+    # (owned by quality_gates.python_env) so the app's deps are visible — bare
+    # ``pytest`` from PATH runs in the builder's env, which lacks them.
+    from pathlib import Path
+
+    from autonomous_agent_builder.quality_gates.python_env import ensure_python_env, pytest_argv
+
+    await ensure_python_env(Path(workspace_path))
+    cmd = pytest_argv(Path(workspace_path), extra=["--tb=short", "-q", "--no-header"])
     if test_pattern:
         cmd.append(test_pattern)
 

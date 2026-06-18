@@ -9,6 +9,173 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-18 - feat(optimization): rework-share efficiency verdict + gate-timeout reprovisioning
+
+The optimization summary now treats wasted retry spend as a first-class efficiency signal,
+and a gate that times out (rather than failing on code) is routed to deterministic
+re-provisioning instead of the LLM remediator.
+
+### Added
+
+- `services/codex_optimization.py`: `summarize_runs_for_optimization` now emits `rework_token_total` (gate-remediator raw tokens) and `rework_share` (rework / `raw_total`). When `rework_share >= 0.25`, `_recommended_next_change` returns the new verdict `reduce_rework_before_token_band` — prioritized ahead of the raw-token-band check, because retry waste is the cheaper lever to pull first.
+- `MetricsPage.tsx` + `types.ts`: new "Rework" panel (rework % / gate-pass %) and an "inefficient (rework)" benchmark label that overrides the band status at ≥25% rework. Grid widened to 5 columns.
+
+### Fixed
+
+- `orchestrator/gate_feedback.py`: new Step 1.6 — a gate `TIMEOUT` / `DEADLINE_EXCEEDED` failure is a non-code failure (cold workspace re-running deps inside the gate deadline). The LLM remediator cannot fix a timeout, so it is now routed to deterministic out-of-band re-provisioning (`_reprovision_env`, now Python **and** Node via `ensure_node_env`) + a gate re-run, bounded by the retry budget.
+- `ObservabilityPage.tsx`: unified recommendations now dedupe by `code` (not just `detail`) and drop empty rows, removing the duplicate/blank recommendation cards.
+- `observability/summary_runtime_aggregates.py`: removed the redundant `baseline_ready` info recommendation (it duplicated the deterministic `deterministic_baseline_ready` rule surfaced in the UI).
+
+### Validation
+
+- `tests/test_codex_optimization.py` (+rework-share verdict cases), `tests/test_gate_feedback.py` (+timeout-reprovision path), `tests/test_observability_summary.py`, `tests/test_dashboard_api.py` — 99 passed; `ruff check` clean on all touched files. `T:backend` `T:browser:pending` (Metrics/Observability render needs a live dashboard sweep).
+
+## 2026-06-17 - fix(db): ui_preview_enabled upgrade-path migration (found by the optimization loop's baseline)
+
+The new `optimization` loop's first activation step — an autoresearch baseline — surfaced a real Builder upgrade-path bug. IMP-034b added `Feature.ui_preview_enabled` (`db/models.py:257`) but no matching idempotent migration in `db/session.py`. Since `Base.metadata.create_all` only CREATEs absent tables (never ALTERs existing ones), **any Builder DB created before IMP-034b** — real users upgrading, and the autoresearch seed snapshot — crashed on every ORM query touching `features` with `sqlite3.OperationalError: no such column: features.ui_preview_enabled`. The Builder server never became ready, blocking the entire baseline.
+
+### Fixed
+
+- `db/session.py`: added the missing `if "ui_preview_enabled" not in feature_columns: ALTER TABLE features ADD COLUMN ui_preview_enabled BOOLEAN DEFAULT 0` guard, matching the existing idempotent migration pattern for the other 8 Feature columns.
+
+### Validation
+
+- New regression test `test_init_db_adds_ui_preview_enabled_column_to_legacy_features_table` (seeds a legacy `features` table without the column, runs `init_db`, asserts the column exists + a `SELECT` no longer raises) — fails-without/passes-with the fix. `tests/test_db_sprint_pr_migration.py` neighborhood 13 passed; ruff clean. `T:backend` `T:browser:na`.
+
+## 2026-06-17 - IMP-023 Fix B: accurate cost + dispatch count in the `logs analyze` headline
+
+The `builder logs analyze --session <id> --json` headline reported `total_cost_usd=0` for chat-target sessions even when sub-agent runs spent money (Fix A, 2026-05-31, already corrected the token total). The session cost was invisible to the operator and to the autoresearch baseline (cost attribution), and there was no field at all for the sub-agent dispatch fan-out. The enabler half of the cost-optimization work (M2.3) — get the measurement right before optimizing against it.
+
+### Fixed
+
+- `_analyze_timeline` (`cli/commands/logs.py`): `total_cost_usd` now falls back to the session-scoped `runtime_aggregates["totals"]["cost_usd"]` (sum of `agent_runs.cost_usd`) when both prompt telemetry and the analysis-target agent_run carry no cost — mirroring the existing token fallback.
+
+### Added
+
+- New `run_count` field in the analyze headline (`runtime_aggregates["totals"]["runs"]`) — exposes the sub-agent dispatch count. Deliberately a distinct field rather than overloading `prompt_count` (which stays `len(prompts)` = operator-chat-turn count, bound by the Bar 1 vocabulary contract).
+
+### Notes
+
+- Does NOT change `recommended_next_change` / `avoidable_token_estimate` — those read the token-based `optimization_summary` (already covered by Fix A), not the headline cost. Fix B's value is accurate operator-facing cost + dispatch visibility (unblocks autoresearch cost attribution).
+
+### Validation
+
+- New prove-fail-without-fix test `test_logs_analyze_headline_cost_and_run_count_fall_back_to_session_aggregate_imp023b`; analyze tests 9 passed, consumer files 45 passed, `test_builder_cli_surfaces.py` 58 passed; ruff clean. `T:backend` `T:browser:na`.
+
+## 2026-06-16 - Restore green ruff-lint CI floor (157 → 0 errors)
+
+CI's `ruff check .` step (`ci.yml`, Python 3.11) had been red since the workflow was wired (6/6 `ci.yml` runs failed). A failed lint step **skips** the format-check and pytest steps, so the test wall had not actually run in CI for ~12 days. Found during a stabilization sweep (STATUS claimed "ruff clean" — it was scoped to changed files only, not `ruff check .`).
+
+### Fixed
+
+- **py311 parse failure** (`.claude/plugin/hermes_chrome/scripts/install_hermes_chrome_bridge.py:117`): backslash escape sequences inside an f-string replacement field — valid only on Python 3.12+, but the project targets `py311`. Extracted the `str.replace(...)` chain into a local `win_ext_path` variable before the f-string (byte-identical output). This was 8 of the `invalid-syntax` errors.
+- **103 autofixable lint errors** via `ruff check --fix` (I001 import-sort, F401 unused imports, W293 whitespace, F541 f-prefix, UP017 `datetime.UTC`, UP041, E401, etc.) across 39 files — all behavior-preserving.
+- **56 manual errors**: E402 import-reorder to top blocks (`agent_chat_result_publisher.py`, `agent_run_lifecycle.py`, `quality_gate_runner.py`, `tests/test_orchestrator_gates.py` — no circular deps, verified by import); SIM105 → `contextlib.suppress` (9); N806/ASYNC230 `# noqa` (intentional in-function constants / one-off script); B904 `raise ... from`; B905 `strict=False`; E741 rename; SIM103 direct-bool-return.
+- **Regression self-corrected**: the F401 autofix wrongly stripped two test-surface re-exports from `routes/agent.py` (`_append_voice_final_summary_if_needed`, `_message_has_documentation_intent`) — they used a non-redundant `name as _name` alias and lacked `# noqa`. Restored both with `# noqa: F401` (the file's existing re-export convention). Caught by the full suite (2 failures), fixed before commit.
+
+### Notes
+
+- **Scoped lint-only** (operator decision): `ruff format` (216 files would reformat) deliberately NOT run — that is the documented repo-wide-format avalanche (`feedback_ci_autofix_design`, ~219 files reverted before). CI's `Ruff format check` step stays red pending a separate reviewed pass.
+
+### Validation
+
+- `ruff check .` → "All checks passed!" (0 errors).
+- Full suite: **1644 passed, 0 failed** (clean post-fix run). `T:backend` `T:browser:na`.
+
+## 2026-06-09 - IMP-036: owned Python workspace env provisioning + classify-before-agent
+
+Generated Python apps had no dep-provisioning owner (the Node lane did, via `npm install` guards). Every phase that ran pytest invoked bare `pytest` / `sys.executable` against an interpreter where the app's third-party deps were never installed → `ModuleNotFoundError` → the LLM gate-remediator burned its retry cap "fixing" an environmental problem it cannot fix by editing code. Fix: a single owned module for *how a Python app's tests are run*, plus a classify-before-agent step so environmental gate failures re-provision deterministically instead of dispatching the model.
+
+### Added
+
+- `quality_gates/python_env.py` — single source of truth for Python-lane test provisioning: `is_python_workspace`, `setup_commands` (idempotent venv-create + editable/`-r` install, mirrors the Node `npm install` guard), `pytest_argv` (canonical venv-interpreter invocation, `venv_required` for plan-time callers), `ensure_python_env` (inline async provision, `force=True` rebuild), and `is_environmental_failure` (missing-dep / interpreter signature matcher). Deterministic by design — never delegated to an agent.
+- `tests/test_python_env.py` — provisioning command shape, idempotency, env-failure signatures, venv-interpreter selection.
+
+### Changed
+
+- `orchestrator/gate_feedback.py` — Step 1.5 classify-before-agent: a failed gate with an environmental signature re-provisions the workspace env (`ensure_python_env(force=True)`) and re-runs the gates, bounded by the retry budget (escalates to capability-limit when exhausted), instead of burning the gate-remediator on an unfixable-by-source failure.
+- `quality_gates/testing.py`, `embedded/scripts/build_verify.py`, `agents/tools/workspace_tools.py`, `services/runtime_guidance.py` — all four test-running / command-discovery call sites now route through `python_env` so the interpreter rule lives in one place (provision the venv, run pytest under it; bare `pytest` hits the host env lacking the app's deps).
+
+### Validation
+
+- 57 targeted tests pass (`test_python_env` + `test_gate_feedback` + `test_node_quality_gates` + `test_orchestrator_build_verification`); changed files ruff-clean. `T:backend` `T:browser:na` (no operator surface).
+
+## 2026-06-04 - IMP-034b (backend): operator-selectable UI prototype preview
+
+Backend for the prototype-first half of IMP-034: for UI features where the operator opted in, the builder generates a static HTML mockup after design and holds for approval BEFORE implementation. Reuses the existing ApprovalGate + DESIGN_REVIEW + DesignDocument plumbing — no schema migration, no new TaskStatus. Frontend preview/approve card is the next increment (IMP-034 stays open).
+
+### Added
+
+- `agents/definitions.py` — new `ui-prototyper` AgentDefinition (sonnet, 10 turns): emits one self-contained static HTML mockup to `.ui-preview/mockup.html` using the IMP-034a `{design_directive}`, ends with a `UI_PREVIEW_RESULT_JSON` sentinel.
+- `db/models.py` — `Feature.ui_preview_enabled: bool = False` (the per-feature opt-in).
+- `orchestrator/build_verification.py` — `should_run_ui_preview(task)` = `is_ui_task` AND `feature.ui_preview_enabled is True` (pure, testable predicate).
+- `tests/test_ui_preview_backend.py` — payload normalization, `ui_preview` approval routing, the predicate, and the agent-definition contract.
+
+### Changed
+
+- `orchestrator/orchestrator.py` — `_phase_design` success branch: when `should_run_ui_preview`, dispatch `ui-prototyper`, persist a `DesignDocument(doc_type="ui_preview")`, open `ApprovalGate(gate_type="ui_preview")`, and park in `DESIGN_REVIEW`; else proceed to `IMPLEMENTATION` (unchanged). New `_run_ui_preview` / `_read_ui_preview_mockup` helpers.
+- `orchestrator/approval_outcomes.py` — `ui_preview` gate APPROVE → `IMPLEMENTATION` (reject/changes still → BLOCKED).
+- `embedded/server/agent_feature_payloads.py` + `agent_feature_delivery.py` — normalize + persist `ui_preview_enabled` from the feature-spec payload (mirrors `proposed_tasks`).
+- `agents/execution_policy.py` — `ui-prototyper` policy (medium effort, sonnet, 60k budget). `agent_run_lifecycle.py` — KeyError-safe setdefaults for the new template vars.
+
+### Validation
+
+- 77 targeted tests + 374 in the broad backend sweep pass; my changed files ruff-clean; imports OK. (1 unrelated pre-existing failure: `test_dashboard_design_tokens` — caused by uncommitted frontend WIP not in this change; reproduces with all 034b changes stashed.)
+
+## 2026-06-04 - IMP-035a: documentation-bridge parent runs on haiku
+
+Full-lane capability-fit audit (all 13 Claude Agent SDK phases vs `claude-agent-sdk-rubric`) confirmed the lane is already well-tuned — G1/G2/G7, `cache_read_input_tokens` tracking, `ClaudeSDKClient` multi-turn streaming, the `trim_tool_output` PostToolUse hook, planner→designer resume-chaining, and per-role model tiers are all already optimal (credited, not re-recommended). Three genuine under-uses surfaced (→ ROADMAP IMP-035). Shipping the one structural certainty:
+
+### Changed
+
+- `agents/definitions.py` + `agents/execution_policy.py` — `documentation-bridge` is a zero-reasoning Agent-tool pass-through (`tools=()`, prompt = "invoke documentation-agent, return its JSON unchanged"), but `_model_for_agent` bucketed it into `implementation_model` (sonnet), wasting parent tokens. Moved it out of that bucket → falls through to `AgentDefinition.model="haiku"`; `_thinking_for_model("haiku")` → None. The real reasoning stays in the (sonnet) documentation-agent child.
+- `tests/test_execution_policy.py` — `EXPECTED_ROLE_POLICIES["documentation-bridge"]` thinking `_ADAPTIVE`→`None` (coupled to the haiku move) + new `test_documentation_bridge_parent_runs_on_haiku`.
+
+### Notes
+
+- 035b (optimization-agent evidence-sweep subagent) and 035c (init-project-chat effort medium→low) parked on ROADMAP — calibration tweaks needing live validation.
+- Audit correction: `chat` is in the `implementation_model` bucket → resolves to **sonnet**, not haiku as first stated. Possible larger win (chat runs often) but may be intentional for interview quality — flagged on ROADMAP, not acted on.
+
+## 2026-06-04 - IMP-034a: Product-UI design directive injected into UI code-gen
+
+Operator observation: generated apps lack UI taste. Root cause — **no design guidance existed in any agent prompt**, so `code-gen` shipped generic AI-slop UIs (default blue/purple, missing interactive states, ad-hoc spacing, flat type). Fix distills the transferable, stack-agnostic subset of the third-party `taste-skill` project + Vercel Web Interface Guidelines / Refactoring UI / NN/g heuristics into a compact directive (the upstream skill is landing-page-scoped, React/Tailwind-bound, and ~35K tokens — deliberately NOT inlined). Mechanism rejected: installing the skill via `npx skills add` — the builder's code-gen runs in ephemeral workspaces with no `.claude`, so it discovers no filesystem skills; guidance must be prompt-enrichment (see `verifier-skill-vs-prompt`).
+
+### Added
+
+- `agents/design_directive.py` — `PRODUCT_UI_DESIGN_DIRECTIVE` (~520 tok, repo `estimate_tokens`) + `design_directive_block(is_ui)`. STATIC, stack-agnostic, principle-level (color/spacing/hierarchy/depth/states/forms/a11y/motion). Sourced from taste-skill + Vercel WIG / Refactoring UI / NN/g.
+- `tests/test_design_directive.py` — 7 tests: highest-slop-signal coverage, stack-agnostic (no React/Tailwind/GSAP leak), UI gate, KeyError-safe template formatting both ways, <900-tok compactness ceiling.
+
+### Changed
+
+- `agents/definitions.py` — `code-gen` `prompt_template` gains a `{design_directive}` block beside `{workspace_map}`.
+- `orchestrator/orchestrator.py` — injects the directive into the code-gen prompt gated by `is_ui_task(task, feature)` (reused from IMP-019); empty for CLI/library/non-UI work.
+- `orchestrator/agent_run_lifecycle.py` — `template_vars.setdefault("design_directive", "")` keeps every other agent's `format()` KeyError-safe.
+- `services/codex_optimization.py` — `prompt_budget_breakdown` registers a `design_directive` token segment for observability.
+
+### Notes
+
+- **Efficiency (capability-fit, Claude lane):** directive is STATIC and injected once → amortizes to ~0 marginal tokens/turn via **conversation-history prefix caching** (the IMP-028 replay path), NOT system-prompt caching (the builder's `system_prompt` is the pure `claude_code` preset with `exclude_dynamic_sections`; the rendered template is the first user message). `claude-agent-sdk` gate `ok:true` — this is model-loop judgment guidance, not a deterministic shortcut. Considered + rejected: moving the directive to `system_prompt: {append}` (marginal cross-run cache gain vs. fragmenting the single-prompt model).
+- IMP-034b (operator-selectable UI prototype preview) still open. `T:browser` live-verification of 034a still pending.
+
+## 2026-06-04 - Enforcement wiring: activate test-sync gate (local hook + CI) + goal-doc progress-routing lint
+
+`/self-optimize` (14d) found "behavioral change without test update" still the #1 recurring theme (score 30, 7 fix-commits) **despite** the existing `pre_commit_checks.py` gate — root cause: the gate was never activated. Rule existed; nothing enforced it.
+
+### Added
+
+- `.github/workflows/ci.yml` — CI wall: `ruff check` + `ruff format --check` + `pytest` on PR + push to `master`. Enforces the test-failure gate regardless of a local `--no-verify` bypass.
+- `lint_goal_docs.py` `PROGRESS_ROUTING` — WARN-only check flagging autoresearch run-log markers (`baseline_runs_summary` / `iteration #N` / `run #N`) misrouted into ROADMAP/STATUS instead of `docs/autoresearch/PROGRESS.md`. Zero-false-positive tokens (σ-floor / cache_ratio deliberately excluded; verified against current docs). See `feedback_autoresearch_progress_routing`.
+- `.github/workflows/ci-autofix.yml` — deterministic auto-remediation tier: on a PR, runs `ruff --fix` + `ruff format` in CI (clean cloud checkout — never touches local WIP) and pushes the style fix back to the PR branch. Loop-safe via `GITHUB_TOKEN`. Judgment fixes (tests/logic) deferred to on-demand `@claude`, not autonomous.
+
+### Fixed
+
+- `.githooks/pre-commit` — was inert (`core.hooksPath` unset, so git used empty `.git/hooks`) and called `python` (absent on WSL → exit 127). Hardened to a `python3`/`python` fallback + `exec` (valid for normal clones). **This repo runs in a managed env where hooks are disabled**, so local-hook enforcement does not fire here — `core.hooksPath` was *not* left set; **CI (`ci.yml` + `ci-autofix.yml`) is the enforcement floor**, since it runs on GitHub's runners outside the managed env.
+- `.github/workflows/documentation-freshness.yml` — `main` → `master` across trigger, `git fetch origin master:master` (would otherwise fail — `main` is deleted), and PR text. Default branch is `master`.
+
+### Notes
+
+- Pre-existing repo-wide `builder lint` debt (2 memory errors + 31 complexity ratchet violations, from uncommitted WIP on disk) is unrelated to this change and not addressed here.
+
 ## 2026-05-31 - IMP-023 Fix B (real root cause: telemetry clobbering) + chat-turn annotation repair
 
 builder-test static→DB root-cause dig on the live pomodoro forward-eng app. Two fixes, both root-cause not symptom.

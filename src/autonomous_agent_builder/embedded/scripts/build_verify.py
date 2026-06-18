@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -95,7 +94,25 @@ class BuildVerifyScript(Script):
             (project_root / name).exists() for name in ("pyproject.toml", "setup.py", "setup.cfg")
         )
         if has_python_project and (project_root / "tests").exists():
-            checks.append({"code": "pytest", "command": [sys.executable, "-m", "pytest", "-q"]})
+            # Provision the venv + install deps (peer to the npm_install guard
+            # above), then run pytest under the venv. Owned by
+            # quality_gates.python_env so the interpreter rule lives in one place.
+            from autonomous_agent_builder.quality_gates import python_env
+
+            setup = python_env.setup_commands(project_root)
+            for cmd in setup:
+                code = "venv_create" if "venv" in cmd else "pip_install"
+                checks.append({"code": code, "command": cmd})
+            # venv_required when provisioning is scheduled (venv doesn't exist yet
+            # at plan time but venv_create above will create it before pytest runs).
+            checks.append(
+                {
+                    "code": "pytest",
+                    "command": python_env.pytest_argv(
+                        project_root, extra=["-q"], venv_required=bool(setup)
+                    ),
+                }
+            )
         return checks
 
     def _package_scripts(self, package_json: Path) -> dict[str, Any]:

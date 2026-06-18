@@ -6,9 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCAN_ROOTS = (REPO_ROOT / "frontend" / "src",)
@@ -47,6 +45,22 @@ FORBIDDEN_PATTERNS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
 )
 
 
+# Brand/icon SVG markup legitimately carries fixed hex in fill/stroke attributes
+# (e.g. a provider logo). Those are assets, not themeable UI styling, so the
+# raw_hex_color rule is exempted INSIDE <svg>...</svg> spans only. Body styling
+# hex (CSS, style props, className) stays flagged everywhere else.
+_SVG_BLOCK = re.compile(r"<svg\b.*?</svg>", re.DOTALL | re.IGNORECASE)
+_HEX_EXEMPT_INSIDE_SVG = frozenset({"raw_hex_color"})
+
+
+def _svg_spans(text: str) -> list[tuple[int, int]]:
+    return [(match.start(), match.end()) for match in _SVG_BLOCK.finditer(text)]
+
+
+def _within_spans(pos: int, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= pos < end for start, end in spans)
+
+
 def iter_text_files(root: Path) -> list[Path]:
     if not root.exists():
         return []
@@ -66,18 +80,37 @@ def issue(path: Path, code: str, message: str, line: int | None = None, text: st
     return payload
 
 
-def scan_file(path: Path) -> list[dict[str, object]]:
-    findings: list[dict[str, object]] = []
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except UnicodeDecodeError:
-        return findings
+def scan_text(text: str) -> list[tuple[str, int, str]]:
+    """Pure scan: return (code, line_number, line_text) per violation.
 
-    for line_number, line in enumerate(lines, start=1):
-        for code, message, pattern in FORBIDDEN_PATTERNS:
-            if pattern.search(line):
-                findings.append(issue(path, code, message, line_number, line))
-    return findings
+    ``raw_hex_color`` matches inside ``<svg>...</svg>`` spans are exempt (brand /
+    icon assets); every other rule and location is flagged as before. At most one
+    finding per (line, code), preserving the original behavior.
+    """
+    svg_spans = _svg_spans(text)
+    results: list[tuple[str, int, str]] = []
+    offset = 0
+    for line_number, line in enumerate(text.splitlines(keepends=True), start=1):
+        for code, _message, pattern in FORBIDDEN_PATTERNS:
+            for match in pattern.finditer(line):
+                if code in _HEX_EXEMPT_INSIDE_SVG and _within_spans(offset + match.start(), svg_spans):
+                    continue
+                results.append((code, line_number, line.rstrip("\n")))
+                break
+        offset += len(line)
+    return results
+
+
+def scan_file(path: Path) -> list[dict[str, object]]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return []
+    message_by_code = {code: message for code, message, _ in FORBIDDEN_PATTERNS}
+    return [
+        issue(path, code, message_by_code[code], line_number, line_text)
+        for code, line_number, line_text in scan_text(text)
+    ]
 
 
 def collect_findings() -> list[dict[str, object]]:

@@ -1,0 +1,8 @@
+{
+  "_note": "Watermark for the capfit-currency loop. last_checked_week is the ISO week of the last browser-verified currency check of the capability-fit skill + rubrics against live Claude Code / Agent SDK docs. Bumped only on an operator-approved currency run.",
+  "last_checked_week": "2026-W25",
+  "last_checked_date": "2026-06-16",
+  "last_verified_surface": "code.claude.com/docs/en/sub-agents + changelog (through v2.1.178, 2026-06-15) + agent-sdk header tab",
+  "changelog_verified_through": "v2.1.178 (2026-06-15)",
+  "last_run_finding": "full sweep: SKILL.md line-47 confirmed + `fable` patched; rubric patch applied = claude-code-rubric dedup (dup Routines section) + 4 rows (nested-subagent-spawn, Tool(param:value)/Agent(model:opus), enforceAvailableModels, nested .claude/skills), agent-sdk-rubric +structured-outputs row, cost-map +/usage-attribution row. NOT swept: codex-sdk-rubric (separate OpenAI docs). Follow-ups queued: knowledge-base REFRESH to mint article slugs; codex sweep."
+}

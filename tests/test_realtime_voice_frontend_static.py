@@ -359,8 +359,10 @@ def test_agent_page_run_trace_collapses_uninformative_tool_use_rows_and_uses_run
     assert 'if (icon === "codex")' in native_source
     assert 'if (icon === "claude")' in native_source
     assert 'if (icon === "openai")' in native_source
-    assert 'M9.2 7.5 13 12l-3.8 4.5M14.2 16.5h3.4' in native_source
-    assert 'M12 2.4v6.2M12 15.4v6.2' in native_source
+    # Runtime icons are now real brand-logo SVGs: codex→OpenAI mark, claude→Anthropic
+    # mark (distinctive brand viewBox/fill), openai→inline waveform glyph.
+    assert 'viewBox="0 0 512 509.639"' in native_source
+    assert 'fill="#D77655"' in native_source
     assert 'M8.1 8.1 15.9 16M15.9 8.1 8.1 16M12 4.6v14.8' in native_source
 
 
@@ -457,10 +459,11 @@ def test_samantha_voice_orb_is_single_bottom_right_entrypoint() -> None:
     assert not Path("frontend/src/components/SamanthaOverlay.tsx").exists()
 
     assert "export function SamanthaVoiceOrb()" in orb_source
-    assert "function SamanthaKnotIcon()" in orb_source
-    assert "data-samantha-knot-icon" in orb_source
+    # Orb icon redesign: SamanthaKnotIcon → SamanthaVoiceIcon (sound-wave glyph).
+    assert "function SamanthaVoiceIcon()" in orb_source
+    assert "data-samantha-voice-icon" in orb_source
     assert 'viewBox="0 0 64 64"' in orb_source
-    assert 'strokeWidth="4.8"' in orb_source
+    assert 'strokeWidth="4"' in orb_source
     assert "rgb(16 16 14)" in orb_source
     assert "data-samantha-voice-orb" in orb_source
     assert "useRealtimeVoice()" in orb_source

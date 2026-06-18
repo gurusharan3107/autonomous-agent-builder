@@ -132,15 +132,24 @@ Prove idempotency with `--check` (exit 0 = in sync). Offer to `/status open`.
 ```bash
 f=docs/goal/goal-overview.html
 if grep -qi microsoft /proc/version 2>/dev/null; then
-  explorer.exe "$(wslpath -w "$f")" 2>/dev/null \
-    || cmd.exe /c start "" "$(wslpath -w "$f")" 2>/dev/null \
-    || powershell.exe -NoProfile -Command "Start-Process '$(wslpath -w "$f")'"
+  win=$(wslpath -w "$f")
+  # Pick exactly ONE opener by availability — never chain on exit code:
+  # explorer.exe returns rc=1 even on success, so `||` would open a 2nd time.
+  if command -v explorer.exe >/dev/null 2>&1; then
+    explorer.exe "$win" 2>/dev/null || true
+  elif command -v cmd.exe >/dev/null 2>&1; then
+    cmd.exe /c start "" "$win" 2>/dev/null || true
+  else
+    powershell.exe -NoProfile -Command "Start-Process '$win'" 2>/dev/null || true
+  fi
 else
   xdg-open "$f" >/dev/null 2>&1 &
 fi
 ```
 Report the path. **On WSL2 `xdg-open` silently fails** — route through the Windows host
-(`explorer.exe` + `wslpath -w`; rc=1 is success). If no opener works, give the path.
+(`explorer.exe` + `wslpath -w`). `explorer.exe` returns rc=1 even on success, so the
+opener is selected by `command -v` availability, not exit code — chaining with `||`
+opens the page twice. If no opener works, give the path.
 
 ### Lane: build
 
@@ -268,6 +277,14 @@ Return ONLY this JSON when done:
 Run tests for all closed `[x]` items that still have `T:backend:pending` or
 `T:browser:pending` tokens. Upgrades tokens to bare (passed) or leaves `:pending`
 with a failure note. Always runs `/status update` at the end.
+
+> **`docs/goal/TESTING.md` is a sibling ledger, not this lane.** This lane proves
+> *shipped ROADMAP `[x]` items* (`T:` tokens). TESTING.md is the standing
+> positive/negative bug-hunt ledger (`SC-NN` rows, `K:`+`S:` tokens). This skill
+> **owns TESTING.md's format + the `goal-overview.html` mirror** (`build_goal_overview.py`
+> parses it); the [`builder-test`](../builder-test/SKILL.md) skill is its **execution
+> engine** (runs rows, flips `S:` tokens, then calls `/status update`). Don't run
+> SC-row execution from here.
 
 **Capability levers:**
 - **Sequential per-item loop** — test → update token → `/status update` → commit → next. One commit per item so progress is always visible in the overview and history is granular.

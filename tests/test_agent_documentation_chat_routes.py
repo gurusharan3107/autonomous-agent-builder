@@ -12,8 +12,8 @@ from autonomous_agent_builder.db.models import (
     Project,
     Task,
 )
-from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server import agent_sprint_planning
+from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server.routes import agent as agent_routes
 from tests.agent_route_test_support import (
     approve_pending_sprint_scope as _approve_pending_sprint_scope,

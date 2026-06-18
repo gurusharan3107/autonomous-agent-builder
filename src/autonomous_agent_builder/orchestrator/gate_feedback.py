@@ -41,8 +41,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autonomous_agent_builder.config import Settings
 from autonomous_agent_builder.db.models import GateResult as GateResultModel
 from autonomous_agent_builder.db.models import Task, TaskStatus, set_task_status
-from autonomous_agent_builder.quality_gates.base import AggregateGateResult
-
+from autonomous_agent_builder.quality_gates.base import AggregateGateResult, GateStatus
+from autonomous_agent_builder.quality_gates.python_env import (
+    ensure_node_env,
+    ensure_python_env,
+    is_environmental_failure,
+)
 
 log = structlog.get_logger()
 
@@ -125,6 +129,48 @@ class GateFeedbackHandler:
                 task.retry_count += 1
                 set_task_status(task, TaskStatus.QUALITY_GATES)
                 return
+
+        # Step 1.5: Environmental failures (missing deps / wrong interpreter)
+        # CANNOT be fixed by editing source — dispatching the LLM gate-remediator
+        # at them only burns its retry budget (the model edits code that was
+        # never broken). Re-provision the workspace env deterministically and
+        # re-run the gates instead. Bounded by the retry budget so a genuinely
+        # un-provisionable env escalates cleanly rather than looping.
+        if self._has_environmental_failure(gate_result):
+            if task.retry_count < self.max_retries:
+                await self._reprovision_env(task)
+                task.retry_count += 1
+                set_task_status(task, TaskStatus.QUALITY_GATES)
+                log.info(
+                    "gate_env_reprovision",
+                    task_id=task.id,
+                    retry_count=task.retry_count,
+                    failed_gates=[g.gate_name for g in failed_gates],
+                )
+                await self.db.flush()
+                return
+            await self._escalate_to_capability_limit(task, gate_result)
+            return
+
+        # Step 1.6: Gate TIMEOUT (DEADLINE_EXCEEDED) is a non-code failure — a cold
+        # workspace re-running deps inside the gate deadline. The LLM remediator cannot
+        # fix a timeout; warm deps deterministically (out-of-band, outside the gate's
+        # timeout window) and re-run the gates instead. Bounded by the retry budget.
+        if self._has_timeout_failure(gate_result):
+            if task.retry_count < self.max_retries:
+                await self._reprovision_env(task)
+                task.retry_count += 1
+                set_task_status(task, TaskStatus.QUALITY_GATES)
+                log.info(
+                    "gate_timeout_reprovision",
+                    task_id=task.id,
+                    retry_count=task.retry_count,
+                    failed_gates=[g.gate_name for g in failed_gates],
+                )
+                await self.db.flush()
+                return
+            await self._escalate_to_capability_limit(task, gate_result)
+            return
 
         # Step 2: Gate-remediator agent — bounded intelligent fix for errors
         # that deterministic tools cannot resolve (TypeScript errors, broken
@@ -211,6 +257,47 @@ class GateFeedbackHandler:
                 )
 
         return False
+
+    def _has_timeout_failure(self, gate_result: AggregateGateResult) -> bool:
+        """True when any failed gate timed out (DEADLINE_EXCEEDED / GateStatus.TIMEOUT).
+
+        Gate TIMEOUT is a non-code failure — the gate's own subprocess budget
+        (e.g. ``npm ci`` inside ``code_quality``) ran out on a cold workspace. The
+        LLM gate-remediator cannot fix a timeout by editing source. Route to
+        deterministic re-provisioning instead.
+        """
+        return any(
+            getattr(g, "status", None) == GateStatus.TIMEOUT
+            or getattr(g, "error_code", None) == "DEADLINE_EXCEEDED"
+            for g in gate_result.failed_gates
+        )
+
+    def _has_environmental_failure(self, gate_result: AggregateGateResult) -> bool:
+        """True when any failed gate's output is a missing-dep / interpreter error.
+
+        Such failures are not fixable by editing source; they must be re-provisioned
+        deterministically rather than sent to the LLM gate-remediator.
+        """
+        return any(
+            is_environmental_failure(self._extract_gate_output(g))
+            for g in gate_result.failed_gates
+        )
+
+    async def _reprovision_env(self, task: Task) -> None:
+        """Rebuild the workspace env deterministically (no model).
+
+        Provisions both Python (venv + deps) and Node (npm ci / install) so
+        cold-workspace timeouts on EITHER lane are resolved out-of-band before
+        the gate re-runs. Both helpers are manifest-guarded no-ops when the
+        respective manifest is absent, making this safe for any workspace type.
+        """
+        workspace_path = task.workspace.path if task.workspace else ""
+        if not workspace_path:
+            return
+        from pathlib import Path
+
+        await ensure_python_env(Path(workspace_path), force=True)
+        await ensure_node_env(Path(workspace_path))
 
     def _extract_gate_output(self, gate_result) -> str:
         """Extract a compact, actionable error string from a gate result."""

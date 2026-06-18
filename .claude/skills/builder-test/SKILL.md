@@ -11,7 +11,10 @@ description: >
   side-effects) → verdict. Produces a PASS/WARN/FAIL table with cited evidence
   per phase. Optional scope: /test <phase> (e.g. "static", "unit",
   "integration", "e2e") to run a single phase only.
-allowed-tools: Read, Bash, Write, AskUserQuestion
+  Also the execution engine for the docs/goal/TESTING.md test ledger:
+  "run the test ledger", "sweep TESTING.md", "/test ledger", "root out bugs from the ledger"
+  — runs pending rows in the matching phase, fixes each S:fail at root cause, flips the S: token.
+allowed-tools: Read, Bash, Write, Edit, AskUserQuestion, Agent, Monitor
 ---
 
 # builder-test — verify a builder source change actually works
@@ -31,6 +34,59 @@ accurate without operator maintenance.
 - **Scoped run**: `/test <phase>` — runs only that phase + CLOSEOUT. Use for fast
   iteration on a specific fix (e.g. `/test unit` after editing intent
   classifier, `/test e2e "implement X"` after changing the chat agent).
+- **Ledger sweep**: `/test ledger [S<n>]` — drives `docs/goal/TESTING.md` (see below)
+  instead of a single change. Use for the standing bug hunt / "find and fix the bugs".
+
+## Ledger mode (`docs/goal/TESTING.md`)
+
+`docs/goal/TESTING.md` is the standing test ledger — one `SC-NN` row per scenario,
+each tagged `K:<P|N>/<backend|browser>` (kind + lane) and `S:<state>`. **This skill
+is its execution engine; the `status` skill owns the file's format + HTML mirror.**
+Mirror the status `test` lane's relationship to ROADMAP `T:` tokens.
+
+Sweep procedure:
+
+1. **Select** — read TESTING.md; take every `S:inflight` row first (current effort),
+   then `S:pending`. Optional `S<n>` arg scopes to one surface. Skip `S:pass`
+   (already proven — don't re-burn tokens) and `S:blocked` (note the prereq).
+2. **Route by lane** — `K:.../backend` rows run in **STATIC/UNIT/INTEGRATION**
+   (pytest / `builder` CLI); `K:.../browser` rows run in **E2E** via `/hermes-chrome`.
+3. **Apply the kind criterion** — `K:P` (positive): assert the documented contract /
+   invariant holds on intended input. `K:N` (negative): assert edge/malformed/adversarial/
+   concurrent/fault input is handled *gracefully* — guarded, re-prompted, or a clean
+   blocked/error state; never a crash, silent half-state, stranded lock, dup, or bypass.
+4. **Verdict per row** → flip the `S:` token in TESTING.md (Edit): pass → `S:pass`;
+   bug → `S:fail` + **fix the root cause** (Phase 5b) and file/name the `IMP-*` on the
+   row; can't run yet → leave `S:blocked` with the prereq noted.
+5. **Resync** — after flipping tokens, run `/status update`
+   (`python3 .claude/skills/status/scripts/build_goal_overview.py`) so the HTML mirror
+   matches. Never hand-edit the HTML.
+6. **Closeout** — Phase 7 as usual; durable findings → typed backlog per TESTING.md's
+   closeout rule.
+
+## Delegation & model routing
+
+The parent loop is the orchestrator — it stays lean and keeps the verdict table,
+the ledger token flips, and the root-cause fixes. Push the heavy/mechanical work
+to **context-isolated subagents** (`Agent` tool, `context: fork`) at the cheapest
+tier that returns a trustworthy result. Resolve each tier → current model ID from
+the session model block; never hard-code versions.
+
+| Work | Delegate? | Model · effort | Why |
+| --- | --- | --- | --- |
+| STATIC (Pyright + bad-string grep), UNIT (pure-fn asserts) | subagent | **Haiku · low** | mechanical; premium model is waste here |
+| INTEGRATION (REST smoke / CLI round-trips) | subagent | **Haiku/Sonnet · low** | deterministic I/O |
+| E2E phase + each ledger `SC-NN` row (hermes sweep, log read, side-effect check) | subagent (the dominant context cost) | **Sonnet · med** | isolation keeps parent lean; only the row summary returns |
+| Root-cause diagnosis + fix (Phase 5b), verdict synthesis, ledger token decisions | **inline on main** | (pinned) | judgment work — don't delegate |
+
+- **Parallelism**: STATIC ∥ UNIT are independent; backend-lane rows ∥ browser-lane
+  rows are independent → run as parallel background subagents. **Serialize** rows
+  that share one hermes-chrome tab/session (the bridge persists one tab per
+  `sessionName` — concurrent drivers collide).
+- **Subagent prompt carries its own assertions** — the dispatched agent does not
+  load this SKILL.md; pass the phase's exact checks + the row's `Expect:`/`K:`
+  criterion in the prompt.
+- **Phase 0 stays inline** — health-gate the builder before any subagent fans out.
 
 ## Prerequisites
 
@@ -64,6 +120,14 @@ Source repo: the autonomous-agent-builder source checked out here.
 7. **CLOSEOUT** — staleness scan (cross-refs, assertions, bad-string patterns);
    encode new failure modes; write introspection.md; apply fixes; delete it.
    Mandatory — never skip, even on PASS runs. This is what prevents drift.
+   **Capability/model introspection (part of optimize):** review whether each
+   delegation choice this run actually paid off. If a tier returned a low-quality
+   result (a Haiku subagent gave a false pass/fail, missed an assertion, or
+   needed re-asking), if a delegated phase cost more in coordination than it
+   saved, or if a capability added overhead without payoff — **correct the
+   "Delegation & model routing" table in this SKILL.md in the same CLOSEOUT**
+   (escalate/ downgrade the tier, inline the work, or drop the lever) and note
+   why. The routing table is a living hypothesis, not a fixed contract.
 
 See `reference/workflow.md` for the full phase procedure.
 See `reference/assertions.md` for the assertion catalog and known bad patterns.
@@ -96,6 +160,17 @@ See `reference/assertions.md` for the assertion catalog and known bad patterns.
   the actual cause can be fixed. Patching symptoms hides real problems and
   degrades the skill over time.
 - **Never declare PASS without Phase 6 evidence table populated.**
+- **Delegate the mechanical, keep the judgment inline.** Static/unit/integration
+  and per-row execution go to context-isolated subagents at the cheapest trustworthy
+  tier (see Delegation & model routing); root-cause fixing, verdict synthesis, and
+  ledger token decisions stay on the main lane. A delegation that didn't pay off is
+  corrected in the Phase 7 optimize step — the routing table is a living hypothesis.
+- **Ledger sweeps keep TESTING.md and the HTML mirror in sync.** After flipping any
+  `S:` token, run `/status update` in the same pass — a flipped token with a stale
+  `goal-overview.html` is a lie. A row is never `S:pass` without real evidence (a
+  `test_…`/CLI result for backend, live-browser proof for browser), and never
+  `S:fail` without both a filed `IMP-*` on the row **and** a root-cause fix attempt
+  (Phase 5b) — marking a bug `fail` and moving on without fixing is symptom-logging.
 - **CLOSEOUT (Phase 7) is mandatory on every run including PASS.** A run
   without CLOSEOUT leaves stale assertions, broken cross-references, and
   undiscovered failure modes silently accumulating. The skill self-evolves
@@ -104,6 +179,18 @@ See `reference/assertions.md` for the assertion catalog and known bad patterns.
 
 ## Gotchas
 
+- **A backend-first feature ship has NO E2E lane until its operator surface
+  exists — that's `dashboard-gated`, not a FAIL.** This repo routinely ships the
+  backend (gate/predicate/agent) ahead of the dashboard card (IMP-029/030/034b).
+  Before driving hermes-chrome for a feature, `grep -rni "<feature flag>"
+  frontend/src src/.../embedded/dashboard/` — **zero frontend refs ⇒ no operator
+  control ⇒ E2E is gated**; verify the backend predicate via its unit suite and
+  record E2E as `dashboard-gated: no operator surface yet (frontend card pending)`.
+  Don't manufacture a hermes session against a feature an operator can't reach —
+  it proves nothing and burns tokens. The bridge being READY (`diagnose.py` 6/6)
+  does NOT mean the feature is E2E-able. *(IMP-034b: ui_preview gate shipped
+  backend-only; `should_run_ui_preview` unit-covered, but no UI to toggle
+  `ui_preview_enabled`, 2026-06-04.)*
 - **builder CLI JSON result keys VARY PER COMMAND — always check `ok` first,
   then the command-specific key. Never assume `data`.** A naive `d.get("data")`
   / `d.get("items")` silently returns `None`/`[]` and looks like "0 results" or

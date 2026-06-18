@@ -44,6 +44,17 @@ WORKLOG = re.compile(
     r"\b(Delivered|PROVEN|Remaining|Verified|CORRECTION|PARTIAL DELIVERY|FIX [AB]\b"
     r"|Live[- ]?verified|Increment delivered|root cause found)\b"
 )
+# Autoresearch run-log / artifact markers that belong in docs/autoresearch/PROGRESS.md,
+# NOT the forward spine (ROADMAP/STATUS). Tokens chosen for zero false-positives on the
+# current goal docs: baseline_runs_summary / iteration #N / run #N have no legit spine use,
+# unlike σ-floor / cache_ratio which appear in legit milestone context — so those are excluded.
+# High precision, WARN-only. See memory feedback_autoresearch_progress_routing.
+PROGRESS_ROUTING = re.compile(
+    r"baseline_runs_summary"
+    r"|\biteration\s*#\d+"
+    r"|\brun\s*#\d+",
+    re.I,
+)
 MS_HEADING = re.compile(r"^###\s+(M\d+\.\d+)\b")
 ITEM = re.compile(r"^(\s*)-\s*\[( |x)\]\s*(.*)$")
 PRI = re.compile(r"^`(P[0-3])`\s*")
@@ -160,6 +171,21 @@ def lint_status(text: str) -> list[tuple[str, int, str]]:
     return out
 
 
+def lint_progress_routing(text: str) -> list[tuple[str, int, str]]:
+    """WARN when autoresearch run-log detail lands in the forward spine instead of
+    docs/autoresearch/PROGRESS.md. Conservative by design: precision over recall."""
+    out: list[tuple[str, int, str]] = []
+    for i, line in enumerate(text.splitlines(), 1):
+        if PROGRESS_ROUTING.search(line):
+            out.append((
+                "WARN", i,
+                "autoresearch run-log detail (baseline_runs_summary / iteration #N / "
+                "run #N) belongs in docs/autoresearch/PROGRESS.md, not the forward spine "
+                "— see feedback_autoresearch_progress_routing",
+            ))
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Lint docs/goal ROADMAP/STATUS + HTML sync.")
     ap.add_argument("--root", default=".")
@@ -173,7 +199,10 @@ def main() -> int:
         if not p.exists():
             findings.append((fname, "ERROR", 0, "file missing"))
             continue
-        for sev, ln, msg in fn(p.read_text(encoding="utf-8")):
+        text = p.read_text(encoding="utf-8")
+        for sev, ln, msg in fn(text):
+            findings.append((fname, sev, ln, msg))
+        for sev, ln, msg in lint_progress_routing(text):
             findings.append((fname, sev, ln, msg))
 
     # HTML sync (reuse the generator's --check).

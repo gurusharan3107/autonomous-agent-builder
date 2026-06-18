@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from autonomous_agent_builder.agents.tools import browser_tools, workspace_tools
+from autonomous_agent_builder.cli.commands.memory import TYPE_DIRS
+from autonomous_agent_builder.knowledge.document_spec import STANDARD_DOC_TYPES
 from autonomous_agent_builder.services import builder_tool_service
 
 
@@ -122,7 +124,7 @@ def _closest_param(key: str, candidates: set[str]) -> str | None:
     for c in candidates:
         c_lower = c.lower().replace("_", "")
         # Count shared leading characters and common substrings (cheap heuristic).
-        overlap = sum(1 for a, b in zip(key_lower, c_lower) if a == b)
+        overlap = sum(1 for a, b in zip(key_lower, c_lower, strict=False) if a == b)
         if overlap > best_score:
             best_score = overlap
             best = c
@@ -207,7 +209,15 @@ _KB_SHOW_SCHEMA = {
 _KB_CONTRACT_SCHEMA = {
     "type": "object",
     "properties": {
-        "doc_type": {"type": "string"},
+        "doc_type": {
+            "type": "string",
+            "enum": sorted(STANDARD_DOC_TYPES),
+            "description": (
+                "Document type. 'runbook' requires Purpose/Preconditions/Procedure/"
+                "Verification/Rollback sections; 'adr' requires Status/Context/Decision/"
+                "Consequences; 'context' for operational notes."
+            ),
+        },
         "sample_title": {"type": "string"},
     },
     "additionalProperties": False,
@@ -241,7 +251,15 @@ _KB_EXTRACT_SCHEMA = {
 _KB_ADD_SCHEMA = {
     "type": "object",
     "properties": {
-        "doc_type": {"type": "string"},
+        "doc_type": {
+            "type": "string",
+            "enum": sorted(STANDARD_DOC_TYPES),
+            "description": (
+                "Document type. 'runbook' requires Purpose/Preconditions/Procedure/"
+                "Verification/Rollback sections; 'adr' requires Status/Context/Decision/"
+                "Consequences; 'context' for operational notes."
+            ),
+        },
         "title": {"type": "string"},
         "content": {"type": "string"},
         "task_id": {"type": "string"},
@@ -309,7 +327,11 @@ _MEMORY_SHOW_SCHEMA = {
 _MEMORY_ADD_SCHEMA = {
     "type": "object",
     "properties": {
-        "mem_type": {"type": "string"},
+        "mem_type": {
+            "type": "string",
+            "enum": sorted(TYPE_DIRS),
+            "description": "Memory type — one of: correction, decision, pattern",
+        },
         "phase": {"type": "string"},
         "entity": {"type": "string"},
         "tags": {"type": "string"},

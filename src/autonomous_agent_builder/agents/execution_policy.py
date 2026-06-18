@@ -47,6 +47,7 @@ class AgentRuntimePolicy:
 _TASK_BUDGET_TOKENS: dict[str, int] = {
     "planner": 120_000,  # 20 turns, opus reasoning-heavy
     "designer": 120_000,  # 20 turns, opus architecture work
+    "ui-prototyper": 60_000,  # 10 turns, sonnet single static HTML mockup (IMP-034b)
     "scaffold": 60_000,  # 12 turns, sonnet stack-decision + minimum config
     "code-gen": 150_000,  # 30 turns, sonnet implementation
     "integration-resolver": 100_000,  # 20 turns, conflict resolution
@@ -98,6 +99,14 @@ _AGENT_POLICY: dict[str, tuple[str, str, tuple[str, ...], str, str, str]] = {
         "read_only_design",
         "session_start_context_and_tool_audit",
         "design_risk_gate",
+    ),
+    "ui-prototyper": (
+        "medium",
+        "scripted_repeatable_work",
+        (),
+        "workspace_write_with_argv_shell",
+        "workspace_boundary_bash_argv_tool_audit",
+        "ui_preview_mockup",
     ),
     "scaffold": (
         "medium",
@@ -252,13 +261,16 @@ def _model_for_agent(agent_def: AgentDefinition, settings: Settings) -> str:
     if agent_def.name in {
         "chat",
         "code-gen",
+        "ui-prototyper",  # IMP-034b: generates HTML → needs sonnet quality
         "init-project-chat",
-        "documentation-bridge",
         "integration-resolver",
         "optimization-agent",
         "feature-verifier",
     }:
         return settings.agent.implementation_model
+    # documentation-bridge is intentionally NOT in the implementation_model bucket
+    # (IMP-035 win #1): it is a zero-reasoning Agent-tool pass-through, so it falls
+    # through to its AgentDefinition.model ("haiku") instead of the sonnet default.
     if agent_def.name in {"pr-creator", "build-verifier"}:
         return settings.agent.pr_model
     return agent_def.model

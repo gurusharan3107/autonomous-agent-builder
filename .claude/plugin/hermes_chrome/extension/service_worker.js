@@ -3,6 +3,7 @@ let port = null;
 const attachedTabs = new Set();
 const injectedTabs = new Set();
 const sessionGroups = new Map(); // sessionName → groupId
+const sessionTabs = new Map();   // sessionName → tabId (cross-call reuse: one session ⇒ one tab)
 
 function connectHost() {
   try {
@@ -50,6 +51,26 @@ async function ensureSessionGroup(sessionName, tabId) {
   return groupId;
 }
 
+// Cross-call tab memory the per-request state otherwise lacks: reuse the tab a
+// prior call in this session opened, if it still exists and is controllable.
+// Keeps one named session pinned to ONE tab instead of spawning a new tab or
+// hijacking whatever is active on every call (orphan-tab proliferation).
+async function resolveSessionTab(sessionName) {
+  if (!sessionName) return undefined;
+  const tabId = sessionTabs.get(sessionName);
+  if (tabId === undefined) return undefined;
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab || !isControllableUrl(tab.url)) {
+    sessionTabs.delete(sessionName);
+    return undefined;
+  }
+  return tabId;
+}
+
+function rememberSessionTab(sessionName, tabId) {
+  if (sessionName && tabId !== undefined) sessionTabs.set(sessionName, tabId);
+}
+
 function isControllableUrl(url) {
   return typeof url === "string" && /^(https?|file):\/\//i.test(url);
 }
@@ -89,8 +110,30 @@ async function ensureAttached(tabId) {
 
 async function send(tabId, method, params = {}) {
   await ensureAttached(tabId);
-  return chrome.debugger.sendCommand({ tabId }, method, params);
+  try {
+    return await chrome.debugger.sendCommand({ tabId }, method, params);
+  } catch (e) {
+    // The debugger can detach without us hearing about it — cross-origin
+    // navigation swaps the renderer/target, DevTools opens, the target crashes.
+    // attachedTabs then holds a stale entry, ensureAttached early-returns, and
+    // sendCommand fails "Debugger is not attached". Drop the stale entry,
+    // re-attach once, and retry — this self-heals evaluate / wait_for_selector /
+    // screenshot / zoom after a navigation instead of failing the whole batch.
+    if (/not attached|No tab with given id|Cannot access/i.test(String(e?.message || e))) {
+      attachedTabs.delete(tabId);
+      await ensureAttached(tabId);
+      return await chrome.debugger.sendCommand({ tabId }, method, params);
+    }
+    throw e;
+  }
 }
+
+// Keep attachedTabs in sync with reality: when Chrome detaches the debugger
+// (cross-origin navigation, DevTools, target crash, manual close), forget the
+// tab so the next send() re-attaches instead of trusting a dead session.
+chrome.debugger.onDetach.addListener((source) => {
+  if (source && source.tabId !== undefined) attachedTabs.delete(source.tabId);
+});
 
 async function evaluate(tabId, expression) {
   const result = await send(tabId, "Runtime.evaluate", {
@@ -382,11 +425,31 @@ async function sendToContentScript(tabId, action, args = []) {
   return result;
 }
 
+// Wait for a tab's navigation to actually commit and finish loading, instead of
+// a blind fixed delay. A fixed 2s wait races real navigations: a slow SPA (the
+// docs site) isn't ready, so the following page_context / wait_for_selector runs
+// against a half-loaded or stale document and the whole batch fails — then a
+// manual retry "works" only because the page finished loading in the meantime.
+// Polling tab.status makes goto deterministic.
+async function waitForTabComplete(tabId, timeout = 15000) {
+  const deadline = Date.now() + timeout;
+  // Lead-in so we don't observe the pre-navigation 'complete' before status flips to 'loading'.
+  await new Promise((r) => setTimeout(r, 150));
+  while (Date.now() < deadline) {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab) return null;
+    if (tab.status === "complete") return tab;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return await chrome.tabs.get(tabId).catch(() => null);
+}
+
 // ---- Browser Actions ----
 async function runBrowserAction(action, state) {
   const type = action.type;
   if (action.tabId) {
     state.tabId = action.tabId;
+    rememberSessionTab(state.groupName, action.tabId);
   }
 
   if (type === "goto") {
@@ -403,8 +466,14 @@ async function runBrowserAction(action, state) {
     }
     state.tabId = tab.id;
     state.lastUrl = tab.url || action.url;
+    rememberSessionTab(state.groupName, state.tabId);
     if (state.groupName) await ensureSessionGroup(state.groupName, state.tabId).catch(() => {});
-    await new Promise((resolve) => setTimeout(resolve, action.waitMs || 2000));
+    // Honor an explicit waitMs override; otherwise wait for real load completion.
+    if (action.waitMs) {
+      await new Promise((resolve) => setTimeout(resolve, action.waitMs));
+    } else {
+      await waitForTabComplete(state.tabId);
+    }
     await ensureAttached(state.tabId).catch(() => {}); // pre-attach so screenshots never race
     return { type, tabId: state.tabId, url: tab.url || action.url };
   }
@@ -507,6 +576,7 @@ async function runBrowserAction(action, state) {
     if (tab?.url) state.lastUrl = tab.url;
     await chrome.tabs.remove(state.tabId);
     const closed = state.tabId;
+    if (state.groupName) sessionTabs.delete(state.groupName);
     state.tabId = undefined;
     return { type, tabId: closed, url: state.lastUrl };
   }
@@ -607,11 +677,15 @@ async function runBrowserAction(action, state) {
 }
 
 async function handleHostMessage(message) {
+  // Reuse this session's existing tab if one is remembered and still alive;
+  // otherwise fall back to the active tab (useSelectedTab) or a fresh tab.
+  const rememberedTab = await resolveSessionTab(message.sessionName);
   const state = {
     maxTextChars: message.maxTextChars || 20000,
-    tabId: message.useSelectedTab ? (await currentTab()).id : undefined,
+    tabId: rememberedTab ?? (message.useSelectedTab ? (await currentTab()).id : undefined),
     groupName: message.sessionName || null,
   };
+  if (state.tabId) rememberSessionTab(state.groupName, state.tabId);
   if (state.tabId && state.groupName) await ensureSessionGroup(state.groupName, state.tabId).catch(() => {});
   if (message?.type === "reload") {
     post({ id: message.id, success: true, message: "reloading" });

@@ -284,3 +284,108 @@ class TestGetGateInstance:
         task = _make_task()
         gate = handler._get_gate_instance("nonexistent", task)
         assert gate is None
+
+
+@pytest.mark.asyncio
+class TestEnvironmentalFailureRouting:
+    """Missing-dep / wrong-interpreter failures must re-provision deterministically
+    and NEVER be dispatched to the LLM gate-remediator (it can't fix an env error
+    by editing code — that is the token-waste this routing prevents)."""
+
+    async def test_env_failure_reprovisions_and_reruns_gates(self, handler, monkeypatch):
+        task = _make_task(retry_count=0)
+        env_gate = GateResult(
+            gate_name="testing",
+            status=GateStatus.FAIL,
+            evidence={"output": "E   ModuleNotFoundError: No module named 'flask'"},
+            error_code="TEST_FAILED",
+        )
+        agg = AggregateGateResult(status=GateStatus.FAIL, results=[env_gate])
+
+        from unittest.mock import AsyncMock as _AsyncMock
+
+        reprovision = _AsyncMock()
+        agent = _AsyncMock(return_value=False)
+        monkeypatch.setattr(handler, "_reprovision_env", reprovision)
+        monkeypatch.setattr(handler, "_attempt_agent_remediation", agent)
+
+        await handler.handle_gate_failure(task, agg)
+
+        reprovision.assert_awaited_once()
+        agent.assert_not_awaited()  # LLM remediator never dispatched for env failure
+        assert task.retry_count == 1
+        assert task.status == TaskStatus.QUALITY_GATES  # re-run gates, not code-gen
+
+    async def test_env_failure_at_budget_escalates_without_agent(self, handler, monkeypatch):
+        task = _make_task(retry_count=handler.max_retries)
+        env_gate = GateResult(
+            gate_name="testing",
+            status=GateStatus.FAIL,
+            evidence={"output": "ModuleNotFoundError: No module named 'flask'"},
+        )
+        agg = AggregateGateResult(status=GateStatus.FAIL, results=[env_gate])
+
+        from unittest.mock import AsyncMock as _AsyncMock
+
+        monkeypatch.setattr(handler, "_reprovision_env", _AsyncMock())
+        agent = _AsyncMock(return_value=False)
+        monkeypatch.setattr(handler, "_attempt_agent_remediation", agent)
+
+        await handler.handle_gate_failure(task, agg)
+
+        agent.assert_not_awaited()
+        assert task.status == TaskStatus.CAPABILITY_LIMIT
+
+
+@pytest.mark.asyncio
+class TestTimeoutFailureRouting:
+    """Gate TIMEOUT / DEADLINE_EXCEEDED must re-provision deterministically and
+    NEVER dispatch the LLM gate-remediator (which cannot fix a cold-workspace
+    timeout by editing code)."""
+
+    async def test_timeout_reprovisions_and_reruns_gates(self, handler, monkeypatch):
+        task = _make_task(retry_count=0)
+        timeout_gate = GateResult(
+            gate_name="code_quality",
+            status=GateStatus.TIMEOUT,
+            error_code="DEADLINE_EXCEEDED",
+            timeout=True,
+        )
+        agg = AggregateGateResult(status=GateStatus.TIMEOUT, results=[timeout_gate])
+
+        from unittest.mock import AsyncMock as _AsyncMock
+
+        reprovision = _AsyncMock()
+        agent = _AsyncMock(return_value=False)
+        monkeypatch.setattr(handler, "_reprovision_env", reprovision)
+        monkeypatch.setattr(handler, "_attempt_agent_remediation", agent)
+
+        await handler.handle_gate_failure(task, agg)
+
+        reprovision.assert_awaited_once()
+        # LOAD-BEARING: LLM remediator must never be dispatched for a timeout
+        agent.assert_not_awaited()
+        assert task.retry_count == 1
+        assert task.status == TaskStatus.QUALITY_GATES  # re-run gates, not code-gen
+
+    async def test_timeout_at_budget_escalates_without_agent(self, handler, monkeypatch):
+        task = _make_task(retry_count=handler.max_retries)
+        timeout_gate = GateResult(
+            gate_name="code_quality",
+            status=GateStatus.TIMEOUT,
+            error_code="DEADLINE_EXCEEDED",
+            timeout=True,
+        )
+        agg = AggregateGateResult(status=GateStatus.TIMEOUT, results=[timeout_gate])
+
+        from unittest.mock import AsyncMock as _AsyncMock
+
+        monkeypatch.setattr(handler, "_reprovision_env", _AsyncMock())
+        agent = _AsyncMock(return_value=False)
+        monkeypatch.setattr(handler, "_attempt_agent_remediation", agent)
+
+        await handler.handle_gate_failure(task, agg)
+
+        # LOAD-BEARING: LLM remediator must never be dispatched even at budget
+        agent.assert_not_awaited()
+        assert task.status == TaskStatus.CAPABILITY_LIMIT

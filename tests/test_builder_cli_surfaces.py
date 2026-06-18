@@ -1958,6 +1958,98 @@ def test_logs_analyze_headline_total_tokens_falls_back_to_raw_aggregate_imp023(
     assert payload["total_tokens"] == 4445, "headline total_tokens must fall back, not read 0"
 
 
+def test_logs_analyze_headline_cost_and_run_count_fall_back_to_session_aggregate_imp023b(
+    monkeypatch, tmp_path
+):
+    """IMP-023 Fix B regression: analyze headline total_cost_usd and run_count
+    must not read 0 when prompt-level and agent_run cost telemetry is absent but
+    the session-scoped agent_runs cost aggregate is populated.
+
+    Reproduces the blind cost case: two agent_runs carry real cost (0.12 + 0.03),
+    prompt telemetry cost_usd = 0, and the analysis target is a chat_session
+    (no agent_run dict → agent_run.estimated_cost_usd / cost_usd = 0). Before
+    Fix B, total_cost_usd = 0.0 and run_count was missing entirely.
+    """
+    agent_builder_dir = tmp_path / ".agent-builder"
+    agent_builder_dir.mkdir(parents=True)
+    db_path = agent_builder_dir / "agent_builder.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        create table chat_sessions (
+            id varchar(36) primary key,
+            sdk_session_id varchar(255),
+            created_at datetime default current_timestamp,
+            updated_at datetime default current_timestamp
+        );
+        create table chat_events (
+            id varchar(36) primary key,
+            session_id varchar(36) not null,
+            event_type varchar(50) not null,
+            payload_json json not null,
+            status varchar(20) not null,
+            tool_use_id varchar(255),
+            response_to_event_id varchar(36),
+            created_at datetime default current_timestamp
+        );
+        create table agent_runs (
+            id varchar(36) primary key,
+            task_id varchar(36) not null,
+            agent_name varchar(50) not null,
+            cost_usd float not null default 0,
+            tokens_input integer not null default 0,
+            tokens_output integer not null default 0,
+            tokens_cached integer not null default 0,
+            num_turns integer not null default 0,
+            duration_ms integer not null default 0,
+            stop_reason varchar(50),
+            status varchar(20) not null default 'completed'
+        );
+        """
+    )
+    conn.execute(
+        "insert into chat_sessions (id, sdk_session_id, created_at, updated_at) values (?, ?, ?, ?)",
+        ("sess-imp023b", "sdk-imp023b", "2026-05-31 10:00:00", "2026-05-31 10:00:05"),
+    )
+    # Only a user_message — no run_status event → prompt telemetry cost_usd = 0.
+    conn.execute(
+        "insert into chat_events (id, session_id, event_type, payload_json, status, created_at) values (?, ?, ?, ?, ?, ?)",
+        (
+            "evt-imp023b",
+            "sess-imp023b",
+            "user_message",
+            json.dumps({"content": "Build me a todo app."}),
+            "completed",
+            "2026-05-31 10:00:01",
+        ),
+    )
+    # Two agent_runs carry real cost — total 0.15 — with zero prompt-level cost
+    # and no analysis-target agent_run, so the fallback path must activate.
+    conn.execute(
+        "insert into agent_runs (id, task_id, agent_name, cost_usd, tokens_input, tokens_output, tokens_cached, num_turns, stop_reason, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("run-b1", "task-b1", "code-gen", 0.12, 3000, 300, 0, 5, "end_turn", "completed"),
+    )
+    conn.execute(
+        "insert into agent_runs (id, task_id, agent_name, cost_usd, tokens_input, tokens_output, tokens_cached, num_turns, stop_reason, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("run-b2", "task-b1", "test-gen", 0.03, 800, 100, 0, 2, "end_turn", "completed"),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["logs", "analyze", "--session", "sess-imp023b", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert abs(payload["total_cost_usd"] - 0.15) < 1e-9, (
+        "headline total_cost_usd must fall back to the session agent_runs cost aggregate, not read 0"
+    )
+    assert payload["run_count"] == 2, (
+        "run_count must equal the number of seeded agent_run dispatches"
+    )
+
+
 def test_logs_analyze_scopes_runtime_aggregates_to_chat_session(monkeypatch, tmp_path):
     """`analyze --session <id>` must not bleed other sessions' agent_runs.
 

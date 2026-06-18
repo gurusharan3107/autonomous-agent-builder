@@ -15,12 +15,20 @@ import typer
 from autonomous_agent_builder.cli.client import EXIT_FAILURE, EXIT_INVALID_USAGE, EXIT_SUCCESS
 from autonomous_agent_builder.cli.commands.logs_db_utils import (
     maybe_json_dict as _maybe_json_dict,
+)
+from autonomous_agent_builder.cli.commands.logs_db_utils import (
     row_dict as _row_dict,
+)
+from autonomous_agent_builder.cli.commands.logs_db_utils import (
     table_columns as _table_columns,
+)
+from autonomous_agent_builder.cli.commands.logs_db_utils import (
     table_exists as _table_exists,
 )
 from autonomous_agent_builder.cli.commands.logs_runtime_aggregates import (
     runtime_aggregates as _compute_runtime_aggregates,
+)
+from autonomous_agent_builder.cli.commands.logs_runtime_aggregates import (
     selected_runtime_sdk as _selected_runtime_sdk,
 )
 from autonomous_agent_builder.cli.output import emit_error, render, table, truncate
@@ -407,7 +415,9 @@ def _effective_observability(prompts: list[dict[str, Any]]) -> dict[str, Any]:
         _resolve_claude_obs = None
         try:
             from autonomous_agent_builder.config import get_settings
-            from autonomous_agent_builder.observability.runtime import resolve_claude_observability as _resolve_claude_obs
+            from autonomous_agent_builder.observability.runtime import (
+                resolve_claude_observability as _resolve_claude_obs,
+            )
             from autonomous_agent_builder.runtime.factory import resolve_runtime_config
 
             runtime_config = resolve_runtime_config(get_settings())
@@ -918,14 +928,17 @@ def _analyze_timeline(
     # not always persisted (notably chat-session prompts), leaving the headline
     # at 0 while the session-scoped raw event-payload aggregate IS populated.
     # Fall back to the same optimization_summary source raw_token_total uses so
-    # the self-optimizer headline is never blind. (Cost has no in-scope raw
-    # fallback — deferred to Fix B / chat-turn telemetry persistence.)
+    # the self-optimizer headline is never blind.
     if not total_tokens:
         total_tokens = int(
             optimization.get("noncached_plus_output_tokens")
             or optimization.get("raw_token_total")
             or 0
         )
+    # IMP-023 Fix B: mirror the token fallback for cost — fold the session-scoped
+    # agent_runs cost aggregate when prompt telemetry and agent_run cost are both 0.
+    if not total_cost:
+        total_cost = float(runtime_aggregates.get("totals", {}).get("cost_usd") or 0.0)
     context_budget = runtime_aggregates.get("context_budget", {})
     selected_runtime = _selected_runtime_from_coverage(coverage)
     decisions = runtime_decision_summary(
@@ -945,6 +958,7 @@ def _analyze_timeline(
         "session_id": session.get("id", ""),
         "sdk_session_id": session.get("sdk_session_id"),
         "prompt_count": len(prompts),
+        "run_count": int(runtime_aggregates.get("totals", {}).get("runs") or 0),
         "total_tokens": total_tokens,
         "total_cost_usd": total_cost,
         "analysis_target": (

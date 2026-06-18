@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from autonomous_agent_builder.knowledge.generators.architecture import ArchitectureGenerator
 from autonomous_agent_builder.knowledge.proof_contract import (
     compute_dependency_hash,
     verify_evidence_manifest,
 )
-from autonomous_agent_builder.knowledge.generators.architecture import ArchitectureGenerator
 from autonomous_agent_builder.knowledge.quality_gate import KnowledgeQualityGate
 
 

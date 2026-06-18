@@ -103,7 +103,7 @@ async def _maybe_mark_sprint_stalled(
     # task, or one in a genuinely recoverable state (capability_limit →
     # provider reset, review_pending → approval), still has a path to progress.
     # BLOCKED is terminal-without-operator and DOES count (see docstring).
-    _TERMINAL_OR_WAITING = {
+    _TERMINAL_OR_WAITING = {  # noqa: N806
         TaskStatus.FAILED, TaskStatus.PENDING, TaskStatus.DONE, TaskStatus.BLOCKED,
     }
     for task in sprint_tasks:

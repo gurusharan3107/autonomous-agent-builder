@@ -46,6 +46,7 @@ def prompt_budget_breakdown(
         "tool_context": estimate_tokens(template_vars.get("tool_context")),
         "sprint_plan": estimate_tokens(template_vars.get("planning_context")),
         "sprint_design": estimate_tokens(template_vars.get("design_context")),
+        "design_directive": estimate_tokens(template_vars.get("design_directive")),
         "task_brief": estimate_tokens(template_vars.get("task_description")),
         "repo_context": estimate_tokens(template_vars.get("knowledge_requirements")),
         "gate_feedback": estimate_tokens(template_vars.get("gate_feedback")),
@@ -223,6 +224,8 @@ def summarize_runs_for_optimization(runs: Iterable[Any]) -> dict[str, Any]:
     active_raw_total = sum(row["raw_tokens"] for row in recent_rows)
     active_cached_total = sum(row["cached_tokens"] for row in recent_rows)
     active_noncached_plus_output = sum(row["noncached_plus_output"] for row in recent_rows)
+    rework_token_total = int(by_agent.get("gate-remediator", {}).get("raw_tokens", 0))
+    rework_share = round(rework_token_total / raw_total, 4) if raw_total > 0 else 0.0
     return {
         "schema_version": "1",
         "primary_score": "raw_tokens",
@@ -295,12 +298,15 @@ def summarize_runs_for_optimization(runs: Iterable[Any]) -> dict[str, Any]:
                 else "under_target"
             ),
         },
+        "rework_token_total": rework_token_total,
+        "rework_share": rework_share,
         "recommended_next_change": _recommended_next_change(
             top_cost_drivers,
             flags,
             raw_total,
             active_flags=active_flags,
             active_top_cost_drivers=active_top_cost_drivers,
+            rework_share=rework_share,
         ),
     }
 
@@ -463,6 +469,7 @@ def _recommended_next_change(
     *,
     active_flags: Counter[str] | None = None,
     active_top_cost_drivers: list[dict[str, Any]] | None = None,
+    rework_share: float = 0.0,
 ) -> str:
     active_flags = active_flags or Counter()
     effective_flags = active_flags or flags
@@ -478,6 +485,8 @@ def _recommended_next_change(
         noncached_plus_output = int(active_driver.get("noncached_plus_output_tokens") or 0)
         if avoidable > 0 or noncached_plus_output > 80_000:
             return f"reduce_{active_driver['agent_name']}_raw_tokens"
+    if rework_share >= 0.25:
+        return "reduce_rework_before_token_band"
     if raw_total > 185_000 and top_cost_drivers and not active_top_cost_drivers:
         return f"reduce_{top_cost_drivers[0]['agent_name']}_raw_tokens"
     return "maintain_current_flow"

@@ -118,8 +118,10 @@ function EfficiencyPanel({ data }: { data: MetricsData }) {
   const benchmark = summary.benchmark;
   const topDriver = summary.top_cost_drivers[0];
   const flags = summary.avoidable_cost_flags.slice(0, 3);
-  const benchmarkLabel =
-    benchmark.status === "within_target"
+  const isHighRework = summary.rework_share >= 0.25;
+  const benchmarkLabel = isHighRework
+    ? "inefficient (rework)"
+    : benchmark.status === "within_target"
       ? "within target"
       : benchmark.status === "under_target"
         ? "under target"
@@ -144,7 +146,7 @@ function EfficiencyPanel({ data }: { data: MetricsData }) {
           {summary.active_runs_note}
         </p>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Raw tokens
@@ -167,6 +169,17 @@ function EfficiencyPanel({ data }: { data: MetricsData }) {
           </p>
           <p className="mt-1 font-mono text-lg text-foreground">
             {summary.phase_ceremony_tokens.toLocaleString()}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Rework
+          </p>
+          <p className="mt-1 font-mono text-lg text-foreground">
+            {Math.round(summary.rework_share * 100)}%
+            {data.gate_pass_rate !== undefined
+              ? ` / ${Math.round(data.gate_pass_rate)}% gates passed`
+              : ""}
           </p>
         </div>
         <div>

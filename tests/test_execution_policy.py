@@ -38,7 +38,8 @@ EXPECTED_ROLE_POLICIES = {
     "pr-creator": ("low", None, "evidence_summary_only", False, None),
     "build-verifier": ("low", None, "scripted_verification", False, None),
     "feature-verifier": ("medium", _ADAPTIVE, "agentic_acceptance_then_durable_playwright", True, 120_000),
-    "documentation-bridge": ("low", _ADAPTIVE, "delegated_doc_refresh", False, None),
+    # IMP-035 win #1: parent runs on haiku (pass-through) → thinking disabled.
+    "documentation-bridge": ("low", None, "delegated_doc_refresh", False, None),
 }
 
 
@@ -75,6 +76,18 @@ def test_planner_policy_uses_expensive_reasoning_only_for_planning() -> None:
     assert policy.context_strategy == "compact_plan_artifact"
     assert policy.autocompact_enabled is True
     assert policy.task_budget_tokens == 120_000
+
+
+def test_ui_prototyper_policy_uses_sonnet_quality_and_medium_effort() -> None:
+    # IMP-034b: the UI prototyper emits HTML, so it buckets to implementation_model
+    # (sonnet quality) and runs at medium effort like other bounded write agents.
+    settings = get_settings()
+    policy = resolve_agent_runtime_policy(get_agent_definition("ui-prototyper"), settings)
+
+    assert policy.model == settings.agent.implementation_model
+    assert policy.effort == "medium"
+    assert policy.context_strategy == "scripted_repeatable_work"
+    assert policy.reason_code == "ui_preview_mockup"
 
 
 def test_code_gen_policy_uses_sonnet_and_scripted_context_strategy() -> None:
@@ -162,6 +175,19 @@ def test_runtime_switch_preserves_phase_agent_policy_shape(
 
 def test_documentation_subagent_defaults_to_haiku() -> None:
     assert resolve_subagent_model(get_subagent_definition("documentation-agent")) == "haiku"
+
+
+def test_documentation_bridge_parent_runs_on_haiku() -> None:
+    """IMP-035 win #1: the doc-bridge parent is a zero-reasoning Agent-tool
+    pass-through, so it must resolve to haiku (not the sonnet implementation_model)
+    with thinking disabled — the reasoning happens in the documentation-agent child.
+    """
+    policy = resolve_agent_runtime_policy(
+        get_agent_definition("documentation-bridge"),
+        _settings_for_runtime("claude"),
+    )
+    assert policy.model == "haiku"
+    assert policy.thinking is None
 
 
 def test_claude_phase_policy_selects_bounded_specialists() -> None:

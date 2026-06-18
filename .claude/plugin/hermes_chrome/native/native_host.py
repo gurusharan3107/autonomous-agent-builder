@@ -11,6 +11,7 @@ because both ends live in WSL2 — see scripts/install_hermes_chrome_bridge.py.
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import os
 import queue
@@ -60,10 +61,8 @@ def write_native_message(message: dict[str, Any]) -> None:
 
 def socket_server() -> None:
     SOCKET_PATH.parent.mkdir(parents=True, exist_ok=True)
-    try:
+    with contextlib.suppress(FileNotFoundError):
         SOCKET_PATH.unlink()
-    except FileNotFoundError:
-        pass
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server.bind(str(SOCKET_PATH))
     server.listen(10)

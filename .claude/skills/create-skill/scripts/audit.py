@@ -8,9 +8,12 @@ Usage:
   python3 scripts/audit.py .claude/skills/<name> --strict
 """
 from __future__ import annotations
-import argparse, json, re, sys
-from pathlib import Path
 
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
 
 CHECKS = [
     ("A00", "skill is project-local (.claude/skills/)", "hard"),

@@ -13,8 +13,7 @@ from autonomous_agent_builder.db.models import (
     FeatureStatus,
     Project,
 )
-from autonomous_agent_builder.embedded.server import agent_chat_sessions
-from autonomous_agent_builder.embedded.server import agent_sprint_planning
+from autonomous_agent_builder.embedded.server import agent_chat_sessions, agent_sprint_planning
 from autonomous_agent_builder.embedded.server.app import create_app
 from autonomous_agent_builder.embedded.server.routes import agent as agent_routes
 

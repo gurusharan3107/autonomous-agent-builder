@@ -214,21 +214,6 @@ def _recommendations(
                 "Resume ready blocked tasks before queueing new work.",
             )
         )
-    open_rule_codes = {
-        str(item.get("code") or "")
-        for item in coverage.get("deterministic_recommendations", [])
-        if isinstance(item, dict)
-    }
-    open_rule_codes.discard("deterministic_baseline_ready")
-    if not recommendations and not open_rule_codes:
-        recommendations.append(
-            _recommendation(
-                "baseline_ready",
-                "info",
-                "Observability baseline is usable",
-                "Continue collecting run evidence before changing routing policy.",
-            )
-        )
     return recommendations
 
 

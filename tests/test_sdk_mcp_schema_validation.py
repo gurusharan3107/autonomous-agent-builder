@@ -14,15 +14,19 @@ Guards that validate_mcp_args:
 from __future__ import annotations
 
 from autonomous_agent_builder.agents.tools.sdk_mcp import (
+    _KB_ADD_SCHEMA,
+    _KB_CONTRACT_SCHEMA,
+    _LIST_DIRECTORY_SCHEMA,
+    _MEMORY_ADD_SCHEMA,
     _PARAM_ALIASES,
     _READ_FILE_SCHEMA,
     _RUN_TESTS_SCHEMA,
     _TASK_LIST_SCHEMA,
-    _LIST_DIRECTORY_SCHEMA,
     validate_mcp_args,
 )
+from autonomous_agent_builder.cli.commands.memory import TYPE_DIRS
 from autonomous_agent_builder.embedded.server.agent_tool_policy import normalize_tool_response
-
+from autonomous_agent_builder.knowledge.document_spec import STANDARD_DOC_TYPES
 
 # ── validate_mcp_args: happy-path (None means valid) ─────────────────────────
 
@@ -214,4 +218,74 @@ def test_param_aliases_covers_key_read_file_aliases():
 
 def test_param_aliases_covers_key_task_list_aliases():
     assert "item_id" in _PARAM_ALIASES.get("task_list", {})
-    assert "feature_id" == _PARAM_ALIASES["task_list"]["item_id"]
+    assert _PARAM_ALIASES["task_list"]["item_id"] == "feature_id"
+
+
+# ── mem_type enum (Fix 1) — sourced from TYPE_DIRS canonical constant ─────────
+
+def test_memory_add_schema_mem_type_has_enum():
+    """mem_type must carry an enum so the model cannot hallucinate 'key'/'value'."""
+    prop = _MEMORY_ADD_SCHEMA["properties"]["mem_type"]
+    assert "enum" in prop, "mem_type must have an enum"
+
+
+def test_memory_add_schema_mem_type_enum_matches_type_dirs():
+    """enum must equal sorted(TYPE_DIRS) — no drift from the canonical constant."""
+    prop = _MEMORY_ADD_SCHEMA["properties"]["mem_type"]
+    assert prop["enum"] == sorted(TYPE_DIRS)
+
+
+def test_memory_add_schema_mem_type_enum_values():
+    """Spot-check the three valid types are present."""
+    prop = _MEMORY_ADD_SCHEMA["properties"]["mem_type"]
+    for expected in ("correction", "decision", "pattern"):
+        assert expected in prop["enum"]
+
+
+def test_memory_add_schema_mem_type_has_description():
+    """description must be present so the model knows the valid values upfront."""
+    prop = _MEMORY_ADD_SCHEMA["properties"]["mem_type"]
+    assert "description" in prop
+    assert "correction" in prop["description"]
+    assert "decision" in prop["description"]
+    assert "pattern" in prop["description"]
+
+
+# ── doc_type enum on _KB_ADD_SCHEMA (Fix 2) — sourced from STANDARD_DOC_TYPES ─
+
+def test_kb_add_schema_doc_type_has_enum():
+    """doc_type in kb_add must carry an enum to prevent 'note'/'type' hallucination."""
+    prop = _KB_ADD_SCHEMA["properties"]["doc_type"]
+    assert "enum" in prop, "doc_type must have an enum"
+
+
+def test_kb_add_schema_doc_type_enum_matches_standard_doc_types():
+    """enum must equal sorted(STANDARD_DOC_TYPES) — no drift from the canonical tuple."""
+    prop = _KB_ADD_SCHEMA["properties"]["doc_type"]
+    assert prop["enum"] == sorted(STANDARD_DOC_TYPES)
+
+
+def test_kb_add_schema_doc_type_has_description_with_section_hints():
+    """description must mention runbook/adr section requirements."""
+    prop = _KB_ADD_SCHEMA["properties"]["doc_type"]
+    assert "description" in prop
+    assert "runbook" in prop["description"]
+    assert "adr" in prop["description"]
+
+
+def test_kb_add_schema_doc_type_is_required():
+    """doc_type must remain a required field on kb_add."""
+    assert "doc_type" in _KB_ADD_SCHEMA["required"]
+
+
+# ── doc_type enum on _KB_CONTRACT_SCHEMA (Fix 2 sibling — validates STANDARD_DOC_TYPES) ──
+
+def test_kb_contract_schema_doc_type_has_enum():
+    """kb_contract validates doc_type against STANDARD_DOC_TYPES — enum must be present."""
+    prop = _KB_CONTRACT_SCHEMA["properties"]["doc_type"]
+    assert "enum" in prop
+
+
+def test_kb_contract_schema_doc_type_enum_matches_standard_doc_types():
+    prop = _KB_CONTRACT_SCHEMA["properties"]["doc_type"]
+    assert prop["enum"] == sorted(STANDARD_DOC_TYPES)

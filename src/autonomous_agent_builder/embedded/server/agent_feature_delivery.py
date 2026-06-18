@@ -46,6 +46,7 @@ async def persist_feature_spec(db: AsyncSession, payload: dict[str, Any]) -> Fea
             for task in payload.get("proposed_tasks", [])
             if isinstance(task, dict) and str(task.get("title", "")).strip()
         ],
+        ui_preview_enabled=bool(payload.get("ui_preview_enabled", False)),
     )
     db.add(feature)
     await db.commit()

@@ -63,6 +63,7 @@ running.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime
 import json
 import os
@@ -72,7 +73,6 @@ import signal
 import subprocess
 import sys
 import time
-
 
 # -- Discovery -----------------------------------------------------------------
 
@@ -153,10 +153,8 @@ def _safe_run(cmd: list[str], cwd: str | None = None, timeout: int = 15) -> byte
 
 
 def _write_text_safe(path: pathlib.Path, text: str) -> None:
-    try:
+    with contextlib.suppress(OSError):
         path.write_text(text)
-    except OSError:
-        pass
 
 
 def dump_diagnostics(
@@ -168,7 +166,7 @@ def dump_diagnostics(
     idle_s: float,
     wal_mtime: float,
 ) -> pathlib.Path:
-    ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
     out = dump_root / f"{ts}-pid{pid}"
     out.mkdir(parents=True, exist_ok=True)
 
@@ -181,7 +179,7 @@ def dump_diagnostics(
         "wal_last_mtime_epoch": wal_mtime,
         "wal_last_mtime_iso": (
             datetime.datetime.fromtimestamp(
-                wal_mtime, tz=datetime.timezone.utc
+                wal_mtime, tz=datetime.UTC
             ).isoformat()
             if wal_mtime
             else None
@@ -220,10 +218,8 @@ def dump_diagnostics(
         fd_dir = pathlib.Path(f"/proc/{pid}/fd")
         fds: list[str] = []
         for fd in fd_dir.iterdir():
-            try:
+            with contextlib.suppress(OSError):
                 fds.append(f"{fd.name} -> {os.readlink(fd)}")
-            except OSError:
-                pass
         (out / "process_fds.txt").write_text("\n".join(sorted(fds)))
     except OSError as exc:
         _write_text_safe(
@@ -339,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def log(msg: str) -> None:
         if not args.quiet:
-            now = datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S")
+            now = datetime.datetime.now(datetime.UTC).strftime("%H:%M:%S")
             print(f"[watchdog {now}] {msg}", file=sys.stderr, flush=True)
 
     log(

@@ -77,7 +77,7 @@ class AgentSettings(BaseSettings):
     # take 25-30s before the first token is emitted. The probe only needs a
     # one-token response but must wait for that cold start.
     availability_probe_timeout_seconds: int = 60
-    permission_mode: str = "dontAsk"
+    permission_mode: str = "acceptEdits"
     auth_backend: str = "auto"
 
 

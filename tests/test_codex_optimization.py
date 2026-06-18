@@ -255,3 +255,167 @@ def test_summarize_runs_uses_active_driver_when_recent_tokens_are_avoidable() ->
 
     assert summary["active_top_cost_drivers"][0]["agent_name"] == "agent-chat"
     assert summary["recommended_next_change"] == "reduce_agent-chat_raw_tokens"
+
+
+def test_summarize_runs_computes_rework_fields() -> None:
+    """gate-remediator tokens are captured in rework_token_total and rework_share."""
+    runs = [
+        {
+            "agent_name": "gate-remediator",
+            "tokens_input": 6_000,
+            "tokens_output": 792,
+            "observability": {
+                "optimization_summary": {
+                    "token_accounting": {
+                        "raw_total_tokens": 6_792,
+                        "noncached_plus_output_tokens": 6_792,
+                        "cached_input_tokens": 0,
+                        "output_tokens": 792,
+                    },
+                    "avoidable_cost_flags": [],
+                    "avoidable_token_estimate": 0,
+                }
+            },
+        },
+        {
+            "agent_name": "code-gen",
+            "tokens_input": 9_000,
+            "tokens_output": 703,
+            "observability": {
+                "optimization_summary": {
+                    "token_accounting": {
+                        "raw_total_tokens": 9_703,
+                        "noncached_plus_output_tokens": 9_703,
+                        "cached_input_tokens": 0,
+                        "output_tokens": 703,
+                    },
+                    "avoidable_cost_flags": [],
+                    "avoidable_token_estimate": 0,
+                }
+            },
+        },
+    ]
+
+    summary = summarize_runs_for_optimization(runs)
+
+    assert summary["rework_token_total"] == 6_792
+    total = 6_792 + 9_703
+    assert summary["rework_share"] == round(6_792 / total, 4)
+    # rework_share > 0.25: verdict must fire
+    assert summary["recommended_next_change"] == "reduce_rework_before_token_band"
+
+
+def test_summarize_runs_rework_verdict_fires_when_share_at_threshold() -> None:
+    """rework_share == 0.25 exactly is a HIGH-REWORK trigger."""
+    # 250 rework tokens out of 1000 total = exactly 0.25
+    runs = [
+        {
+            "agent_name": "gate-remediator",
+            "tokens_input": 250,
+            "tokens_output": 0,
+            "observability": {
+                "optimization_summary": {
+                    "token_accounting": {
+                        "raw_total_tokens": 250,
+                        "noncached_plus_output_tokens": 250,
+                        "cached_input_tokens": 0,
+                        "output_tokens": 0,
+                    },
+                    "avoidable_cost_flags": [],
+                    "avoidable_token_estimate": 0,
+                }
+            },
+        },
+        {
+            "agent_name": "code-gen",
+            "tokens_input": 750,
+            "tokens_output": 0,
+            "observability": {
+                "optimization_summary": {
+                    "token_accounting": {
+                        "raw_total_tokens": 750,
+                        "noncached_plus_output_tokens": 750,
+                        "cached_input_tokens": 0,
+                        "output_tokens": 0,
+                    },
+                    "avoidable_cost_flags": [],
+                    "avoidable_token_estimate": 0,
+                }
+            },
+        },
+    ]
+
+    summary = summarize_runs_for_optimization(runs)
+
+    assert summary["rework_share"] == 0.25
+    assert summary["recommended_next_change"] == "reduce_rework_before_token_band"
+
+
+def test_summarize_runs_rework_verdict_absent_when_share_low() -> None:
+    """When gate-remediator share is below 0.25, rework verdict must not fire."""
+    runs = [
+        {
+            "agent_name": "gate-remediator",
+            "tokens_input": 100,
+            "tokens_output": 0,
+            "observability": {
+                "optimization_summary": {
+                    "token_accounting": {
+                        "raw_total_tokens": 100,
+                        "noncached_plus_output_tokens": 100,
+                        "cached_input_tokens": 0,
+                        "output_tokens": 0,
+                    },
+                    "avoidable_cost_flags": [],
+                    "avoidable_token_estimate": 0,
+                }
+            },
+        },
+        {
+            "agent_name": "code-gen",
+            "tokens_input": 900,
+            "tokens_output": 0,
+            "observability": {
+                "optimization_summary": {
+                    "token_accounting": {
+                        "raw_total_tokens": 900,
+                        "noncached_plus_output_tokens": 900,
+                        "cached_input_tokens": 0,
+                        "output_tokens": 0,
+                    },
+                    "avoidable_cost_flags": [],
+                    "avoidable_token_estimate": 0,
+                }
+            },
+        },
+    ]
+
+    summary = summarize_runs_for_optimization(runs)
+
+    assert summary["rework_share"] == 0.1
+    assert summary["recommended_next_change"] != "reduce_rework_before_token_band"
+
+
+def test_summarize_runs_rework_fields_zero_when_no_gate_remediator() -> None:
+    """Runs with no gate-remediator have rework_token_total=0, rework_share=0.0."""
+    runs = [
+        {
+            "agent_name": "code-gen",
+            "tokens_input": 500,
+            "tokens_output": 50,
+        }
+    ]
+
+    summary = summarize_runs_for_optimization(runs)
+
+    assert summary["rework_token_total"] == 0
+    assert summary["rework_share"] == 0.0
+
+
+def test_summarize_runs_rework_share_zero_when_empty() -> None:
+    """Empty run list must not divide by zero."""
+    summary = summarize_runs_for_optimization([])
+
+    assert summary["rework_token_total"] == 0
+    assert summary["rework_share"] == 0.0
+    assert summary["schema_version"] == "1"

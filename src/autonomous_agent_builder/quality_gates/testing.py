@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 from autonomous_agent_builder.quality_gates.base import GateResult, GateStatus, QualityGate
+from autonomous_agent_builder.quality_gates.python_env import ensure_python_env, pytest_argv
 
 _PYTHON_LANGUAGE_ALIASES = {
     "python",
@@ -103,7 +104,13 @@ class TestingGate(QualityGate):
         return data if isinstance(data, dict) else {}
 
     async def _run_pytest(self, workspace_path: str) -> GateResult:
-        src_path = Path(workspace_path) / "src"
+        workspace = Path(workspace_path)
+        # Provision the app's deps into a workspace venv before testing, then run
+        # pytest under that interpreter. Owned by quality_gates.python_env so the
+        # interpreter rule lives in one place (see module docstring).
+        await ensure_python_env(workspace)
+
+        src_path = workspace / "src"
         pythonpath_parts = []
         if src_path.exists():
             pythonpath_parts.append(str(src_path))
@@ -111,10 +118,7 @@ class TestingGate(QualityGate):
             pythonpath_parts.append(os.environ["PYTHONPATH"])
 
         proc = await asyncio.create_subprocess_exec(
-            "pytest",
-            "--tb=short",
-            "-q",
-            "--no-header",
+            *pytest_argv(workspace, extra=["--tb=short", "-q", "--no-header"]),
             cwd=workspace_path,
             env={
                 **os.environ,

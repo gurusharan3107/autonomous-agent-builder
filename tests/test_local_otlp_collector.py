@@ -10,15 +10,14 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import closing
-from pathlib import Path
 
 import pytest
 
+from autonomous_agent_builder.embedded.server.app import _local_otlp_endpoint
 from autonomous_agent_builder.observability.local_collector import (
     LocalOTLPCollector,
     parse_local_endpoint,
 )
-from autonomous_agent_builder.embedded.server.app import _local_otlp_endpoint
 
 
 def _free_port() -> int:

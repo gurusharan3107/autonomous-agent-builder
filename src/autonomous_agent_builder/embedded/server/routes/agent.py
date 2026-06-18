@@ -73,10 +73,10 @@ from autonomous_agent_builder.embedded.server.agent_chat_events import (
     append_chat_event as _append_chat_event,
 )
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
-    update_request_event as _update_request_event,
+    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,  # noqa: F401  # re-exported for test access via module namespace
 )
 from autonomous_agent_builder.embedded.server.agent_chat_events import (
-    append_voice_final_summary_if_needed as _append_voice_final_summary_if_needed,
+    update_request_event as _update_request_event,
 )
 from autonomous_agent_builder.embedded.server.agent_chat_result_publisher import (
     _publish_agent_run_error_result,
@@ -218,7 +218,7 @@ from autonomous_agent_builder.embedded.server.documentation_routing import (
     SpecialistRoutePolicy,  # noqa: F401
 )
 from autonomous_agent_builder.embedded.server.documentation_routing import (
-    message_has_documentation_intent as _message_has_documentation_intent,
+    message_has_documentation_intent as _message_has_documentation_intent,  # noqa: F401  # re-exported for test access via module namespace
 )
 from autonomous_agent_builder.embedded.server.documentation_routing import (
     resolve_documentation_action as _resolve_documentation_action,  # noqa: F401
@@ -891,13 +891,13 @@ async def _continue_after_persisted_response(
     app: Any,
     session_id: str,
     message: str,
-) -> None:
+) -> bool:
     hub: ChatSessionHub = app.state.chat_hub
     task = asyncio.create_task(_run_chat_turn(app, session_id, message))
     attached = await hub.attach_run(session_id, task)
-    if attached:
-        return
-    task.cancel()
+    if not attached:
+        task.cancel()
+    return attached
 
 
 @router.get("/agent/runtime")
@@ -1094,44 +1094,48 @@ async def get_chat_history(
 async def chat_stream(
     request: Request,
     session_id: str,
-    db: AsyncSession = Depends(get_db),
 ):
     """Stream live chat session timeline events as SSE."""
 
     project_root = _project_root(request)
-    session = await agent_chat_sessions.load_session(
-        db, session_id, project_root=project_root, reject_scope_mismatch=True
-    )
-    if session is None:
-        raise HTTPException(status_code=404, detail="Chat session not found")
 
-    hub = _chat_hub(request)
-    queue = await hub.register_session(session_id)
-    runtime_metadata = _chat_runtime_metadata(project_root)
-    active_run = await hub.has_active_run(session_id)
-    status = agent_chat_transcript.latest_status(session, active_run=active_run)
-    thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(runtime_metadata, status)
-    if await reconcile_session_control_owners(
-        session,
-        db,
-        feature_resolver=_feature_for_delivery_permission_question,
-    ):
-        await db.commit()
-        await db.refresh(session, attribute_names=["events", "messages"])
-    items = agent_chat_transcript.history_items(session)
-    snapshot = ChatHistoryResponse(
-        session_id=session.id,
-        sdk_session_id=session.sdk_session_id,
-        model=thread_runtime_metadata["model"],
-        effort=thread_runtime_metadata["effort"],
-        runtime_sdk=thread_runtime_metadata["runtime_sdk"],
-        provider=thread_runtime_metadata["provider"],
-        repo_identity=agent_chat_sessions.repo_identity(project_root),
-        workspace_cwd=agent_chat_sessions.workspace_cwd(project_root),
-        items=items,
-        messages=agent_chat_transcript.legacy_messages(items),
-        status=status,
-    ).model_dump(mode="json")
+    # Build the snapshot using a short-lived session so the pool connection is
+    # released before streaming begins (IMP-011: SSE pool exhaustion).
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        session = await agent_chat_sessions.load_session(
+            db, session_id, project_root=project_root, reject_scope_mismatch=True
+        )
+        if session is None:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        hub = _chat_hub(request)
+        queue = await hub.register_session(session_id)
+        runtime_metadata = _chat_runtime_metadata(project_root)
+        active_run = await hub.has_active_run(session_id)
+        status = agent_chat_transcript.latest_status(session, active_run=active_run)
+        thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(runtime_metadata, status)
+        if await reconcile_session_control_owners(
+            session,
+            db,
+            feature_resolver=_feature_for_delivery_permission_question,
+        ):
+            await db.commit()
+            await db.refresh(session, attribute_names=["events", "messages"])
+        items = agent_chat_transcript.history_items(session)
+        snapshot = ChatHistoryResponse(
+            session_id=session.id,
+            sdk_session_id=session.sdk_session_id,
+            model=thread_runtime_metadata["model"],
+            effort=thread_runtime_metadata["effort"],
+            runtime_sdk=thread_runtime_metadata["runtime_sdk"],
+            provider=thread_runtime_metadata["provider"],
+            repo_identity=agent_chat_sessions.repo_identity(project_root),
+            workspace_cwd=agent_chat_sessions.workspace_cwd(project_root),
+            items=items,
+            messages=agent_chat_transcript.legacy_messages(items),
+            status=status,
+        ).model_dump(mode="json")
 
     async def event_generator():
         try:
@@ -1291,11 +1295,15 @@ async def respond_to_chat_event(
                     )
             else:
                 question = str(event.payload_json.get("question") or "the pending question")
-                await _continue_after_persisted_response(
+                attached = await _continue_after_persisted_response(
                     req.app,
                     request.session_id,
                     f'Operator answered pending question "{question}": {answer_value}',
                 )
+                if not attached:
+                    raise HTTPException(
+                        status_code=409, detail="This chat session is already running."
+                    )
         return ChatRespondResponse(
             ok=True, session_id=request.session_id, event_id=request.event_id
         )
@@ -1341,9 +1349,13 @@ async def respond_to_chat_event(
                 decision=decision,
             )
         else:
-            await _continue_after_persisted_response(
+            attached = await _continue_after_persisted_response(
                 req.app,
                 request.session_id,
                 f'Operator answered pending approval for "{tool_name}": {decision}. Reason: {request.reason.strip()}',
             )
+            if not attached:
+                raise HTTPException(
+                    status_code=409, detail="This chat session is already running."
+                )
     return ChatRespondResponse(ok=True, session_id=request.session_id, event_id=request.event_id)

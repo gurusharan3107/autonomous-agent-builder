@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -319,3 +321,40 @@ async def test_chat_lane_denies_direct_edit_and_routes_to_dispatch(monkeypatch, 
     assert not any(
         item["type"] == "tool_approval_request" for item in history_payload["items"]
     )
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_does_not_hold_depends_get_db(test_db, tmp_path):
+    """IMP-011 regression: chat_stream must not declare Depends(get_db) — the pool
+    connection must be released before streaming begins, not held for the full SSE
+    lifetime."""
+    # Signature check: no 'db' parameter with a Depends(get_db) default.
+    sig = inspect.signature(agent_routes.chat_stream)
+    assert "db" not in sig.parameters, (
+        "chat_stream must not accept a 'db: AsyncSession = Depends(get_db)' parameter; "
+        "use a short-lived async with get_session_factory() block instead (IMP-011)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_returns_404_for_missing_session(test_db, tmp_path):
+    """chat_stream returns 404 for an unknown session_id (behavior unchanged by IMP-011 fix).
+    The 404 is raised inside the short-lived session block before streaming begins."""
+    dashboard_root = tmp_path / "dashboard"
+    dashboard_root.mkdir()
+    (dashboard_root / "index.html").write_text("<html><body>embedded</body></html>", encoding="utf-8")
+
+    app = create_app(
+        db_path=tmp_path / ".agent-builder" / "agent_builder.db",
+        dashboard_path=dashboard_root,
+        project_root=tmp_path,
+    )
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        missing = await client.get(
+            "/api/agent/chat/stream",
+            params={"session_id": "nonexistent-session-id"},
+            headers={"accept": "text/event-stream"},
+        )
+    assert missing.status_code == 404

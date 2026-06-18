@@ -12,13 +12,20 @@ import pytest
 from autonomous_agent_builder.agents.runner import AgentRunner, RunResult
 from autonomous_agent_builder.config import get_settings
 from autonomous_agent_builder.db.models import AgentRun, Sprint, Task, TaskStatus, Workspace
+from autonomous_agent_builder.db.models import ApprovalDecision as _Decision
 from autonomous_agent_builder.db.models import GateResult as GateResultModel
+from autonomous_agent_builder.db.models import Sprint as _Sprint
+from autonomous_agent_builder.db.models import SprintPhase as _SprintPhase
 from autonomous_agent_builder.knowledge.system_docs import (
     format_task_system_doc_guidance,
     reconcile_task_system_docs,
     validate_task_system_docs,
 )
 from autonomous_agent_builder.orchestrator.orchestrator import Orchestrator
+from autonomous_agent_builder.orchestrator.orchestrator import apply_approval_outcome as _apply
+from autonomous_agent_builder.orchestrator.orchestrator import (
+    apply_sprint_approval_outcome as _apply_sprint,
+)
 from autonomous_agent_builder.quality_gates.base import (
     AggregateGateResult,
     GateResult,
@@ -1588,12 +1595,6 @@ class TestAgentRunRecording:
 
 
 # ── Council 2026-05-08 — Item 3: orchestrator.apply_approval_outcome ──
-from autonomous_agent_builder.db.models import (
-    ApprovalDecision as _Decision,
-)
-from autonomous_agent_builder.orchestrator.orchestrator import (
-    apply_approval_outcome as _apply,
-)
 
 
 def _approval_task(status: TaskStatus = TaskStatus.DESIGN_REVIEW) -> Task:
@@ -1667,13 +1668,6 @@ class TestApplyApprovalOutcome:
 
 
 # ── Sprint-PR refactor (Phase A) — apply_sprint_approval_outcome ──
-from autonomous_agent_builder.db.models import (
-    Sprint as _Sprint,
-    SprintPhase as _SprintPhase,
-)
-from autonomous_agent_builder.orchestrator.orchestrator import (
-    apply_sprint_approval_outcome as _apply_sprint,
-)
 
 
 def _sprint(phase: _SprintPhase = _SprintPhase.PR_REVIEW) -> _Sprint:

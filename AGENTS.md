@@ -163,8 +163,16 @@ Full library map (all IDs, surface → library routing, key queries):
   self-initiate `pytest tests/ -q` (must pass) and
   `builder quality-gate <surface> --json` for the touched surface.
   Do not wait for the operator to ask — verify proactively and report
-  evidence in the same message as the completion claim.
+  evidence in the same message as the completion claim. State the **root
+  cause** the change fixes, not the symptom — if you can't name it, the fix
+  is a patch and isn't done.
   Skip when the change is docs-only (no `src/` or `tests/` modified).
+- When the change touches a UI/dashboard surface (`frontend/`, the embedded
+  dashboard bundle, or any operator-visible page/control): the completion
+  claim must also include a live `/hermes-chrome` **browser-leg** result
+  (real browser, visible cursor, surface swept) — pytest + quality-gate alone
+  do not prove a UI change. No browser-leg evidence ⇒ the item stays
+  `T:browser:pending`, not done.
 - When adding `os.environ["X"] = ...` in any non-test file:
   add `"X"` to the `isolate_runtime_settings` delenv list in
   `tests/conftest.py` in the same commit — env var side-effects leak into
@@ -196,6 +204,20 @@ Project-local skills auto-fire on listed phrases. Use as named entry points; don
 | `/knowledge-base` | "refresh KB", monthly | Maintain `~/.claude/knowledge/` against SDK upstream |
 | `/autoresearch` | "run autoresearch", "baseline", "iterate", "fix the gap" | Three-lane optimization loop (Baseline / Iterate / Fix); owns `docs/autoresearch/` freshness |
 | `/self-optimize` | "self-optimize", "what mistakes am I making", "what keeps going wrong", "analyze recurring issues", "why do I keep correcting you", "encode learnings", "self-introspect", ≥3-day gap with unresolved correction entries in memory | Analyze session transcripts + git fix-commit patterns → cluster recurring mistake themes → map to target surfaces → apply operator-approved edits; tracks last-run history to detect recurred patterns |
+
+## Subagent Fleet (orchestrator routing)
+
+Dev work on this repo is orchestrator-led: the main thread routes, synthesizes,
+commits, and approves; mechanical/search/verify/isolated work is delegated to the
+project-local fleet in `.claude/agents/` (`repo-scout`, `planner`, `implementer`,
+`test-sync-verifier`, `browser-verifier`, `security-reviewer`, `session-maintainer`).
+Code review uses the `/code-review` command. Routing rules, per-agent model·effort·
+isolation, the no-hooks approval model, and the `permission_mode: default` keystone:
+`workflow --docs-dir docs read workflows/orchestrator-routing`.
+
+- Any `src/` change → `implementer` then `test-sync-verifier` before the orchestrator commits.
+- "mine the agent sessions / fix blockers agents hit / tighten agent prompts" → `session-maintainer`.
+- No hooks in this managed env: enforcement is tool allowlists + orchestrator-owned commits + CI.
 
 ## Product Validation Rules
 

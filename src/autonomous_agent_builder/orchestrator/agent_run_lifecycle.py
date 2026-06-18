@@ -14,17 +14,6 @@ import structlog
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# P18 (autoresearch INSIGHTS Run #10 / 2026-05-24): SQLite WAL writer contention
-# can hold the write lock longer than the engine's busy_timeout=15s during agent
-# lifecycle event flushes. The autoflush during merge() raises
-# `OperationalError: database is locked`; the lifecycle phase doesn't transition;
-# Builder polls forever. Retrying the entire commit on a fresh short-lived
-# session usually succeeds because the contending writer has finished. Tuned for
-# 5 attempts × exponential backoff (0.5 → 8.0s) = up to ~15.5s extra wait, which
-# bounds the worst case but typically resolves on attempt 1–2.
-_DB_LOCK_RETRY_ATTEMPTS = 5
-_DB_LOCK_RETRY_BASE_SECONDS = 0.5
-
 from autonomous_agent_builder.agents.definitions import get_agent_definition
 from autonomous_agent_builder.agents.execution_policy import resolve_agent_runtime_policy
 from autonomous_agent_builder.agents.runner import AgentRunner, RunResult, capture_workspace_diff
@@ -38,6 +27,17 @@ from autonomous_agent_builder.services.codex_optimization import (
     prompt_budget_breakdown,
 )
 from autonomous_agent_builder.services.runtime_settings import resolve_project_runtime_config
+
+# P18 (autoresearch INSIGHTS Run #10 / 2026-05-24): SQLite WAL writer contention
+# can hold the write lock longer than the engine's busy_timeout=15s during agent
+# lifecycle event flushes. The autoflush during merge() raises
+# `OperationalError: database is locked`; the lifecycle phase doesn't transition;
+# Builder polls forever. Retrying the entire commit on a fresh short-lived
+# session usually succeeds because the contending writer has finished. Tuned for
+# 5 attempts × exponential backoff (0.5 → 8.0s) = up to ~15.5s extra wait, which
+# bounds the worst case but typically resolves on attempt 1–2.
+_DB_LOCK_RETRY_ATTEMPTS = 5
+_DB_LOCK_RETRY_BASE_SECONDS = 0.5
 
 _BoardSnapshotPublisher = Callable[[], Awaitable[None]]
 _RuntimeFactory = Callable[..., Any]
@@ -178,6 +178,14 @@ async def run_agent_lifecycle(
     # Code-gen receives a compact workspace file map; default empty so every other
     # agent's prompt_template.format() stays KeyError-safe (str.format requires the key).
     template_vars.setdefault("workspace_map", "")
+    # Code-gen receives the Product-UI design directive only for UI-bearing tasks
+    # (IMP-034a). Default empty keeps format() KeyError-safe for every other agent.
+    template_vars.setdefault("design_directive", "")
+    # ui-prototyper (IMP-034b) reads feature/design context; default empty so
+    # other agents' prompt_template.format() stays KeyError-safe.
+    template_vars.setdefault("feature_title", "")
+    template_vars.setdefault("feature_description", "")
+    template_vars.setdefault("design_context", "")
 
     prompt = agent_def.prompt_template.format(**template_vars)
     prompt_budget = prompt_budget_breakdown(

@@ -46,6 +46,17 @@ IF_TOKEN = re.compile(r"`IF`")
 T_TOKEN = re.compile(r"`T:(backend|browser)(?::(pending|na))?`")
 # Heading name: `### M1.5 — Realtime Voice (Samantha) parity …` -> the part after the id.
 MS_NAME = re.compile(r"^\s*[—-]\s*(.*)$")
+# TESTING.md (browser-testing roadmap) parsing.
+#   `## S1 — Bootstrap & readiness`  (surface group heading)
+SC_HEADING = re.compile(r"^##\s+(S\d+)\s+[—-]\s+(.*)$")
+#   ``- `SC-01` **Title** — desc. `K:N/browser` `S:inflight` `` (state is source of truth;
+#   the `K:<P|N>/<backend|browser>` kind+lane token is optional for backward compat)
+SC_LINE = re.compile(
+    r"^\s*-\s*`(SC-\d+)`\s*\*\*(.+?)\*\*\s*[—-]\s*(.*?)\s*"
+    r"(?:`K:([PN])/(backend|browser)`\s*)?"
+    r"`S:(pending|inflight|pass|fail|blocked)`\s*$"
+)
+SC_STATES = ("pass", "inflight", "fail", "blocked", "pending")
 
 
 def die(msg: str) -> NoReturn:
@@ -246,6 +257,105 @@ def tasks_html(tasks: list[dict]) -> str:
     return "".join(parts)
 
 
+# ---- TESTING.md (browser-testing roadmap) -------------------------------------------
+
+# state -> (badge css suffix, glyph, label)
+_SC_BADGE = {
+    "pass": ("s-pass", "✓", "passed"),
+    "inflight": ("s-inflight", "🔄", "in flight"),
+    "pending": ("s-pending", "⬜", "pending"),
+    "fail": ("s-fail", "✗", "bug found"),
+    "blocked": ("s-blocked", "⛔", "blocked"),
+}
+
+
+def parse_testing(text: str) -> tuple[list[dict], dict, int]:
+    """Parse TESTING.md → (groups, counts, total).
+
+    groups = [{"sid","sname","scenarios":[{"id","title","desc","state"}]}] in file order;
+    counts = {state: n} over SC_STATES; total = sum(counts). State token is the only
+    source of truth for the rendered status (checkbox-free format).
+    """
+    groups: list[dict] = []
+    counts = {s: 0 for s in SC_STATES}
+    cur: dict | None = None
+    for line in text.splitlines():
+        h = SC_HEADING.match(line)
+        if h:
+            cur = {"sid": h.group(1), "sname": h.group(2).strip(), "scenarios": []}
+            groups.append(cur)
+            continue
+        m = SC_LINE.match(line)
+        if m and cur is not None:
+            state = m.group(6)
+            cur["scenarios"].append({
+                "id": m.group(1),
+                "title": m.group(2).strip(),
+                "desc": item_label(m.group(3), cap=160),
+                "kind": m.group(4),   # "P" | "N" | None (untagged, backward compat)
+                "lane": m.group(5),   # "backend" | "browser" | None
+                "state": state,
+            })
+            counts[state] += 1
+    groups = [g for g in groups if g["scenarios"]]
+    return groups, counts, sum(counts.values())
+
+
+def testing_summary_html(counts: dict, total: int, groups: list[dict] | None = None) -> str:
+    """One-line tally; `in flight` is the current testing effort.
+
+    When scenario rows carry `K:` kind tokens, append a positive/negative split.
+    """
+    if not total:
+        return "No scenarios yet — add them to <a href=\"TESTING.md\">TESTING.md</a>."
+    pos = neg = 0
+    for g in (groups or []):
+        for s in g["scenarios"]:
+            if s.get("kind") == "P":
+                pos += 1
+            elif s.get("kind") == "N":
+                neg += 1
+    kind_split = f' &middot; {pos} positive / {neg} negative' if (pos or neg) else ""
+    return (
+        f'<b>{total}</b> scenarios &middot; '
+        f'<b style="color:var(--clay)">{counts["inflight"]}</b> in flight (current effort) &middot; '
+        f'<span style="color:var(--olive)">{counts["pass"]} passed</span> &middot; '
+        f'{counts["fail"]} bugs &middot; {counts["blocked"]} blocked &middot; '
+        f'{counts["pending"]} pending{kind_split}'
+    )
+
+
+def testing_html(groups: list[dict], total: int) -> str:
+    """Render TESTING.md scenarios, grouped by surface, each with a status badge."""
+    if not total:
+        return ('<div class="empty">No scenarios — add them to '
+                "<a href=\"TESTING.md\">TESTING.md</a>.</div>")
+    parts: list[str] = []
+    for g in groups:
+        parts.append(
+            f'<div class="tbucket"><span class="tbhead">{_esc(g["sid"])} · '
+            f'{_esc(g["sname"])}</span><span class="tbn">{len(g["scenarios"])}</span></div>'
+        )
+        for s in g["scenarios"]:
+            cls, glyph, lbl = _SC_BADGE[s["state"]]
+            kind, lane = s.get("kind"), s.get("lane")
+            kchip = ""
+            if kind and lane:
+                ktitle = ("positive" if kind == "P" else "negative") + f" · {lane}"
+                kcls = "k-pos" if kind == "P" else "k-neg"
+                kchip = (f'<span class="kchip {kcls}" title="{ktitle}">'
+                         f'{kind}·{lane[:3]}</span>')
+            parts.append(
+                '<div class="screw">'
+                f'<span class="scid">{_esc(s["id"])}</span>'
+                f'<span class="badge {cls}" title="{lbl}">{glyph} {_esc(lbl)}</span>'
+                f'{kchip}'
+                f'<span class="sclabel" title="{_esc(s["desc"])}">{_esc(s["title"])}</span>'
+                '</div>'
+            )
+    return "".join(parts)
+
+
 def parse_status(text: str) -> dict:
     """Pull Epoch, Milestone, Last-Update date from the `## Current Position` table."""
     def cell(label: str) -> str:
@@ -342,6 +452,12 @@ def main() -> int:
         (goal / "ROADMAP.md").read_text(encoding="utf-8"))
     status = parse_status((goal / "STATUS.md").read_text(encoding="utf-8"))
     priorities_view = cap_priorities(priorities)
+    # TESTING.md is optional; when present it drives the Browser Testing section.
+    testing_path = goal / "TESTING.md"
+    if testing_path.exists():
+        tgroups, tcounts, ttotal = parse_testing(testing_path.read_text(encoding="utf-8"))
+    else:
+        tgroups, tcounts, ttotal = [], {s: 0 for s in SC_STATES}, 0
     html = original = html_path.read_text(encoding="utf-8")
 
     summary: list[str] = []
@@ -353,6 +469,7 @@ def main() -> int:
         "milestones": milestones,
         "priorities": priorities_view,
         "tasks": tasks,
+        "testing": {"total": ttotal, "counts": tcounts, "groups": tgroups},
     }
     html, ch = replace_artifact_data(html, payload)
     if ch:
@@ -367,6 +484,18 @@ def main() -> int:
     ):
         html, ch = replace_marker(html, name, value)
         if ch:
+            summary.append(f"gen:{name}")
+    # Browser-testing markers are optional (soft-skip if the section isn't in the HTML).
+    for name, value in (
+        ("testing_summary", testing_summary_html(tcounts, ttotal, tgroups)),
+        ("testing", testing_html(tgroups, ttotal)),
+    ):
+        pat = re.compile(rf"(<!-- gen:{name} -->)(.*?)(<!-- /gen:{name} -->)", re.DOTALL)
+        if not pat.search(html):
+            continue
+        before = html
+        html = pat.sub(lambda m, value=value: m.group(1) + value + m.group(3), html)
+        if html != before:
             summary.append(f"gen:{name}")
     html, meters = update_meters(html, milestones)
     if meters:

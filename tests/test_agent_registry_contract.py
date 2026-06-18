@@ -41,9 +41,7 @@ def _resolve_tool(name: str) -> bool:
     """Return True iff `name` would resolve at registry build time."""
     if name in _SDK_BUILTINS:
         return True
-    if name in EXPECTED_RUNTIME_CUSTOM_TOOLS:
-        return True
-    return False
+    return name in EXPECTED_RUNTIME_CUSTOM_TOOLS
 
 
 @pytest.mark.parametrize("agent_name", sorted(AGENT_DEFINITIONS.keys()))
