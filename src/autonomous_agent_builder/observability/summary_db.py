@@ -15,6 +15,60 @@ def _column_or_default(columns: set[str], column: str, default: str, alias: str)
     return f"{column} as {alias}" if column in columns else f"{default} as {alias}"
 
 
+def _window_token_totals(
+    conn: sqlite3.Connection,
+    *,
+    start_iso: str | None,
+    end_iso: str | None,
+    exclude_agents: tuple[str, ...] = ("optimization-agent",),
+) -> dict[str, int]:
+    """Return delivery token sum and run count for agent_runs in [start_iso, end_iso).
+
+    Token formula: sum(max(tokens_input - tokens_cached, 0) + tokens_output).
+    Uses julianday() for safe ISO8601 timezone comparison (Z vs +00:00).
+    start_iso=None means open-start; end_iso=None means open-end.
+    Rows with null/empty started_at are excluded.
+    """
+    if not _table_exists(conn, "agent_runs"):
+        return {"tokens": 0, "runs": 0}
+    columns = _table_columns(conn, "agent_runs")
+    if "started_at" not in columns:
+        return {"tokens": 0, "runs": 0}
+
+    tokens_input = "coalesce(tokens_input, 0)"
+    tokens_cached = "coalesce(tokens_cached, 0)" if "tokens_cached" in columns else "0"
+    tokens_output = "coalesce(tokens_output, 0)"
+    token_expr = f"max({tokens_input} - {tokens_cached}, 0) + {tokens_output}"
+
+    conditions: list[str] = [
+        "started_at is not null",
+        "started_at != ''",
+    ]
+    params: list[Any] = []
+
+    if exclude_agents:
+        placeholders = ", ".join("?" for _ in exclude_agents)
+        conditions.append(f"agent_name not in ({placeholders})")
+        params.extend(exclude_agents)
+
+    if start_iso is not None:
+        conditions.append("julianday(started_at) >= julianday(?)")
+        params.append(start_iso)
+    if end_iso is not None:
+        conditions.append("julianday(started_at) < julianday(?)")
+        params.append(end_iso)
+
+    where = "where " + " and ".join(conditions)
+    row = conn.execute(
+        f"select coalesce(sum({token_expr}), 0) as tokens, count(*) as runs"
+        f" from agent_runs {where}",
+        params,
+    ).fetchone()
+    if row is None:
+        return {"tokens": 0, "runs": 0}
+    return {"tokens": int(row[0] or 0), "runs": int(row[1] or 0)}
+
+
 def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
     return (
         conn.execute(

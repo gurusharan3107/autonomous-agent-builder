@@ -272,6 +272,7 @@ Source: [docs/autoresearch/](../autoresearch/). Activates only after [autoresear
 
 - [ ] `P3` All Track B prerequisites met (IMP-001..004 closed, baseline variance measured, gate-pass 1.0, complexity 0 violations). `T:backend:pending` `T:browser:na`
 - [ ] `P3` Autoresearch loop produces ≥1 optimization that survives variance gating and ships. `T:backend:pending` `T:browser:na`
+- [x] `P3` **IMP-045** — Loop-4 outcome attribution: read-time `improved/regressed/flat/insufficient_data/not_measurable` verdict on applied recommendations (token delta across the change's governed era; bounded-era window, no new persistence). Measurement primitive the variance-gating item depends on. `observability/recommendation_outcome.py` + `summary_db.py:_window_token_totals` + `summary_recommendation_lifecycle.py`; `test_recommendation_outcome.py`, `test_logs_runtime_aggregates.py`, `test_observability_summary.py`. `T:backend` `T:browser:na`
 - [ ] `P3` Optimizations reflected back into runtime policy (`execution_policy.py`) + prompt shape, not just the results TSV. `T:backend:pending` `T:browser:na`
 - [ ] `P3` After-fix sibling search — a bounded `repo-researcher` scans for same-pattern siblings before the sprint ends. OPTIMIZE_IDEAS #11; promote on recurring same-pattern regressions. `T:backend:pending` `T:browser:na`
 

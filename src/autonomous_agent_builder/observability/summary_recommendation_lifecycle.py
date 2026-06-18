@@ -5,12 +5,17 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from autonomous_agent_builder.observability.recommendation_outcome import (
+    compute_outcome,
+    metric_for_code,
+)
 from autonomous_agent_builder.observability.summary_db import (
     _column_or_default,
     _maybe_json_dict,
     _row_dict,
     _table_columns,
     _table_exists,
+    _window_token_totals,
 )
 from autonomous_agent_builder.observability.summary_recommendations import (
     _deterministic_recommendation,
@@ -159,6 +164,61 @@ def _recommendation_lifecycle(conn: sqlite3.Connection) -> dict[str, Any]:
                     payload,
                 )
 
+    # --- Loop-4 outcome attribution (Design A: read-time, applied records only) ---
+    # Collect all era-boundary timestamps from every decision in by_code, sorted.
+    all_decided_ats: list[str] = sorted(
+        {
+            str(rec.get("decided_at") or "")
+            for rec in lifecycle["by_code"].values()
+            if str(rec.get("decided_at") or "")
+        }
+    )
+    for record in lifecycle["applied"]:
+        decided_at = str(record.get("decided_at") or "")
+        code = str(record.get("code") or "")
+        metric = metric_for_code(code)
+
+        if not decided_at:
+            record["outcome"] = {
+                "verdict": "insufficient_data",
+                "metric": metric,
+            }
+            continue
+
+        # Determine era boundaries around this decided_at.
+        try:
+            idx = all_decided_ats.index(decided_at)
+        except ValueError:
+            idx = 0
+
+        before_boundary: str | None = all_decided_ats[idx - 1] if idx > 0 else None
+        after_boundary: str | None = (
+            all_decided_ats[idx + 1] if idx + 1 < len(all_decided_ats) else None
+        )
+
+        if metric is None:
+            record["outcome"] = {"verdict": "not_measurable", "metric": None}
+            continue
+
+        # Query token windows using the already-open connection.
+        before_window = _window_token_totals(
+            conn,
+            start_iso=before_boundary,
+            end_iso=decided_at,
+        )
+        after_window = _window_token_totals(
+            conn,
+            start_iso=decided_at,
+            end_iso=after_boundary,
+        )
+        record["outcome"] = compute_outcome(
+            before_window["tokens"],
+            after_window["tokens"],
+            before_window["runs"],
+            after_window["runs"],
+        )
+    # Sync by_code references (by_code and applied share the same dict objects).
+
     for status_key in ("applied", "rejected", "not_applicable", "deferred", "observed"):
         lifecycle["counts"][status_key] = len(lifecycle[status_key])
     return lifecycle
@@ -219,6 +279,7 @@ def _record_recommendation_decision(
         "decided_at": decided_at,
         "agent_name": str(payload.get("agent_name") or "optimization-agent"),
         "selected_recommendation": str(payload.get("selected_recommendation") or ""),
+        "outcome": None,
     }
     lifecycle["by_code"][code] = decision
     for status_key in ("applied", "rejected", "not_applicable", "deferred", "observed"):

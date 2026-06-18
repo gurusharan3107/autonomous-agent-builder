@@ -1203,3 +1203,179 @@ def test_recommendations_non_empty_in_active_case(monkeypatch, tmp_path):
     )
     codes = {item["code"] for item in payload["recommendations"]}
     assert "prompt_over_phase_budget" in codes
+
+
+# ---------------------------------------------------------------------------
+# Loop-4 outcome attribution tests
+# ---------------------------------------------------------------------------
+
+
+def _init_db_with_outcome_columns(path):
+    """Create a DB with status/output_text/started_at/completed_at columns."""
+    _init_db(path)
+    conn = sqlite3.connect(path)
+    conn.executescript(
+        """
+        alter table agent_runs add column status text;
+        alter table agent_runs add column output_text text;
+        alter table agent_runs add column completed_at text;
+        alter table agent_runs add column started_at text;
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+def test_recommendation_lifecycle_outcome_token_code(monkeypatch, tmp_path):
+    """Applied record with a token-typed code gets a measured outcome verdict.
+
+    Fixture:
+    - 4 delivery runs BEFORE the optimization timestamp  (2 each agent)
+    - optimization-agent run at 2026-05-06T00:00:00+00:00 with
+      selected_recommendation='reduce_code-gen_raw_tokens', status='implemented'
+    - 4 delivery runs AFTER the optimization timestamp
+    The before window has higher tokens → expected verdict = 'improved'.
+    """
+    monkeypatch.setenv("RUNTIME_SDK", "claude")
+    db_path = tmp_path / "agent_builder.db"
+    _init_db_with_outcome_columns(db_path)
+    conn = sqlite3.connect(db_path)
+
+    opt_ts = "2026-05-06T00:00:00+00:00"
+    code = "reduce_code-gen_raw_tokens"
+
+    # Before: 4 delivery runs with noncached+output = max(2000-500,0)+200 = 1700 each
+    before_timestamps = [
+        "2026-05-05T08:00:00+00:00",
+        "2026-05-05T12:00:00+00:00",
+        "2026-05-05T16:00:00+00:00",
+        "2026-05-05T20:00:00+00:00",
+    ]
+    for i, ts in enumerate(before_timestamps):
+        conn.execute(
+            """
+            insert into agent_runs (
+                id, task_id, agent_name, runtime_sdk, provider, model, effort,
+                cost_usd, tokens_input, tokens_output, tokens_cached, num_turns,
+                duration_ms, stop_reason, observability, status, started_at
+            )
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                f"before-{i}", "task-1", "code-gen", "claude_agent_sdk", "anthropic",
+                "sonnet", "medium", 0.0, 2000, 200, 500, 1, 1000, "end_turn", "{}", "completed", ts,
+            ),
+        )
+
+    # After: 4 delivery runs with lower tokens: noncached+output = max(800-100,0)+80 = 780
+    after_timestamps = [
+        "2026-05-06T08:00:00+00:00",
+        "2026-05-06T12:00:00+00:00",
+        "2026-05-06T16:00:00+00:00",
+        "2026-05-06T20:00:00+00:00",
+    ]
+    for i, ts in enumerate(after_timestamps):
+        conn.execute(
+            """
+            insert into agent_runs (
+                id, task_id, agent_name, runtime_sdk, provider, model, effort,
+                cost_usd, tokens_input, tokens_output, tokens_cached, num_turns,
+                duration_ms, stop_reason, observability, status, started_at
+            )
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                f"after-{i}", "task-1", "code-gen", "claude_agent_sdk", "anthropic",
+                "sonnet", "medium", 0.0, 800, 80, 100, 1, 500, "end_turn", "{}", "completed", ts,
+            ),
+        )
+
+    # Optimization run
+    opt_payload = {
+        "agent_name": "optimization-agent",
+        "status": "implemented",
+        "selected_recommendation": code,
+    }
+    conn.execute(
+        """
+        insert into agent_runs (
+            id, task_id, agent_name, runtime_sdk, provider, model, effort,
+            cost_usd, tokens_input, tokens_output, tokens_cached, num_turns,
+            duration_ms, stop_reason, observability, status, output_text, completed_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "opt-1", "task-1", "optimization-agent", "deterministic", "builder",
+            "none", "none", 0.0, 0, 0, 0, 0, 1,
+            "deterministic_post_ship_optimization", "{}", "completed",
+            json.dumps(opt_payload), opt_ts,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    payload = dashboard_observability_summary(db_path)
+    lifecycle = payload["observability_coverage"]["recommendation_lifecycle"]
+
+    # by_code and applied list must both carry outcome
+    by_code_record = lifecycle["by_code"].get(code)
+    assert by_code_record is not None, f"code {code!r} not in by_code"
+    outcome = by_code_record.get("outcome")
+    assert outcome is not None, "outcome must be set on applied record"
+    assert outcome["verdict"] == "improved", (
+        f"expected 'improved' but got {outcome['verdict']!r}; outcome={outcome}"
+    )
+    assert outcome["metric"] == "noncached_plus_output_tokens"
+
+    # The applied list entry must carry the same outcome object (shared reference)
+    applied_entries = [e for e in lifecycle["applied"] if e.get("code") == code]
+    assert applied_entries, f"code {code!r} not found in applied list"
+    assert applied_entries[0]["outcome"] is by_code_record["outcome"], (
+        "applied list entry and by_code entry must share the same outcome dict"
+    )
+
+
+def test_recommendation_lifecycle_outcome_not_measurable(monkeypatch, tmp_path):
+    """Applied record with maintain_current_flow gets verdict='not_measurable'."""
+    monkeypatch.setenv("RUNTIME_SDK", "claude")
+    db_path = tmp_path / "agent_builder.db"
+    _init_db_with_outcome_columns(db_path)
+    conn = sqlite3.connect(db_path)
+
+    opt_ts = "2026-05-06T00:00:00+00:00"
+    code = "maintain_current_flow"
+
+    opt_payload = {
+        "agent_name": "optimization-agent",
+        "status": "implemented",
+        "selected_recommendation": code,
+    }
+    conn.execute(
+        """
+        insert into agent_runs (
+            id, task_id, agent_name, runtime_sdk, provider, model, effort,
+            cost_usd, tokens_input, tokens_output, tokens_cached, num_turns,
+            duration_ms, stop_reason, observability, status, output_text, completed_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "opt-2", "task-1", "optimization-agent", "deterministic", "builder",
+            "none", "none", 0.0, 0, 0, 0, 0, 1,
+            "deterministic_post_ship_optimization", "{}", "completed",
+            json.dumps(opt_payload), opt_ts,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    payload = dashboard_observability_summary(db_path)
+    lifecycle = payload["observability_coverage"]["recommendation_lifecycle"]
+
+    by_code_record = lifecycle["by_code"].get(code)
+    assert by_code_record is not None
+    outcome = by_code_record.get("outcome")
+    assert outcome is not None, "outcome must be set even for non-measurable codes"
+    assert outcome["verdict"] == "not_measurable"
+    assert outcome["metric"] is None
