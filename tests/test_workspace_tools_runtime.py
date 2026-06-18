@@ -68,6 +68,54 @@ async def test_run_linter_timeout_kills_process(tmp_path, monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_linter_node_workspace_routes_to_npm_lint(tmp_path, monkeypatch) -> None:
+    # Node workspace with a lint script: run_linter must call npm run lint, not ruff.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_npm = bin_dir / "npm"
+    fake_npm.write_text(
+        f"#!{sys.executable}\nimport sys\nprint('npm lint ok')\nsys.exit(0)\n",
+        encoding="utf-8",
+    )
+    fake_npm.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
+    (tmp_path / "package.json").write_text(
+        '{"scripts": {"lint": "eslint ."}, "devDependencies": {}}',
+        encoding="utf-8",
+    )
+
+    result = await run_linter(str(tmp_path))
+
+    assert result["metadata"]["clean"] is True
+    assert "npm lint ok" in result["content"][0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_run_linter_node_workspace_no_lint_script_falls_back_to_ruff(
+    tmp_path, monkeypatch
+) -> None:
+    # Node workspace without a lint script falls back to ruff (Python linter).
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_ruff = bin_dir / "ruff"
+    fake_ruff.write_text(
+        f"#!{sys.executable}\nprint('ruff ok')\nimport sys\nsys.exit(0)\n",
+        encoding="utf-8",
+    )
+    fake_ruff.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
+    (tmp_path / "package.json").write_text(
+        '{"scripts": {}, "devDependencies": {}}',
+        encoding="utf-8",
+    )
+
+    result = await run_linter(str(tmp_path))
+
+    assert result["metadata"]["clean"] is True
+    assert "ruff ok" in result["content"][0]["text"]
+
+
+@pytest.mark.asyncio
 async def test_run_command_bounds_large_output(tmp_path) -> None:
     result = await run_command(
         str(tmp_path),

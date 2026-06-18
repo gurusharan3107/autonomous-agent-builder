@@ -164,6 +164,14 @@ def test_write_minimal_gate_config_node_creates_package_and_eslint(tmp_path) -> 
     assert (tmp_path / "eslint.config.js").exists()
     needs, _ = should_scaffold(str(tmp_path))
     assert needs is False
+    # ESLint config must use globals.browser so browser APIs (fetch, URL, etc.) resolve.
+    eslint_content = (tmp_path / "eslint.config.js").read_text()
+    assert "globals.browser" in eslint_content
+    assert 'from "globals"' in eslint_content
+    # package.json must declare globals devDependency.
+    import json as _json
+    pkg = _json.loads((tmp_path / "package.json").read_text())
+    assert "globals" in pkg.get("devDependencies", {})
 
 
 def test_write_minimal_gate_config_unsupported_language_does_nothing(tmp_path) -> None:
