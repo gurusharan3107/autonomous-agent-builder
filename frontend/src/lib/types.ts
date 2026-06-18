@@ -264,6 +264,8 @@ export interface OptimizationSummary {
   cache_ratio: number;
   phase_ceremony_tokens: number;
   avoidable_token_estimate: number;
+  rework_token_total: number;
+  rework_share: number;
   avoidable_cost_flags: Array<{ flag: string; count: number }>;
   chunk_pressure?: {
     available: boolean;

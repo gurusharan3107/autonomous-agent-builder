@@ -9,6 +9,27 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-18 - feat(optimization): rework-share efficiency verdict + gate-timeout reprovisioning
+
+The optimization summary now treats wasted retry spend as a first-class efficiency signal,
+and a gate that times out (rather than failing on code) is routed to deterministic
+re-provisioning instead of the LLM remediator.
+
+### Added
+
+- `services/codex_optimization.py`: `summarize_runs_for_optimization` now emits `rework_token_total` (gate-remediator raw tokens) and `rework_share` (rework / `raw_total`). When `rework_share >= 0.25`, `_recommended_next_change` returns the new verdict `reduce_rework_before_token_band` — prioritized ahead of the raw-token-band check, because retry waste is the cheaper lever to pull first.
+- `MetricsPage.tsx` + `types.ts`: new "Rework" panel (rework % / gate-pass %) and an "inefficient (rework)" benchmark label that overrides the band status at ≥25% rework. Grid widened to 5 columns.
+
+### Fixed
+
+- `orchestrator/gate_feedback.py`: new Step 1.6 — a gate `TIMEOUT` / `DEADLINE_EXCEEDED` failure is a non-code failure (cold workspace re-running deps inside the gate deadline). The LLM remediator cannot fix a timeout, so it is now routed to deterministic out-of-band re-provisioning (`_reprovision_env`, now Python **and** Node via `ensure_node_env`) + a gate re-run, bounded by the retry budget.
+- `ObservabilityPage.tsx`: unified recommendations now dedupe by `code` (not just `detail`) and drop empty rows, removing the duplicate/blank recommendation cards.
+- `observability/summary_runtime_aggregates.py`: removed the redundant `baseline_ready` info recommendation (it duplicated the deterministic `deterministic_baseline_ready` rule surfaced in the UI).
+
+### Validation
+
+- `tests/test_codex_optimization.py` (+rework-share verdict cases), `tests/test_gate_feedback.py` (+timeout-reprovision path), `tests/test_observability_summary.py`, `tests/test_dashboard_api.py` — 99 passed; `ruff check` clean on all touched files. `T:backend` `T:browser:pending` (Metrics/Observability render needs a live dashboard sweep).
+
 ## 2026-06-17 - fix(db): ui_preview_enabled upgrade-path migration (found by the optimization loop's baseline)
 
 The new `optimization` loop's first activation step — an autoresearch baseline — surfaced a real Builder upgrade-path bug. IMP-034b added `Feature.ui_preview_enabled` (`db/models.py:257`) but no matching idempotent migration in `db/session.py`. Since `Base.metadata.create_all` only CREATEs absent tables (never ALTERs existing ones), **any Builder DB created before IMP-034b** — real users upgrading, and the autoresearch seed snapshot — crashed on every ORM query touching `features` with `sqlite3.OperationalError: no such column: features.ui_preview_enabled`. The Builder server never became ready, blocking the entire baseline.

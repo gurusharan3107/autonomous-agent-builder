@@ -1146,6 +1146,9 @@ class TestMetricsEndpoint:
         }
         assert set(data.keys()) == expected_fields
         assert data["optimization_summary"]["primary_score"] == "raw_tokens"
+        assert data["optimization_summary"]["schema_version"] == "1"
+        assert "rework_token_total" in data["optimization_summary"]
+        assert "rework_share" in data["optimization_summary"]
         assert isinstance(data["optimization_decision"], dict)
         assert isinstance(data["runtime_decision_summary"], dict)
         assert isinstance(data["deterministic_script_candidates"], list)
