@@ -1,48 +1,32 @@
 {
   "A": {
-    "status": "stable",
-    "stable_runs": 5,
-    "total_runs": 5,
-    "mean": 29859,
-    "stdev": 7628.344414091435,
-    "min": 21285,
-    "max": 39998,
-    "noise_floor_2sigma": 14602.31117181713
-  },
-  "B": {
-    "status": "stable",
-    "stable_runs": 4,
-    "total_runs": 5,
-    "mean": 52723.25,
-    "stdev": 29567.72630617151,
-    "min": 33989,
-    "max": 96625,
-    "noise_floor_2sigma": -6412.202612343019
-  },
-  "C": {
-    "status": "stable",
-    "stable_runs": 4,
-    "total_runs": 4,
-    "mean": 47017,
-    "stdev": 12470.20392776317,
-    "min": 37857,
-    "max": 65334,
-    "noise_floor_2sigma": 22076.59214447366
-  },
-  "D": {
     "status": "unstable",
     "stable_runs": 0,
     "total_runs": 1,
     "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
   },
+  "B": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 0,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  },
+  "C": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 0,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  },
+  "D": {
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 0,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
+  },
   "E": {
-    "status": "stable",
-    "stable_runs": 4,
-    "total_runs": 5,
-    "mean": 38018.5,
-    "stdev": 5665.483121499878,
-    "min": 33133,
-    "max": 45337,
-    "noise_floor_2sigma": 26687.533757000245
+    "status": "unstable",
+    "stable_runs": 0,
+    "total_runs": 0,
+    "note": "Fewer than 3 clean baseline runs \u2014 \u03c3 unreliable."
   }
 }
