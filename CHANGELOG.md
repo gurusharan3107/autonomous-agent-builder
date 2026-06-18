@@ -9,6 +9,22 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-18 - fix(orchestrator): IMP-043(a) — durable FAILED-state persist on the dispatch failure path
+
+Stabilization-loop tick (Epoch 1, bug-fix before features). Burned down a P2 finding the codebase-review loop filed but never fixed.
+
+### Fixed
+
+- `orchestrator/orchestrator.py` (`dispatch` exception handler): the IMP-010 defense suppressed the rollback error but left the FAILED-state `self.db.flush()` **unguarded**. When the session was unrecoverable the `flush()` raised, the exception escaped `dispatch`, the in-memory `FAILED` status was never committed, and the task stayed in a dispatchable status → re-dispatch loop. Now the `flush()` is guarded; on failure it logs `phase_error_persist_fallback` and persists FAILED durably via a fresh short-lived `get_session_factory()` session that re-fetches the task by id and commits (the established side-channel pattern from `agent_run_lifecycle.py:252` / `orchestrator.py:1304`); `phase_error_persist_failed` is logged if the row is absent.
+
+### Validation
+
+- New paired test `tests/test_orchestrator.py::TestDispatchFailedPersistFallback::test_failed_state_persisted_via_fallback_when_primary_flush_raises` — inserts a real task row, forces the primary `flush()` to raise, asserts `dispatch` does not propagate and the task is durably `FAILED`/`blocked_reason` in a separate verify session. Fails-without / passes-with. `tests/test_orchestrator.py` 45 passed; `ruff check` clean; `state-integrity` quality-gate ok. `T:backend` `T:browser:na`.
+
+### Notes
+
+- Scoped to IMP-043(a) (deterministic root cause). Part (b) — `await runtime.run()` has no orchestrator-level timeout — was **split to IMP-044** and left open as a design decision: the Codex runtime already enforces internal idle/response timeouts, so wrapping at the orchestrator level (and the on-timeout transition) is intent-dependent and was not guess-fixed per the Shared fix contract auto-fix gate.
+
 ## 2026-06-18 - feat(optimization): rework-share efficiency verdict + gate-timeout reprovisioning
 
 The optimization summary now treats wasted retry spend as a first-class efficiency signal,

@@ -335,9 +335,41 @@ class Orchestrator:
             # flush the blocked-reason state.
             with contextlib.suppress(Exception):
                 await self.db.rollback()
+            # Set in-memory state first so it is visible regardless of persist path.
             set_task_status(task, TaskStatus.FAILED)
             task.blocked_reason = str(e)
-            await self.db.flush()
+            # IMP-043(a): guard the FAILED-state persist.  If self.db is
+            # unrecoverable (the rollback above was itself suppressed), flush()
+            # below would raise, the status would never be written, and the
+            # task would be re-dispatched in a loop.  Fall back to a fresh
+            # short-lived session so FAILED is always persisted durably.
+            try:
+                await self.db.flush()
+            except Exception as flush_exc:  # noqa: BLE001
+                log.warning(
+                    "phase_error_persist_fallback",
+                    task_id=task.id,
+                    phase=handler_name,
+                    error=str(flush_exc),
+                )
+                with contextlib.suppress(Exception):
+                    from autonomous_agent_builder.db.session import get_session_factory
+
+                    async with get_session_factory()() as fresh_db:
+                        from autonomous_agent_builder.db.models import Task as _Task
+
+                        db_task = await fresh_db.get(_Task, task.id)
+                        if db_task is not None:
+                            set_task_status(db_task, TaskStatus.FAILED)
+                            db_task.blocked_reason = task.blocked_reason
+                            await fresh_db.commit()
+                        else:
+                            log.error(
+                                "phase_error_persist_failed",
+                                task_id=task.id,
+                                phase=handler_name,
+                                reason="task_not_found_in_fallback_session",
+                            )
 
     async def _phase_planning(self, task: Task) -> None:
         """Run planning agent, then set DESIGN_REVIEW for approval."""
