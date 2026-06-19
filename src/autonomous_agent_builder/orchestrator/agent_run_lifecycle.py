@@ -358,6 +358,11 @@ async def run_agent_lifecycle(
 
     monitor_task = asyncio.create_task(monitor_workspace_diff()) if workspace_path else None
     try:
+        # IMP-044: arm the inactivity watchdog on this orchestrated lane.
+        # run_agent_lifecycle is only called by the orchestrator (no can_use_tool);
+        # the interactive chat lane drives runtime.run() directly without this helper.
+        from autonomous_agent_builder.agents.runner import _STREAM_EVENT_IDLE_TIMEOUT_SECONDS
+
         result = await runtime.run(
             prompt,
             agent=agent_name,
@@ -366,6 +371,7 @@ async def run_agent_lifecycle(
             effort=runtime_policy.effort,
             on_chunk=record_output_chunk,
             on_tool_event=record_runtime_event,
+            idle_timeout_seconds=_STREAM_EVENT_IDLE_TIMEOUT_SECONDS,
         )
     finally:
         # IMP-010: always stop the monitor task regardless of whether runtime.run()

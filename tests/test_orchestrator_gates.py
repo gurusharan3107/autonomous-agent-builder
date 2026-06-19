@@ -326,6 +326,39 @@ class TestQualityGatesPhase:
             "system doc is not linked to the active task or feature: system-docs/feature-testing.md"
         )
 
+    async def test_imp042_retry_count_reset_on_gate_pass(self, orchestrator):
+        """IMP-042: retry_count carried from a prior gate is reset to 0 when the
+        quality gate passes and the task advances to PR_CREATION — prevents
+        premature quality_gate_cap_exceeded BLOCKED on the next gate cycle."""
+        task = _make_task()
+        task.retry_count = 2  # retries consumed clearing a prior gate
+        pass_result = AggregateGateResult(
+            status=GateStatus.PASS,
+            results=[
+                GateResult(
+                    gate_name="code_quality",
+                    status=GateStatus.PASS,
+                    findings_count=0,
+                    elapsed_ms=100,
+                ),
+            ],
+        )
+        with patch(
+            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
+            new_callable=AsyncMock,
+            return_value=pass_result,
+        ), patch.object(
+            orchestrator,
+            "_run_documentation_refresh_gate",
+            AsyncMock(return_value=None),
+        ):
+            await orchestrator._phase_quality_gates(task)
+
+        assert task.status == TaskStatus.PR_CREATION
+        assert task.retry_count == 0, (
+            "retry_count must be reset to 0 on gate pass (IMP-042)"
+        )
+
 
 @pytest.mark.asyncio
 class TestKnowledgeLifecycleContext:

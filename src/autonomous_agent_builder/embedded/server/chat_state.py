@@ -151,6 +151,41 @@ class ChatSessionHub:
                 if task is None or not task.done()
             ]
 
+    def has_active_subscribers(self, session_id: str) -> bool:
+        """Return True if at least one SSE queue is still registered for session_id.
+
+        Synchronous (no lock) — safe to call from an asyncio ``finally`` block
+        after ``unregister_session`` has already run under the lock; by the time
+        this is called the state is stable for this coroutine step.
+        """
+        clients = self._session_clients.get(session_id)
+        return bool(clients)
+
+    async def cancel_session_pending_answers(self, session_id: str) -> int:
+        """Cancel every pending-answer future belonging to session_id.
+
+        Called when the last SSE subscriber for a session disconnects (IMP-040)
+        so that awaited ``create_pending_answer`` futures (AskUserQuestion /
+        approval cards) unblock with CancelledError instead of pinning the
+        runtime session forever.
+
+        Returns the number of futures cancelled.
+        """
+        to_cancel: list[asyncio.Future[dict[str, Any]]] = []
+        async with self._lock:
+            stale_keys = [
+                eid
+                for eid, (sid, _) in self._pending_answers.items()
+                if sid == session_id
+            ]
+            for eid in stale_keys:
+                _, future = self._pending_answers.pop(eid)
+                to_cancel.append(future)
+        for future in to_cancel:
+            if not future.done():
+                future.cancel()
+        return len(to_cancel)
+
     async def pending_answer_count(self) -> int:
         async with self._lock:
             return sum(

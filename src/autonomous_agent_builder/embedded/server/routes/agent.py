@@ -1150,6 +1150,11 @@ async def chat_stream(
                     yield {"comment": "keepalive"}
         finally:
             await hub.unregister_session(session_id, queue)
+            # IMP-040: cancel pending-answer futures when the last SSE subscriber
+            # disconnects so AskUserQuestion / approval-card awaits unblock with
+            # CancelledError instead of pinning the runtime session forever.
+            if not hub.has_active_subscribers(session_id):
+                await hub.cancel_session_pending_answers(session_id)
 
     return EventSourceResponse(event_generator())
 

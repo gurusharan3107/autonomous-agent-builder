@@ -83,6 +83,7 @@ class ClaudeRuntime(AgentRuntime):
         subagents: tuple[str, ...] | None = None,
         can_use_tool: Callable[..., Any] | None = None,
         on_tool_event: Callable[..., Any] | None = None,
+        idle_timeout_seconds: float | None = None,
     ) -> RunResult:
         """Execute using existing AgentRunner.
 
@@ -107,6 +108,7 @@ class ClaudeRuntime(AgentRuntime):
                 on_stream_usage=on_stream_usage,
                 can_use_tool=can_use_tool,
                 on_tool_event=on_tool_event,
+                idle_timeout_seconds=idle_timeout_seconds,
             )
             return _runner_result_to_runtime_result(result)
         except Exception as e:
@@ -122,6 +124,7 @@ class ClaudeRuntime(AgentRuntime):
                         on_stream_usage=on_stream_usage,
                         can_use_tool=can_use_tool,
                         on_tool_event=on_tool_event,
+                        idle_timeout_seconds=idle_timeout_seconds,
                     )
                     runtime_result = _runner_result_to_runtime_result(result)
                     observability = dict(runtime_result.observability or {})

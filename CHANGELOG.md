@@ -9,6 +9,24 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-19 - fix(stability): IMP-042/040/044 — never-strand a customer task (retry-budget reset, SSE future cancel, runtime idle timeout)
+
+Stabilization tick toward the dogfooding-reliability bar ("a customer builds feature after feature across multiple sprints without hitting a blocker"). The three open P2 items were design-flagged; the operator made the calls and these are the three customer-stranding failure modes, now closed at root.
+
+### Fixed
+
+- **IMP-044** (`agents/runner.py`, `runtime/claude_runtime.py`, `orchestrator/agent_run_lifecycle.py`, `orchestrator/failure_diagnosis.py`): the Claude runtime stream loop had no idle timeout (Codex did), so a hung SDK stranded the task in a non-terminal phase forever. Added `_STREAM_EVENT_IDLE_TIMEOUT_SECONDS = 120.0` + an `idle_timeout_seconds` param: when set, each `receive_response()` step is bounded by `asyncio.wait_for` (inactivity clock, resets per message — legitimate long turns survive); on expiry returns `RunResult.error` with **no** capability-limit stop_reason → recoverable FAILED. **Armed only on the orchestrated lane** (where `can_use_tool` never blocks on an operator); the chat lane is left unwatched and covered by IMP-040 instead. New `failure_diagnosis.is_runtime_idle_timeout` → `issue="runtime_idle_timeout"`.
+- **IMP-040** (`embedded/server/chat_state.py`, `embedded/server/routes/agent.py`): an unanswered AskUserQuestion / approval-card `await future` pinned the live runtime session forever. Added `cancel_session_pending_answers()` + `has_active_subscribers()`; the SSE `event_generator` `finally` cancels the session's pending futures **only when no subscribers remain** (multi-tab safe), raising `CancelledError` to release the session.
+- **IMP-042** (`orchestrator/quality_gate_runner.py`): `retry_count` reset only on recovery, never on forward progress → a task carried consumed gate-retries into the next gate cycle and hit `quality_gate_cap_exceeded` prematurely. Now reset to 0 on the gate PASS → `PR_CREATION` forward-progress branch (per-gate budget).
+
+### Validation
+
+- Full suite green; `ruff check .` clean; `state-integrity` + `architecture-boundary` + `claude-agent-sdk` quality-gates ok. Paired prove-fail/pass-with tests for all three (`test_orchestrator_gates.py`, `test_embedded_server_app.py`, `test_agent_runner.py`, `test_failure_diagnosis.py`). `T:backend` `T:browser:na`.
+
+### Notes
+
+- Operator design calls (via AskUserQuestion): idle (not wall-clock) timeout → recoverable FAILED; cancel-on-disconnect for interactive awaits; per-gate retry budget reset on progress. Detail: ROADMAP M1.1 IMP-040/042/044.
+
 ## 2026-06-19 - chore(build-maintain-cycle): node-workspace eslint-ignores + self-verify §3a + hermes-chrome skill sync gate
 
 Landed the green, uncommitted follow-on from the prior build-maintain-cycle session so the tree is clean before the stabilization tick.

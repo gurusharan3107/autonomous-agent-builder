@@ -48,6 +48,11 @@ from autonomous_agent_builder.services.provider_limits import (
 
 log = structlog.get_logger()
 
+# IMP-044: inactivity (idle) timeout for the orchestrated lane.  Clock resets on
+# each received stream message so legitimate long code-gen turns are not killed.
+# Matches the Codex app-server _TURN_EVENT_IDLE_TIMEOUT_SECONDS (120 s).
+_STREAM_EVENT_IDLE_TIMEOUT_SECONDS: float = 120.0
+
 # Phases where a valid git HEAD is a precondition for dispatch.
 _PHASES_REQUIRE_GIT_HEAD: frozenset[str] = frozenset(
     {
@@ -372,6 +377,7 @@ class AgentRunner:
         on_stream_usage: Any | None = None,
         can_use_tool: Any | None = None,
         on_tool_event: Any | None = None,
+        idle_timeout_seconds: float | None = None,
     ) -> RunResult:
         """Execute an agent phase.
 
@@ -438,6 +444,7 @@ class AgentRunner:
                 on_stream_usage=on_stream_usage,
                 can_use_tool=can_use_tool,
                 on_tool_event=on_tool_event,
+                idle_timeout_seconds=idle_timeout_seconds,
             )
             if self._is_empty_sdk_result(result):
                 if agent_def.model != "sonnet" and resume_session is None:
@@ -464,6 +471,7 @@ class AgentRunner:
                         on_stream_usage=on_stream_usage,
                         can_use_tool=can_use_tool,
                         on_tool_event=on_tool_event,
+                        idle_timeout_seconds=idle_timeout_seconds,
                     )
                 if self._is_empty_sdk_result(result):
                     return RunResult(
@@ -579,6 +587,7 @@ class AgentRunner:
         on_stream_usage: Any | None,
         can_use_tool: Any | None,
         on_tool_event: Any | None,
+        idle_timeout_seconds: float | None = None,
     ) -> RunResult:
         """Execute the SDK query() call.
 
@@ -690,7 +699,48 @@ class AgentRunner:
         try:
             async with ClaudeSDKClient(options=options) as client:
                 await client.query(_prompt_stream())
-                async for message in client.receive_response():
+
+                if idle_timeout_seconds is None:
+                    # Chat lane: plain async-for, no watchdog (can_use_tool blocks
+                    # inside the loop legitimately waiting on operator input).
+                    response_iter = client.receive_response().__aiter__()
+                else:
+                    # Orchestrated lane: wrap each __anext__ call with a per-step
+                    # deadline (IMP-044).  Clock resets on every received message so
+                    # only true inactivity (no stream events) triggers expiry.
+                    response_iter = client.receive_response().__aiter__()
+
+                async def _next_message(agen: Any) -> Any:
+                    """Await the next message, raising StopAsyncIteration on exhaustion."""
+                    return await agen.__anext__()
+
+                while True:
+                    try:
+                        if idle_timeout_seconds is not None:
+                            import asyncio as _asyncio
+
+                            message = await _asyncio.wait_for(
+                                _next_message(response_iter),
+                                timeout=idle_timeout_seconds,
+                            )
+                        else:
+                            message = await _next_message(response_iter)
+                    except StopAsyncIteration:
+                        break
+                    except TimeoutError:
+                        return RunResult(
+                            session_id=session_id,
+                            output_text="\n".join(output_parts),
+                            error=(
+                                f"Claude runtime idle timeout: no stream event for "
+                                f"{idle_timeout_seconds:.0f}s"
+                            ),
+                            observability={
+                                **observability.summary,
+                                "runtime_policy": runtime_policy.to_payload(),
+                            },
+                        )
+
                     if isinstance(message, SystemMessage) and message.subtype == "init":
                         session_id = message.data.get("session_id")
 
@@ -740,6 +790,21 @@ class AgentRunner:
                             capture_diff=capture_workspace_diff,
                         )
 
+        except TimeoutError:
+            # Should not reach here (caught in the while-loop above), but guard
+            # in case the timeout fires outside the loop (e.g. during client.query).
+            return RunResult(
+                session_id=session_id,
+                output_text="\n".join(output_parts),
+                error=(
+                    f"Claude runtime idle timeout: no stream event for "
+                    f"{idle_timeout_seconds:.0f}s"
+                ),
+                observability={
+                    **observability.summary,
+                    "runtime_policy": runtime_policy.to_payload(),
+                },
+            )
         except Exception as e:
             log.error(
                 "sdk_query_error",

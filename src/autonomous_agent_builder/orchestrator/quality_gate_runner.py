@@ -142,6 +142,10 @@ async def run_phase_quality_gates(orchestrator: Any, task: Task) -> None:
             task.blocked_reason = documentation_gap
         else:
             task.blocked_reason = None
+            # IMP-042: reset per-gate retry budget on forward progress so retries
+            # consumed clearing one gate do not carry over and trigger the
+            # quality_gate_cap_exceeded BLOCKED check prematurely.
+            task.retry_count = 0
             set_task_status(task, TaskStatus.PR_CREATION)
     elif gate_result.status == GateStatus.ERROR:
         error_codes = sorted({r.error_code for r in gate_result.results if r.error_code})

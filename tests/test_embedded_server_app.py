@@ -49,6 +49,114 @@ async def test_chat_session_hub_shutdown_all_cancels_background_runs():
             await asyncio.gather(task, return_exceptions=True)
 
 
+# IMP-040: cancel pending-answer futures on last-subscriber disconnect ----------
+
+
+async def test_cancel_session_pending_answers_cancels_only_matching_session():
+    """cancel_session_pending_answers cancels futures for the named session and
+    leaves unrelated sessions untouched; returns the count cancelled."""
+    hub = ChatSessionHub()
+
+    f1 = await hub.create_pending_answer("s1", "e1")
+    f2 = await hub.create_pending_answer("s1", "e2")
+    f3 = await hub.create_pending_answer("s2", "e3")
+
+    count = await hub.cancel_session_pending_answers("s1")
+
+    assert count == 2
+    assert f1.cancelled()
+    assert f2.cancelled()
+    # s2 future must be untouched
+    assert not f3.done()
+    # s1 futures must have been removed from internal state
+    assert not await hub.has_pending_answer("e1")
+    assert not await hub.has_pending_answer("e2")
+    assert await hub.has_pending_answer("e3")
+
+    # cleanup
+    if not f3.done():
+        f3.cancel()
+
+
+async def test_has_active_subscribers_reflects_registration_state():
+    """has_active_subscribers returns True while a queue is registered and False
+    once the last subscriber unregisters."""
+    hub = ChatSessionHub()
+
+    assert not hub.has_active_subscribers("sess")
+    queue = await hub.register_session("sess")
+    assert hub.has_active_subscribers("sess")
+    await hub.unregister_session("sess", queue)
+    assert not hub.has_active_subscribers("sess")
+
+
+async def test_event_generator_cancels_pending_future_on_disconnect(monkeypatch):
+    """When the SSE client disconnects and no other subscriber remains for the
+    session, event_generator must cancel outstanding pending-answer futures
+    (IMP-040 integration path)."""
+    hub = ChatSessionHub()
+    future = await hub.create_pending_answer("sess-x", "ev-1")
+
+    # Register a subscriber, then simulate disconnect on first poll
+    queue = await hub.register_session("sess-x")
+    disconnect_calls = 0
+
+    class _DisconnectedRequest:
+        async def is_disconnected(self) -> bool:
+            nonlocal disconnect_calls
+            disconnect_calls += 1
+            return True  # disconnect immediately
+
+    import json as _json
+
+    # Reconstruct just the event_generator logic inline to avoid full app wiring.
+    # Directly exercise hub.unregister_session + cancel_session_pending_answers path.
+    request = _DisconnectedRequest()
+
+    async def _event_generator():
+        try:
+            yield {"event": "snapshot", "data": _json.dumps({})}
+            while True:
+                if await request.is_disconnected():
+                    break
+                await asyncio.sleep(0)
+        finally:
+            await hub.unregister_session("sess-x", queue)
+            if not hub.has_active_subscribers("sess-x"):
+                await hub.cancel_session_pending_answers("sess-x")
+
+    # Drain the generator
+    async for _ in _event_generator():
+        pass
+
+    assert future.cancelled(), "pending future must be cancelled after disconnect"
+    assert not hub.has_active_subscribers("sess-x")
+
+
+async def test_event_generator_does_not_cancel_when_another_subscriber_remains():
+    """When a second SSE tab is still connected, cancel_session_pending_answers
+    must NOT be called (IMP-040: only cancel when no subscribers remain)."""
+    hub = ChatSessionHub()
+    future = await hub.create_pending_answer("sess-y", "ev-2")
+
+    queue1 = await hub.register_session("sess-y")
+    queue2 = await hub.register_session("sess-y")  # noqa: F841  second tab
+
+    # Unregister only queue1 — queue2 still registered
+    await hub.unregister_session("sess-y", queue1)
+
+    if not hub.has_active_subscribers("sess-y"):
+        await hub.cancel_session_pending_answers("sess-y")
+
+    # future must NOT be cancelled because queue2 is still subscribed
+    assert not future.cancelled(), "must not cancel while a second subscriber remains"
+
+    # cleanup
+    await hub.unregister_session("sess-y", queue2)
+    if not future.done():
+        future.cancel()
+
+
 def test_embedded_server_exposes_health(tmp_path: Path) -> None:
     db_path = tmp_path / ".agent-builder" / "agent_builder.db"
     db_path.parent.mkdir(parents=True)
