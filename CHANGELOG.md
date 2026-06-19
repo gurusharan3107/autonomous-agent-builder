@@ -9,6 +9,20 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-19 - chore(build-maintain-cycle): node-workspace eslint-ignores + self-verify §3a + hermes-chrome skill sync gate
+
+Landed the green, uncommitted follow-on from the prior build-maintain-cycle session so the tree is clean before the stabilization tick.
+
+### Changed
+
+- `services/workspace_scaffold.py` (`_MINIMAL_ESLINT_CONFIG`) + `agents/definitions.py` (scaffold prompt): the scaffolded Node `eslint.config.js` now emits a top-level `ignores` block (`node_modules/**`, `.agent-builder/**`, `dist/**`, `build/**`) so bundled/generated files are never linted; the scaffold prompt now mandates `globals.browser`+`globals.node` (no hand-enumerated browser globals) and the ignore block.
+- `docs/workflows/orchestrator-routing.md`: added Shared-fix-contract step **3a — self-verify before declaring done** (surface-specific verifier matrix; partial evidence = not done).
+- `.claude/skills/hermes-chrome/`: new hard rules 10 (`bridge()` is inline-only) + 11 (never `sleep N`), an operator HTML guide (`references/hermes-chrome-guide.html`, open-on-demand), and a `scripts/sync-check.py` SKILL↔HTML sync validator wired into `validate.sh`.
+
+### Validation
+
+- `tests/test_workspace_scaffold.py` asserts the eslint `ignores` entries; full suite 1715 passed; `ruff check .` clean; hermes-chrome `validate.sh` PASS (12/12 rules, sync PASS). `T:backend` `T:browser:na`.
+
 ## 2026-06-18 - fix(orchestrator): IMP-043(a) — durable FAILED-state persist on the dispatch failure path
 
 Stabilization-loop tick (Epoch 1, bug-fix before features). Burned down a P2 finding the codebase-review loop filed but never fixed.

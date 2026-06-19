@@ -131,9 +131,25 @@ Chrome MV3 service workers idle-out after ~30s. The keep-alive alarm fires every
 but if Chrome sleeps (system suspend, display off) or the alarm fires late, the worker
 can die between preflight and the first action.
 
-**Fix — inline recovery:**
+**Fix — inline recovery** (include `bridge()` definition — it is not importable from any file):
 ```python
-import subprocess, os
+import subprocess, os, socket, json
+
+def bridge(payload, timeout=45):
+    SOCK = os.environ.get("HERMES_CHROME_BRIDGE_SOCKET",
+        os.path.expanduser("~/.hermes/run/chrome-bridge.sock"))
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.settimeout(timeout)
+    with s:
+        s.connect(SOCK)
+        s.sendall(json.dumps(payload, ensure_ascii=False).encode())
+        chunks = []
+        while True:
+            chunk = s.recv(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    return json.loads(b"".join(chunks))
 
 def bridge_call(payload, timeout=45):
     try:

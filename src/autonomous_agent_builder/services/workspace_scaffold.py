@@ -208,6 +208,9 @@ _MINIMAL_ESLINT_CONFIG = """\
 import js from "@eslint/js";
 import globals from "globals";
 export default [
+  {{
+    ignores: ["node_modules/**", ".agent-builder/**", "dist/**", "build/**"],
+  }},
   js.configs.recommended,
   {{
     files: ["**/*.js"],

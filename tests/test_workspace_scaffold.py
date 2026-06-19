@@ -164,10 +164,13 @@ def test_write_minimal_gate_config_node_creates_package_and_eslint(tmp_path) -> 
     assert (tmp_path / "eslint.config.js").exists()
     needs, _ = should_scaffold(str(tmp_path))
     assert needs is False
-    # ESLint config must use globals.browser so browser APIs (fetch, URL, etc.) resolve.
+    # ESLint config must use globals.browser so browser APIs (fetch, URL, etc.) resolve,
+    # and must ignore node_modules + .agent-builder so bundled files are never linted.
     eslint_content = (tmp_path / "eslint.config.js").read_text()
     assert "globals.browser" in eslint_content
     assert 'from "globals"' in eslint_content
+    assert ".agent-builder/**" in eslint_content
+    assert "node_modules/**" in eslint_content
     # package.json must declare globals devDependency.
     import json as _json
     pkg = _json.loads((tmp_path / "package.json").read_text())
