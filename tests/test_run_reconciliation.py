@@ -505,9 +505,17 @@ async def test_reconcile_shipped_sprint_blocks_failed_materialized_checkout(
         assert refreshed_task is not None
         assert refreshed_sprint is not None
         assert refreshed_task.status == TaskStatus.BLOCKED
-        assert "final_checkout_build_failed" in (refreshed_task.blocked_reason or "")
+        # Routing prefix preserved (task_recovery keys off it)...
+        assert (refreshed_task.blocked_reason or "").startswith("final_checkout_build_failed:")
+        # ...but the operator-facing reason is SUMMARIZED, not the raw tool dump:
+        # names the failed command, points to evidence, and does NOT leak the
+        # raw stderr_tail onto the Board (M2.4 no-internals-leakage).
+        assert "`npm run build`" in (refreshed_task.blocked_reason or "")
+        assert "run evidence" in (refreshed_task.blocked_reason or "")
+        assert "@tailwindcss/postcss" not in (refreshed_task.blocked_reason or "")
         assert refreshed_sprint.phase == SprintPhase.BLOCKED
         assert refreshed_sprint.verification_status == "blocked"
         evidence = refreshed_sprint.verification_evidence or {}
         assert evidence["materialized_checkout_verification"]["status"] == "failed"
+        # Raw detail is still preserved in evidence for diagnosis/remediation.
         assert "@tailwindcss/postcss" in evidence["sprint_merge_error"]

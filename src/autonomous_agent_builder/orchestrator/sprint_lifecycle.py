@@ -20,6 +20,9 @@ from autonomous_agent_builder.db.models import (
     Task,
     TaskStatus,
 )
+from autonomous_agent_builder.orchestrator.deterministic_verification import (
+    summarize_build_failure_for_operator,
+)
 from autonomous_agent_builder.orchestrator.failure_diagnosis import diagnose_task_failure
 from autonomous_agent_builder.orchestrator.runtime_guidance_preservation import (
     GitRunner as _GitRunner,
@@ -317,8 +320,13 @@ async def sprint_verify_materialized_checkout(
         }
         return None
     error = f"final_checkout_build_failed: {output}"
+    # Operator-facing blocked_reason is summarized (raw output stays in evidence
+    # below); never leak the raw multi-KB tool dump onto the Board. See
+    # summarize_build_failure_for_operator (M2.4 no-internals-leakage).
     task.status = TaskStatus.BLOCKED
-    task.blocked_reason = error
+    task.blocked_reason = (
+        f"final_checkout_build_failed: {summarize_build_failure_for_operator(output)}"
+    )
     task.updated_at = datetime.now(UTC)
     sprint.phase = SprintPhase.BLOCKED
     sprint.verification_status = "blocked"

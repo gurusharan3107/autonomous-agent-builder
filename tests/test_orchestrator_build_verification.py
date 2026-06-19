@@ -17,6 +17,7 @@ from autonomous_agent_builder.orchestrator.build_verification import (
 from autonomous_agent_builder.orchestrator.deterministic_verification import (
     build_verification_output,
     feature_acceptance_output,
+    summarize_build_failure_for_operator,
 )
 from autonomous_agent_builder.services.sprint_execution import SPRINT_EXECUTION_KEY
 
@@ -89,6 +90,42 @@ def test_build_verification_output_summarizes_failed_check_tail() -> None:
     )
 
     assert output == "npm test FAIL: expected button to be visible"
+
+
+def test_summarize_build_failure_names_command_without_leaking_raw_dump() -> None:
+    # The real notes-app strand: ESLint no-undef on browser globals inside a
+    # minified node_modules bundle. The operator summary must name the command
+    # and NOT leak the raw tool dump (RTCPeerConnection / column numbers).
+    raw = (
+        "npm install PASS\n"
+        "npm run lint FAIL: 59:106931 error 'RTCPeerConnection' is not defined "
+        "no-undef 59:107491 error 'CustomEvent' is not defined no-undef"
+    )
+    summary = summarize_build_failure_for_operator(raw)
+
+    assert "`npm run lint`" in summary
+    assert "run evidence" in summary
+    assert "RTCPeerConnection" not in summary
+    assert "106931" not in summary
+    # Caller adds the routing prefix; the summary itself must not embed it.
+    assert "final_checkout_build_failed" not in summary
+
+
+def test_summarize_build_failure_lists_multiple_failed_commands() -> None:
+    raw = "npm run lint FAIL: a\nnpm run build FAIL: b\nnpm test FAIL: c\ngo vet FAIL: d"
+    summary = summarize_build_failure_for_operator(raw)
+
+    assert "`npm run lint`" in summary and "`npm run build`" in summary
+    assert "(+1 more)" in summary  # only first 3 named
+
+
+def test_summarize_build_failure_empty_and_unparseable_fallbacks() -> None:
+    assert "See run evidence" in summarize_build_failure_for_operator("")
+    # No "<cmd> FAIL" line -> capped fallback, still no unbounded dump.
+    blob = "x" * 5000
+    fallback = summarize_build_failure_for_operator(blob)
+    assert len(fallback) < 400
+    assert "run evidence" in fallback
 
 
 def test_feature_acceptance_output_includes_command_criteria_and_files() -> None:

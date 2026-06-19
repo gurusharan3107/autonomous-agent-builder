@@ -9,6 +9,22 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-19 - fix(ux): IMP-046 — stop leaking the raw build-verify tool dump into the operator's blocked_reason
+
+Found by the dogfooding flywheel (sprint 1): a real notes-app task was blocked with `final_checkout_build_failed: npm run lint FAIL: 59:106931 error 'RTCPeerConnection' is not defined …` shown verbatim on the Board — a minified `node_modules` bundle line, meaningless to a customer who built a notes app, and long enough to bury the Recover button.
+
+### Fixed
+
+- `orchestrator/deterministic_verification.py`: new `summarize_build_failure_for_operator(output)` — names the failed command(s) (e.g. ``Build verification failed: `npm run lint` did not pass …``) and points to run evidence instead of dumping the raw output. Wired into both block sites (`orchestrator/sprint_lifecycle.py`, `services/run_reconciliation.py`). Preserves the `final_checkout_build_failed:` routing prefix (`task_recovery` keys off it) and keeps the raw output in `verification_evidence` (remediation re-derives detail via a fresh BuildVerify run, so no degradation). M2.4 no-internals-leakage.
+
+### Validation
+
+- 3 helper unit tests (names command, no `RTCPeerConnection`/column-number leak, multi-command, capped fallback) + extended reconciliation integration test (`blocked_reason` summarized, raw output stays in evidence). 66 targeted tests green; ruff clean; `architecture-boundary` + `state-integrity` gates ok. Live: recovered the real notes-app strand through the dashboard, blocked→done in ~2 min ($0.20). `T:backend` `T:browser`.
+
+### Notes
+
+- Root cause of the block itself (eslint linting `node_modules` + missing browser globals) was already fixed by the scaffold change in `c8f214b`; this fix is the operator-experience half. Residual frontend frictions (Recover-button visibility, Blocked-column-last layout) deferred. Detail: ROADMAP IMP-046.
+
 ## 2026-06-19 - fix(stability): IMP-042/040/044 — never-strand a customer task (retry-budget reset, SSE future cancel, runtime idle timeout)
 
 Stabilization tick toward the dogfooding-reliability bar ("a customer builds feature after feature across multiple sprints without hitting a blocker"). The three open P2 items were design-flagged; the operator made the calls and these are the three customer-stranding failure modes, now closed at root.
