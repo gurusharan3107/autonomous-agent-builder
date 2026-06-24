@@ -8,5 +8,15 @@
     "reviewed_at": "3d45ac7",
     "date": "2026-06-17",
     "result": "0 fixed (no deterministic in-file bug); filed IMP-042 (retry-budget semantics) + IMP-043 (failure-path flush + runtime.run timeout); refuted 2 dead-code candidates (_extract_operator_decision/_json_object_from_text/_task_status_value all have callers: 1/3/18 refs)"
+  },
+  "src/autonomous_agent_builder/agents/definitions.py": {
+    "reviewed_at": "1d6421a2dbf38ee85dd2b58d589b4443e3596eb2",
+    "date": "2026-06-24",
+    "result": "fixed: documentation-bridge auto_approve_tools narrowed to Agent-only (was leaking KB mutation tools into auto-approve path); test updated to assert Agent-only contract"
+  },
+  "src/autonomous_agent_builder/embedded/server/agent_prompt_builders.py": {
+    "reviewed_at": "1d6421a2dbf38ee85dd2b58d589b4443e3596eb2",
+    "date": "2026-06-24",
+    "result": "quality: duplicated runtime_sdk normalization at lines 91+429; no correctness bugs; filed as low-priority dedup"
   }
 }

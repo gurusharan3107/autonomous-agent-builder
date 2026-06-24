@@ -894,7 +894,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Task:\n{task_description}\n"
         ),
         tools=(),
-        auto_approve_tools=("Agent", *DOCUMENTATION_AGENT_TOOLS),
+        auto_approve_tools=("Agent",),
         # IMP-035 win #1: this lane does zero reasoning — it dispatches one Agent
         # call to documentation-agent and returns the child's JSON unchanged — so
         # the parent runs on haiku. The real work happens in the (sonnet)
