@@ -245,3 +245,72 @@ def test_compact_workspace_map_caps_file_count(tmp_path) -> None:
     result = compact_workspace_map(str(tmp_path), max_files=4)
     assert "truncated at 4 files" in result
     assert len([line for line in result.splitlines() if line.endswith(".txt")]) == 4
+
+
+@pytest.mark.asyncio
+async def test_run_linter_installs_deps_when_node_modules_absent(
+    tmp_path, monkeypatch
+) -> None:
+    # scaffold writes package.json but does not run npm install;
+    # run_linter must install deps before invoking npm run lint.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls_file = tmp_path / "npm_calls.txt"
+
+    fake_npm = bin_dir / "npm"
+    fake_npm.write_text(
+        f"#!{sys.executable}\n"
+        "import sys, os\n"
+        f"open(r'{calls_file}', 'a').write(sys.argv[1] + '\\n')\n"
+        "print('ok')\n"
+        "sys.exit(0)\n",
+        encoding="utf-8",
+    )
+    fake_npm.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
+
+    (tmp_path / "package.json").write_text(
+        '{"scripts": {"lint": "eslint ."}}', encoding="utf-8"
+    )
+    # node_modules deliberately absent — no package-lock.json → npm install path
+    assert not (tmp_path / "node_modules").exists()
+
+    await run_linter(str(tmp_path))
+
+    logged = calls_file.read_text().splitlines()
+    assert "install" in logged, "npm install must be called before npm run lint"
+    assert "run" in logged, "npm run lint must be called after install"
+    assert logged.index("install") < logged.index("run"), "install before run"
+
+
+@pytest.mark.asyncio
+async def test_run_linter_skips_install_when_node_modules_present(
+    tmp_path, monkeypatch
+) -> None:
+    # When node_modules already exists, run_linter must NOT call npm install.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls_file = tmp_path / "npm_calls.txt"
+
+    fake_npm = bin_dir / "npm"
+    fake_npm.write_text(
+        f"#!{sys.executable}\n"
+        "import sys\n"
+        f"open(r'{calls_file}', 'a').write(sys.argv[1] + '\\n')\n"
+        "print('ok')\n"
+        "sys.exit(0)\n",
+        encoding="utf-8",
+    )
+    fake_npm.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
+
+    (tmp_path / "package.json").write_text(
+        '{"scripts": {"lint": "eslint ."}}', encoding="utf-8"
+    )
+    (tmp_path / "node_modules").mkdir()  # already present
+
+    await run_linter(str(tmp_path))
+
+    logged = calls_file.read_text().splitlines()
+    assert "install" not in logged, "npm install must NOT be called when node_modules exists"
+    assert "run" in logged

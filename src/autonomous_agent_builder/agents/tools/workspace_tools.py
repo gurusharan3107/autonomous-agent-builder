@@ -164,6 +164,24 @@ async def run_linter(
         except Exception:
             pkg = {}
         if "lint" in pkg.get("scripts", {}):
+            # Scaffold writes package.json but does not run npm install.
+            # Mirror the guard in code_quality.py to avoid falling back to a
+            # stale global eslint binary when node_modules is absent.
+            node_modules = Path(workspace_path) / "node_modules"
+            if not node_modules.exists():
+                install_argv = (
+                    ["npm", "ci"]
+                    if (Path(workspace_path) / "package-lock.json").exists()
+                    else ["npm", "install"]
+                )
+                install_proc = await asyncio.create_subprocess_exec(
+                    *install_argv,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=workspace_path,
+                    **_process_kwargs(),
+                )
+                await install_proc.communicate()
             cmd = ["npm", "run", "lint"]
             safe_timeout = _bounded_timeout(timeout_sec, default=DEFAULT_LINTER_TIMEOUT_SEC)
             proc = await asyncio.create_subprocess_exec(
