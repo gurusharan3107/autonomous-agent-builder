@@ -78,7 +78,7 @@ PHASES = [
     "ready",
 ]
 
-_pipeline_locks: dict[str, asyncio.Lock] = {}
+_pipeline_inflight: set[str] = set()
 _BOOTSTRAP_FILES = {
     "README",
     "README.md",
@@ -517,11 +517,6 @@ async def publish_onboarding_snapshot(project_root: Path) -> None:
     await get_dashboard_stream_hub().publish_onboarding(load_onboarding_state(project_root))
 
 
-def onboarding_mode(project_root: Path) -> bool:
-    state = load_onboarding_state(project_root)
-    return not state.get("ready", False)
-
-
 def _set_phase_state(
     state: dict[str, Any],
     phase_id: str,
@@ -546,15 +541,6 @@ def _set_phase_state(
         state["errors"].append({"phase": phase_id, "error": error, "timestamp": _utcnow()})
 
 
-def _project_lock(project_root: Path) -> asyncio.Lock:
-    key = str(project_root.resolve())
-    lock = _pipeline_locks.get(key)
-    if lock is None:
-        lock = asyncio.Lock()
-        _pipeline_locks[key] = lock
-    return lock
-
-
 async def start_onboarding(project_root: Path, session_factory: Any) -> dict[str, Any]:
     state = load_onboarding_state(project_root)
     if state.get("ready"):
@@ -576,13 +562,23 @@ async def start_onboarding(project_root: Path, session_factory: Any) -> dict[str
         await publish_onboarding_snapshot(project_root)
         return state
 
-    lock = _project_lock(project_root)
-    if lock.locked():
+    # Dedupe concurrent starts atomically. The in-flight marker is set
+    # synchronously (no await between the membership check and create_task), so a
+    # second concurrent start_onboarding observes it and bails instead of
+    # scheduling a duplicate pipeline. A plain asyncio.Lock checked with
+    # lock.locked() raced here: both callers passed the precheck before either
+    # scheduled task reached `async with lock`, so the second still ran the full
+    # pipeline a second time on the already-onboarded repo.
+    key = str(project_root.resolve())
+    if key in _pipeline_inflight:
         return state
+    _pipeline_inflight.add(key)
 
     async def run() -> None:
-        async with lock:
+        try:
             await _run_pipeline(project_root, session_factory)
+        finally:
+            _pipeline_inflight.discard(key)
 
     asyncio.create_task(run())
     state["started_at"] = state.get("started_at") or _utcnow()
@@ -1218,71 +1214,6 @@ def _system_docs_feature_specs() -> list[dict[str, Any]]:
                 (
                     "Validate KB quality",
                     "Run lint and quality gates over the generated knowledge base.",
-                ),
-            ],
-        },
-    ]
-
-
-def _forward_engineering_feature_specs(scan_result: dict[str, Any]) -> list[dict[str, Any]]:
-    language = scan_result.get("repo", {}).get("language", "unknown")
-    return [
-        {
-            "title": "Define product intent and first user journey",
-            "description": (
-                "Turn the clean-slate repo into a concrete delivery target by "
-                "clarifying the app goal, user flow, and first shippable slice."
-            ),
-            "status": FeatureStatus.PLANNING,
-            "tasks": [
-                (
-                    "Capture product goal and success criteria",
-                    "Write down the intended app outcome, target user, and the first "
-                    "milestone that should be considered useful.",
-                ),
-                (
-                    "Define the first end-to-end journey",
-                    "Choose one concrete workflow that the first implementation slice "
-                    "must support.",
-                ),
-            ],
-        },
-        {
-            "title": "Bootstrap the initial application skeleton",
-            "description": (
-                f"Create the first runnable {language} app shell and choose the "
-                "delivery shape for the initial vertical slice."
-            ),
-            "status": FeatureStatus.BACKLOG,
-            "tasks": [
-                (
-                    "Choose runtime and scaffolding approach",
-                    "Decide the primary framework, layout, and startup path for the new app.",
-                ),
-                (
-                    "Create the initial runnable shell",
-                    "Add the minimal application entrypoint, structure, and "
-                    "configuration needed to start implementation.",
-                ),
-            ],
-        },
-        {
-            "title": "Establish verification and builder-managed delivery flow",
-            "description": (
-                "Set the repo up so future work can run through builder-managed "
-                "backlog, quality checks, and reviewable evidence."
-            ),
-            "status": FeatureStatus.BACKLOG,
-            "tasks": [
-                (
-                    "Define verification commands and quality expectations",
-                    "Choose the first test, lint, or build commands that will prove "
-                    "the app is progressing safely.",
-                ),
-                (
-                    "Prepare the first reviewable implementation task",
-                    "Convert the first vertical slice into a bounded implementation "
-                    "task ready for builder execution.",
                 ),
             ],
         },
