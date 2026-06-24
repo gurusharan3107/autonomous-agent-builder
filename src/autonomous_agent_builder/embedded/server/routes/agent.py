@@ -410,6 +410,54 @@ async def _handle_chat_tool_event(
             state.specialist_phase = next_phase
 
 
+async def _emit_tool_denial(
+    state: ChatTurnCallbackState,
+    *,
+    tool_name: str,
+    tool_input: dict[str, Any],
+    message: str,
+    hint: str,
+    detail: dict[str, Any],
+) -> None:
+    """Emit a permission_denied ``tool_error`` chat event for a denied tool call.
+
+    Shared by the feature_spec, kb_validate, and mutating-builtin denial paths in
+    ``_authorize_chat_tool`` (IMP-041). The caller returns ``_permission_deny(...)``
+    with its lane-specific reason after calling this.
+    """
+    denial_content = {
+        "status": "error",
+        "error": {
+            "code": "permission_denied",
+            "message": message,
+            "hint": hint,
+            "detail": detail,
+        },
+        "schema_version": "1",
+    }
+    payload = {
+        "tool_name": tool_name,
+        "tool_input": tool_input,
+        "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
+        "diagnostic": summarize_tool_event(
+            event_type="tool_error",
+            tool_name=tool_name,
+            tool_input=tool_input,
+            tool_response=denial_content,
+        ),
+    }
+    tool_event = await _append_chat_event(
+        state.session_id,
+        event_type="tool_error",
+        payload=payload,
+        status="completed",
+    )
+    await state.hub.publish(
+        state.session_id,
+        agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
+    )
+
+
 async def _authorize_chat_tool(
     state: ChatTurnCallbackState,
     tool_name: str,
@@ -453,39 +501,13 @@ async def _authorize_chat_tool(
     if state.feature_spec_requested:
         deny_tool, deny_reason = _feature_spec_tool_denial(tool_name)
         if deny_tool:
-            denial_content = {
-                "status": "error",
-                "error": {
-                    "code": "permission_denied",
-                    "message": deny_reason,
-                    "hint": "Use AskUserQuestion for the next bounded requirement decision or emit FEATURE_SPEC_JSON once the scope is ready.",
-                    "detail": {
-                        "tool_name": tool_name,
-                        "lane": "feature_spec",
-                    },
-                },
-                "schema_version": "1",
-            }
-            payload = {
-                "tool_name": tool_name,
-                "tool_input": input_data,
-                "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
-                "diagnostic": summarize_tool_event(
-                    event_type="tool_error",
-                    tool_name=tool_name,
-                    tool_input=input_data,
-                    tool_response=denial_content,
-                ),
-            }
-            tool_event = await _append_chat_event(
-                state.session_id,
-                event_type="tool_error",
-                payload=payload,
-                status="completed",
-            )
-            await state.hub.publish(
-                state.session_id,
-                agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
+            await _emit_tool_denial(
+                state,
+                tool_name=tool_name,
+                tool_input=input_data,
+                message=deny_reason,
+                hint="Use AskUserQuestion for the next bounded requirement decision or emit FEATURE_SPEC_JSON once the scope is ready.",
+                detail={"tool_name": tool_name, "lane": "feature_spec"},
             )
             return _permission_deny(deny_reason)
 
@@ -501,39 +523,16 @@ async def _authorize_chat_tool(
         if allowed:
             return _permission_allow(updated_input)
 
-        denial_content = {
-            "status": "error",
-            "error": {
-                "code": "permission_denied",
-                "message": deny_reason,
-                "hint": next_action,
-                "detail": {
-                    "kb_dir": updated_input.get("kb_dir", "system-docs"),
-                    "safe_lane": ".agent-builder/knowledge/<kb_dir>",
-                },
+        await _emit_tool_denial(
+            state,
+            tool_name=tool_name,
+            tool_input=updated_input,
+            message=deny_reason,
+            hint=next_action,
+            detail={
+                "kb_dir": updated_input.get("kb_dir", "system-docs"),
+                "safe_lane": ".agent-builder/knowledge/<kb_dir>",
             },
-            "schema_version": "1",
-        }
-        payload = {
-            "tool_name": tool_name,
-            "tool_input": updated_input,
-            "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
-            "diagnostic": summarize_tool_event(
-                event_type="tool_error",
-                tool_name=tool_name,
-                tool_input=updated_input,
-                tool_response=denial_content,
-            ),
-        }
-        tool_event = await _append_chat_event(
-            state.session_id,
-            event_type="tool_error",
-            payload=payload,
-            status="completed",
-        )
-        await state.hub.publish(
-            state.session_id,
-            agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
         )
         return _permission_deny(f"{deny_reason} {next_action}")
 
@@ -575,39 +574,13 @@ async def _authorize_chat_tool(
     if state.agent_name == "chat":
         deny_builtin, deny_builtin_reason = _chat_mutating_builtin_denial(tool_name)
         if deny_builtin:
-            denial_content = {
-                "status": "error",
-                "error": {
-                    "code": "permission_denied",
-                    "message": deny_builtin_reason,
-                    "hint": "Capture the change as a backlog item and dispatch it via mcp__builder__task_dispatch.",
-                    "detail": {
-                        "tool_name": tool_name,
-                        "lane": "chat",
-                    },
-                },
-                "schema_version": "1",
-            }
-            payload = {
-                "tool_name": tool_name,
-                "tool_input": input_data,
-                "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
-                "diagnostic": summarize_tool_event(
-                    event_type="tool_error",
-                    tool_name=tool_name,
-                    tool_input=input_data,
-                    tool_response=denial_content,
-                ),
-            }
-            tool_event = await _append_chat_event(
-                state.session_id,
-                event_type="tool_error",
-                payload=payload,
-                status="completed",
-            )
-            await state.hub.publish(
-                state.session_id,
-                agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
+            await _emit_tool_denial(
+                state,
+                tool_name=tool_name,
+                tool_input=input_data,
+                message=deny_builtin_reason,
+                hint="Capture the change as a backlog item and dispatch it via mcp__builder__task_dispatch.",
+                detail={"tool_name": tool_name, "lane": "chat"},
             )
             return _permission_deny(deny_builtin_reason)
 
