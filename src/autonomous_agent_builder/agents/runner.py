@@ -67,9 +67,7 @@ _PHASES_REQUIRE_GIT_HEAD: frozenset[str] = frozenset(
 )
 
 # Phases where Python tooling (ruff, pyproject.toml) is expected.
-_PYTHON_GATE_PHASES: frozenset[str] = frozenset(
-    {"code-gen", "gate-remediator", "feature-verifier"}
-)
+_PYTHON_GATE_PHASES: frozenset[str] = frozenset({"code-gen", "gate-remediator", "feature-verifier"})
 
 _SDK_ERROR_OUTPUT_PREFIXES = (
     "API Error:",
@@ -646,8 +644,7 @@ class AgentRunner:
                 allowed_tools=allowed_tools,
                 workspace_path=workspace_path,
                 mcp_servers=self._build_mcp_servers(workspace_path, allowed_tools),
-                permission_mode=agent_def.permission_mode
-                or self.settings.agent.permission_mode,
+                permission_mode=agent_def.permission_mode or self.settings.agent.permission_mode,
                 sdk_subagents=sdk_subagents,
                 effective_can_use_tool=effective_can_use_tool,
             )
@@ -797,8 +794,7 @@ class AgentRunner:
                 session_id=session_id,
                 output_text="\n".join(output_parts),
                 error=(
-                    f"Claude runtime idle timeout: no stream event for "
-                    f"{idle_timeout_seconds:.0f}s"
+                    f"Claude runtime idle timeout: no stream event for {idle_timeout_seconds:.0f}s"
                 ),
                 observability={
                     **observability.summary,

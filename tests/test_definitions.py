@@ -256,16 +256,14 @@ class TestAgentDefinitions:
             "and `freshness_mode` fields"
         ) in subagent.prompt
         assert (
-            "For first-doc creation, call `builder_kb_contract` before drafting."
-            in subagent.prompt
+            "For first-doc creation, call `builder_kb_contract` before drafting." in subagent.prompt
         )
         assert (
             "Use `builder_kb_lint` to catch contract failures before `builder_kb_add`"
             in subagent.prompt
         )
         assert (
-            "Attempt at most one repair retry after a lint or publish failure."
-            in subagent.prompt
+            "Attempt at most one repair retry after a lint or publish failure." in subagent.prompt
         )
         assert "JSON object" in subagent.prompt
 

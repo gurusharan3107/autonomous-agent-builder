@@ -430,11 +430,31 @@ async def get_project_info(workspace_path: str) -> dict:
 # Directories that never help an agent locate feature code — pruned from the map.
 _WORKSPACE_MAP_SKIP_DIRS = frozenset(
     {
-        ".git", ".hg", ".svn", "node_modules", "dist", "build", "out",
-        ".next", ".nuxt", ".svelte-kit", "coverage", ".venv", "venv",
-        "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-        ".cache", ".turbo", ".parcel-cache", "target", "vendor",
-        ".agent-builder", ".idea", ".vscode",
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        "dist",
+        "build",
+        "out",
+        ".next",
+        ".nuxt",
+        ".svelte-kit",
+        "coverage",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".cache",
+        ".turbo",
+        ".parcel-cache",
+        "target",
+        "vendor",
+        ".agent-builder",
+        ".idea",
+        ".vscode",
     }
 )
 
@@ -457,9 +477,7 @@ def compact_workspace_map(workspace_path: str, max_files: int = 200) -> str:
     for dirpath, dirnames, filenames in os.walk(root):
         # Prune noise dirs in place so os.walk never descends into them.
         dirnames[:] = sorted(
-            d
-            for d in dirnames
-            if d not in _WORKSPACE_MAP_SKIP_DIRS and not d.startswith(".")
+            d for d in dirnames if d not in _WORKSPACE_MAP_SKIP_DIRS and not d.startswith(".")
         )
         rel_dir = os.path.relpath(dirpath, root)
         for name in sorted(filenames):

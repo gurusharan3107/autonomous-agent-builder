@@ -263,7 +263,7 @@ async def run_agent_lifecycle(
                     msg = str(oe).lower()
                     if "database is locked" in msg and attempt + 1 < _DB_LOCK_RETRY_ATTEMPTS:
                         last_exc = oe
-                        backoff = _DB_LOCK_RETRY_BASE_SECONDS * (2 ** attempt)
+                        backoff = _DB_LOCK_RETRY_BASE_SECONDS * (2**attempt)
                         _log.warning(
                             "agent_run_lifecycle_db_lock_retry",
                             agent_name=agent_name,

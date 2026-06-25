@@ -174,9 +174,7 @@ class ChatSessionHub:
         to_cancel: list[asyncio.Future[dict[str, Any]]] = []
         async with self._lock:
             stale_keys = [
-                eid
-                for eid, (sid, _) in self._pending_answers.items()
-                if sid == session_id
+                eid for eid, (sid, _) in self._pending_answers.items() if sid == session_id
             ]
             for eid in stale_keys:
                 _, future = self._pending_answers.pop(eid)

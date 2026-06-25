@@ -29,7 +29,9 @@ def diagnose_task_failure(
     detail = error
     if is_runtime_idle_timeout(error):
         issue = "runtime_idle_timeout"
-        detail = "Claude SDK stream produced no event for the inactivity window; task may be retried."
+        detail = (
+            "Claude SDK stream produced no event for the inactivity window; task may be retried."
+        )
     elif is_codex_chunk_limit_error(error):
         issue = "codex_transport_chunk_limit"
         detail = "Codex app-server failed while streaming/parsing a large tool or agent output."

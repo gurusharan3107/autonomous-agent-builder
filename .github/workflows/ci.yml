@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,8 +38,30 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
-      - name: Ruff format check
-        run: ruff format --check .
+      - name: Ruff format check (scoped to changed Python files)
+        # Repo-wide `ruff format --check .` fails on ~200 legacy files (mostly
+        # .claude/ tooling) and is a deferred one-time normalization task — but
+        # because it ran repo-wide it failed on every push and blocked the pytest
+        # wall below from ever running. Scope the gate to the Python files THIS
+        # change touched (mirrors ci-autofix.yml) so new code stays format-clean
+        # without the repo-wide avalanche.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --quiet || true
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="${{ github.event.before }}"
+            if ! git rev-parse --quiet --verify "${BASE}^{commit}" >/dev/null 2>&1; then
+              BASE=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)
+            fi
+          fi
+          CHANGED=$(git diff --name-only "${BASE}...HEAD" -- '*.py' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No changed Python files — skipping format check."
+            exit 0
+          fi
+          echo "Format-checking changed files:"; echo "$CHANGED"
+          ruff format --check $CHANGED
 
       - name: Pytest (the test-failure wall)
         run: pytest

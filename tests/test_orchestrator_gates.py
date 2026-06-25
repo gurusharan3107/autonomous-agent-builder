@@ -98,14 +98,17 @@ class TestQualityGatesPhase:
                 ),
             ],
         )
-        with patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
-            new_callable=AsyncMock,
-            return_value=pass_result,
-        ), patch.object(
-            orchestrator,
-            "_run_documentation_refresh_gate",
-            AsyncMock(return_value=None),
+        with (
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
+                new_callable=AsyncMock,
+                return_value=pass_result,
+            ),
+            patch.object(
+                orchestrator,
+                "_run_documentation_refresh_gate",
+                AsyncMock(return_value=None),
+            ),
         ):
             await orchestrator._phase_quality_gates(task)
         assert task.status == TaskStatus.PR_CREATION
@@ -124,14 +127,17 @@ class TestQualityGatesPhase:
                 ),
             ],
         )
-        with patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
-            new_callable=AsyncMock,
-            return_value=warn_result,
-        ), patch.object(
-            orchestrator,
-            "_run_documentation_refresh_gate",
-            AsyncMock(return_value=None),
+        with (
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
+                new_callable=AsyncMock,
+                return_value=warn_result,
+            ),
+            patch.object(
+                orchestrator,
+                "_run_documentation_refresh_gate",
+                AsyncMock(return_value=None),
+            ),
         ):
             await orchestrator._phase_quality_gates(task)
         assert task.status == TaskStatus.PR_CREATION
@@ -239,22 +245,27 @@ class TestQualityGatesPhase:
             gate.testing_doc_id = testing_doc_id
             return gate
 
-        with patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.validate_task_system_docs",
-            side_effect=lambda depends_on, **kwargs: validate_task_system_docs(
-                depends_on, kb_root=kb_root, **kwargs
+        with (
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.validate_task_system_docs",
+                side_effect=lambda depends_on, **kwargs: validate_task_system_docs(
+                    depends_on, kb_root=kb_root, **kwargs
+                ),
             ),
-        ), patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.TestingGate",
-            side_effect=_fake_testing_gate,
-        ) as testing_gate, patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
-            new_callable=AsyncMock,
-            return_value=pass_result,
-        ), patch.object(
-            orchestrator,
-            "_run_documentation_refresh_gate",
-            AsyncMock(return_value=None),
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.TestingGate",
+                side_effect=_fake_testing_gate,
+            ) as testing_gate,
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
+                new_callable=AsyncMock,
+                return_value=pass_result,
+            ),
+            patch.object(
+                orchestrator,
+                "_run_documentation_refresh_gate",
+                AsyncMock(return_value=None),
+            ),
         ):
             await orchestrator._phase_quality_gates(task)
 
@@ -307,15 +318,18 @@ class TestQualityGatesPhase:
             ],
         )
 
-        with patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.validate_task_system_docs",
-            side_effect=lambda depends_on, **kwargs: validate_task_system_docs(
-                depends_on, kb_root=kb_root, **kwargs
+        with (
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.validate_task_system_docs",
+                side_effect=lambda depends_on, **kwargs: validate_task_system_docs(
+                    depends_on, kb_root=kb_root, **kwargs
+                ),
             ),
-        ), patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
-            new_callable=AsyncMock,
-            return_value=pass_result,
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
+                new_callable=AsyncMock,
+                return_value=pass_result,
+            ),
         ):
             await orchestrator._phase_quality_gates(task)
 
@@ -343,21 +357,22 @@ class TestQualityGatesPhase:
                 ),
             ],
         )
-        with patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
-            new_callable=AsyncMock,
-            return_value=pass_result,
-        ), patch.object(
-            orchestrator,
-            "_run_documentation_refresh_gate",
-            AsyncMock(return_value=None),
+        with (
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
+                new_callable=AsyncMock,
+                return_value=pass_result,
+            ),
+            patch.object(
+                orchestrator,
+                "_run_documentation_refresh_gate",
+                AsyncMock(return_value=None),
+            ),
         ):
             await orchestrator._phase_quality_gates(task)
 
         assert task.status == TaskStatus.PR_CREATION
-        assert task.retry_count == 0, (
-            "retry_count must be reset to 0 on gate pass (IMP-042)"
-        )
+        assert task.retry_count == 0, "retry_count must be reset to 0 on gate pass (IMP-042)"
 
 
 @pytest.mark.asyncio
@@ -445,7 +460,7 @@ class TestKnowledgeLifecycleContext:
                 "file_ownership_hint": "app files and tests",
             },
             "phase_context": {
-                "design_context": "{\"generated_app_acceptance\":[\"visible navigation\"]}"
+                "design_context": '{"generated_app_acceptance":["visible navigation"]}'
             },
         }
         orchestrator._run_agent = AsyncMock()
@@ -600,8 +615,7 @@ class TestKnowledgeLifecycleContext:
 
         assert task.status == TaskStatus.BLOCKED
         assert (
-            task.blocked_reason
-            == "implementation blocked: Should unbookmark support bulk clear?"
+            task.blocked_reason == "implementation blocked: Should unbookmark support bulk clear?"
         )
         assert task.depends_on["operator_decision"]["options"] == [
             "Individual only",
@@ -659,9 +673,7 @@ async def test_integrates_first_task_branch_into_unborn_main(orchestrator, tmp_p
 
 
 @pytest.mark.asyncio
-async def test_integrates_uncommitted_worktree_changes_into_unborn_main(
-    orchestrator, tmp_path
-):
+async def test_integrates_uncommitted_worktree_changes_into_unborn_main(orchestrator, tmp_path):
     repo = tmp_path / "repo"
     workspace = tmp_path / "workspace"
     repo.mkdir()
@@ -1079,9 +1091,7 @@ def test_validate_task_system_docs_flags_quarantined_doc(tmp_path):
 
 @pytest.mark.asyncio
 class TestDocumentationRefreshGate:
-    async def test_validates_project_root_not_task_workspace(
-        self, orchestrator, tmp_path
-    ):
+    async def test_validates_project_root_not_task_workspace(self, orchestrator, tmp_path):
         task = _make_task()
         project_root = tmp_path / "repo"
         workspace_path = tmp_path / "workspace"
@@ -1138,14 +1148,17 @@ class TestDocumentationRefreshGate:
             ],
         }
 
-        with patch.object(
-            orchestrator,
-            "_load_kb_validation_payload",
-            AsyncMock(return_value=validation_fail),
-        ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
-            new_callable=AsyncMock,
-        ) as bridge:
+        with (
+            patch.object(
+                orchestrator,
+                "_load_kb_validation_payload",
+                AsyncMock(return_value=validation_fail),
+            ),
+            patch(
+                "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
+                new_callable=AsyncMock,
+            ) as bridge,
+        ):
             gap = await orchestrator._run_documentation_refresh_gate(
                 task,
                 str(workspace_path),
@@ -1217,14 +1230,17 @@ class TestDocumentationRefreshGate:
             "freshness_report": [],
         }
 
-        with patch.object(
-            orchestrator,
-            "_load_kb_validation_payload",
-            AsyncMock(return_value=validation_fail),
-        ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
-            new_callable=AsyncMock,
-        ) as bridge:
+        with (
+            patch.object(
+                orchestrator,
+                "_load_kb_validation_payload",
+                AsyncMock(return_value=validation_fail),
+            ),
+            patch(
+                "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
+                new_callable=AsyncMock,
+            ) as bridge,
+        ):
             gap = await orchestrator._run_documentation_refresh_gate(task, str(workspace_path))
 
         assert gap is None
@@ -1274,17 +1290,21 @@ class TestDocumentationRefreshGate:
             "freshness_report": [],
         }
 
-        with patch.object(
-            orchestrator,
-            "_load_kb_validation_payload",
-            AsyncMock(return_value=validation_fail),
-        ), patch(
-            "autonomous_agent_builder.onboarding.load_onboarding_state",
-            return_value={"onboarding_mode": "forward_engineering"},
-        ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
-            new_callable=AsyncMock,
-        ) as bridge:
+        with (
+            patch.object(
+                orchestrator,
+                "_load_kb_validation_payload",
+                AsyncMock(return_value=validation_fail),
+            ),
+            patch(
+                "autonomous_agent_builder.onboarding.load_onboarding_state",
+                return_value={"onboarding_mode": "forward_engineering"},
+            ),
+            patch(
+                "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
+                new_callable=AsyncMock,
+            ) as bridge,
+        ):
             gap = await orchestrator._run_documentation_refresh_gate(
                 task,
                 str(workspace_path),
@@ -1361,15 +1381,18 @@ class TestDocumentationRefreshGate:
             "result": {},
         }
 
-        with patch.object(
-            orchestrator,
-            "_load_kb_validation_payload",
-            AsyncMock(return_value=validation_fail),
-        ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
-            new_callable=AsyncMock,
-            return_value=bridge_payload,
-        ) as bridge:
+        with (
+            patch.object(
+                orchestrator,
+                "_load_kb_validation_payload",
+                AsyncMock(return_value=validation_fail),
+            ),
+            patch(
+                "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
+                new_callable=AsyncMock,
+                return_value=bridge_payload,
+            ) as bridge,
+        ):
             gap = await orchestrator._run_documentation_refresh_gate(task, str(workspace_path))
 
         assert gap is None
@@ -1391,19 +1414,23 @@ class TestDocumentationRefreshGate:
             ],
         )
 
-        with patch(
-            "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
-            new_callable=AsyncMock,
-            return_value=pass_result,
-        ), patch.object(
-            orchestrator,
-            "_workspace_has_task_changes",
-            AsyncMock(return_value=True),
-        ), patch.object(
-            orchestrator,
-            "_run_documentation_refresh_gate",
-            AsyncMock(
-                return_value="documentation refresh gate blocked: claim validation failed"
+        with (
+            patch(
+                "autonomous_agent_builder.orchestrator.quality_gate_runner.run_quality_gates",
+                new_callable=AsyncMock,
+                return_value=pass_result,
+            ),
+            patch.object(
+                orchestrator,
+                "_workspace_has_task_changes",
+                AsyncMock(return_value=True),
+            ),
+            patch.object(
+                orchestrator,
+                "_run_documentation_refresh_gate",
+                AsyncMock(
+                    return_value="documentation refresh gate blocked: claim validation failed"
+                ),
             ),
         ):
             await orchestrator._phase_quality_gates(task)
@@ -1452,14 +1479,17 @@ class TestDocumentationRefreshGate:
             "remaining_gap": "",
         }
 
-        with patch.object(
-            orchestrator,
-            "_load_kb_validation_payload",
-            AsyncMock(side_effect=[validation_fail, validation_pass]),
-        ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
-            new_callable=AsyncMock,
-            return_value=bridge_payload,
+        with (
+            patch.object(
+                orchestrator,
+                "_load_kb_validation_payload",
+                AsyncMock(side_effect=[validation_fail, validation_pass]),
+            ),
+            patch(
+                "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
+                new_callable=AsyncMock,
+                return_value=bridge_payload,
+            ),
         ):
             gap = await orchestrator._run_documentation_refresh_gate(task, str(tmp_path))
 
@@ -1474,9 +1504,7 @@ class TestDocumentationRefreshGate:
         assert added_runs[0].session_id == "sdk-doc-bridge"
         assert added_runs[0].status == "completed"
 
-    async def test_blocks_when_post_refresh_validation_still_fails(
-        self, orchestrator, tmp_path
-    ):
+    async def test_blocks_when_post_refresh_validation_still_fails(self, orchestrator, tmp_path):
         task = _make_task()
         task.workspace.path = str(tmp_path)
 
@@ -1501,14 +1529,17 @@ class TestDocumentationRefreshGate:
             "remaining_gap": "",
         }
 
-        with patch.object(
-            orchestrator,
-            "_load_kb_validation_payload",
-            AsyncMock(side_effect=[validation_fail, post_validation_fail]),
-        ), patch(
-            "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
-            new_callable=AsyncMock,
-            return_value=bridge_payload,
+        with (
+            patch.object(
+                orchestrator,
+                "_load_kb_validation_payload",
+                AsyncMock(side_effect=[validation_fail, post_validation_fail]),
+            ),
+            patch(
+                "autonomous_agent_builder.orchestrator.orchestrator.run_documentation_refresh_bridge",
+                new_callable=AsyncMock,
+                return_value=bridge_payload,
+            ),
         ):
             gap = await orchestrator._run_documentation_refresh_gate(task, str(tmp_path))
 
@@ -1519,9 +1550,7 @@ class TestDocumentationRefreshGate:
 class TestAgentRunRecording:
     """Test _run_agent records AgentRun to DB."""
 
-    async def test_run_agent_saves_agent_run(
-        self, orchestrator, mock_db, mock_sdk, test_db
-    ):
+    async def test_run_agent_saves_agent_run(self, orchestrator, mock_db, mock_sdk, test_db):
         task = _make_task(TaskStatus.PENDING)
         result = await orchestrator._run_agent(
             task,
@@ -1564,9 +1593,7 @@ class TestAgentRunRecording:
         runtime.run.assert_awaited_once()
         assert runtime.run.await_args.kwargs["effort"] == "high"
 
-    async def test_run_agent_error_returns_error_result(
-        self, orchestrator, mock_db, test_db
-    ):
+    async def test_run_agent_error_returns_error_result(self, orchestrator, mock_db, test_db):
         task = _make_task(TaskStatus.PENDING)
 
         async def _fail(*args, **kwargs):
@@ -1666,22 +1693,15 @@ class TestApplyApprovalOutcome:
 
     def test_request_changes_on_pr_loops_back_to_implementation_with_context(self):
         task = _approval_task(TaskStatus.REVIEW_PENDING)
-        should_dispatch = _apply(
-            task, "pr", _Decision.REQUEST_CHANGES, reason="please fix tests"
-        )
+        should_dispatch = _apply(task, "pr", _Decision.REQUEST_CHANGES, reason="please fix tests")
         assert task.status == TaskStatus.IMPLEMENTATION
         assert task.depends_on is not None
-        assert (
-            task.depends_on["phase_context"]["pr_change_request"]
-            == "please fix tests"
-        )
+        assert task.depends_on["phase_context"]["pr_change_request"] == "please fix tests"
         assert should_dispatch is True
 
     def test_reject_blocks_the_task_and_records_reason(self):
         task = _approval_task(TaskStatus.DESIGN_REVIEW)
-        should_dispatch = _apply(
-            task, "planning", _Decision.REJECT, reason="scope unclear"
-        )
+        should_dispatch = _apply(task, "planning", _Decision.REJECT, reason="scope unclear")
         assert task.status == TaskStatus.BLOCKED
         assert task.blocked_reason == "scope unclear"
         assert should_dispatch is False
@@ -1731,9 +1751,7 @@ def _sprint_task(status: TaskStatus = TaskStatus.DONE) -> Task:
 class TestApplySprintApprovalOutcome:
     def test_approve_marks_sprint_shipped_and_records_evidence(self):
         sprint = _sprint(_SprintPhase.PR_REVIEW)
-        should_followup = _apply_sprint(
-            sprint, _Decision.APPROVE, reason="ship it"
-        )
+        should_followup = _apply_sprint(sprint, _Decision.APPROVE, reason="ship it")
         assert sprint.phase == _SprintPhase.SHIPPED
         assert should_followup is True
         evidence = sprint.verification_evidence or {}
@@ -1767,9 +1785,7 @@ class TestApplySprintApprovalOutcome:
 
     def test_reject_blocks_sprint_and_records_reason(self):
         sprint = _sprint(_SprintPhase.PR_REVIEW)
-        should_followup = _apply_sprint(
-            sprint, _Decision.REJECT, reason="scope mismatch"
-        )
+        should_followup = _apply_sprint(sprint, _Decision.REJECT, reason="scope mismatch")
         assert sprint.phase == _SprintPhase.BLOCKED
         assert should_followup is False
         evidence = sprint.verification_evidence or {}

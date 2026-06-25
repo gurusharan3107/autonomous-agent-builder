@@ -197,9 +197,7 @@ def _classify_onboarding_mode(project_root: Path) -> str:
     bootstrap_only = all(name in _BOOTSTRAP_FILES for name in root_files)
     support_only = all(name in _SUPPORT_DIRS for name in visible_dirs)
     code_dirs = [project_root / name for name in visible_dirs if name in _CODE_DIRS]
-    code_scan_dirs = [
-        project_root / name for name in visible_dirs if name not in _NON_CODE_DIRS
-    ]
+    code_scan_dirs = [project_root / name for name in visible_dirs if name not in _NON_CODE_DIRS]
     code_files = [
         path
         for code_dir in code_scan_dirs
@@ -1282,12 +1280,18 @@ async def _run_builder_kb_extract_via_agent(
                 "parent_tool_use_id": None,
             }
 
-        async def _auto_approve(tool_name: str, input_data: object, context: object) -> PermissionResultAllow:
+        async def _auto_approve(
+            tool_name: str, input_data: object, context: object
+        ) -> PermissionResultAllow:
             return PermissionResultAllow(updated_input=input_data)  # type: ignore[arg-type]
 
         options = ClaudeAgentOptions(
             model=get_settings().agent.implementation_model,
-            system_prompt={"type": "preset", "preset": "claude_code", "exclude_dynamic_sections": True},
+            system_prompt={
+                "type": "preset",
+                "preset": "claude_code",
+                "exclude_dynamic_sections": True,
+            },
             setting_sources=["project"],
             cwd=project_root,
             allowed_tools=["Bash"],

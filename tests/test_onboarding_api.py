@@ -216,9 +216,7 @@ async def test_onboarding_start_seeds_builder_state(test_db, sample_workspace, m
 
 
 @pytest.mark.asyncio
-async def test_onboarding_start_dedupes_concurrent_starts(
-    test_db, sample_workspace, monkeypatch
-):
+async def test_onboarding_start_dedupes_concurrent_starts(test_db, sample_workspace, monkeypatch):
     """Two near-simultaneous starts must schedule the pipeline only once.
 
     Regression for the TOCTOU race: a plain asyncio.Lock checked with
@@ -729,7 +727,9 @@ def test_classify_onboarding_mode_detects_clean_slate_and_existing_repo(tmp_path
     clean_slate = tmp_path / "clean-slate"
     clean_slate.mkdir()
     (clean_slate / "README.md").write_text("# Clean Slate\n")
-    (clean_slate / "pyproject.toml").write_text('[project]\nname = "clean-slate"\nversion = "0.1.0"\n')
+    (clean_slate / "pyproject.toml").write_text(
+        '[project]\nname = "clean-slate"\nversion = "0.1.0"\n'
+    )
 
     assert onboarding._classify_onboarding_mode(clean_slate) == "forward_engineering"
     assert onboarding._classify_onboarding_mode(sample_workspace) == "reverse_engineering"

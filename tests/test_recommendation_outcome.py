@@ -12,10 +12,16 @@ from autonomous_agent_builder.observability.recommendation_outcome import (
 
 class TestMetricForCode:
     def test_static_trim_prompt(self):
-        assert metric_for_code("trim_prompt_segments_over_phase_budget") == "noncached_plus_output_tokens"
+        assert (
+            metric_for_code("trim_prompt_segments_over_phase_budget")
+            == "noncached_plus_output_tokens"
+        )
 
     def test_static_truncate_tool_output(self):
-        assert metric_for_code("truncate_tool_output_before_reinjection") == "noncached_plus_output_tokens"
+        assert (
+            metric_for_code("truncate_tool_output_before_reinjection")
+            == "noncached_plus_output_tokens"
+        )
 
     def test_static_reduce_rework(self):
         assert metric_for_code("reduce_rework_before_token_band") == "noncached_plus_output_tokens"
@@ -74,7 +80,7 @@ class TestComputeOutcome:
 
     def test_flat_exact_negative_band_edge(self):
         before = 1000
-        after = 951   # delta_pct ≈ -0.049 → abs < 0.05 → flat
+        after = 951  # delta_pct ≈ -0.049 → abs < 0.05 → flat
         result = compute_outcome(before, after, 5, 5)
         assert result["verdict"] == "flat"
 

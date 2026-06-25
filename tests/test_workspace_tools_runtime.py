@@ -248,9 +248,7 @@ def test_compact_workspace_map_caps_file_count(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_linter_installs_deps_when_node_modules_absent(
-    tmp_path, monkeypatch
-) -> None:
+async def test_run_linter_installs_deps_when_node_modules_absent(tmp_path, monkeypatch) -> None:
     # scaffold writes package.json but does not run npm install;
     # run_linter must install deps before invoking npm run lint.
     bin_dir = tmp_path / "bin"
@@ -269,9 +267,7 @@ async def test_run_linter_installs_deps_when_node_modules_absent(
     fake_npm.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
 
-    (tmp_path / "package.json").write_text(
-        '{"scripts": {"lint": "eslint ."}}', encoding="utf-8"
-    )
+    (tmp_path / "package.json").write_text('{"scripts": {"lint": "eslint ."}}', encoding="utf-8")
     # node_modules deliberately absent — no package-lock.json → npm install path
     assert not (tmp_path / "node_modules").exists()
 
@@ -284,9 +280,7 @@ async def test_run_linter_installs_deps_when_node_modules_absent(
 
 
 @pytest.mark.asyncio
-async def test_run_linter_skips_install_when_node_modules_present(
-    tmp_path, monkeypatch
-) -> None:
+async def test_run_linter_skips_install_when_node_modules_present(tmp_path, monkeypatch) -> None:
     # When node_modules already exists, run_linter must NOT call npm install.
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -304,9 +298,7 @@ async def test_run_linter_skips_install_when_node_modules_present(
     fake_npm.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
 
-    (tmp_path / "package.json").write_text(
-        '{"scripts": {"lint": "eslint ."}}', encoding="utf-8"
-    )
+    (tmp_path / "package.json").write_text('{"scripts": {"lint": "eslint ."}}', encoding="utf-8")
     (tmp_path / "node_modules").mkdir()  # already present
 
     await run_linter(str(tmp_path))
