@@ -34,12 +34,11 @@ dependencies = [
     # Logging
     "structlog>=24.4.0",
     # CLI
-    "typer[all]>=0.12.0",
-    # Click is transitive via typer, but pin it: 8.4.1+ removed
-    # CliRunner.isolated_filesystem and changed UsageError exit codes, breaking
-    # the builder CLI test surface. 8.4.0 is the known-good version. Unpin once
-    # the CLI tests are migrated to the newer Click testing API.
-    "click>=8.1.7,<8.4.1",
+    # Pin typer below 0.26: 0.26.x changed CLI error handling / exit codes
+    # (UsageError 2->1, command-resolution behavior) and dropped the `[all]`
+    # extra, breaking 40+ builder CLI surface tests. 0.25.1 is known-good.
+    # Unpin once the CLI tests are migrated to typer 0.26's behavior.
+    "typer[all]>=0.12.0,<0.26",
     "httpx>=0.28.0",
     # LLM fallback (optional — install separately on Linux/Mac)
     # "litellm>=1.55.0",
