@@ -195,7 +195,10 @@ async def test_integrate_task_workspace_preserves_tracked_target_changes_before_
     assert _git(repo, "commit", "-q", "-m", "init").returncode == 0
 
     workspace = tmp_path / "task-worktree"
-    assert _git(repo, "worktree", "add", "-q", "-b", "task/test", str(workspace), "main").returncode == 0
+    assert (
+        _git(repo, "worktree", "add", "-q", "-b", "task/test", str(workspace), "main").returncode
+        == 0
+    )
     (workspace / "src" / "App.jsx").write_text(
         "export default function App() { return 'task'; }\n",
         encoding="utf-8",
@@ -685,8 +688,7 @@ class TestDispatchPhases:
         orchestrator._run_agent = AsyncMock(
             return_value=RunResult(
                 output_text=(
-                    "`npm test` PASS: 8/8 tests\n"
-                    "`scripts/browser-proof.sh` FAIL: Chrome exited 134"
+                    "`npm test` PASS: 8/8 tests\n`scripts/browser-proof.sh` FAIL: Chrome exited 134"
                 )
             )
         )
@@ -696,8 +698,7 @@ class TestDispatchPhases:
 
         assert task.status == TaskStatus.FAILED
         assert task.blocked_reason == (
-            "build_verification_failed: "
-            "`scripts/browser-proof.sh` FAIL: Chrome exited 134"
+            "build_verification_failed: `scripts/browser-proof.sh` FAIL: Chrome exited 134"
         )
         orchestrator._integrate_task_workspace.assert_not_awaited()
 
@@ -943,6 +944,7 @@ class TestDispatchErrorHandling:
         assert task.status == TaskStatus.FAILED
         assert "Agent crashed" in task.blocked_reason
 
+
 @pytest.mark.asyncio
 class TestPlanningPhase:
     """Planning phase creates approval gate on success."""
@@ -952,9 +954,7 @@ class TestPlanningPhase:
         """Wire session module to test DB so persist_realtime_run_update can write."""
         yield
 
-    async def test_planning_creates_approval_gate(
-        self, orchestrator, mock_db, mock_sdk
-    ):
+    async def test_planning_creates_approval_gate(self, orchestrator, mock_db, mock_sdk):
         task = _make_task(TaskStatus.PENDING)
         await orchestrator.dispatch(task)
         # db.add should have been called with an ApprovalGate
@@ -971,9 +971,7 @@ class TestPlanningPhase:
 class TestPhaseFailureDiagnostics:
     """Planner/designer error paths must record a real diagnostic, not a NameError."""
 
-    async def test_phase_planning_error_preserves_diagnostic_without_workspace(
-        self, orchestrator
-    ):
+    async def test_phase_planning_error_preserves_diagnostic_without_workspace(self, orchestrator):
         task = _make_task(TaskStatus.PENDING, workspace_path=None)
 
         async def _errored_run(*args, **kwargs):
@@ -991,9 +989,7 @@ class TestPhaseFailureDiagnostics:
         assert "planner blew up" in task.blocked_reason
         assert "NameError" not in task.blocked_reason
 
-    async def test_phase_design_error_preserves_diagnostic_without_workspace(
-        self, orchestrator
-    ):
+    async def test_phase_design_error_preserves_diagnostic_without_workspace(self, orchestrator):
         task = _make_task(TaskStatus.DESIGN, workspace_path=None)
 
         async def _errored_run(*args, **kwargs):
@@ -1010,4 +1006,75 @@ class TestPhaseFailureDiagnostics:
         assert task.status == TaskStatus.FAILED
         assert task.blocked_reason
         assert "designer hit an issue" in task.blocked_reason
+
+
+@pytest.mark.asyncio
+class TestDispatchFailedPersistFallback:
+    """IMP-043(a): FAILED state must be persisted durably even when self.db is
+    unrecoverable after a handler exception (IMP-010 defence's own persist
+    path was fragile)."""
+
+    async def test_failed_state_persisted_via_fallback_when_primary_flush_raises(self, test_db):
+        """When the handler raises AND the primary db.flush() also raises,
+        the dispatch must fall back to a fresh session to persist FAILED,
+        leaving the task in FAILED with blocked_reason set.
+        """
+        from autonomous_agent_builder.db.models import Feature, Project
+        from autonomous_agent_builder.db.models import Task as DBTask
+        from autonomous_agent_builder.db.session import get_session_factory
+
+        _engine, _factory = test_db
+
+        # Insert a real Task row so the fallback session can re-fetch it.
+        async with get_session_factory()() as setup_db:
+            project = Project(
+                id="proj-imp043",
+                name="imp043-proj",
+                repo_url="/tmp/repo",
+                language="python",
+            )
+            setup_db.add(project)
+            feature = Feature(
+                id="feat-imp043",
+                project_id="proj-imp043",
+                title="imp043 feature",
+            )
+            setup_db.add(feature)
+            dbtask = DBTask(
+                id="task-imp043",
+                feature_id="feat-imp043",
+                title="imp043 task",
+                description="regression",
+                status=TaskStatus.PENDING,
+            )
+            setup_db.add(dbtask)
+            await setup_db.commit()
+
+        # Build a mock db whose flush() raises after rollback so the
+        # primary persist path fails.
+        broken_db = AsyncMock()
+        broken_db.rollback = AsyncMock()
+        broken_db.flush = AsyncMock(side_effect=Exception("db unrecoverable"))
+
+        orch = Orchestrator(get_settings(), broken_db)
+
+        # Handler raises unconditionally.
+        orch._phase_planning = AsyncMock(side_effect=RuntimeError("handler boom"))
+
+        task = _make_task(TaskStatus.PENDING)
+        task.id = "task-imp043"
+
+        # dispatch must NOT raise even though both the handler and primary flush fail.
+        await orch.dispatch(task)
+
+        # In-memory object must be FAILED with blocked_reason set.
+        assert task.status == TaskStatus.FAILED
+        assert task.blocked_reason == "handler boom"
+
+        # Durably persisted via fallback session.
+        async with get_session_factory()() as verify_db:
+            persisted = await verify_db.get(DBTask, "task-imp043")
+        assert persisted is not None
+        assert persisted.status == TaskStatus.FAILED
+        assert persisted.blocked_reason == "handler boom"
         assert "NameError" not in task.blocked_reason

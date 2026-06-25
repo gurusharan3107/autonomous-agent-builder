@@ -148,12 +148,63 @@ async def run_linter(
     fix: bool = False,
     timeout_sec: int | float = DEFAULT_LINTER_TIMEOUT_SEC,
 ) -> dict:
-    """Run ruff linter on workspace code.
+    """Run the appropriate linter for the workspace language.
+
+    Node workspaces (package.json with a lint script) run `npm run lint`.
+    All other workspaces fall back to ruff.
 
     Args:
         workspace_path: Absolute path to workspace root.
-        fix: If True, auto-fix issues.
+        fix: If True, auto-fix issues (ruff only; npm lint does not support fix).
     """
+    package_json_path = Path(workspace_path) / "package.json"
+    if package_json_path.exists():
+        try:
+            pkg = json.loads(package_json_path.read_text())
+        except Exception:
+            pkg = {}
+        if "lint" in pkg.get("scripts", {}):
+            # Scaffold writes package.json but does not run npm install.
+            # Mirror the guard in code_quality.py to avoid falling back to a
+            # stale global eslint binary when node_modules is absent.
+            node_modules = Path(workspace_path) / "node_modules"
+            if not node_modules.exists():
+                install_argv = (
+                    ["npm", "ci"]
+                    if (Path(workspace_path) / "package-lock.json").exists()
+                    else ["npm", "install"]
+                )
+                install_proc = await asyncio.create_subprocess_exec(
+                    *install_argv,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=workspace_path,
+                    **_process_kwargs(),
+                )
+                await install_proc.communicate()
+            cmd = ["npm", "run", "lint"]
+            safe_timeout = _bounded_timeout(timeout_sec, default=DEFAULT_LINTER_TIMEOUT_SEC)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=workspace_path,
+                **_process_kwargs(),
+            )
+            stdout, stderr, timed_out = await _communicate_with_timeout(
+                proc, timeout_sec=safe_timeout
+            )
+            if timed_out:
+                payload = _timeout_payload(safe_timeout, proc)
+                payload["metadata"]["clean"] = False
+                return payload
+            output = stdout.decode() + stderr.decode()
+            clean = proc.returncode == 0
+            return _text_payload(
+                output,
+                metadata={"clean": clean, "exit_code": proc.returncode, "timeout": False},
+            )
+
     cmd = ["ruff", "check"]
     if fix:
         cmd.append("--fix")
@@ -379,11 +430,31 @@ async def get_project_info(workspace_path: str) -> dict:
 # Directories that never help an agent locate feature code — pruned from the map.
 _WORKSPACE_MAP_SKIP_DIRS = frozenset(
     {
-        ".git", ".hg", ".svn", "node_modules", "dist", "build", "out",
-        ".next", ".nuxt", ".svelte-kit", "coverage", ".venv", "venv",
-        "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-        ".cache", ".turbo", ".parcel-cache", "target", "vendor",
-        ".agent-builder", ".idea", ".vscode",
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        "dist",
+        "build",
+        "out",
+        ".next",
+        ".nuxt",
+        ".svelte-kit",
+        "coverage",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".cache",
+        ".turbo",
+        ".parcel-cache",
+        "target",
+        "vendor",
+        ".agent-builder",
+        ".idea",
+        ".vscode",
     }
 )
 
@@ -406,9 +477,7 @@ def compact_workspace_map(workspace_path: str, max_files: int = 200) -> str:
     for dirpath, dirnames, filenames in os.walk(root):
         # Prune noise dirs in place so os.walk never descends into them.
         dirnames[:] = sorted(
-            d
-            for d in dirnames
-            if d not in _WORKSPACE_MAP_SKIP_DIRS and not d.startswith(".")
+            d for d in dirnames if d not in _WORKSPACE_MAP_SKIP_DIRS and not d.startswith(".")
         )
         rel_dir = os.path.relpath(dirpath, root)
         for name in sorted(filenames):

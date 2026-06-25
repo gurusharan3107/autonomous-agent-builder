@@ -26,10 +26,34 @@ from autonomous_agent_builder.observability.runtime_optimization import (
     optimization_decision_summary,
     runtime_decision_summary,
 )
+from autonomous_agent_builder.observability.summary_db import (
+    _window_token_totals,
+)
 from autonomous_agent_builder.runtime.factory import resolve_runtime_config
 from autonomous_agent_builder.services.codex_optimization import (
     summarize_runs_for_optimization,
 )
+
+
+def window_token_totals(
+    db_path: Path,
+    *,
+    start_iso: str | None,
+    end_iso: str | None,
+    exclude_agents: tuple[str, ...] = ("optimization-agent",),
+) -> dict[str, int]:
+    """Public wrapper: open db_path, delegate to _window_token_totals, close."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        return _window_token_totals(
+            conn,
+            start_iso=start_iso,
+            end_iso=end_iso,
+            exclude_agents=exclude_agents,
+        )
+    finally:
+        conn.close()
 
 
 def _session_task_filter(
@@ -233,9 +257,7 @@ def _tool_counts(
         return [], 0
     task_filter, filter_params = _session_task_filter(conn, session_id)
     if task_filter:
-        run_filter = (
-            f"where run_id IN (SELECT id FROM agent_runs WHERE {task_filter})"
-        )
+        run_filter = f"where run_id IN (SELECT id FROM agent_runs WHERE {task_filter})"
     else:
         run_filter = ""
     event_count = int(
@@ -311,8 +333,7 @@ def _provider_limit_summary(
         extra_clause = " and chat_session_id = ?"
         params = (session_id,)
     rows = conn.execute(
-        "select id, status, depends_on from tasks where status = 'capability_limit'"
-        + extra_clause,
+        "select id, status, depends_on from tasks where status = 'capability_limit'" + extra_clause,
         params,
     ).fetchall()
     now = datetime.now(UTC)

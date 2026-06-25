@@ -1,3 +1,7 @@
 {
-  "_doc": "loop-id -> last-run ISO date; run-if-stale reads this at session entry"
+  "_doc": "loop-id -> last-run ISO date; run-if-stale reads this at session entry",
+  "stabilization": "2026-06-24",
+  "maintenance": "2026-06-24",
+  "hygiene": "2026-06-24",
+  "codebase-review": "2026-06-24"
 }

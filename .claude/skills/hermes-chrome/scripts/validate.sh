@@ -54,4 +54,14 @@ For per-check rationale and fix recipes:
 EOF
 fi
 
+# Per-skill sync check
+SYNC_CHECK="$SKILL_DIR/scripts/sync-check.py"
+if [ -f "$SYNC_CHECK" ]; then
+  python3 "$SYNC_CHECK"
+  SYNC_EXIT=$?
+  if [ "$SYNC_EXIT" -ne 0 ]; then
+    EXIT=1
+  fi
+fi
+
 exit "$EXIT"

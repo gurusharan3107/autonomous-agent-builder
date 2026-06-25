@@ -198,6 +198,47 @@ def build_verification_output(
     )
 
 
+def summarize_build_failure_for_operator(output: str) -> str:
+    """Operator-safe one-line summary of a build_verify failure.
+
+    The raw command output can be a multi-KB dump — e.g. ESLint ``no-undef``
+    errors on browser globals (``RTCPeerConnection``, ``CustomEvent``) inside a
+    minified ``node_modules`` bundle, line/column numbers and all — that is
+    meaningless to an operator who just asked for a notes app. The full output
+    is preserved in the sprint/run ``verification_evidence``; the operator-facing
+    ``blocked_reason`` must name what failed and point to evidence, not leak the
+    raw tool output (M2.4 no-internals-leakage; operator-language mandate).
+
+    ``output`` is the ``build_verification_output`` shape: lines of
+    ``"<command> PASS|FAIL[: detail]"``. Returns the human summary WITHOUT the
+    ``final_checkout_build_failed:`` routing prefix (callers add it).
+    """
+    failed: list[str] = []
+    for raw_line in (output or "").splitlines():
+        line = raw_line.strip()
+        idx = line.find(" FAIL")
+        if idx == -1:
+            continue
+        command = line[:idx].strip()
+        if command and command not in failed:
+            failed.append(command)
+    if failed:
+        shown = ", ".join(f"`{c}`" for c in failed[:3])
+        more = "" if len(failed) <= 3 else f" (+{len(failed) - 3} more)"
+        return (
+            f"Build verification failed: {shown}{more} did not pass in the final app "
+            "checkout. Full command output is in this task's run evidence. Fix the "
+            "reported errors, or use Recover to retry if the cause is already resolved."
+        )
+    flat = " ".join((output or "").split())
+    if not flat:
+        return "Build verification failed in the final app checkout. See run evidence for detail."
+    return (
+        "Build verification failed in the final app checkout. See run evidence for full output. "
+        f"Summary: {flat[:200]}" + ("…" if len(flat) > 200 else "")
+    )
+
+
 async def record_deterministic_build_verification(
     db: AsyncSession,
     task: Task,
@@ -277,16 +318,12 @@ def feature_acceptance_output(
     status = str(data.get("status") or ("passed" if success else "failed"))
     command = data.get("command")
     command_text = (
-        " ".join(str(part) for part in command)
-        if isinstance(command, list)
-        else str(command or "")
+        " ".join(str(part) for part in command) if isinstance(command, list) else str(command or "")
     ).strip()
     coverage = data.get("coverage") if isinstance(data.get("coverage"), dict) else {}
     matched_files = coverage.get("matched_files") if isinstance(coverage, dict) else []
     criteria = (
-        data.get("acceptance_criteria")
-        if isinstance(data.get("acceptance_criteria"), list)
-        else []
+        data.get("acceptance_criteria") if isinstance(data.get("acceptance_criteria"), list) else []
     )
     lines = [
         f"Feature acceptance tests {'PASS' if success else 'FAIL'} ({status}).",

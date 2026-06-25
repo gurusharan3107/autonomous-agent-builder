@@ -119,6 +119,15 @@ their prompts **reference it** instead of restating it (single source; no drift)
 3. **Who writes:** the `implementer` applies code+test edits in the SAME change, gated by
    `test-sync-verifier` (+ `browser-verifier` if frontend). **No subagent touches git; the main thread
    owns all commits.** Never symptom-patch.
+3a. **Self-verify before declaring done — surface-specific, non-negotiable:**
+   - **Code/tests** → `pytest` + `ruff` (via `test-sync-verifier`); paste pass/fail count as evidence
+   - **Frontend/UI** → `browser-verifier` via `/hermes-chrome`; paste screenshot path + page_context as evidence
+   - **Skills** → `./scripts/validate.sh` from the skill dir; paste exit code + finding summary
+   - **Config/settings** → attempt a dry-run or read-back that proves the change took effect
+   - **Docs** → `python3 .claude/skills/status/scripts/lint_goal_docs.py`; paste pass/fail
+   - Partial evidence (e.g. "tests pass but no browser check") = **not done**. Claiming done without running
+     the surface-appropriate verifier is the exact failure mode that lets regressions ship silently.
+   - **Only `/hermes-chrome` for browser control** — never `chrome-devtools`, Playwright, or CDP directly.
 4. **Commit:** on green only, isolated branch; no push/merge to master unattended; PR-gate anything risky.
 5. **Pause** (AskUserQuestion) at: owner boundary (AGENTS.md/CLAUDE.md/docs ownership), runtime-policy /
    agent-prompt edit, large refactor, or anything ambiguous.

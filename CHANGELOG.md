@@ -9,6 +9,70 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-19 - fix(ux): IMP-046 — stop leaking the raw build-verify tool dump into the operator's blocked_reason
+
+Found by the dogfooding flywheel (sprint 1): a real notes-app task was blocked with `final_checkout_build_failed: npm run lint FAIL: 59:106931 error 'RTCPeerConnection' is not defined …` shown verbatim on the Board — a minified `node_modules` bundle line, meaningless to a customer who built a notes app, and long enough to bury the Recover button.
+
+### Fixed
+
+- `orchestrator/deterministic_verification.py`: new `summarize_build_failure_for_operator(output)` — names the failed command(s) (e.g. ``Build verification failed: `npm run lint` did not pass …``) and points to run evidence instead of dumping the raw output. Wired into both block sites (`orchestrator/sprint_lifecycle.py`, `services/run_reconciliation.py`). Preserves the `final_checkout_build_failed:` routing prefix (`task_recovery` keys off it) and keeps the raw output in `verification_evidence` (remediation re-derives detail via a fresh BuildVerify run, so no degradation). M2.4 no-internals-leakage.
+
+### Validation
+
+- 3 helper unit tests (names command, no `RTCPeerConnection`/column-number leak, multi-command, capped fallback) + extended reconciliation integration test (`blocked_reason` summarized, raw output stays in evidence). 66 targeted tests green; ruff clean; `architecture-boundary` + `state-integrity` gates ok. Live: recovered the real notes-app strand through the dashboard, blocked→done in ~2 min ($0.20). `T:backend` `T:browser`.
+
+### Notes
+
+- Root cause of the block itself (eslint linting `node_modules` + missing browser globals) was already fixed by the scaffold change in `c8f214b`; this fix is the operator-experience half. Residual frontend frictions (Recover-button visibility, Blocked-column-last layout) deferred. Detail: ROADMAP IMP-046.
+
+## 2026-06-19 - fix(stability): IMP-042/040/044 — never-strand a customer task (retry-budget reset, SSE future cancel, runtime idle timeout)
+
+Stabilization tick toward the dogfooding-reliability bar ("a customer builds feature after feature across multiple sprints without hitting a blocker"). The three open P2 items were design-flagged; the operator made the calls and these are the three customer-stranding failure modes, now closed at root.
+
+### Fixed
+
+- **IMP-044** (`agents/runner.py`, `runtime/claude_runtime.py`, `orchestrator/agent_run_lifecycle.py`, `orchestrator/failure_diagnosis.py`): the Claude runtime stream loop had no idle timeout (Codex did), so a hung SDK stranded the task in a non-terminal phase forever. Added `_STREAM_EVENT_IDLE_TIMEOUT_SECONDS = 120.0` + an `idle_timeout_seconds` param: when set, each `receive_response()` step is bounded by `asyncio.wait_for` (inactivity clock, resets per message — legitimate long turns survive); on expiry returns `RunResult.error` with **no** capability-limit stop_reason → recoverable FAILED. **Armed only on the orchestrated lane** (where `can_use_tool` never blocks on an operator); the chat lane is left unwatched and covered by IMP-040 instead. New `failure_diagnosis.is_runtime_idle_timeout` → `issue="runtime_idle_timeout"`.
+- **IMP-040** (`embedded/server/chat_state.py`, `embedded/server/routes/agent.py`): an unanswered AskUserQuestion / approval-card `await future` pinned the live runtime session forever. Added `cancel_session_pending_answers()` + `has_active_subscribers()`; the SSE `event_generator` `finally` cancels the session's pending futures **only when no subscribers remain** (multi-tab safe), raising `CancelledError` to release the session.
+- **IMP-042** (`orchestrator/quality_gate_runner.py`): `retry_count` reset only on recovery, never on forward progress → a task carried consumed gate-retries into the next gate cycle and hit `quality_gate_cap_exceeded` prematurely. Now reset to 0 on the gate PASS → `PR_CREATION` forward-progress branch (per-gate budget).
+
+### Validation
+
+- Full suite green; `ruff check .` clean; `state-integrity` + `architecture-boundary` + `claude-agent-sdk` quality-gates ok. Paired prove-fail/pass-with tests for all three (`test_orchestrator_gates.py`, `test_embedded_server_app.py`, `test_agent_runner.py`, `test_failure_diagnosis.py`). `T:backend` `T:browser:na`.
+
+### Notes
+
+- Operator design calls (via AskUserQuestion): idle (not wall-clock) timeout → recoverable FAILED; cancel-on-disconnect for interactive awaits; per-gate retry budget reset on progress. Detail: ROADMAP M1.1 IMP-040/042/044.
+
+## 2026-06-19 - chore(build-maintain-cycle): node-workspace eslint-ignores + self-verify §3a + hermes-chrome skill sync gate
+
+Landed the green, uncommitted follow-on from the prior build-maintain-cycle session so the tree is clean before the stabilization tick.
+
+### Changed
+
+- `services/workspace_scaffold.py` (`_MINIMAL_ESLINT_CONFIG`) + `agents/definitions.py` (scaffold prompt): the scaffolded Node `eslint.config.js` now emits a top-level `ignores` block (`node_modules/**`, `.agent-builder/**`, `dist/**`, `build/**`) so bundled/generated files are never linted; the scaffold prompt now mandates `globals.browser`+`globals.node` (no hand-enumerated browser globals) and the ignore block.
+- `docs/workflows/orchestrator-routing.md`: added Shared-fix-contract step **3a — self-verify before declaring done** (surface-specific verifier matrix; partial evidence = not done).
+- `.claude/skills/hermes-chrome/`: new hard rules 10 (`bridge()` is inline-only) + 11 (never `sleep N`), an operator HTML guide (`references/hermes-chrome-guide.html`, open-on-demand), and a `scripts/sync-check.py` SKILL↔HTML sync validator wired into `validate.sh`.
+
+### Validation
+
+- `tests/test_workspace_scaffold.py` asserts the eslint `ignores` entries; full suite 1715 passed; `ruff check .` clean; hermes-chrome `validate.sh` PASS (12/12 rules, sync PASS). `T:backend` `T:browser:na`.
+
+## 2026-06-18 - fix(orchestrator): IMP-043(a) — durable FAILED-state persist on the dispatch failure path
+
+Stabilization-loop tick (Epoch 1, bug-fix before features). Burned down a P2 finding the codebase-review loop filed but never fixed.
+
+### Fixed
+
+- `orchestrator/orchestrator.py` (`dispatch` exception handler): the IMP-010 defense suppressed the rollback error but left the FAILED-state `self.db.flush()` **unguarded**. When the session was unrecoverable the `flush()` raised, the exception escaped `dispatch`, the in-memory `FAILED` status was never committed, and the task stayed in a dispatchable status → re-dispatch loop. Now the `flush()` is guarded; on failure it logs `phase_error_persist_fallback` and persists FAILED durably via a fresh short-lived `get_session_factory()` session that re-fetches the task by id and commits (the established side-channel pattern from `agent_run_lifecycle.py:252` / `orchestrator.py:1304`); `phase_error_persist_failed` is logged if the row is absent.
+
+### Validation
+
+- New paired test `tests/test_orchestrator.py::TestDispatchFailedPersistFallback::test_failed_state_persisted_via_fallback_when_primary_flush_raises` — inserts a real task row, forces the primary `flush()` to raise, asserts `dispatch` does not propagate and the task is durably `FAILED`/`blocked_reason` in a separate verify session. Fails-without / passes-with. `tests/test_orchestrator.py` 45 passed; `ruff check` clean; `state-integrity` quality-gate ok. `T:backend` `T:browser:na`.
+
+### Notes
+
+- Scoped to IMP-043(a) (deterministic root cause). Part (b) — `await runtime.run()` has no orchestrator-level timeout — was **split to IMP-044** and left open as a design decision: the Codex runtime already enforces internal idle/response timeouts, so wrapping at the orchestrator level (and the on-timeout transition) is intent-dependent and was not guess-fixed per the Shared fix contract auto-fix gate.
+
 ## 2026-06-18 - feat(optimization): rework-share efficiency verdict + gate-timeout reprovisioning
 
 The optimization summary now treats wasted retry spend as a first-class efficiency signal,

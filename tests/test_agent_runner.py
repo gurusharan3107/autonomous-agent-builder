@@ -236,7 +236,10 @@ async def test_execute_query_uses_sdk_client_receive_response(monkeypatch, tmp_p
     assert captured["options"].resume == "resume-abc"
     assert captured["options"].env["CLAUDE_CODE_OAUTH_TOKEN"] == "builder-token"
     assert captured["options"].env["CLAUDE_CODE_ENABLE_TELEMETRY"] == "1"
-    assert captured["options"].env["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://collector.example.com:4318"
+    assert (
+        captured["options"].env["OTEL_EXPORTER_OTLP_ENDPOINT"]
+        == "http://collector.example.com:4318"
+    )
     assert result.observability is not None
     assert result.observability["enabled"] is True
     assert result.observability["service_name"] == "autonomous-agent-builder"
@@ -504,7 +507,13 @@ def test_preflight_passes_for_git_required_phase_with_valid_head(tmp_path):
         cwd=tmp_path,
         check=True,
         capture_output=True,
-        env={**__import__("os").environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
+        env={
+            **__import__("os").environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@t",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@t",
+        },
     )
     runner = AgentRunner(get_settings())
     result = runner._preflight_workspace("code-gen", str(tmp_path))
@@ -775,7 +784,7 @@ async def test_stream_event_invokes_on_stream_usage_callback(monkeypatch):
     fake.SystemMessage = FakeSystemMessage  # type: ignore[attr-defined]
     fake.AssistantMessage = FakeAssistantMessage  # type: ignore[attr-defined]
     fake.AgentDefinition = type("AD", (), {})  # type: ignore[attr-defined]
-    fake.tool = lambda n, d, s, annotations=None: (lambda f: f)  # type: ignore[attr-defined]
+    fake.tool = lambda n, d, s, annotations=None: lambda f: f  # type: ignore[attr-defined]
     fake.create_sdk_mcp_server = lambda name, version="1.0.0", tools=None: {  # type: ignore[attr-defined]
         "name": name,
         "tools": tools or [],
@@ -801,3 +810,174 @@ async def test_stream_event_invokes_on_stream_usage_callback(monkeypatch):
     assert inp == 100
     assert cached == 90  # cache_read(80) + cache_creation(10)
     assert out == 25
+
+
+# ---------------------------------------------------------------------------
+# IMP-044: idle timeout tests
+# ---------------------------------------------------------------------------
+
+
+def _make_idle_fake_sdk(monkeypatch, receive_response_coro):
+    """Inject a minimal fake claude_agent_sdk with the given receive_response async generator."""
+    import sys
+    from types import ModuleType
+
+    class _Opts:
+        def __init__(self, **kw):
+            for k, v in kw.items():
+                setattr(self, k, v)
+
+    class _Client:
+        def __init__(self, options):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return False
+
+        async def query(self, *_a, **_kw):
+            pass
+
+        def receive_response(self):
+            return receive_response_coro()
+
+    fake = ModuleType("claude_agent_sdk")
+    fake.ClaudeAgentOptions = _Opts
+    fake.ClaudeSDKClient = _Client
+    fake.HookMatcher = type("HM", (), {"__init__": lambda s, **kw: None})
+    fake.RateLimitEvent = type("RLE", (), {})
+    fake.ResultMessage = type("RM", (), {})
+    fake.StreamEvent = type("SE", (), {})
+    fake.SystemMessage = type("SM", (), {})
+    fake.AssistantMessage = type("AM", (), {})
+    fake.AgentDefinition = type("AD", (), {})
+    fake.tool = lambda n, d, s, annotations=None: lambda f: f
+    fake.create_sdk_mcp_server = lambda name, version="1.0.0", tools=None: {
+        "name": name,
+        "tools": tools or [],
+    }
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake)
+    return fake
+
+
+@pytest.mark.asyncio
+async def test_execute_query_idle_timeout_surfaces_recoverable_error(monkeypatch):
+    """IMP-044: when the stream stalls past idle_timeout_seconds, run_phase returns
+    RunResult.error containing 'idle timeout' and hit_capability_limit is False
+    (routes to FAILED, not CAPABILITY_LIMIT)."""
+    import asyncio
+
+    class _FakeSystemMessage:
+        def __init__(self):
+            self.subtype = "init"
+            self.data = {"session_id": "idle-session"}
+
+    async def _hanging_response():
+        yield _FakeSystemMessage()
+        # hang forever — never yields a ResultMessage
+        await asyncio.sleep(9999)
+
+    fake = _make_idle_fake_sdk(monkeypatch, _hanging_response)
+    fake.SystemMessage = _FakeSystemMessage
+
+    runner = AgentRunner(get_settings())
+    result = await runner.run_phase(
+        agent_name="chat",
+        prompt="hi",
+        workspace_path=".",
+        idle_timeout_seconds=0.05,  # 50 ms — very short for test speed
+    )
+
+    assert result.error is not None, "expected an error for idle timeout"
+    assert "idle timeout" in result.error.lower(), f"unexpected error: {result.error}"
+    assert not result.hit_capability_limit, (
+        "idle timeout must route to FAILED (not CAPABILITY_LIMIT)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_execute_query_idle_clock_resets_on_messages(monkeypatch):
+    """IMP-044: inactivity-based — rapid successive messages keep clock reset and
+    the run completes without triggering the watchdog."""
+    import asyncio
+
+    class _FakeSystemMessage:
+        def __init__(self):
+            self.subtype = "init"
+            self.data = {"session_id": "reset-session"}
+
+    class _FakeResultMessage:
+        session_id = "reset-session"
+        usage: dict = {}
+        total_cost_usd = 0.0
+        num_turns = 1
+        duration_ms = 0
+        stop_reason = "end_turn"
+
+    class _FakeResultMessageWithUsage:
+        session_id = "reset-session"
+        usage: dict = {"input_tokens": 10, "output_tokens": 5}
+        total_cost_usd = 0.01
+        num_turns = 1
+        duration_ms = 0
+        stop_reason = "end_turn"
+
+    async def _rapid_response():
+        # Three messages each sub-threshold apart
+        for _ in range(3):
+            await asyncio.sleep(0.01)  # 10 ms, well below 200 ms threshold
+            yield _FakeSystemMessage()
+        yield _FakeResultMessageWithUsage()
+
+    fake = _make_idle_fake_sdk(monkeypatch, _rapid_response)
+    fake.SystemMessage = _FakeSystemMessage
+    fake.ResultMessage = _FakeResultMessageWithUsage
+
+    runner = AgentRunner(get_settings())
+    result = await runner.run_phase(
+        agent_name="chat",
+        prompt="hi",
+        workspace_path=".",
+        idle_timeout_seconds=0.20,  # 200 ms threshold
+    )
+
+    assert result.error is None, f"should complete without error; got: {result.error}"
+
+
+@pytest.mark.asyncio
+async def test_execute_query_no_idle_timeout_when_param_none(monkeypatch):
+    """IMP-044: when idle_timeout_seconds=None the existing behaviour is preserved
+    — a normally-completing stream returns without error."""
+
+    class _FakeSystemMessage:
+        def __init__(self):
+            self.subtype = "init"
+            self.data = {"session_id": "none-session"}
+
+    class _FakeResultMessage:
+        session_id = "none-session"
+        usage: dict = {"input_tokens": 10, "output_tokens": 5}
+        total_cost_usd = 0.01
+        num_turns = 1
+        duration_ms = 0
+        stop_reason = "end_turn"
+
+    async def _normal_response():
+        yield _FakeSystemMessage()
+        yield _FakeResultMessage()
+
+    fake = _make_idle_fake_sdk(monkeypatch, _normal_response)
+    fake.SystemMessage = _FakeSystemMessage
+    fake.ResultMessage = _FakeResultMessage
+
+    runner = AgentRunner(get_settings())
+    result = await runner.run_phase(
+        agent_name="chat",
+        prompt="hi",
+        workspace_path=".",
+        idle_timeout_seconds=None,  # chat-lane default: no watchdog
+    )
+
+    assert result.error is None, f"chat lane must complete without error; got: {result.error}"

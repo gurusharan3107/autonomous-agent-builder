@@ -216,6 +216,48 @@ async def test_onboarding_start_seeds_builder_state(test_db, sample_workspace, m
 
 
 @pytest.mark.asyncio
+async def test_onboarding_start_dedupes_concurrent_starts(test_db, sample_workspace, monkeypatch):
+    """Two near-simultaneous starts must schedule the pipeline only once.
+
+    Regression for the TOCTOU race: a plain asyncio.Lock checked with
+    lock.locked() let both callers pass the precheck before either scheduled
+    task acquired the lock, so the second still ran the full pipeline a second
+    time on the already-onboarded repo. The synchronous in-flight marker closes
+    the gap, so the second concurrent start bails.
+    """
+    _write_builder_bootstrap(sample_workspace)
+
+    import autonomous_agent_builder.onboarding as onboarding
+
+    run_count = 0
+
+    async def fake_pipeline(project_root, session_factory):
+        nonlocal run_count
+        run_count += 1
+        await asyncio.sleep(0.1)  # hold the in-flight marker across both starts
+
+    async def fake_preflight(project_root, state):
+        return True
+
+    async def fake_snapshot(project_root):
+        return None
+
+    monkeypatch.setattr(onboarding, "_run_pipeline", fake_pipeline)
+    monkeypatch.setattr(onboarding, "_preflight_onboarding_claude", fake_preflight)
+    monkeypatch.setattr(onboarding, "publish_onboarding_snapshot", fake_snapshot)
+    onboarding._pipeline_inflight.discard(str(sample_workspace.resolve()))
+
+    await asyncio.gather(
+        onboarding.start_onboarding(sample_workspace, test_db),
+        onboarding.start_onboarding(sample_workspace, test_db),
+    )
+    await asyncio.sleep(0.25)  # let the scheduled task(s) complete
+
+    assert run_count == 1
+    assert str(sample_workspace.resolve()) not in onboarding._pipeline_inflight
+
+
+@pytest.mark.asyncio
 async def test_onboarding_start_blocks_when_claude_unavailable(
     test_db, sample_workspace, monkeypatch
 ):
@@ -685,7 +727,9 @@ def test_classify_onboarding_mode_detects_clean_slate_and_existing_repo(tmp_path
     clean_slate = tmp_path / "clean-slate"
     clean_slate.mkdir()
     (clean_slate / "README.md").write_text("# Clean Slate\n")
-    (clean_slate / "pyproject.toml").write_text('[project]\nname = "clean-slate"\nversion = "0.1.0"\n')
+    (clean_slate / "pyproject.toml").write_text(
+        '[project]\nname = "clean-slate"\nversion = "0.1.0"\n'
+    )
 
     assert onboarding._classify_onboarding_mode(clean_slate) == "forward_engineering"
     assert onboarding._classify_onboarding_mode(sample_workspace) == "reverse_engineering"

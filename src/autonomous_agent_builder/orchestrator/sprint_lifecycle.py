@@ -20,6 +20,9 @@ from autonomous_agent_builder.db.models import (
     Task,
     TaskStatus,
 )
+from autonomous_agent_builder.orchestrator.deterministic_verification import (
+    summarize_build_failure_for_operator,
+)
 from autonomous_agent_builder.orchestrator.failure_diagnosis import diagnose_task_failure
 from autonomous_agent_builder.orchestrator.runtime_guidance_preservation import (
     GitRunner as _GitRunner,
@@ -205,9 +208,7 @@ async def sprint_maybe_ff_merge(sprint: Sprint, repo_root: Path) -> str | None:
     if head_code != 0:
         return None
     guidance_snapshot = project_runtime_guidance_snapshot(repo_root)
-    clean_error = await clean_project_runtime_guidance_for_git_operation(
-        run_git, guidance_snapshot
-    )
+    clean_error = await clean_project_runtime_guidance_for_git_operation(run_git, guidance_snapshot)
     if clean_error:
         return clean_error
     checkout_code, checkout_output = await run_git("checkout", "main")
@@ -317,8 +318,13 @@ async def sprint_verify_materialized_checkout(
         }
         return None
     error = f"final_checkout_build_failed: {output}"
+    # Operator-facing blocked_reason is summarized (raw output stays in evidence
+    # below); never leak the raw multi-KB tool dump onto the Board. See
+    # summarize_build_failure_for_operator (M2.4 no-internals-leakage).
     task.status = TaskStatus.BLOCKED
-    task.blocked_reason = error
+    task.blocked_reason = (
+        f"final_checkout_build_failed: {summarize_build_failure_for_operator(output)}"
+    )
     task.updated_at = datetime.now(UTC)
     sprint.phase = SprintPhase.BLOCKED
     sprint.verification_status = "blocked"
@@ -446,9 +452,7 @@ async def sprint_mark_shipped(orchestrator: Any, task: Task) -> None:
     )
     acceptance_runs = list(acceptance_result.scalars().all())
     acceptance_run_ids = [run.id for run in acceptance_runs if run.status == "completed"]
-    approved_feature_ids = [
-        str(feature_id) for feature_id in (sprint.approved_feature_ids or [])
-    ]
+    approved_feature_ids = [str(feature_id) for feature_id in (sprint.approved_feature_ids or [])]
 
     verification_summary = (
         "All generated sprint tasks completed; feature-verifier acceptance, "

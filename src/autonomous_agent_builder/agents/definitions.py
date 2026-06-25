@@ -404,8 +404,8 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "- Use the `Write` tool to create the file; do not echo the full HTML "
             "back in your response.\n"
             "- End with EXACTLY one line, no trailing text:\n\n"
-            "UI_PREVIEW_RESULT_JSON: {{\"mockup_path\": \".ui-preview/mockup.html\", "
-            "\"summary\": \"<one sentence>\"}}\n\n"
+            'UI_PREVIEW_RESULT_JSON: {{"mockup_path": ".ui-preview/mockup.html", '
+            '"summary": "<one sentence>"}}\n\n'
             "{tool_context}\n\n"
             "Feature: {feature_title}\n"
             "Feature description: {feature_description}\n"
@@ -458,7 +458,16 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "  at the workspace root. For python that is `pyproject.toml` with "
             "  `[tool.ruff]` AND `[tool.pytest.ini_options]` sections; for "
             "  node it is `package.json` plus `eslint.config.js` (or "
-            "  `.eslintrc.*`); for go it is `go.mod`; for rust `Cargo.toml`; "
+            "  `.eslintrc.*`). For node, `eslint.config.js` MUST: (1) add a "
+            "  top-level `ignores` entry covering node_modules/**, .agent-builder/**, "
+            "  dist/**, build/** so bundled/generated files are never linted; "
+            "  (2) import globals from the `globals` npm package (add it as a "
+            "  devDependency) and spread `globals.browser` AND `globals.node` in "
+            "  languageOptions so all standard browser APIs (fetch, URL, "
+            "  CustomEvent, EventSource, requestAnimationFrame, AbortSignal, etc.) "
+            "  resolve without `no-undef` errors. NEVER enumerate individual "
+            "  browser globals by hand — the list will always miss some. "
+            "  For go it is `go.mod`; for rust `Cargo.toml`; "
             "  for java `pom.xml` or `build.gradle`. THIS FILE MUST EXIST AT "
             "  THE WORKSPACE ROOT BEFORE YOU EMIT SCAFFOLD_RESULT_JSON.\n"
             "- If app source files (e.g. `src/`, `app/`, `tests/`) or a "
@@ -486,10 +495,10 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "  `Write` tool and emit SCAFFOLD_RESULT_JSON.\n\n"
             "On success, finish with one JSON object on its own line, no other "
             "trailing text:\n\n"
-            "SCAFFOLD_RESULT_JSON: {{\"language\": \"<python|node|go|java|rust|...>\", "
-            "\"stack\": \"<short stack id, e.g. python-cli or node-vite-react>\", "
-            "\"files_written\": [\"<relative path>\", ...], "
-            "\"gate_set\": [\"<gate name>\", ...]}}\n\n"
+            'SCAFFOLD_RESULT_JSON: {{"language": "<python|node|go|java|rust|...>", '
+            '"stack": "<short stack id, e.g. python-cli or node-vite-react>", '
+            '"files_written": ["<relative path>", ...], '
+            '"gate_set": ["<gate name>", ...]}}\n\n'
             "If you cannot decide the stack even after one structured question, do "
             "NOT keep asking. Emit `OPERATOR_DECISION_JSON:` followed immediately "
             "by one raw JSON object with shape:\n"
@@ -568,8 +577,8 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "If the fix is not passing by turn 6, emit fixed=false immediately.\n\n"
             "CRITICAL — how to run commands:\n"
             "- Use ONLY mcp__workspace__run_command with argv as a string array.\n"
-            "- JavaScript/Node example: {{\"argv\": [\"npm\", \"run\", \"build\"]}}\n"
-            "- Python example: {{\"argv\": [\"python3\", \"-m\", \"pytest\"]}}\n"
+            '- JavaScript/Node example: {{"argv": ["npm", "run", "build"]}}\n'
+            '- Python example: {{"argv": ["python3", "-m", "pytest"]}}\n'
             "- Do NOT use the Bash tool — it is not available here.\n"
             "- Do NOT use shell metacharacters (|, >, &&, 2>&1).\n\n"
             "Scope boundary:\n"
@@ -580,13 +589,13 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "- Do not narrate progress.\n"
             "- Inspect only the last 80 lines of command output.\n"
             "- End with exactly one sentinel on its own line:\n\n"
-            "GATE_FIX_RESULT_JSON: {{\"fixed\": true, "
-            "\"files_changed\": [\"<path>\", ...], "
-            "\"commands_run\": [{{\"cmd\": \"<cmd>\", \"exit_code\": 0}}], "
-            "\"fix_summary\": \"<one sentence>\"}}\n\n"
+            'GATE_FIX_RESULT_JSON: {{"fixed": true, '
+            '"files_changed": ["<path>", ...], '
+            '"commands_run": [{{"cmd": "<cmd>", "exit_code": 0}}], '
+            '"fix_summary": "<one sentence>"}}\n\n'
             "Or:\n"
-            "GATE_FIX_RESULT_JSON: {{\"fixed\": false, "
-            "\"reason\": \"<why it cannot be auto-fixed>\"}}\n\n"
+            'GATE_FIX_RESULT_JSON: {{"fixed": false, '
+            '"reason": "<why it cannot be auto-fixed>"}}\n\n'
             "{tool_context}\n\n"
             "Task: {task_title}\n"
             "Language: {language}\n"
@@ -644,6 +653,9 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "`.claude/` directory; skills are provided via prompt enrichment.\n\n"
             "Command discipline:\n"
             "- Use `python3` not `python` — bare `python` exits 127 in workspaces.\n"
+            "- For node workspaces: if `node_modules/` is absent before running the "
+            "  linter, run `npm install` (or `npm ci` if `package-lock.json` exists) "
+            "  first; a linter failure caused by missing deps MUST be fixed, not skipped.\n"
             "- For build/lint/test, always use mcp__workspace__run_tests or "
             "  mcp__workspace__run_command with an argv string array; never pass "
             "  test/build commands to Bash.\n\n"
@@ -885,7 +897,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "Task:\n{task_description}\n"
         ),
         tools=(),
-        auto_approve_tools=("Agent", *DOCUMENTATION_AGENT_TOOLS),
+        auto_approve_tools=("Agent",),
         # IMP-035 win #1: this lane does zero reasoning — it dispatches one Agent
         # call to documentation-agent and returns the child's JSON unchanged — so
         # the parent runs on haiku. The real work happens in the (sonnet)

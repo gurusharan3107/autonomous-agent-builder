@@ -7,6 +7,7 @@ from typing import Any
 
 _CODEX_CHUNK_LIMIT_FRAGMENT = "separator is not found"
 _CODEX_CHUNK_LIMIT_DETAIL = "chunk exceed"
+_RUNTIME_IDLE_TIMEOUT_FRAGMENT = "claude runtime idle timeout"
 _BUILDER_INTERNAL_PATHS = (
     ".agent-builder",
     ".agent-builder/dashboard",
@@ -26,7 +27,12 @@ def diagnose_task_failure(
 ) -> str:
     issue = "agent_runtime_failure"
     detail = error
-    if is_codex_chunk_limit_error(error):
+    if is_runtime_idle_timeout(error):
+        issue = "runtime_idle_timeout"
+        detail = (
+            "Claude SDK stream produced no event for the inactivity window; task may be retried."
+        )
+    elif is_codex_chunk_limit_error(error):
         issue = "codex_transport_chunk_limit"
         detail = "Codex app-server failed while streaming/parsing a large tool or agent output."
         if workspace_contains_builder_internals(workspace_path):
@@ -41,6 +47,10 @@ def diagnose_task_failure(
         evidence.append(f"workspace={workspace_path}")
     suffix = f" ({'; '.join(evidence)})" if evidence else ""
     return f"{issue}: {detail}{suffix}"
+
+
+def is_runtime_idle_timeout(error: str) -> bool:
+    return _RUNTIME_IDLE_TIMEOUT_FRAGMENT in error.lower()
 
 
 def is_codex_chunk_limit_error(error: str) -> bool:

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from autonomous_agent_builder.orchestrator.failure_diagnosis import (
     diagnose_task_failure,
     is_codex_chunk_limit_error,
+    is_runtime_idle_timeout,
     workspace_contains_builder_internals,
 )
 
@@ -59,3 +60,19 @@ def test_workspace_contains_builder_internals_detects_pollution(tmp_path) -> Non
 def test_is_codex_chunk_limit_error_requires_both_fragments() -> None:
     assert is_codex_chunk_limit_error("Separator is not found and chunk exceed") is True
     assert is_codex_chunk_limit_error("Separator is not found") is False
+
+
+def test_is_runtime_idle_timeout_matches_idle_message() -> None:
+    """IMP-044: is_runtime_idle_timeout recognises the idle-timeout error string."""
+    assert is_runtime_idle_timeout("Claude runtime idle timeout: no stream event for 120s")
+    assert is_runtime_idle_timeout("CLAUDE RUNTIME IDLE TIMEOUT: no stream event for 120s")
+    assert not is_runtime_idle_timeout("Separator is not found and chunk exceed")
+    assert not is_runtime_idle_timeout("")
+
+
+def test_diagnose_task_failure_names_runtime_idle_timeout() -> None:
+    """IMP-044: diagnose_task_failure returns issue='runtime_idle_timeout' for idle errors."""
+    reason = diagnose_task_failure(
+        "Claude runtime idle timeout: no stream event for 120s",
+    )
+    assert reason.startswith("runtime_idle_timeout:")

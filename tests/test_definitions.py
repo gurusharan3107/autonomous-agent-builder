@@ -256,25 +256,27 @@ class TestAgentDefinitions:
             "and `freshness_mode` fields"
         ) in subagent.prompt
         assert (
-            "For first-doc creation, call `builder_kb_contract` before drafting."
-            in subagent.prompt
+            "For first-doc creation, call `builder_kb_contract` before drafting." in subagent.prompt
         )
         assert (
             "Use `builder_kb_lint` to catch contract failures before `builder_kb_add`"
             in subagent.prompt
         )
         assert (
-            "Attempt at most one repair retry after a lint or publish failure."
-            in subagent.prompt
+            "Attempt at most one repair retry after a lint or publish failure." in subagent.prompt
         )
         assert "JSON object" in subagent.prompt
 
     def test_documentation_bridge_only_owns_agent_tool_and_doc_auto_approvals(self):
         bridge = get_agent_definition("documentation-bridge")
         assert bridge.tools == ()
-        assert bridge.auto_approve_tools is not None
-        assert bridge.auto_approve_tools[0] == "Agent"
-        assert "mcp__builder__kb_update" in bridge.auto_approve_tools
+        # Bridge delegates to documentation-agent via Agent tool only.
+        # KB mutation tools must NOT be in auto_approve_tools: the bridge
+        # runs in the auto-approve path (no can_use_tool callback from
+        # _run_bridge_agent), so any extra tool here is auto-approved and
+        # bypasses the delegation contract.
+        assert bridge.auto_approve_tools == ("Agent",)
+        assert "mcp__builder__kb_update" not in (bridge.auto_approve_tools or ())
         assert "documentation-agent" in bridge.prompt_template
 
     def test_optimization_agent_is_post_ship_bounded_and_observability_grounded(self):

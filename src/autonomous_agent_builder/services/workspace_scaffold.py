@@ -115,8 +115,7 @@ def parse_scaffold_result(output_text: str) -> ScaffoldResult:
         return ScaffoldResult(
             action="blocked",
             reason=(
-                "scaffold_failed: agent output is missing the "
-                f"`{_SCAFFOLD_RESULT_PREFIX}` line"
+                f"scaffold_failed: agent output is missing the `{_SCAFFOLD_RESULT_PREFIX}` line"
             ),
             raw_output=output_text,
         )
@@ -198,14 +197,37 @@ _MINIMAL_PACKAGE_JSON_TEMPLATE = """\
     "test": "node --test"
   }},
   "devDependencies": {{
-    "eslint": "^9.0.0"
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0"
   }}
 }}
 """
 
 _MINIMAL_ESLINT_CONFIG = """\
 import js from "@eslint/js";
-export default [js.configs.recommended];
+import globals from "globals";
+export default [
+  {{
+    ignores: ["node_modules/**", ".agent-builder/**", "dist/**", "build/**"],
+  }},
+  js.configs.recommended,
+  {{
+    files: ["**/*.js"],
+    languageOptions: {{
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {{
+        ...globals.browser,
+        ...globals.node,
+      }},
+    }},
+    rules: {{
+      "no-unused-vars": "warn",
+      "no-undef": "error",
+      "no-console": "off",
+    }},
+  }},
+];
 """
 
 
@@ -255,8 +277,7 @@ def write_minimal_gate_config(
         eslint_config = path / "eslint.config.js"
         # Honor any pre-existing legacy config file.
         legacy = any(
-            (path / name).exists()
-            for name in (".eslintrc.json", ".eslintrc.js", ".eslintrc")
+            (path / name).exists() for name in (".eslintrc.json", ".eslintrc.js", ".eslintrc")
         )
         if not eslint_config.exists() and not legacy:
             eslint_config.write_text(_MINIMAL_ESLINT_CONFIG)

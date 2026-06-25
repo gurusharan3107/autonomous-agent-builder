@@ -1,12 +1,27 @@
 {
   "src/autonomous_agent_builder/embedded/server/routes/agent.py": {
-    "reviewed_at": "e9b8a4c",
-    "date": "2026-06-17",
-    "result": "fixed: 409-on-busy persisted-response + SSE pool-conn release (e9b8a4c); filed: IMP-040 (await-future timeout), IMP-041 (denial-block dedup); refuted: missing-commit (get_db auto-commits); skipped: dead defensive guard"
+    "reviewed_at": "465b138605f68d0c0588f287ccd5a18772cd1445",
+    "date": "2026-06-24",
+    "result": "fixed: 409-on-busy persisted-response + SSE pool-conn release (e9b8a4c); IMP-041 denial-block dedup -> _emit_tool_denial helper, -27 LOC (465b138); filed earlier: IMP-040 (await-future timeout, DONE); refuted: missing-commit (get_db auto-commits); skipped: dead defensive guard"
   },
   "src/autonomous_agent_builder/orchestrator/orchestrator.py": {
     "reviewed_at": "3d45ac7",
     "date": "2026-06-17",
     "result": "0 fixed (no deterministic in-file bug); filed IMP-042 (retry-budget semantics) + IMP-043 (failure-path flush + runtime.run timeout); refuted 2 dead-code candidates (_extract_operator_decision/_json_object_from_text/_task_status_value all have callers: 1/3/18 refs)"
+  },
+  "src/autonomous_agent_builder/agents/definitions.py": {
+    "reviewed_at": "1d6421a2dbf38ee85dd2b58d589b4443e3596eb2",
+    "date": "2026-06-24",
+    "result": "fixed: documentation-bridge auto_approve_tools narrowed to Agent-only (was leaking KB mutation tools into auto-approve path); test updated to assert Agent-only contract"
+  },
+  "src/autonomous_agent_builder/embedded/server/agent_prompt_builders.py": {
+    "reviewed_at": "1d6421a2dbf38ee85dd2b58d589b4443e3596eb2",
+    "date": "2026-06-24",
+    "result": "quality: duplicated runtime_sdk normalization at lines 91+429; no correctness bugs; filed as low-priority dedup"
+  },
+  "src/autonomous_agent_builder/onboarding.py": {
+    "reviewed_at": "2a71a7575f4e0ca334c1fca7ce988b670403d4d7",
+    "date": "2026-06-24",
+    "result": "fixed: IMP-048 TOCTOU race in start_onboarding (lock.locked() precheck raced; replaced with synchronous _pipeline_inflight marker + finally-clear) + paired concurrent-start regression test; deleted 2 dead fns (onboarding_mode, _forward_engineering_feature_specs, ~66 LOC, 0 refs); refuted: _detect_framework fastapi-dir check (near-dead but harmless, pyproject scan catches real case) + _pipeline_locks growth (bounded by distinct repo count); state-integrity + architecture-boundary gates ok"
   }
 }

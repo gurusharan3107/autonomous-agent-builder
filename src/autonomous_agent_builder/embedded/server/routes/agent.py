@@ -241,6 +241,8 @@ _USER_QUESTION_TOOL_NAMES = {
     "AskUserQuestion",
     "request_user_input",
 }
+
+
 def _project_root(request: Request) -> Path:
     return request_project_root(request)
 
@@ -373,9 +375,7 @@ async def _handle_chat_tool_event(
                 "in_progress_count": sum(
                     1 for todo in todos if todo.get("status") == "in_progress"
                 ),
-                "completed_count": sum(
-                    1 for todo in todos if todo.get("status") == "completed"
-                ),
+                "completed_count": sum(1 for todo in todos if todo.get("status") == "completed"),
             },
             status="completed",
             tool_use_id=str(tool_use_id) if tool_use_id else None,
@@ -408,6 +408,54 @@ async def _handle_chat_tool_event(
                 status="running",
             )
             state.specialist_phase = next_phase
+
+
+async def _emit_tool_denial(
+    state: ChatTurnCallbackState,
+    *,
+    tool_name: str,
+    tool_input: dict[str, Any],
+    message: str,
+    hint: str,
+    detail: dict[str, Any],
+) -> None:
+    """Emit a permission_denied ``tool_error`` chat event for a denied tool call.
+
+    Shared by the feature_spec, kb_validate, and mutating-builtin denial paths in
+    ``_authorize_chat_tool`` (IMP-041). The caller returns ``_permission_deny(...)``
+    with its lane-specific reason after calling this.
+    """
+    denial_content = {
+        "status": "error",
+        "error": {
+            "code": "permission_denied",
+            "message": message,
+            "hint": hint,
+            "detail": detail,
+        },
+        "schema_version": "1",
+    }
+    payload = {
+        "tool_name": tool_name,
+        "tool_input": tool_input,
+        "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
+        "diagnostic": summarize_tool_event(
+            event_type="tool_error",
+            tool_name=tool_name,
+            tool_input=tool_input,
+            tool_response=denial_content,
+        ),
+    }
+    tool_event = await _append_chat_event(
+        state.session_id,
+        event_type="tool_error",
+        payload=payload,
+        status="completed",
+    )
+    await state.hub.publish(
+        state.session_id,
+        agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
+    )
 
 
 async def _authorize_chat_tool(
@@ -453,39 +501,13 @@ async def _authorize_chat_tool(
     if state.feature_spec_requested:
         deny_tool, deny_reason = _feature_spec_tool_denial(tool_name)
         if deny_tool:
-            denial_content = {
-                "status": "error",
-                "error": {
-                    "code": "permission_denied",
-                    "message": deny_reason,
-                    "hint": "Use AskUserQuestion for the next bounded requirement decision or emit FEATURE_SPEC_JSON once the scope is ready.",
-                    "detail": {
-                        "tool_name": tool_name,
-                        "lane": "feature_spec",
-                    },
-                },
-                "schema_version": "1",
-            }
-            payload = {
-                "tool_name": tool_name,
-                "tool_input": input_data,
-                "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
-                "diagnostic": summarize_tool_event(
-                    event_type="tool_error",
-                    tool_name=tool_name,
-                    tool_input=input_data,
-                    tool_response=denial_content,
-                ),
-            }
-            tool_event = await _append_chat_event(
-                state.session_id,
-                event_type="tool_error",
-                payload=payload,
-                status="completed",
-            )
-            await state.hub.publish(
-                state.session_id,
-                agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
+            await _emit_tool_denial(
+                state,
+                tool_name=tool_name,
+                tool_input=input_data,
+                message=deny_reason,
+                hint="Use AskUserQuestion for the next bounded requirement decision or emit FEATURE_SPEC_JSON once the scope is ready.",
+                detail={"tool_name": tool_name, "lane": "feature_spec"},
             )
             return _permission_deny(deny_reason)
 
@@ -501,39 +523,16 @@ async def _authorize_chat_tool(
         if allowed:
             return _permission_allow(updated_input)
 
-        denial_content = {
-            "status": "error",
-            "error": {
-                "code": "permission_denied",
-                "message": deny_reason,
-                "hint": next_action,
-                "detail": {
-                    "kb_dir": updated_input.get("kb_dir", "system-docs"),
-                    "safe_lane": ".agent-builder/knowledge/<kb_dir>",
-                },
+        await _emit_tool_denial(
+            state,
+            tool_name=tool_name,
+            tool_input=updated_input,
+            message=deny_reason,
+            hint=next_action,
+            detail={
+                "kb_dir": updated_input.get("kb_dir", "system-docs"),
+                "safe_lane": ".agent-builder/knowledge/<kb_dir>",
             },
-            "schema_version": "1",
-        }
-        payload = {
-            "tool_name": tool_name,
-            "tool_input": updated_input,
-            "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
-            "diagnostic": summarize_tool_event(
-                event_type="tool_error",
-                tool_name=tool_name,
-                tool_input=updated_input,
-                tool_response=denial_content,
-            ),
-        }
-        tool_event = await _append_chat_event(
-            state.session_id,
-            event_type="tool_error",
-            payload=payload,
-            status="completed",
-        )
-        await state.hub.publish(
-            state.session_id,
-            agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
         )
         return _permission_deny(f"{deny_reason} {next_action}")
 
@@ -575,39 +574,13 @@ async def _authorize_chat_tool(
     if state.agent_name == "chat":
         deny_builtin, deny_builtin_reason = _chat_mutating_builtin_denial(tool_name)
         if deny_builtin:
-            denial_content = {
-                "status": "error",
-                "error": {
-                    "code": "permission_denied",
-                    "message": deny_builtin_reason,
-                    "hint": "Capture the change as a backlog item and dispatch it via mcp__builder__task_dispatch.",
-                    "detail": {
-                        "tool_name": tool_name,
-                        "lane": "chat",
-                    },
-                },
-                "schema_version": "1",
-            }
-            payload = {
-                "tool_name": tool_name,
-                "tool_input": input_data,
-                "content": json.dumps(denial_content, ensure_ascii=True, sort_keys=True),
-                "diagnostic": summarize_tool_event(
-                    event_type="tool_error",
-                    tool_name=tool_name,
-                    tool_input=input_data,
-                    tool_response=denial_content,
-                ),
-            }
-            tool_event = await _append_chat_event(
-                state.session_id,
-                event_type="tool_error",
-                payload=payload,
-                status="completed",
-            )
-            await state.hub.publish(
-                state.session_id,
-                agent_chat_transcript.serialize_event(tool_event).model_dump(mode="json"),
+            await _emit_tool_denial(
+                state,
+                tool_name=tool_name,
+                tool_input=input_data,
+                message=deny_builtin_reason,
+                hint="Capture the change as a backlog item and dispatch it via mcp__builder__task_dispatch.",
+                detail={"tool_name": tool_name, "lane": "chat"},
             )
             return _permission_deny(deny_builtin_reason)
 
@@ -689,7 +662,9 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
         payload=_initial_status(agent_name, project_root),
         status="running",
     )
-    await hub.publish(session_id, agent_chat_transcript.serialize_event(run_status_event).model_dump(mode="json"))
+    await hub.publish(
+        session_id, agent_chat_transcript.serialize_event(run_status_event).model_dump(mode="json")
+    )
 
     async def publish_specialist_status(
         phase: str, content: str, *, status: str = "running"
@@ -711,7 +686,10 @@ async def _run_chat_turn(app: Any, session_id: str, user_message: str) -> None:
             },
             status=status,
         )
-        await hub.publish(session_id, agent_chat_transcript.serialize_event(specialist_event).model_dump(mode="json"))
+        await hub.publish(
+            session_id,
+            agent_chat_transcript.serialize_event(specialist_event).model_dump(mode="json"),
+        )
 
     if specialist_active:
         specialist_phase = "discovering"
@@ -1074,7 +1052,9 @@ async def get_chat_history(
     runtime_metadata = _chat_runtime_metadata(project_root)
     active_run = await _chat_hub(request).has_active_run(session.id)
     status = agent_chat_transcript.latest_status(session, active_run=active_run)
-    thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(runtime_metadata, status)
+    thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(
+        runtime_metadata, status
+    )
     return ChatHistoryResponse(
         session_id=session.id,
         sdk_session_id=session.sdk_session_id,
@@ -1114,7 +1094,9 @@ async def chat_stream(
         runtime_metadata = _chat_runtime_metadata(project_root)
         active_run = await hub.has_active_run(session_id)
         status = agent_chat_transcript.latest_status(session, active_run=active_run)
-        thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(runtime_metadata, status)
+        thread_runtime_metadata = agent_chat_transcript.thread_runtime_metadata(
+            runtime_metadata, status
+        )
         if await reconcile_session_control_owners(
             session,
             db,
@@ -1150,6 +1132,11 @@ async def chat_stream(
                     yield {"comment": "keepalive"}
         finally:
             await hub.unregister_session(session_id, queue)
+            # IMP-040: cancel pending-answer futures when the last SSE subscriber
+            # disconnects so AskUserQuestion / approval-card awaits unblock with
+            # CancelledError instead of pinning the runtime session forever.
+            if not hub.has_active_subscribers(session_id):
+                await hub.cancel_session_pending_answers(session_id)
 
     return EventSourceResponse(event_generator())
 
@@ -1197,7 +1184,9 @@ async def agent_chat(
             status="completed",
             mirror_message=("user", request.message, 0, 0.0),
         )
-        await hub.publish(session.id, agent_chat_transcript.serialize_event(user_event).model_dump(mode="json"))
+        await hub.publish(
+            session.id, agent_chat_transcript.serialize_event(user_event).model_dump(mode="json")
+        )
     except Exception:
         await hub.release_run(session.id)
         raise
@@ -1265,7 +1254,8 @@ async def respond_to_chat_event(
             },
         )
         await hub.publish(
-            request.session_id, agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json")
+            request.session_id,
+            agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json"),
         )
         if has_live_waiter:
             resolved = await hub.resolve_pending_answer(
@@ -1329,7 +1319,10 @@ async def respond_to_chat_event(
             "reason": request.reason.strip(),
         },
     )
-    await hub.publish(request.session_id, agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json"))
+    await hub.publish(
+        request.session_id,
+        agent_chat_transcript.serialize_event(updated_event).model_dump(mode="json"),
+    )
     response_payload = {
         "decision": decision,
         "reason": request.reason.strip(),
@@ -1355,7 +1348,5 @@ async def respond_to_chat_event(
                 f'Operator answered pending approval for "{tool_name}": {decision}. Reason: {request.reason.strip()}',
             )
             if not attached:
-                raise HTTPException(
-                    status_code=409, detail="This chat session is already running."
-                )
+                raise HTTPException(status_code=409, detail="This chat session is already running.")
     return ChatRespondResponse(ok=True, session_id=request.session_id, event_id=request.event_id)

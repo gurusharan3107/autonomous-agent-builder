@@ -19,6 +19,9 @@ from autonomous_agent_builder.db.models import (
     utcnow,
 )
 from autonomous_agent_builder.embedded.scripts.build_verify import BuildVerifyScript
+from autonomous_agent_builder.orchestrator.deterministic_verification import (
+    summarize_build_failure_for_operator,
+)
 from autonomous_agent_builder.services.async_subprocess import run_bounded_subprocess
 from autonomous_agent_builder.services.sprint_execution import SPRINT_EXECUTION_KEY
 
@@ -132,9 +135,7 @@ async def mark_task_running_agent_runs_failed(
 ) -> int:
     """Fail running AgentRun rows for a task when dispatch can no longer own them."""
     result = await db.execute(
-        select(AgentRun)
-        .where(AgentRun.task_id == task_id)
-        .where(AgentRun.status == "running")
+        select(AgentRun).where(AgentRun.task_id == task_id).where(AgentRun.status == "running")
     )
     runs = list(result.scalars().all())
     if not runs:
@@ -467,8 +468,12 @@ async def reconcile_shipped_sprints_with_failed_materialized_checkout(
         source_task_id = str(evidence.get("source_task_id") or task_ids[-1])
         task = next((item for item in tasks if item.id == source_task_id), tasks[-1])
         reason = f"final_checkout_build_failed: {output}"
+        # Operator-facing blocked_reason is summarized; raw output stays in
+        # verification_evidence below (M2.4 no-internals-leakage).
         task.status = TaskStatus.BLOCKED
-        task.blocked_reason = reason
+        task.blocked_reason = (
+            f"final_checkout_build_failed: {summarize_build_failure_for_operator(output)}"
+        )
         task.blocked_at = utcnow()
         sprint.phase = SprintPhase.BLOCKED
         sprint.verification_status = "blocked"

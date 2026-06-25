@@ -103,9 +103,7 @@ def test_parse_scaffold_result_blocks_on_empty_output() -> None:
 
 
 def test_parse_scaffold_result_blocks_when_language_missing() -> None:
-    result = parse_scaffold_result(
-        'SCAFFOLD_RESULT_JSON: {"stack": "x", "files_written": []}'
-    )
+    result = parse_scaffold_result('SCAFFOLD_RESULT_JSON: {"stack": "x", "files_written": []}')
 
     assert result.action == "blocked"
     assert "language" in result.reason
@@ -164,6 +162,18 @@ def test_write_minimal_gate_config_node_creates_package_and_eslint(tmp_path) -> 
     assert (tmp_path / "eslint.config.js").exists()
     needs, _ = should_scaffold(str(tmp_path))
     assert needs is False
+    # ESLint config must use globals.browser so browser APIs (fetch, URL, etc.) resolve,
+    # and must ignore node_modules + .agent-builder so bundled files are never linted.
+    eslint_content = (tmp_path / "eslint.config.js").read_text()
+    assert "globals.browser" in eslint_content
+    assert 'from "globals"' in eslint_content
+    assert ".agent-builder/**" in eslint_content
+    assert "node_modules/**" in eslint_content
+    # package.json must declare globals devDependency.
+    import json as _json
+
+    pkg = _json.loads((tmp_path / "package.json").read_text())
+    assert "globals" in pkg.get("devDependencies", {})
 
 
 def test_write_minimal_gate_config_unsupported_language_does_nothing(tmp_path) -> None:
