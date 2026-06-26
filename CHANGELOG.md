@@ -9,6 +9,14 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-26 - chore(ci): disable Documentation Freshness push:master trigger until redesign
+
+Follow-up to the git-fetch fix below: with that step fixed, the workflow progressed and failed at the next step — `builder knowledge validate` exits 4 (`.agent-builder/ not found`) on a fresh checkout, and repo doctrine forbids initializing the source repo for state (a likely third layer: the doc-agent bridge needs `CLAUDE_CODE_OAUTH_TOKEN`). The workflow has never been green and does not gate development. Operator decision (master-loop tick): stop the recurring red, defer the redesign.
+
+### Changed
+
+- `.github/workflows/documentation-freshness.yml`: removed the `push: master` trigger (now `workflow_dispatch`-only) so it no longer fails on every master push. Filed `docs/goal/ROADMAP.md` M1.3 "Redesign the Documentation Freshness workflow" capturing the layered diagnosis and the design choices the redesign must make.
+
 ## 2026-06-26 - fix(ci): Documentation Freshness workflow failing on every master push
 
 Master-loop tick (first adaptive run) assess-phase found a second master workflow red: **Documentation Freshness** failed on the last two master pushes. The workflow only triggers on `push: master`, so master is already the checked-out branch, and its `git fetch origin master:master` step aborted with `fatal: refusing to fetch into branch 'master' checked out` (exit 128) before any validation ran.

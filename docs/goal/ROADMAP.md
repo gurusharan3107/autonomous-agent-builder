@@ -105,6 +105,7 @@ Source: [docs/quality-gate/complexity.md](../quality-gate/complexity.md) + `comp
     - [x] `.claude/skills/autoresearch/scripts/introspect.py` 806 — baseline entry (tooling). `T:backend` `T:browser:na`
     - [x] `scripts/autoresearch/run.py` 636 — baseline entry (tooling). `T:backend` `T:browser:na`
 - [x] Restore the green `ruff check .` CI floor (157→0; py311 f-string syntax bug + 103 autofix + 56 manual + 2 re-export restores). Lint-only — `ruff format` (216 files) deferred as a separate reviewed pass. (2026-06-16) `T:backend` `T:browser:na`
+- [ ] `P2` **Redesign the Documentation Freshness workflow** (`.github/workflows/documentation-freshness.yml`). Never succeeded on a master push — layered bugs surfaced by the first master-loop tick (2026-06-26): (1) `git fetch origin master:master` aborted when master was the checked-out branch (FIXED, PR #11); (2) `builder knowledge validate` exits 4 with `.agent-builder/ not found` on a fresh checkout, but repo doctrine forbids initializing the source repo for state; (3) the documentation-agent bridge needs the `CLAUDE_CODE_OAUTH_TOKEN` secret. `push:master` trigger disabled 2026-06-26 (now `workflow_dispatch`-only) to stop the recurring red; redesign must decide how the workflow obtains knowledge state (stateless validate vs ephemeral `builder init`+`knowledge extract` in CI vs committed state) and confirm the bridge token. `T:backend:pending` `T:browser:na`
 
 ### M1.4 — Two-workspace validation rotation
 

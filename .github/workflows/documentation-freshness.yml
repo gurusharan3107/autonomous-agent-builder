@@ -1,9 +1,12 @@
 name: Documentation Freshness
 
 on:
-  push:
-    branches:
-      - master
+  # push:master trigger disabled 2026-06-26 — this workflow has never succeeded on
+  # a master push (layered bugs: it needs `.agent-builder/` state the source repo
+  # doesn't carry, and the documentation-agent bridge needs CLAUDE_CODE_OAUTH_TOKEN).
+  # Kept manual-only (workflow_dispatch) to stop the recurring red on every push
+  # until it is redesigned. See docs/goal/ROADMAP.md "Documentation Freshness
+  # workflow redesign".
   workflow_dispatch:
 
 permissions:
