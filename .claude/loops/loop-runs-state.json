@@ -1,5 +1,5 @@
 {
-  "_doc": "loop-id -> last-run ISO date; run-if-stale reads this at session entry. ci_health tracks CI gate state written by stabilization step-0 and master step-0.",
+  "_doc": "loop-id -> last-run ISO date; run-if-stale reads this at session entry. ci_health tracks CI gate state written by stabilization step-0 and master step-0. 'hygiene' key retained as the /self-optimize watermark used by master step-4; the hygiene loop entry was retired — functionality folded into master.",
   "stabilization": "2026-06-24",
   "maintenance": "2026-06-24",
   "hygiene": "2026-06-24",
