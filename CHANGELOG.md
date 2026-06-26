@@ -9,6 +9,18 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-26 - fix(ci): Documentation Freshness workflow failing on every master push
+
+Master-loop tick (first adaptive run) assess-phase found a second master workflow red: **Documentation Freshness** failed on the last two master pushes. The workflow only triggers on `push: master`, so master is already the checked-out branch, and its `git fetch origin master:master` step aborted with `fatal: refusing to fetch into branch 'master' checked out` (exit 128) before any validation ran.
+
+### Fixed
+
+- `.github/workflows/documentation-freshness.yml`: guarded the "Ensure local master ref exists" step to fetch `master` only when the current branch is not already `master` (on a master push the ref is present via `checkout` `fetch-depth: 0`). Preserves the step's guarantee for any future PR/non-master trigger; no-op + exit 0 on master.
+
+### Validation
+
+- YAML parses; guard logic simulated on master → no-op, exit 0. Full verification is the post-merge Documentation Freshness run on master (workflow is `push: master` only, so it cannot run on the PR).
+
 ## 2026-06-26 - fix(ci): green the PR #10 test wall — color-deterministic CLI tests + isolate the dashboard build
 
 The ruff floor fix (`bf1eff9`) let the pytest wall run in CI for the first time in ~12 days, exposing 5 pre-existing failures on `feat/loop4-outcome-attribution`. Reproduced 1:1 in a Python 3.11 venv with CI-resolved deps (typer 0.25.1, click 8.4.2, rich 15.0.0); the typer<0.26 pin was a red herring — the real causes were a color-env leak and an unstubbed frontend build.

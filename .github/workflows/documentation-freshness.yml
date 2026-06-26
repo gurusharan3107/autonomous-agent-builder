@@ -33,7 +33,16 @@ jobs:
         run: pip install -e .
 
       - name: Ensure local master ref exists
-        run: git fetch origin master:master
+        # When this workflow runs on a push to master, master is already the
+        # checked-out branch (with full history via fetch-depth: 0), and
+        # `git fetch origin master:master` aborts with "refusing to fetch into
+        # branch 'master' checked out". Only fetch the ref when we are not on it.
+        run: |
+          if [ "$(git rev-parse --abbrev-ref HEAD)" != "master" ]; then
+            git fetch origin master:master
+          else
+            echo "Already on master; local ref present via checkout fetch-depth: 0."
+          fi
 
       - name: Run deterministic knowledge validation
         run: builder knowledge validate --json > kb-validate.json
