@@ -61,15 +61,16 @@ policy in `execution_policy.py`.
 
 ## Loops (orchestrator-run, not headless)
 
-Seven loops drive the fleet (3 cron + 4 on-demand). **Env constraint (verified 2026-06-12):** this managed env
+Eight loops drive the fleet (5 cron + 4 on-demand — `master` sequences the 4 cron cadence loops). **Env constraint (verified 2026-06-12):** this managed env
 has no headless background execution and `CronCreate durable:true` does not persist —
 loops fire only while a Claude session is open + idle, recurring jobs auto-expire after
 7 days, and they must be **re-armed each session**. Source of truth: `.claude/loops/loops.json`.
 
 | Loop | id | Schedule | Attendance | Engine |
 |---|---|---|---|---|
-| **Stabilization** ⭐ first | `stabilization` | daily 09:07 | attended — commit-on-green, pause-on-gates | `/builder-test ledger` + `/code-review` → fleet |
-| **Maintenance** | `maintenance` | daily 07:03 | unattended, **propose-only** | `session-maintainer` mines orchestrated-agent sessions |
+| **Master** ⭐ primary entry | `master` | daily 08:00 | attended — sole writer, sequences routine loops | CI gate → maintenance + hygiene (propose-only) → stabilization → codebase-review → cross-loop pattern analysis |
+| **Stabilization** | `stabilization` | daily 09:07 | attended — commit-on-green, pause-on-gates | CI health gate → `/builder-test ledger` + `/code-review` → fleet |
+| **Maintenance** | `maintenance` | daily 07:03 | unattended, **propose-only** | `session-maintainer` mines orchestrated-agent sessions + dep currency sweep |
 | **Hygiene** | `hygiene` | weekly Mon 07:13 | unattended, **propose-only** | `/self-optimize` on dev sessions |
 | **Capfit-currency** | `capfit-currency` | on-demand (do NOT cron) | attended, **propose-only**, browser-verified | refresh capability-fit skill + rubrics from live docs |
 | **Optimization** | `optimization` | on-demand (do NOT cron) | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
@@ -137,11 +138,12 @@ their prompts **reference it** instead of restating it (single source; no drift)
 ### Run-if-stale at session entry (cron is unreliable here)
 
 `CronCreate durable` does NOT persist in this env (verified 2026-06-12), so the cadence loops
-(`stabilization`/`maintenance`/`hygiene`) rarely fire on their cron. Treat each `cron` as a *cadence
+(`master`/`stabilization`/`maintenance`/`hygiene`) rarely fire on their cron. Treat each `cron` as a *cadence
 hint, not a guarantee.* At session entry, read the last-run watermark
 `.claude/loops/loop-runs-state.json` (loop-id → ISO date); for any cadence loop overdue past its
-cadence, **run it** (maintenance/hygiene are cheap propose-only) **or surface it** (stabilization
-commits — ask first), then record the run date back to the watermark. Arming `CronCreate` is still
+cadence, **run `master`** (it sequences all four routine loops in one attended tick, updates all
+watermarks, and runs cross-loop pattern analysis) **or run sub-loops individually** (maintenance/hygiene
+propose-only; stabilization commits — ask first), then record the run dates back to the watermark. Arming `CronCreate` is still
 fine for the rare idle-session case, but **staleness-at-entry is the real trigger**.
 
 ## Guardrails baked into every agent prompt (from /self-optimize)

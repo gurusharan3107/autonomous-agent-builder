@@ -1,7 +1,14 @@
 {
-  "_doc": "loop-id -> last-run ISO date; run-if-stale reads this at session entry",
+  "_doc": "loop-id -> last-run ISO date; run-if-stale reads this at session entry. ci_health tracks CI gate state written by stabilization step-0 and master step-0.",
   "stabilization": "2026-06-24",
   "maintenance": "2026-06-24",
   "hygiene": "2026-06-24",
-  "codebase-review": "2026-06-24"
+  "codebase-review": "2026-06-24",
+  "master": null,
+  "ci_health": {
+    "last_checked": null,
+    "master_status": "unknown",
+    "failing_tests": [],
+    "blocked_branches": []
+  }
 }
