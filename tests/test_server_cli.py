@@ -18,6 +18,16 @@ def _stub_port_check(monkeypatch) -> None:
     monkeypatch.setattr(port_manager, "ensure_builder_port_available", _noop_port_check)
 
 
+def _stub_dashboard_publish(monkeypatch) -> None:
+    """Bypass the frontend build so these tests don't depend on a built dashboard.
+
+    `start` calls `_publish_dashboard_assets`, which falls back to the installed
+    package's `frontend/` and runs `npm run build` when the project has no built
+    dashboard — that build fails in CI (no node_modules), stranding port tests.
+    """
+    monkeypatch.setattr(start_impl, "_publish_dashboard_assets", lambda *a, **k: {})
+
+
 def test_server_start_uses_repo_local_port_when_flag_omitted(monkeypatch, tmp_path) -> None:
     project_root = tmp_path
     agent_builder_dir = project_root / ".agent-builder"
@@ -26,6 +36,7 @@ def test_server_start_uses_repo_local_port_when_flag_omitted(monkeypatch, tmp_pa
     (agent_builder_dir / "server.port").write_text("9876", encoding="utf-8")
     monkeypatch.chdir(project_root)
     _stub_port_check(monkeypatch)
+    _stub_dashboard_publish(monkeypatch)
 
     called: dict[str, object] = {}
 
@@ -64,6 +75,7 @@ def test_server_start_flag_overrides_repo_local_port(monkeypatch, tmp_path) -> N
     (agent_builder_dir / "server.port").write_text("9876", encoding="utf-8")
     monkeypatch.chdir(project_root)
     _stub_port_check(monkeypatch)
+    _stub_dashboard_publish(monkeypatch)
 
     called: dict[str, object] = {}
 

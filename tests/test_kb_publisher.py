@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,13 @@ from autonomous_agent_builder.knowledge.publisher import (
 from autonomous_agent_builder.knowledge.quality_gate import KnowledgeQualityGate
 
 runner = CliRunner()
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(text: str) -> str:
+    """Strip ANSI escapes so help-text asserts are independent of the runner's color env."""
+    return _ANSI_RE.sub("", text)
 
 
 class _DummyGenerator(BaseGenerator):
@@ -291,11 +299,12 @@ def test_kb_add_help_lists_supported_doc_types():
     result = runner.invoke(app, ["knowledge", "add", "--help"])
 
     assert result.exit_code == 0
-    assert "system-docs" in result.stdout
-    assert "metadata" in result.stdout
-    assert "raw" in result.stdout
-    assert "--documented-again" in result.stdout
-    assert "--owned-paths" in result.stdout
+    out = _plain(result.stdout)
+    assert "system-docs" in out
+    assert "metadata" in out
+    assert "raw" in out
+    assert "--documented-again" in out
+    assert "--owned-paths" in out
 
 
 def test_kb_update_bumps_version(tmp_path, monkeypatch):
@@ -674,8 +683,14 @@ def test_kb_extract_json_returns_machine_contract_on_success(tmp_path, monkeypat
             return FakeDeterministicResult()
 
     monkeypatch.setattr(knowledge_module, "KnowledgeExtractor", FakeExtractor)
-    monkeypatch.setattr("autonomous_agent_builder.knowledge.document_spec.lint_directory", lambda *_args, **_kwargs: (1, 0, 1))
-    monkeypatch.setattr("autonomous_agent_builder.knowledge.quality_gate.KnowledgeQualityGate", FakeDeterministicGate)
+    monkeypatch.setattr(
+        "autonomous_agent_builder.knowledge.document_spec.lint_directory",
+        lambda *_args, **_kwargs: (1, 0, 1),
+    )
+    monkeypatch.setattr(
+        "autonomous_agent_builder.knowledge.quality_gate.KnowledgeQualityGate",
+        FakeDeterministicGate,
+    )
     result = runner.invoke(app, ["knowledge", "extract", "--force", "--json"])
 
     assert result.exit_code == 0
@@ -714,7 +729,10 @@ def test_kb_extract_json_returns_stop_contract_on_lint_failure(tmp_path, monkeyp
             }
 
     monkeypatch.setattr(knowledge_module, "KnowledgeExtractor", FakeExtractor)
-    monkeypatch.setattr("autonomous_agent_builder.knowledge.document_spec.lint_directory", lambda *_args, **_kwargs: (0, 1, 1))
+    monkeypatch.setattr(
+        "autonomous_agent_builder.knowledge.document_spec.lint_directory",
+        lambda *_args, **_kwargs: (0, 1, 1),
+    )
 
     result = runner.invoke(app, ["knowledge", "extract", "--force", "--json"])
 
@@ -724,6 +742,7 @@ def test_kb_extract_json_returns_stop_contract_on_lint_failure(tmp_path, monkeyp
     assert payload["next_step"]["action"] == "stop"
     assert payload["next_step"]["reason"] == "lint_failed"
     assert payload["next_step"]["recommended_command"] == "builder knowledge lint --verbose"
+
 
 def test_kb_extract_does_not_require_claude_preflight(tmp_path, monkeypatch):
     project_root = tmp_path
@@ -749,8 +768,22 @@ def test_kb_extract_does_not_require_claude_preflight(tmp_path, monkeypatch):
             }
 
     monkeypatch.setattr(knowledge_module, "KnowledgeExtractor", FakeExtractor)
-    monkeypatch.setattr("autonomous_agent_builder.knowledge.document_spec.lint_directory", lambda *_args, **_kwargs: (1, 0, 1))
-    monkeypatch.setattr("autonomous_agent_builder.knowledge.quality_gate.KnowledgeQualityGate", lambda *_args, **_kwargs: type("Gate", (), {"validate": lambda self: type("Result", (), {"passed": True, "score": 1.0, "summary": "ok"})()})())
+    monkeypatch.setattr(
+        "autonomous_agent_builder.knowledge.document_spec.lint_directory",
+        lambda *_args, **_kwargs: (1, 0, 1),
+    )
+    monkeypatch.setattr(
+        "autonomous_agent_builder.knowledge.quality_gate.KnowledgeQualityGate",
+        lambda *_args, **_kwargs: type(
+            "Gate",
+            (),
+            {
+                "validate": lambda self: type(
+                    "Result", (), {"passed": True, "score": 1.0, "summary": "ok"}
+                )()
+            },
+        )(),
+    )
 
     result = runner.invoke(app, ["knowledge", "extract", "--force", "--json"])
 

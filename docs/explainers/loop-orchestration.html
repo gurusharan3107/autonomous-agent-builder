@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loop Orchestration — autonomous-agent-builder</title>
+  <style>
+    :root {
+      --bg:        #0D1117;
+      --surface:   #161B22;
+      --surface2:  #1C2128;
+      --border:    #30363D;
+      --border2:   #21262D;
+      --text-primary:   #E6EDF3;
+      --text-secondary: #8B949E;
+      --text-muted:     #484F58;
+      --blue:      #388BFD;
+      --blue-dim:  #1F3A6E;
+      --blue-glow: rgba(56,139,253,.12);
+      --green:     #3FB950;
+      --green-dim: #1C4A2A;
+      --amber:     #D29922;
+      --amber-dim: #3D2E00;
+      --red:       #F85149;
+      --red-dim:   #4A1915;
+      --purple:    #BC8CFF;
+      --purple-dim:#2D1B63;
+      --serif: ui-serif, Georgia, "Times New Roman", serif;
+      --sans:  system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 48px 28px 96px;
+    }
+    .page { max-width: 1120px; margin: 0 auto; }
+    code {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      background: rgba(255,255,255,.06);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Header ── */
+    header { margin-bottom: 44px; }
+    .eyebrow {
+      font-family: var(--mono); font-size: 11px;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 10px;
+    }
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 38px);
+      font-weight: 500; letter-spacing: -.01em;
+      color: var(--text-primary); margin-bottom: 12px;
+    }
+    h1 em { font-style: italic; color: var(--blue); }
+    .lead {
+      font-size: 14.5px; line-height: 1.65;
+      color: var(--text-secondary); max-width: 680px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Legend pills ── */
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 11px; border-radius: 20px;
+      font-family: var(--mono); font-size: 10.5px;
+      letter-spacing: .05em; text-transform: uppercase; border: 1px solid;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .p-master  { color: var(--blue);   border-color: var(--blue-dim);   background: rgba(56,139,253,.08); }
+    .p-propose { color: var(--green);  border-color: var(--green-dim);  background: rgba(63,185,80,.08); }
+    .p-commit  { color: var(--amber);  border-color: var(--amber-dim);  background: rgba(210,153,34,.08); }
+    .p-ci      { color: var(--red);    border-color: var(--red-dim);    background: rgba(248,81,73,.08); }
+    .p-od      { color: var(--purple); border-color: var(--purple-dim); background: rgba(188,140,255,.08); }
+    .d-master  { background: var(--blue); }
+    .d-propose { background: var(--green); }
+    .d-commit  { background: var(--amber); }
+    .d-ci      { background: var(--red); }
+    .d-od      { background: var(--purple); }
+
+    /* ── Section eyebrow ── */
+    .sec-eye {
+      font-family: var(--mono); font-size: 10.5px;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--text-muted); margin-bottom: 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sec-eye::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Main two-col ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 292px;
+      gap: 32px;
+      margin-bottom: 52px;
+      align-items: start;
+    }
+    @media (max-width: 820px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* ── Entry node ── */
+    .entry-node {
+      background: var(--blue-glow);
+      border: 2px solid var(--blue-dim);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .en-label {
+      font-family: var(--mono); font-size: 10.5px;
+      text-transform: uppercase; letter-spacing: .08em;
+      color: var(--blue); opacity: .7; margin-bottom: 3px;
+    }
+    .en-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+    /* ── Connector ── */
+    .conn {
+      height: 34px; display: flex;
+      flex-direction: column; align-items: center;
+      justify-content: flex-end; gap: 0;
+    }
+    .conn-line { width: 2px; flex: 1; background: var(--border); }
+    .conn-arr {
+      width: 0; height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 9px solid var(--border);
+    }
+
+    /* ── Step nodes ── */
+    .step {
+      border-radius: 10px; border: 1.5px solid; overflow: hidden;
+    }
+    .step-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 16px;
+    }
+    .step-num {
+      font-family: var(--mono); font-size: 10px;
+      text-transform: uppercase; letter-spacing: .1em;
+      opacity: .65; white-space: nowrap;
+    }
+    .step-title { font-size: 13.5px; font-weight: 600; flex: 1; }
+    .step-badge {
+      font-family: var(--mono); font-size: 9.5px;
+      padding: 2px 9px; border-radius: 4px;
+      text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap; border: 1px solid;
+    }
+    .step-body {
+      padding: 10px 16px 13px; border-top: 1px solid;
+      font-size: 12.5px; color: var(--text-secondary); line-height: 1.55;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .chip {
+      font-family: var(--mono); font-size: 10.5px;
+      padding: 3px 9px; border-radius: 5px; border: 1px solid;
+      display: flex; align-items: center; gap: 5px; line-height: 1.3;
+    }
+    .step-out {
+      padding: 7px 16px; border-top: 1px solid;
+      font-family: var(--mono); font-size: 10px;
+      text-transform: uppercase; letter-spacing: .04em;
+      opacity: .55; line-height: 1.4;
+    }
+
+    /* Per-type colours */
+    .s-ci   { border-color: var(--red-dim);    background: rgba(248,81,73,.04); }
+    .s-ci   .step-head { background: rgba(248,81,73,.12); }
+    .s-ci   .step-num,.s-ci .step-title { color: var(--red); }
+    .s-ci   .step-badge { background: rgba(248,81,73,.18); color: var(--red); border-color: var(--red-dim); }
+    .s-ci   .step-body,.s-ci .step-out { border-top-color: var(--red-dim); }
+
+    .s-prop { border-color: var(--green-dim);   background: rgba(63,185,80,.03); }
+    .s-prop .step-head { background: rgba(63,185,80,.10); }
+    .s-prop .step-num,.s-prop .step-title { color: var(--green); }
+    .s-prop .step-badge { background: rgba(63,185,80,.18); color: var(--green); border-color: var(--green-dim); }
+    .s-prop .step-body,.s-prop .step-out { border-top-color: var(--green-dim); }
+    .chip.c-prop { color: var(--green); border-color: var(--green-dim); background: rgba(63,185,80,.08); }
+
+    .s-com  { border-color: var(--amber-dim);   background: rgba(210,153,34,.03); }
+    .s-com  .step-head { background: rgba(210,153,34,.12); }
+    .s-com  .step-num,.s-com .step-title { color: var(--amber); }
+    .s-com  .step-badge { background: rgba(210,153,34,.18); color: var(--amber); border-color: var(--amber-dim); }
+    .s-com  .step-body,.s-com .step-out { border-top-color: var(--amber-dim); }
+    .chip.c-com  { color: var(--amber); border-color: var(--amber-dim); background: rgba(210,153,34,.08); }
+
+    .s-blue { border-color: var(--blue-dim);    background: rgba(56,139,253,.03); }
+    .s-blue .step-head { background: rgba(56,139,253,.12); }
+    .s-blue .step-num,.s-blue .step-title { color: var(--blue); }
+    .s-blue .step-badge { background: rgba(56,139,253,.18); color: var(--blue); border-color: var(--blue-dim); }
+    .s-blue .step-body,.s-blue .step-out { border-top-color: var(--blue-dim); }
+    .chip.c-blue { color: var(--blue); border-color: var(--blue-dim); background: rgba(56,139,253,.08); }
+
+    /* ── Sidebar cards ── */
+    .sc {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 18px; margin-bottom: 16px;
+    }
+    .sc h3 {
+      font-family: var(--mono); font-size: 10px;
+      text-transform: uppercase; letter-spacing: .1em;
+      color: var(--text-muted); margin-bottom: 13px;
+    }
+    .con-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      margin-bottom: 10px; font-size: 12.5px;
+      color: var(--text-secondary); line-height: 1.45;
+    }
+    .con-item:last-child { margin-bottom: 0; }
+    .ci { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .ds {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin-bottom: 12px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--border2);
+    }
+    .ds:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .ds-ico {
+      width: 28px; height: 28px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .ds-name { font-family: var(--mono); font-size: 11px; color: var(--text-primary); margin-bottom: 2px; }
+    .ds-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+
+    /* watermarks */
+    .wm { display: flex; justify-content: space-between; align-items: center;
+          padding: 5px 0; border-bottom: 1px solid var(--border2); }
+    .wm:last-child { border-bottom: none; }
+    .wm-k { font-family: var(--mono); font-size: 11.5px; color: var(--text-secondary); }
+    .wm-v { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+    .wm-null { color: var(--red); }
+
+    /* ── On-demand section ── */
+    .od-section { margin-bottom: 48px; }
+    .od-banner {
+      background: rgba(188,140,255,.05);
+      border: 1.5px dashed var(--purple-dim);
+      border-radius: 8px; padding: 11px 16px;
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; font-size: 12.5px; color: var(--text-secondary);
+    }
+    .od-banner strong { color: var(--purple); }
+    .od-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+      gap: 14px;
+    }
+    .od-card {
+      background: var(--surface); border: 1.5px solid var(--purple-dim);
+      border-radius: 10px; overflow: hidden;
+    }
+    .od-head {
+      background: rgba(188,140,255,.09);
+      padding: 12px 15px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--purple-dim);
+    }
+    .od-ico { font-size: 19px; }
+    .od-title { font-size: 13px; font-weight: 600; color: var(--purple); }
+    .od-sub { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+               letter-spacing: .05em; color: var(--purple); opacity: .55; }
+    .od-body { padding: 12px 15px; font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+    .od-gate {
+      font-family: var(--mono); font-size: 10px;
+      padding: 2px 8px; border-radius: 4px;
+      background: rgba(188,140,255,.13); color: var(--purple);
+      display: inline-block; margin-top: 8px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 48px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono); font-size: 11px;
+      color: var(--text-muted);
+      display: flex; justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <div class="eyebrow">autonomous-agent-builder · loop orchestration · 2026-06-26</div>
+    <h1>Loop <em>Orchestration</em> Map</h1>
+    <p class="lead">
+      6 loops, all on-demand — <strong>no cron fires automatically</strong>.
+      The <strong>master</strong> loop is the only entry point: the operator triggers it once and it
+      decides at runtime which sub-loops to run, in what order, and which to parallelize.
+      Maintenance is dispatched as a background subagent (propose-only → safe to parallelize);
+      commit loops run sequentially. Master self-introspects mid-run and encodes learnings for future agents.
+    </p>
+    <div class="legend">
+      <span class="pill p-master"><span class="dot d-master"></span>Master / orchestrator</span>
+      <span class="pill p-propose"><span class="dot d-propose"></span>Propose-only — never commits</span>
+      <span class="pill p-commit"><span class="dot d-commit"></span>Commit-on-green — attended</span>
+      <span class="pill p-ci"><span class="dot d-ci"></span>CI health gate — P0 precondition</span>
+      <span class="pill p-od"><span class="dot d-od"></span>On-demand — explicit trigger only</span>
+    </div>
+  </header>
+
+  <!-- ══════════════ MAIN GRID ══════════════ -->
+  <div class="main-grid">
+
+    <!-- Left: flow -->
+    <div>
+      <div class="sec-eye">Master loop — adaptive orchestrator — operator-triggered, attended</div>
+
+      <!-- Entry -->
+      <div class="entry-node">
+        <span style="font-size:22px">⚡</span>
+        <div>
+          <div class="en-label">Operator-triggered · master · on-demand · attended · sole writer = main thread</div>
+          <div class="en-title">Assess state → decide routing → execute adaptively → retrospect + encode learnings</div>
+        </div>
+      </div>
+
+      <!-- Conn 1 -->
+      <div class="conn"><div class="conn-line"></div><div class="conn-arr"></div></div>
+
+      <!-- Phase 1: ASSESS -->
+      <div class="step s-blue">
+        <div class="step-head">
+          <span class="step-num">Phase 1</span>
+          <span class="step-title">ASSESS</span>
+          <span class="step-badge">🔵 always first · parallel reads</span>
+        </div>
+        <div class="step-body">
+          Issue all four reads as <strong>concurrent tool calls in one message</strong> — no sequential waiting:
+          <div class="chips" style="margin-top:8px">
+            <span class="chip c-ci">🔴 CI health — <code>gh run list --branch master --limit 3 --json</code> + read <code>ci_health</code> from watermarks</span>
+            <span class="chip c-blue">📋 Watermarks — read <code>loop-runs-state.json</code>: which sub-loops are stale (null or &gt; 7 days)?</span>
+            <span class="chip c-com">📑 Open work — <code>grep -c '^\- \[ \]' ROADMAP.md</code> + skim top 5 P1/P2 items</span>
+            <span class="chip c-prop">🔍 Recent friction — <code>builder agent sessions --limit 10 --json</code>: error patterns, hangs, repeated failures from last 24h</span>
+          </div>
+          Synthesize all four signals before making any routing decision.
+        </div>
+        <div class="step-out">→ produces: CI status, stale-loop set, open-work depth, friction signal — input to Phase 2</div>
+      </div>
+
+      <!-- Conn 2 -->
+      <div class="conn"><div class="conn-line"></div><div class="conn-arr"></div></div>
+
+      <!-- Phase 2: PLAN -->
+      <div class="step s-ci" style="border-color:var(--blue);background:linear-gradient(135deg,rgba(56,139,253,.05),transparent)">
+        <div class="step-head" style="background:rgba(56,139,253,.08)">
+          <span class="step-num">Phase 2</span>
+          <span class="step-title">PLAN</span>
+          <span class="step-badge" style="background:rgba(56,139,253,.15);color:var(--blue)">🗺️ state routing before executing</span>
+        </div>
+        <div class="step-body">
+          Decide which sub-loops to run this tick, in what order, and which to parallelize.
+          State the plan in 3–5 lines <em>before executing anything</em>. Key decision rules:
+          <div class="chips" style="margin-top:8px">
+            <span class="chip c-ci">🔴 CI RED → P0: run stabilization CI-fix path immediately; hold everything else</span>
+            <span class="chip c-prop">🟢 Maintenance stale → dispatch as <strong>background subagent</strong> (Agent tool, run_in_background=true) while main thread finishes assessment</span>
+            <span class="chip c-com">🟡 Stabilization current (ran today) → skip even if ROADMAP has items</span>
+            <span class="chip c-blue">🔬 Codebase-review slice sha unchanged → skip; no-op tick</span>
+          </div>
+          <strong>Parallelism rule:</strong> maintenance is always safe to parallelize (propose-only, never commits).
+          Stabilization and codebase-review are <em>sequential only</em> — both commit, never run concurrently.
+        </div>
+        <div class="step-out">→ explicit routing plan: which loops, what order, what's parallel — stated before any execution</div>
+      </div>
+
+      <!-- Conn 3 -->
+      <div class="conn"><div class="conn-line"></div><div class="conn-arr"></div></div>
+
+      <!-- Phase 3: EXECUTE -->
+      <div class="step s-com">
+        <div class="step-head">
+          <span class="step-num">Phase 3</span>
+          <span class="step-title">EXECUTE</span>
+          <span class="step-badge">🟡 adaptive · deviate when evidence demands</span>
+        </div>
+        <div class="step-body">
+          Run each selected sub-loop by reading its prompt from <code>loops.json</code> by id.
+          After each committing sub-loop, <strong>re-assess</strong> CI health before starting the next.
+          Maintenance proposals land in context before stabilization dispatches — use session-backed findings
+          as higher-confidence targets when selecting what to fix.
+          <div style="margin-top:10px;padding:10px 13px;background:rgba(56,139,253,.07);border-left:3px solid var(--blue);border-radius:0 6px 6px 0;font-size:12px">
+            <strong style="color:var(--blue)">Mid-run self-introspection</strong> — when master encounters unexpected friction
+            (wrong hypothesis, CI surprise, missing context, misrouted fix, repeated revert):
+            <strong>stop at that moment</strong>. Diagnose root cause. If non-obvious or would recur:
+            immediately file a backlog item or propose a loop-prompt edit via AskUserQuestion — then continue.
+            Do NOT defer to Phase 4; context is richest at the moment of friction.
+          </div>
+          <div class="chips" style="margin-top:8px">
+            <span class="chip c-prop">🔍 maintenance — background subagent (propose-only)</span>
+            <span class="chip c-com">🐛 stabilization — sequential, main thread, commit-on-green</span>
+            <span class="chip c-com">🔬 codebase-review — sequential, main thread, one bounded slice</span>
+          </div>
+        </div>
+        <div class="step-out">→ commits from stabilization/codebase-review; maintenance proposals collected; mid-run learnings encoded inline</div>
+      </div>
+
+      <!-- Conn 4 -->
+      <div class="conn"><div class="conn-line"></div><div class="conn-arr"></div></div>
+
+      <!-- Phase 4: RETROSPECT -->
+      <div class="step s-blue">
+        <div class="step-head">
+          <span class="step-num">Phase 4</span>
+          <span class="step-title">RETROSPECT</span>
+          <span class="step-badge">🔵 always runs · even if no loops ran</span>
+        </div>
+        <div class="step-body">
+          Honest post-tick reflection — the most important phase for future agents:
+          <div class="chips" style="margin-top:8px">
+            <span class="chip c-blue">🗂️ Decisions — what routing choices were made; were any wrong in hindsight?</span>
+            <span class="chip c-blue">⚡ Friction log — what slowed execution (missing state, ambiguous prompts, wrong CI read)</span>
+            <span class="chip c-blue">📊 Pattern analysis — mine tick sessions; ≥ 2 sessions same pattern → file improvement backlog item; novel → propose <code>builder memory add</code></span>
+            <span class="chip c-prop">✨ Self-optimize fold-in — if <code>hygiene</code> watermark &gt; 7 days: run /self-optimize (clustering lane) over dev sessions, propose surface edits, update hygiene watermark</span>
+          </div>
+        </div>
+        <div class="step-out">→ updates loop watermarks for ran sub-loops only; sets master to today; updates ci_health</div>
+      </div>
+
+    </div><!-- end flow col -->
+
+    <!-- Right: sidebar -->
+    <div>
+
+      <!-- Constraints -->
+      <div class="sc">
+        <h3>Hard Constraints</h3>
+        <div class="con-item"><span class="ci">✍️</span><span><strong>Main thread is sole writer</strong> — subagents propose only; no subagent touches git</span></div>
+        <div class="con-item"><span class="ci">🔀</span><span><strong>Parallelism: propose-only only</strong> — maintenance dispatched as background subagent; commit loops (stabilization, codebase-review) are always sequential</span></div>
+        <div class="con-item"><span class="ci">🔴</span><span><strong>CI gate is P0</strong> — if master CI is red, fix CI before any ROADMAP burn-down</span></div>
+        <div class="con-item"><span class="ci">🔬</span><span><strong>Diagnose locally first</strong> — never pin a dep on circumstantial evidence; run the failing tests before committing</span></div>
+        <div class="con-item"><span class="ci">🏗️</span><span><strong>Never edit managed-app workspaces</strong> — this source repo is the only write surface</span></div>
+      </div>
+
+      <!-- Data stores -->
+      <div class="sc">
+        <h3>Data Stores</h3>
+        <div class="ds">
+          <div class="ds-ico" style="background:rgba(56,139,253,.15)">📋</div>
+          <div>
+            <div class="ds-name">loop-runs-state.json</div>
+            <div class="ds-desc">watermarks per loop + ci_health (last_checked, master_status, failing_tests, blocked_branches)</div>
+          </div>
+        </div>
+        <div class="ds">
+          <div class="ds-ico" style="background:rgba(210,153,34,.15)">📑</div>
+          <div>
+            <div class="ds-name">ROADMAP.md</div>
+            <div class="ds-desc">open [ ] P1/P2 IMP items — stabilization's primary discovery surface; backlog first before new bugs</div>
+          </div>
+        </div>
+        <div class="ds">
+          <div class="ds-ico" style="background:rgba(63,185,80,.15)">📦</div>
+          <div>
+            <div class="ds-name">builder backlog</div>
+            <div class="ds-desc">incident / improvement / optimization items filed by loops via <code>--source validation</code></div>
+          </div>
+        </div>
+        <div class="ds">
+          <div class="ds-ico" style="background:rgba(188,140,255,.15)">🧠</div>
+          <div>
+            <div class="ds-name">builder memory</div>
+            <div class="ds-desc">reusable patterns + decisions proposed by step-4 pattern analysis (novel findings only)</div>
+          </div>
+        </div>
+        <div class="ds">
+          <div class="ds-ico" style="background:rgba(248,81,73,.15)">🗂️</div>
+          <div>
+            <div class="ds-name">codebase-review-state.json</div>
+            <div class="ds-desc">per-file watermarks (slice → last-reviewed sha); advances each codebase-review tick</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current watermarks -->
+      <div class="sc">
+        <h3>Current Watermarks</h3>
+        <div class="wm"><span class="wm-k">master</span><span class="wm-v wm-null">null — first run pending</span></div>
+        <div class="wm"><span class="wm-k">ci_health</span><span class="wm-v wm-null">unknown</span></div>
+        <div class="wm"><span class="wm-k">stabilization</span><span class="wm-v">2026-06-24</span></div>
+        <div class="wm"><span class="wm-k">maintenance</span><span class="wm-v">2026-06-24</span></div>
+        <div class="wm"><span class="wm-k">hygiene</span><span class="wm-v">2026-06-24</span></div>
+        <div class="wm"><span class="wm-k">codebase-review</span><span class="wm-v">2026-06-24</span></div>
+      </div>
+
+    </div><!-- end sidebar -->
+  </div><!-- end main-grid -->
+
+  <!-- ══════════════ ON-DEMAND SECTION ══════════════ -->
+  <div class="od-section">
+    <div class="sec-eye">On-demand loops — not driven by master — require explicit operator trigger</div>
+    <div class="od-banner">
+      <span style="font-size:17px">⚠️</span>
+      <span>These loops are <strong>high-cost and attended</strong>. Master never triggers them automatically.
+      Each stops at an operator approval gate before merging or applying changes to master.</span>
+    </div>
+    <div class="od-grid">
+
+      <div class="od-card">
+        <div class="od-head">
+          <span class="od-ico">⚡</span>
+          <div><div class="od-title">optimization</div><div class="od-sub">on-demand · attended · propose-at-pr</div></div>
+        </div>
+        <div class="od-body">
+          Autonomously advances ONE efficiency/cost IMP end-to-end: SELECT highest-leverage open item →
+          isolated worktree → planner → implementer → test-sync-verifier + browser-verifier →
+          autoresearch 2σ validate (or flagged estimate if baseline empty) → propose-at-PR gate.
+          Never auto-merges to master.
+          <div class="od-gate">stops at → propose-at-PR operator gate</div>
+        </div>
+      </div>
+
+      <div class="od-card">
+        <div class="od-head">
+          <span class="od-ico">🔄</span>
+          <div><div class="od-title">build-maintain-cycle</div><div class="od-sub">on-demand · dogfooding flywheel</div></div>
+        </div>
+        <div class="od-body">
+          Build one sprint via browser-verifier (RUN-ONLY, no self-fixing) →
+          mine the produced sessions via maintenance (propose-only, scoped to this sprint) →
+          triage + apply root-cause fixes in isolated worktree →
+          validate by signature non-recurrence in next sprint build.
+          <div class="od-gate">stops at → operator pauses or no recurring root cause remains</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ FULL LOOP TABLE ══════════════ -->
+  <div style="margin-bottom:48px">
+    <div class="sec-eye">All 6 loops at a glance</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+      <thead>
+        <tr style="border-bottom:1.5px solid var(--border)">
+          <th style="text-align:left;padding:8px 12px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:normal">Loop</th>
+          <th style="text-align:left;padding:8px 12px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:normal">Trigger</th>
+          <th style="text-align:left;padding:8px 12px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:normal">Type</th>
+          <th style="text-align:left;padding:8px 12px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:normal">Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border2);background:rgba(56,139,253,.04)">
+          <td style="padding:9px 12px;color:var(--blue);font-weight:600">⚡ master</td>
+          <td style="padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">operator</td>
+          <td style="padding:9px 12px"><span class="pill p-master" style="font-size:10px">adaptive orchestrator</span></td>
+          <td style="padding:9px 12px;color:var(--text-secondary)">assess → plan routing → execute (maintenance parallel, commits sequential) → retrospect + encode</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border2)">
+          <td style="padding:9px 12px;color:var(--amber);font-weight:600">🐛 stabilization</td>
+          <td style="padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">master / standalone</td>
+          <td style="padding:9px 12px"><span class="pill p-commit" style="font-size:10px">commit-on-green</span></td>
+          <td style="padding:9px 12px;color:var(--text-secondary)">CI health gate → burn ROADMAP P1/P2 backlog → /code-review</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border2)">
+          <td style="padding:9px 12px;color:var(--green);font-weight:600">🔍 maintenance</td>
+          <td style="padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">master (background) / standalone</td>
+          <td style="padding:9px 12px"><span class="pill p-propose" style="font-size:10px">propose-only · parallelizable</span></td>
+          <td style="padding:9px 12px;color:var(--text-secondary)">session-maintainer mines orchestrated sessions + dep currency sweep</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border2)">
+          <td style="padding:9px 12px;color:var(--amber);font-weight:600">🔬 codebase-review</td>
+          <td style="padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">master / standalone</td>
+          <td style="padding:9px 12px"><span class="pill p-commit" style="font-size:10px">commit-on-green</span></td>
+          <td style="padding:9px 12px;color:var(--text-secondary)">one risk-prioritised slice per tick; watermarked to avoid re-review</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border2);background:rgba(188,140,255,.03)">
+          <td style="padding:9px 12px;color:var(--purple);font-weight:600">⚡ optimization</td>
+          <td style="padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">operator only</td>
+          <td style="padding:9px 12px"><span class="pill p-od" style="font-size:10px">propose-at-pr</span></td>
+          <td style="padding:9px 12px;color:var(--text-secondary)">one efficiency/cost IMP end-to-end; stops at operator gate before merge</td>
+        </tr>
+        <tr style="background:rgba(188,140,255,.03)">
+          <td style="padding:9px 12px;color:var(--purple);font-weight:600">🔄 build-maintain-cycle</td>
+          <td style="padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">operator only</td>
+          <td style="padding:9px 12px"><span class="pill p-od" style="font-size:10px">dogfooding flywheel</span></td>
+          <td style="padding:9px 12px;color:var(--text-secondary)">build sprint → mine → fix root cause → validate by non-recurrence</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <span>.claude/loops/loops.json · 8 loops registered · autonomous-agent-builder</span>
+    <span>generated 2026-06-26</span>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -23,6 +23,11 @@ def isolate_runtime_settings(monkeypatch, tmp_path_factory):
     monkeypatch.setenv("RUNTIME_SDK", "claude")
     monkeypatch.setenv("RUNTIME_PROVIDER", "claude_agent_sdk")
     monkeypatch.setenv("RUNTIME_MODEL", "sonnet")
+    # Keep CLI help/output deterministic regardless of the runner's color env.
+    # CI runners (GitHub Actions) export FORCE_COLOR, which makes typer/Rich emit
+    # ANSI escapes into --help output and break literal substring assertions.
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
     monkeypatch.delenv("RUNTIME_API_BASE_URL", raising=False)
     monkeypatch.delenv("RUNTIME_API_KEY_ENV", raising=False)
     for key in (
@@ -81,9 +86,7 @@ async def test_db(tmp_path):
     url = f"sqlite+aiosqlite:///{db_path}"
 
     engine = create_async_engine(url, echo=False)
-    factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

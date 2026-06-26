@@ -9,6 +9,24 @@ Format follows Keep a Changelog conventions: `Added`, `Changed`, `Fixed`,
 
 **Autoresearch loop changes (Baseline / Iterate / Fix lanes, KNOWN_PATTERNS, harness scripts) → [docs/autoresearch/PROGRESS.md](docs/autoresearch/PROGRESS.md), not here.** Builder runtime changes that surfaced through autoresearch still land here.
 
+## 2026-06-26 - fix(ci): green the PR #10 test wall — color-deterministic CLI tests + isolate the dashboard build
+
+The ruff floor fix (`bf1eff9`) let the pytest wall run in CI for the first time in ~12 days, exposing 5 pre-existing failures on `feat/loop4-outcome-attribution`. Reproduced 1:1 in a Python 3.11 venv with CI-resolved deps (typer 0.25.1, click 8.4.2, rich 15.0.0); the typer<0.26 pin was a red herring — the real causes were a color-env leak and an unstubbed frontend build.
+
+### Fixed
+
+- **3 CLI-help tests** (`test_builder_help_exposes_single_startup_owner`, `test_logs_help_includes_raw_mode`, `test_kb_add_help_lists_supported_doc_types`): GitHub Actions forces a terminal (`FORCE_COLOR`), so typer/Rich rendered `--help` as an ANSI-styled panel and the bold/dim escapes interleaved with the text broke the literal substring assertions (CI output byte-identical to a local `FORCE_COLOR=1` repro). `NO_COLOR` does **not** override `FORCE_COLOR` in Rich (verified: both set → escapes still emitted), so the env approach is insufficient. Fixed by making the assertions color-env-independent: a `_plain()` helper (`tests/test_builder_cli_surfaces.py`, `tests/test_kb_publisher.py`) strips ANSI escapes before the substring check. `tests/conftest.py` also sets `NO_COLOR=1` / clears `FORCE_COLOR` for deterministic local output (defense-in-depth, not load-bearing).
+- **2 server-start tests** (`test_server_start_uses_repo_local_port_when_flag_omitted`, `test_server_start_flag_overrides_repo_local_port`): `start` calls `_publish_dashboard_assets`, which falls back to the **installed package's** `frontend/` and runs `npm run build` (`tsc -b && vite build`) when the project has no built dashboard — that build fails in CI (no node_modules: `Cannot find type definition file for 'vite/client'`) → `start` exits 1. The tests stubbed `_start_uvicorn` and the port check but not the build; they passed locally only because the repo frontend was already built. Added `_stub_dashboard_publish` (`tests/test_server_cli.py`) so the port-resolution tests no longer depend on a built dashboard.
+- `.claude/loops/loops.json`: invalid JSON escape (`\-` in a `grep` regex inside the master prompt, regression from `1f78809`) — the file no longer parsed, so the orchestrator could not load/re-arm loops. Doubled the backslash; JSON parses and the command (`grep -c '^\- \[ \]' …`) runs.
+
+### Validation
+
+- Full suite in a CI-faithful env (Python 3.11, typer 0.25.1 / click 8.4.2 / rich 15.0.0, `FORCE_COLOR=1`): **1731 passed, 0 failed** (was 1728 passed + 3 failed, +2 server-start failing on a fresh CI checkout). `ruff check .` clean. The 5 originally-failing tests verified green under the exact CI conditions.
+
+### Notes
+
+- typer pin (`typer[all]<0.26`) left in place — unverified against 0.26, and harmless; the pin comment's "real CLI-test root cause" claim is superseded by this entry (color, not typer). Unpinning is a separate, testable task.
+
 ## 2026-06-19 - fix(ux): IMP-046 — stop leaking the raw build-verify tool dump into the operator's blocked_reason
 
 Found by the dogfooding flywheel (sprint 1): a real notes-app task was blocked with `final_checkout_build_failed: npm run lint FAIL: 59:106931 error 'RTCPeerConnection' is not defined …` shown verbatim on the Board — a minified `node_modules` bundle line, meaningless to a customer who built a notes app, and long enough to bury the Recover button.
