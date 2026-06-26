@@ -61,11 +61,11 @@ policy in `execution_policy.py`.
 
 ## Loops (orchestrator-run, not headless)
 
-Six loops, all on-demand — **no cron fires automatically**. The operator triggers `master`; master sequences the routine sub-loops in order. `optimization` and `build-maintain-cycle` require a separate explicit operator trigger. Source of truth: `.claude/loops/loops.json`.
+Six loops, all on-demand — **no cron fires automatically**. The operator triggers `master`; master decides at runtime which sub-loops to run, in what order, and which to parallelize (maintenance is propose-only → safe to run as a concurrent background subagent; stabilization and codebase-review commit → always sequential). `optimization` and `build-maintain-cycle` require a separate explicit operator trigger. Source of truth: `.claude/loops/loops.json`.
 
 | Loop | id | Trigger | Attendance | Engine |
 |---|---|---|---|---|
-| **Master** ⭐ only entry point | `master` | operator-triggered | attended — sole writer, sequences sub-loops | CI gate → maintenance → stabilization → codebase-review → cross-loop pattern analysis + /self-optimize fold-in |
+| **Master** ⭐ only entry point | `master` | operator-triggered | attended — sole writer, adaptive orchestrator | assess (parallel reads) → plan routing → execute (maintenance parallel, commit-loops sequential) → retrospect + encode |
 | **Stabilization** | `stabilization` | driven by master step-2 (or standalone) | attended — commit-on-green, pause-on-gates | CI health gate → `/builder-test ledger` + `/code-review` → fleet |
 | **Maintenance** | `maintenance` | driven by master step-1 (or standalone) | unattended, **propose-only** | `session-maintainer` mines orchestrated-agent sessions + dep currency sweep + anthropic-SDK capfit trigger |
 | **Codebase review** | `codebase-review` | driven by master step-3 (or standalone) | attended, **main-thread sole writer** | proactive quality-debt paydown of EXISTING code: per tick reviews ONE risk-prioritized slice → triages findings → auto-fixes confirmed correctness/safety + high-confidence dead-code/dedup ONLY → commit-on-green + watermark |
@@ -136,8 +136,15 @@ All loops are on-demand. **The operator runs `master`**; master does everything 
 loops. For targeted work, sub-loops can be triggered standalone.
 
 **To run the full routine cycle:** invoke the `master` loop prompt from `.claude/loops/loops.json`.
-Master reads `.claude/loops/loop-runs-state.json` watermarks internally to decide which sub-loops are
-stale and need to run within the tick.
+Master runs four phases: **assess** (parallel reads: CI health + watermarks + ROADMAP depth + recent
+session friction), **plan** (states routing decisions before executing), **execute** (adaptive — not a
+fixed pipeline; maintenance dispatched as a background subagent while main thread finishes assessment;
+stabilization and codebase-review run sequentially as sole-writer), and **retrospect** (pattern analysis
++ encode learnings + self-optimize fold-in when hygiene watermark > 7 days).
+
+**Mid-run self-introspection:** when master encounters unexpected friction during execute, it stops at
+that moment, diagnoses root cause, encodes the learning (backlog item or loop-prompt edit proposal),
+then continues — not deferred to retrospect.
 
 **To run a sub-loop standalone** (e.g. only stabilization after a targeted fix): invoke that loop's
 prompt directly. Update its watermark in `loop-runs-state.json` when done.
