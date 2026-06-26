@@ -61,24 +61,21 @@ policy in `execution_policy.py`.
 
 ## Loops (orchestrator-run, not headless)
 
-Six loops drive the fleet (3 cron + 3 on-demand — `master` sequences the routine cadence loops). **Env constraint (verified 2026-06-12):** this managed env
-has no headless background execution and `CronCreate durable:true` does not persist —
-loops fire only while a Claude session is open + idle, recurring jobs auto-expire after
-7 days, and they must be **re-armed each session**. Source of truth: `.claude/loops/loops.json`.
+Six loops, all on-demand — **no cron fires automatically**. The operator triggers `master`; master sequences the routine sub-loops in order. `optimization` and `build-maintain-cycle` require a separate explicit operator trigger. Source of truth: `.claude/loops/loops.json`.
 
-| Loop | id | Schedule | Attendance | Engine |
+| Loop | id | Trigger | Attendance | Engine |
 |---|---|---|---|---|
-| **Master** ⭐ primary entry | `master` | daily 08:00 | attended — sole writer, sequences routine loops | CI gate → maintenance → stabilization → codebase-review → cross-loop pattern analysis + /self-optimize fold-in |
-| **Stabilization** | `stabilization` | daily 09:07 | attended — commit-on-green, pause-on-gates | CI health gate → `/builder-test ledger` + `/code-review` → fleet |
-| **Maintenance** | `maintenance` | daily 07:03 | unattended, **propose-only** | `session-maintainer` mines orchestrated-agent sessions + dep currency sweep + anthropic-SDK capfit trigger |
-| **Optimization** | `optimization` | on-demand (do NOT cron) | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
-| **Build→Maintain→Fix cycle** | `build-maintain-cycle` | on-demand (do NOT cron) | attended, **main-thread sole writer** | self-contained dogfooding flywheel: **step-1 build-drive** (a RUN-ONLY `browser-verifier` drives one real sprint — provisions a new app via `builder init`+`builder start` or continues the running one; NOT the self-fixing `/builder-test` skill) → maintenance mine (propose-only) → orchestrator triages + applies root-cause fixes in an isolated worktree, validated by signature non-recurrence |
-| **Codebase review** | `codebase-review` | on-demand (do NOT cron) | attended, **main-thread sole writer** | proactive quality-debt paydown of EXISTING code: per tick reviews ONE risk-prioritized slice via a run-only reviewer applying the code-review rubric (the built-in `/code-review` is diff-scoped) → triages findings (verify-before-fix) → auto-fixes confirmed correctness/safety + high-confidence dead-code/dedup ONLY (nits/opinions filed, never churned) → commit-on-green + watermark (`codebase-review-state.json`). Structural decomposition deferred to M1.3 |
+| **Master** ⭐ only entry point | `master` | operator-triggered | attended — sole writer, sequences sub-loops | CI gate → maintenance → stabilization → codebase-review → cross-loop pattern analysis + /self-optimize fold-in |
+| **Stabilization** | `stabilization` | driven by master step-2 (or standalone) | attended — commit-on-green, pause-on-gates | CI health gate → `/builder-test ledger` + `/code-review` → fleet |
+| **Maintenance** | `maintenance` | driven by master step-1 (or standalone) | unattended, **propose-only** | `session-maintainer` mines orchestrated-agent sessions + dep currency sweep + anthropic-SDK capfit trigger |
+| **Codebase review** | `codebase-review` | driven by master step-3 (or standalone) | attended, **main-thread sole writer** | proactive quality-debt paydown of EXISTING code: per tick reviews ONE risk-prioritized slice → triages findings → auto-fixes confirmed correctness/safety + high-confidence dead-code/dedup ONLY → commit-on-green + watermark |
+| **Optimization** | `optimization` | explicit operator trigger only | attended, **propose-at-PR** | SELECT efficiency/cost IMP → planner/implementer → verifiers → autoresearch Iterate → approval gate |
+| **Build→Maintain→Fix cycle** | `build-maintain-cycle` | explicit operator trigger only | attended, **main-thread sole writer** | self-contained dogfooding flywheel: build-drive (RUN-ONLY `browser-verifier`) → mine sessions → triage + fix root causes → validate by non-recurrence |
 
 - **Stabilization runs before any new feature work** (operator directive): find bugs →
   fix at root → code-review → best-practices patch. Commits only on green; pauses at PRs,
   runtime/prompt edits, dashboard-gated items.
-- **Maintenance & Hygiene never apply runtime/prompt edits** — they file backlog items +
+- **Maintenance never applies runtime/prompt edits** — it files backlog items +
   proposal reports for orchestrator approval.
 - **Optimization** is autonomous through SELECT → BUILD (isolated branch) → VERIFY correctness
   → VALIDATE saving (autoresearch 2σ when active; else a `logs analyze` estimate flagged
@@ -133,17 +130,20 @@ their prompts **reference it** instead of restating it (single source; no drift)
 6. **Route findings:** builder-self → `docs/goal/ROADMAP.md` (never a managed-app backlog); reusable
    patterns → `builder memory`; dedup against open items.
 
-### Run-if-stale at session entry (cron is unreliable here)
+### Triggering loops
 
-`CronCreate durable` does NOT persist in this env (verified 2026-06-12), so the cadence loops
-(`master`/`stabilization`/`maintenance`) rarely fire on their cron. Treat each `cron` as a *cadence
-hint, not a guarantee.* At session entry, read the last-run watermark
-`.claude/loops/loop-runs-state.json` (loop-id → ISO date); for any cadence loop overdue past its
-cadence, **run `master`** (it sequences all routine loops in one attended tick, updates all
-watermarks, folds in /self-optimize when the `hygiene` watermark is > 7 days old, and runs cross-loop
-pattern analysis) **or run sub-loops individually** (maintenance propose-only; stabilization commits —
-ask first), then record the run dates back to the watermark. Arming `CronCreate` is still
-fine for the rare idle-session case, but **staleness-at-entry is the real trigger**.
+All loops are on-demand. **The operator runs `master`**; master does everything else for the routine
+loops. For targeted work, sub-loops can be triggered standalone.
+
+**To run the full routine cycle:** invoke the `master` loop prompt from `.claude/loops/loops.json`.
+Master reads `.claude/loops/loop-runs-state.json` watermarks internally to decide which sub-loops are
+stale and need to run within the tick.
+
+**To run a sub-loop standalone** (e.g. only stabilization after a targeted fix): invoke that loop's
+prompt directly. Update its watermark in `loop-runs-state.json` when done.
+
+**`optimization` and `build-maintain-cycle`** are never driven by master — trigger them explicitly
+when you want a dedicated efficiency build or a dogfooding sprint.
 
 ## Guardrails baked into every agent prompt (from /self-optimize)
 
